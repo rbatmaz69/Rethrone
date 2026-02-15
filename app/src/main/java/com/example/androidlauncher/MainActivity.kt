@@ -83,7 +83,6 @@ class MainActivity : ComponentActivity() {
                 
                 val favorites = remember(allApps, favoritePackages) { 
                     allApps.filter { it.packageName in favoritePackages }.take(8)
-                        .ifEmpty { allApps.filter { it.lucideIcon != null || it.customIconResId != null }.take(8) }
                 }
 
                 LaunchedEffect(Unit) {
@@ -397,7 +396,19 @@ fun AppIconView(app: AppInfo) {
             Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
         }
         else -> {
-            Image(bitmap = app.icon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(Color.White))
+            // Fallback auf das originale Logo (nur Vordergrund bei Adaptive Icons)
+            val drawable = app.icon
+            val foregroundDrawable = if (drawable is AdaptiveIconDrawable) {
+                drawable.foreground ?: drawable
+            } else {
+                drawable
+            }
+            Image(
+                bitmap = foregroundDrawable.toBitmap().asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.size(iconSize),
+                colorFilter = ColorFilter.tint(Color.White)
+            )
         }
     }
 }
