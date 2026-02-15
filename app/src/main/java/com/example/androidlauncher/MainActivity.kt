@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -42,12 +41,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -57,16 +54,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
-import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
 
 data class AppInfo(
     val label: String,
     val packageName: String,
-    val icon: Drawable,
-    val lucideIcon: ImageVector? = null,
-    val customIconResId: Int? = null
+    val icon: Drawable
 )
 
 class MainActivity : ComponentActivity() {
@@ -83,7 +77,6 @@ class MainActivity : ComponentActivity() {
                 
                 val favorites = remember(allApps, favoritePackages) { 
                     allApps.filter { it.packageName in favoritePackages }.take(8)
-                        .ifEmpty { allApps.filter { it.lucideIcon != null || it.customIconResId != null }.take(8) }
                 }
 
                 LaunchedEffect(Unit) {
@@ -389,17 +382,21 @@ fun AppDrawer(
 @Composable
 fun AppIconView(app: AppInfo) {
     val iconSize = 48.dp
-    when {
-        app.lucideIcon != null -> {
-            Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
-        }
-        app.customIconResId != null -> {
-            Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
-        }
-        else -> {
-            Image(bitmap = app.icon.toBitmap().asImageBitmap(), contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(Color.White))
-        }
+    val drawable = app.icon
+    
+    // Extrahieren des Vordergrunds bei adaptiven Icons
+    val finalDrawable = if (drawable is AdaptiveIconDrawable) {
+        drawable.foreground ?: drawable
+    } else {
+        drawable
     }
+
+    Image(
+        bitmap = finalDrawable.toBitmap().asImageBitmap(),
+        contentDescription = null,
+        modifier = Modifier.size(iconSize),
+        colorFilter = ColorFilter.tint(Color.White) // Alles weiß färben
+    )
 }
 
 @Composable
@@ -432,46 +429,12 @@ private fun getInstalledApps(context: Context): List<AppInfo> {
     val pm = context.packageManager
     val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
     return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
-        val packageName = resolveInfo.activityInfo.packageName.lowercase()
-        val label = resolveInfo.loadLabel(pm).toString().lowercase()
         val icon = resolveInfo.loadIcon(pm)
-        val finalIcon = if (icon is AdaptiveIconDrawable) resolveInfo.loadIcon(pm) else icon
-        
-        // Lucide Icon Mapping
-        val lucideIcon = when {
-            packageName.contains("phone") || packageName.contains("dialer") -> Lucide.Phone
-            packageName.contains("camera") || label.contains("kamera") -> Lucide.Camera
-            packageName.contains("chrome") || packageName.contains("browser") || label.contains("browser") -> Lucide.Globe
-            packageName.contains("calendar") -> Lucide.Calendar
-            packageName.contains("settings") || label.contains("einstellungen") -> Lucide.Settings
-            packageName.contains("gm") || packageName.contains("mail") || label.contains("email") || label.contains("gmail") -> Lucide.Mail
-            packageName.contains("gallery") || packageName.contains("photos") || label.contains("galerie") || label.contains("fotos") -> Lucide.Image
-            packageName.contains("youtube") || packageName.contains("video") || label.contains("video") -> Lucide.Play
-            packageName.contains("calculator") || label.contains("rechner") -> Lucide.Calculator
-            packageName.contains("weather") || label.contains("wetter") -> Lucide.CloudSun
-            packageName.contains("contacts") || label.contains("kontakte") -> Lucide.Users
-            packageName.contains("vending") || packageName.contains("playstore") -> Lucide.ShoppingBag
-            packageName == "com.google.android.googlequicksearchbox" && !label.contains("voice") -> Lucide.Search
-            label.contains("voice search") -> Lucide.Mic
-            packageName.contains("safety") || label.contains("sicherheit") -> Lucide.ShieldCheck
-            packageName.contains("drive") || label.contains("dropbox") || label.contains("cloud") -> Lucide.HardDrive
-            packageName.contains("messaging") || packageName.contains("mms") || packageName.contains("sms") || label.contains("nachrichten") -> Lucide.MessageSquare
-            packageName.contains("music") || label.contains("musik") -> Lucide.Music
-            packageName.contains("maps") || label.contains("karten") -> Lucide.Map
-            packageName.contains("clock") || label.contains("uhr") -> Lucide.Clock
-            packageName.contains("file") || label.contains("dateien") -> Lucide.FileText
-            else -> null
-        }
-
-        val customIcon = if (lucideIcon == null) {
-            when {
-                packageName.contains("google") -> R.drawable.ic_launcher_google
-                packageName.contains("com.example.androidlauncher") -> R.drawable.ic_launcher_home
-                else -> null
-            }
-        } else null
-
-        AppInfo(resolveInfo.loadLabel(pm).toString(), resolveInfo.activityInfo.packageName, finalIcon, lucideIcon, customIcon)
+        AppInfo(
+            label = resolveInfo.loadLabel(pm).toString(),
+            packageName = resolveInfo.activityInfo.packageName,
+            icon = icon
+        )
     }.sortedBy { it.label.lowercase() }
 }
 
