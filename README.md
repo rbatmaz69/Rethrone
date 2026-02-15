@@ -1,2 +1,17 @@
-# Minimalist-Android-Launcher
-Ein leichtgewichtiger und eleganter Android-Launcher mit Fokus auf das Wesentliche. Features: Dynamische Wallpaper-Integration, ein vertikales Favoriten-System, ein intelligenter App-Drawer mit Schnellsuche und handgezeichneten minimalistischen Icons.
+# Minimalist Android Launcher
+
+Ein eleganter, performanter Launcher für Android, der mit **Jetpack Compose** von Grund auf neu geschrieben wurde. Dieser Launcher verzichtet auf unnötigen Ballast und bietet eine extrem saubere Benutzeroberfläche.
+
+## ✨ Features
+- **Minimalistisches Design:** Fokus auf Typografie und Platz.
+- **Custom Line-Art Icons:** Integrierte minimalistische Symbole für System-Apps (Telefon, Kamera, Browser, Cloud-Dienste etc.).
+- **Smart App Drawer:** Schneller Zugriff auf alle Apps mit integrierter Suchfunktion.
+- **Favoriten-Liste:** Deine wichtigsten Apps direkt auf dem Home-Screen.
+- **System-Integration:** Unterstützt das aktuelle System-Wallpaper und bietet schnellen Zugriff auf Benachrichtigungen und Einstellungen.
+- **Gesten-Steuerung:** Wische nach oben für den App-Drawer oder nach unten für das Benachrichtigungsfeld.
+
+## 🛠 Tech Stack
+- **Sprache:** Kotlin
+- **UI-Framework:** Jetpack Compose
+- **Design:** Material 3
+- **Icons:** Custom Vector Drawables (Minimalist Style)
