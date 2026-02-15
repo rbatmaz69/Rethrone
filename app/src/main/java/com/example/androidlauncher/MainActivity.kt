@@ -396,7 +396,7 @@ fun AppIconView(app: AppInfo) {
             Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
         }
         else -> {
-            // Fallback auf das originale Logo (nur Vordergrund bei Adaptive Icons)
+            // Standardmäßig originales Logo (Vordergrund, weiß gefärbt)
             val drawable = app.icon
             val foregroundDrawable = if (drawable is AdaptiveIconDrawable) {
                 drawable.foreground ?: drawable
@@ -443,46 +443,16 @@ private fun getInstalledApps(context: Context): List<AppInfo> {
     val pm = context.packageManager
     val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
     return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
-        val packageName = resolveInfo.activityInfo.packageName.lowercase()
-        val label = resolveInfo.loadLabel(pm).toString().lowercase()
         val icon = resolveInfo.loadIcon(pm)
-        val finalIcon = if (icon is AdaptiveIconDrawable) resolveInfo.loadIcon(pm) else icon
         
-        // Lucide Icon Mapping
-        val lucideIcon = when {
-            packageName.contains("phone") || packageName.contains("dialer") -> Lucide.Phone
-            packageName.contains("camera") || label.contains("kamera") -> Lucide.Camera
-            packageName.contains("chrome") || packageName.contains("browser") || label.contains("browser") -> Lucide.Globe
-            packageName.contains("calendar") -> Lucide.Calendar
-            packageName.contains("settings") || label.contains("einstellungen") -> Lucide.Settings
-            packageName.contains("gm") || packageName.contains("mail") || label.contains("email") || label.contains("gmail") -> Lucide.Mail
-            packageName.contains("gallery") || packageName.contains("photos") || label.contains("galerie") || label.contains("fotos") -> Lucide.Image
-            packageName.contains("youtube") || packageName.contains("video") || label.contains("video") -> Lucide.Play
-            packageName.contains("calculator") || label.contains("rechner") -> Lucide.Calculator
-            packageName.contains("weather") || label.contains("wetter") -> Lucide.CloudSun
-            packageName.contains("contacts") || label.contains("kontakte") -> Lucide.Users
-            packageName.contains("vending") || packageName.contains("playstore") -> Lucide.ShoppingBag
-            packageName == "com.google.android.googlequicksearchbox" && !label.contains("voice") -> Lucide.Search
-            label.contains("voice search") -> Lucide.Mic
-            packageName.contains("safety") || label.contains("sicherheit") -> Lucide.ShieldCheck
-            packageName.contains("drive") || label.contains("dropbox") || label.contains("cloud") -> Lucide.HardDrive
-            packageName.contains("messaging") || packageName.contains("mms") || packageName.contains("sms") || label.contains("nachrichten") -> Lucide.MessageSquare
-            packageName.contains("music") || label.contains("musik") -> Lucide.Music
-            packageName.contains("maps") || label.contains("karten") -> Lucide.Map
-            packageName.contains("clock") || label.contains("uhr") -> Lucide.Clock
-            packageName.contains("file") || label.contains("dateien") -> Lucide.FileText
-            else -> null
-        }
-
-        val customIcon = if (lucideIcon == null) {
-            when {
-                packageName.contains("google") -> R.drawable.ic_launcher_google
-                packageName.contains("com.example.androidlauncher") -> R.drawable.ic_launcher_home
-                else -> null
-            }
-        } else null
-
-        AppInfo(resolveInfo.loadLabel(pm).toString(), resolveInfo.activityInfo.packageName, finalIcon, lucideIcon, customIcon)
+        // Keine automatischen Lucide-Zuweisungen mehr
+        AppInfo(
+            label = resolveInfo.loadLabel(pm).toString(),
+            packageName = resolveInfo.activityInfo.packageName,
+            icon = icon,
+            lucideIcon = null,
+            customIconResId = null
+        )
     }.sortedBy { it.label.lowercase() }
 }
 
