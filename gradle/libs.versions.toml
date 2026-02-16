@@ -6,7 +6,7 @@ junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
-kotlin = "2.2.10"
+kotlin = "2.1.0"
 composeBom = "2024.09.00"
 lucide = "1.1.0"
 
@@ -28,5 +28,6 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 lucide-icons = { group = "com.composables", name = "icons-lucide", version.ref = "lucide" }
 
 [plugins]
-android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+androidApp = { id = "com.android.application", version.ref = "agp" }
+kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
