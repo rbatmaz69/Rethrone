@@ -709,12 +709,54 @@ fun ClockHeader() {
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
-                    try {
-                        val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    val clockIntents = listOf(
+                        Intent(AlarmClock.ACTION_SHOW_ALARMS),
+                        Intent(AlarmClock.ACTION_SET_ALARM),
+                        Intent("android.intent.action.SHOW_ALARMS"),
+                        Intent("android.intent.action.SET_ALARM")
+                    )
+                    
+                    var started = false
+                    for (intent in clockIntents) {
+                        try {
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            context.startActivity(intent)
+                            started = true
+                            break
+                        } catch (e: Exception) {
+                            continue
                         }
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
+                    }
+
+                    if (!started) {
+                        // Letzter Versuch: Bekannte Package-Namen für diverse Hersteller
+                        val packages = listOf(
+                            "com.zte.deskclock",       // Nubia/ZTE
+                            "com.android.deskclock",   // AOSP
+                            "com.google.android.deskclock", // Google
+                            "com.sec.android.app.clockpackage", // Samsung
+                            "com.huawei.android.clock", // Huawei
+                            "com.oppo.alarmclock",     // Oppo
+                            "com.coloros.alarmclock",  // ColorOS
+                            "com.oneplus.deskclock",   // OnePlus
+                            "com.motorola.blur.alarmclock", // Motorola
+                            "com.asus.deskclock",      // ASUS
+                            "com.miui.clock",          // Xiaomi
+                            "com.sonyericsson.organizer" // Sony
+                        )
+                        for (pkg in packages) {
+                            try {
+                                val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                                if (launchIntent != null) {
+                                    context.startActivity(launchIntent)
+                                    started = true
+                                    break
+                                }
+                            } catch (e: Exception) {}
+                        }
+                    }
+
+                    if (!started) {
                         Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
                     }
                 }
