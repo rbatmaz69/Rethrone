@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.AlarmClock
+import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -36,7 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.* 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -696,39 +697,57 @@ fun ClockHeader() {
     }
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val dateFormat = SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault())
-    Column {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Text(
             text = timeFormat.format(currentTime),
             fontSize = 72.sp,
             fontWeight = FontWeight.Normal,
             letterSpacing = (-2).sp,
             color = Color.White,
-            modifier = Modifier.clickable {
-                val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                try {
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    try {
+                        val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            }
         )
         Text(
             text = dateFormat.format(currentTime),
             fontSize = 18.sp,
             fontWeight = FontWeight.Normal,
             color = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.clickable {
-                val intent = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_APP_CALENDAR)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    // Verwende einen spezifischeren Intent für den Kalender, um Google Account Setups zu umgehen
+                    val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
+                        data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    
+                    try {
+                        context.startActivity(calendarIntent)
+                    } catch (e: Exception) {
+                        // Zweiter Versuch: Selector Activity (offizieller Weg)
+                        val selectorIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        try {
+                            context.startActivity(selectorIntent)
+                        } catch (e2: Exception) {
+                            // Einfach nichts tun
+                        }
+                    }
                 }
-                try {
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Kalender-App nicht gefunden", Toast.LENGTH_SHORT).show()
-                }
-            }
+                .padding(horizontal = 4.dp, vertical = 2.dp)
         )
     }
 }
