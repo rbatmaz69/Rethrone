@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -106,6 +107,23 @@ class MainActivity : ComponentActivity() {
                     else if (isSettingsOpen) isSettingsOpen = false
                 }
 
+                val toggleFavorite: (String) -> Unit = { pkg ->
+                    val isFav = pkg in favoritePackages
+                    if (isFav) {
+                        val newFavs = favoritePackages - pkg
+                        saveFavorites(context, newFavs)
+                        favoritePackages = newFavs
+                    } else {
+                        if (favoritePackages.size < 8) {
+                            val newFavs = favoritePackages + pkg
+                            saveFavorites(context, newFavs)
+                            favoritePackages = newFavs
+                        } else {
+                            Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+
                 Box(modifier = Modifier.fillMaxSize()) {
                     SystemWallpaperView()
 
@@ -125,13 +143,7 @@ class MainActivity : ComponentActivity() {
                         if (targetIsDrawerOpen) {
                             AppDrawer(
                                 apps = allApps,
-                                onToggleFavorite = { pkg ->
-                                    val newFavs = if (pkg in favoritePackages) favoritePackages - pkg else {
-                                        if (favoritePackages.size < 8) favoritePackages + pkg else favoritePackages
-                                    }
-                                    saveFavorites(context, newFavs)
-                                    favoritePackages = newFavs
-                                },
+                                onToggleFavorite = toggleFavorite,
                                 isFavorite = { pkg -> pkg in favoritePackages },
                                 onClose = { isDrawerOpen = false }
                             )
@@ -150,13 +162,7 @@ class MainActivity : ComponentActivity() {
                         FavoritesConfigMenu(
                             apps = allApps,
                             favoritePackages = favoritePackages,
-                            onToggleFavorite = { pkg ->
-                                val newFavs = if (pkg in favoritePackages) favoritePackages - pkg else {
-                                    if (favoritePackages.size < 8) favoritePackages + pkg else favoritePackages
-                                }
-                                saveFavorites(context, newFavs)
-                                favoritePackages = newFavs
-                            },
+                            onToggleFavorite = toggleFavorite,
                             onClose = { isFavoritesConfigOpen = false }
                         )
                     }
@@ -302,6 +308,10 @@ fun FavoritesConfigMenu(
     onToggleFavorite: (String) -> Unit,
     onClose: () -> Unit
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+    val focusRequester = remember { FocusRequester() }
+
     Box(modifier = Modifier.fillMaxSize()) {
         SystemWallpaperView()
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.95f)))
@@ -314,14 +324,46 @@ fun FavoritesConfigMenu(
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Suche im Konfigurationsmenü
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        focusRequester.requestFocus()
+                    }
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
+                        cursorBrush = SolidColor(Color.White),
+                        singleLine = true,
+                        decorationBox = { innerTextField ->
+                            if (searchQuery.isEmpty()) {
+                                Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp)
+                            }
+                            innerTextField()
+                        }
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
             
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = 32.dp)
             ) {
-                items(apps) { app ->
+                items(filteredApps) { app ->
                     val isFav = app.packageName in favoritePackages
                     Surface(
                         color = if (isFav) Color.White.copy(alpha = 0.1f) else Color.Transparent,
@@ -342,8 +384,7 @@ fun FavoritesConfigMenu(
                                     checkedColor = Color.White,
                                     uncheckedColor = Color.White.copy(alpha = 0.4f),
                                     checkmarkColor = Color(0xFF0F172A)
-                                ),
-                                enabled = isFav || favoritePackages.size < 8
+                                )
                             )
                         }
                     }
