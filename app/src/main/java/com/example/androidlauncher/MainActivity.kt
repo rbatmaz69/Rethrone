@@ -22,9 +22,11 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -78,6 +80,8 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
+                var isFavoritesConfigOpen by remember { mutableStateOf(false) }
+                
                 var allApps by remember { mutableStateOf(emptyList<AppInfo>()) }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
                 
@@ -90,11 +94,15 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(isDrawerOpen) {
-                    if (isDrawerOpen) isSettingsOpen = false
+                    if (isDrawerOpen) {
+                        isSettingsOpen = false
+                        isFavoritesConfigOpen = false
+                    }
                 }
 
-                BackHandler(enabled = isDrawerOpen || isSettingsOpen) {
+                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen) {
                     if (isDrawerOpen) isDrawerOpen = false
+                    else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isSettingsOpen) isSettingsOpen = false
                 }
 
@@ -118,7 +126,9 @@ class MainActivity : ComponentActivity() {
                             AppDrawer(
                                 apps = allApps,
                                 onToggleFavorite = { pkg ->
-                                    val newFavs = if (pkg in favoritePackages) favoritePackages - pkg else favoritePackages + pkg
+                                    val newFavs = if (pkg in favoritePackages) favoritePackages - pkg else {
+                                        if (favoritePackages.size < 8) favoritePackages + pkg else favoritePackages
+                                    }
                                     saveFavorites(context, newFavs)
                                     favoritePackages = newFavs
                                 },
@@ -130,9 +140,25 @@ class MainActivity : ComponentActivity() {
                                 favorites = favorites,
                                 isSettingsOpen = isSettingsOpen,
                                 onOpenDrawer = { isDrawerOpen = true },
-                                onToggleSettings = { isSettingsOpen = !isSettingsOpen }
+                                onToggleSettings = { isSettingsOpen = !isSettingsOpen },
+                                onOpenFavoritesConfig = { isFavoritesConfigOpen = true }
                             )
                         }
+                    }
+
+                    if (isFavoritesConfigOpen) {
+                        FavoritesConfigMenu(
+                            apps = allApps,
+                            favoritePackages = favoritePackages,
+                            onToggleFavorite = { pkg ->
+                                val newFavs = if (pkg in favoritePackages) favoritePackages - pkg else {
+                                    if (favoritePackages.size < 8) favoritePackages + pkg else favoritePackages
+                                }
+                                saveFavorites(context, newFavs)
+                                favoritePackages = newFavs
+                            },
+                            onClose = { isFavoritesConfigOpen = false }
+                        )
                     }
                 }
             }
@@ -182,7 +208,8 @@ fun HomeScreen(
     favorites: List<AppInfo>, 
     isSettingsOpen: Boolean,
     onOpenDrawer: () -> Unit, 
-    onToggleSettings: () -> Unit
+    onToggleSettings: () -> Unit,
+    onOpenFavoritesConfig: () -> Unit
 ) {
     val context = LocalContext.current
     val rotation by animateFloatAsState(
@@ -211,17 +238,32 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(start = 12.dp)
             ) {
-                favorites.forEach { app ->
+                if (favorites.isEmpty()) {
+                    // Ein "+"-Symbol wird nur dann auf der Startseite angezeigt, wenn noch keine einzige Favoriten-App gesetzt wurde.
                     Surface(
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.clickable {
-                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                            if (intent != null) context.startActivity(intent)
-                        }
+                        color = Color.White.copy(alpha = 0.1f),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clickable { onOpenFavoritesConfig() }
                     ) {
-                        Box(modifier = Modifier.padding(6.dp)) {
-                            AppIconView(app)
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+                        }
+                    }
+                } else {
+                    favorites.forEach { app ->
+                        Surface(
+                            color = Color.Transparent,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.clickable {
+                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                if (intent != null) context.startActivity(intent)
+                            }
+                        ) {
+                            Box(modifier = Modifier.padding(6.dp)) {
+                                AppIconView(app)
+                            }
                         }
                     }
                 }
@@ -232,9 +274,10 @@ fun HomeScreen(
 
         Box(modifier = Modifier.fillMaxSize().padding(bottom = 80.dp, end = 8.dp), contentAlignment = Alignment.BottomEnd) {
             AnimatedVisibility(visible = isSettingsOpen, enter = scaleIn(transformOrigin = TransformOrigin(1f, 1f)) + fadeIn(), exit = scaleOut(transformOrigin = TransformOrigin(1f, 1f)) + fadeOut()) {
-                Surface(color = Color(0xFF1A1F2B).copy(alpha = 0.98f), shape = RoundedCornerShape(24.dp), modifier = Modifier.width(200.dp)) {
+                Surface(color = Color(0xFF1A1F2B).copy(alpha = 0.98f), shape = RoundedCornerShape(24.dp), modifier = Modifier.width(220.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Einstellungen", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        SettingsItemView(icon = Icons.Default.Star, label = "Favoriten konfigurieren", onClick = { onOpenFavoritesConfig(); onToggleSettings() })
                         SettingsItemView(icon = Icons.Default.Settings, label = "System", onClick = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) })
                         SettingsItemView(icon = Icons.Default.Info, label = "Info", onClick = { /* Action */ })
                     }
@@ -246,6 +289,64 @@ fun HomeScreen(
             Surface(modifier = Modifier.padding(8.dp).size(56.dp).clip(CircleShape).clickable { onToggleSettings() }, color = Color.White.copy(alpha = 0.15f), shape = CircleShape) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                     Icon(imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FavoritesConfigMenu(
+    apps: List<AppInfo>,
+    favoritePackages: Set<String>,
+    onToggleFavorite: (String) -> Unit,
+    onClose: () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        SystemWallpaperView()
+        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.95f)))
+
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
+                    Text("${favoritePackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
+                }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
+                items(apps) { app ->
+                    val isFav = app.packageName in favoritePackages
+                    Surface(
+                        color = if (isFav) Color.White.copy(alpha = 0.1f) else Color.Transparent,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { onToggleFavorite(app.packageName) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AppIconView(app)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                            Checkbox(
+                                checked = isFav,
+                                onCheckedChange = { onToggleFavorite(app.packageName) },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = Color.White,
+                                    uncheckedColor = Color.White.copy(alpha = 0.4f),
+                                    checkmarkColor = Color(0xFF0F172A)
+                                ),
+                                enabled = isFav || favoritePackages.size < 8
+                            )
+                        }
+                    }
                 }
             }
         }
