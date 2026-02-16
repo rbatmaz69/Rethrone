@@ -570,68 +570,82 @@ fun AppDrawer(
                 itemsIndexed(filteredApps) { index, app ->
                     var showAppActions by remember { mutableStateOf(false) }
                     
-                    val animVisible = remember { mutableStateOf(false) }
+                    val isVisible = remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay((index % 4) * 40L + (index / 4) * 20L)
-                        animVisible.value = true
+                        val cascadeDelay = if (index < 16) (index % 4) * 40L + (index / 4) * 20L else 0L
+                        kotlinx.coroutines.delay(cascadeDelay)
+                        isVisible.value = true
                     }
 
-                    AnimatedVisibility(
-                        visible = animVisible.value,
-                        enter = slideInVertically(initialOffsetY = { 50 }) + fadeIn(animationSpec = tween(400)),
-                        exit = fadeOut()
+                    val alpha by animateFloatAsState(
+                        targetValue = if (isVisible.value) 1f else 0f,
+                        animationSpec = tween(durationMillis = 400),
+                        label = "alpha"
+                    )
+                    val translateY by animateFloatAsState(
+                        targetValue = if (isVisible.value) 0f else 40f,
+                        animationSpec = tween(durationMillis = 400, easing = EaseOutCubic),
+                        label = "translateY"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .graphicsLayer {
+                                this.alpha = alpha
+                                this.translationY = translateY
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .combinedClickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {
-                                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                            if (intent != null) context.startActivity(intent)
-                                        },
-                                        onLongClick = { showAppActions = true }
-                                    )
-                            ) {
-                                AppIconView(app)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = app.label,
-                                    fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                            
-                            DropdownMenu(
-                                expanded = showAppActions,
-                                onDismissRequest = { showAppActions = false },
-                                modifier = Modifier.background(Color(0xFF1A1F2B))
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) },
-                                    onClick = { onToggleFavorite(app.packageName); showAppActions = false }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("App-Info", color = Color.White) },
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .combinedClickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
                                     onClick = {
-                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }
-                                        context.startActivity(intent); showAppActions = false
-                                    }
+                                        val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                        if (intent != null) context.startActivity(intent)
+                                    },
+                                    onLongClick = { showAppActions = true }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Deinstallieren", color = Color.Red) },
-                                    onClick = {
-                                        val intent = Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }
-                                        context.startActivity(intent); showAppActions = false
-                                    }
-                                )
-                            }
+                        ) {
+                            AppIconView(app)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = app.label,
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.7f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showAppActions,
+                            onDismissRequest = { showAppActions = false },
+                            modifier = Modifier.background(Color(0xFF1A1F2B))
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) },
+                                onClick = { onToggleFavorite(app.packageName); showAppActions = false }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("App-Info", color = Color.White) },
+                                onClick = {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }
+                                    context.startActivity(intent); showAppActions = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Deinstallieren", color = Color.Red) },
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }
+                                    context.startActivity(intent); showAppActions = false
+                                }
+                            )
                         }
                     }
                 }
@@ -701,8 +715,6 @@ fun ClockHeader() {
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
                     var started = false
-                    
-                    // 1. Offizieller "Clock" Selector Weg (String Literal zur Sicherheit)
                     try {
                         val intent = Intent(Intent.ACTION_MAIN).apply {
                             addCategory("android.intent.category.APP_CLOCK")
@@ -712,7 +724,6 @@ fun ClockHeader() {
                         started = true
                     } catch (e: Exception) {}
 
-                    // 2. Alarme anzeigen
                     if (!started) {
                         try {
                             val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
@@ -723,7 +734,6 @@ fun ClockHeader() {
                         } catch (e: Exception) {}
                     }
 
-                    // 3. Bekannte Pakete (besonders für Nubia/ZTE)
                     if (!started) {
                         val packages = listOf(
                             "cn.nubia.deskclock.preset", 
@@ -747,7 +757,6 @@ fun ClockHeader() {
                         }
                     }
 
-                    // 4. SMART SEARCH: Suche nach installierten Apps mit "Clock" oder "Uhr" im Namen
                     if (!started) {
                         try {
                             val pm = context.packageManager
