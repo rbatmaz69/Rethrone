@@ -9,6 +9,7 @@ import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
+import android.provider.AlarmClock
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -18,7 +19,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -63,6 +63,7 @@ import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 
 data class AppInfo(
     val label: String,
@@ -685,6 +686,7 @@ fun SettingsItemView(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
 
 @Composable
 fun ClockHeader() {
+    val context = LocalContext.current
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -695,8 +697,39 @@ fun ClockHeader() {
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val dateFormat = SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault())
     Column {
-        Text(text = timeFormat.format(currentTime), fontSize = 72.sp, fontWeight = FontWeight.Normal, letterSpacing = (-2).sp, color = Color.White)
-        Text(text = dateFormat.format(currentTime), fontSize = 18.sp, fontWeight = FontWeight.Normal, color = Color.White.copy(alpha = 0.7f))
+        Text(
+            text = timeFormat.format(currentTime),
+            fontSize = 72.sp,
+            fontWeight = FontWeight.Normal,
+            letterSpacing = (-2).sp,
+            color = Color.White,
+            modifier = Modifier.clickable {
+                val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                try {
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+        Text(
+            text = dateFormat.format(currentTime),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Normal,
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.clickable {
+                val intent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_APP_CALENDAR)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                try {
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Kalender-App nicht gefunden", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
     }
 }
 
