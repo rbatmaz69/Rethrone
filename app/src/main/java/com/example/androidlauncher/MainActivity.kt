@@ -150,7 +150,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (isFavoritesConfigOpen) {
+                    AnimatedVisibility(
+                        visible = isFavoritesConfigOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeOut()
+                    ) {
                         FavoritesConfigMenu(
                             apps = allApps,
                             initialFavoritePackages = favoritePackages,
