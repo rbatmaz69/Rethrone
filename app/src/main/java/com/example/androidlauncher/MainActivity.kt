@@ -16,9 +16,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
-import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -88,7 +87,7 @@ class MainActivity : ComponentActivity() {
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
                 
                 // Favoriten basierend auf der gespeicherten Liste (Reihenfolge!) laden
-                val favorites = remember(allApps, favoritePackages) { 
+                val favorites = remember(allApps, favoritePackages) {
                     favoritePackages.mapNotNull { pkg -> allApps.find { it.packageName == pkg } }.take(8)
                 }
 
@@ -389,7 +388,7 @@ fun FavoritesConfigMenu(
                                     AppIconView(app)
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                                    
+
                                     // Sortier-Buttons
                                     IconButton(
                                         onClick = {
@@ -572,58 +571,73 @@ fun AppDrawer(
                 verticalArrangement = Arrangement.spacedBy(32.dp),
                 contentPadding = PaddingValues(bottom = 32.dp)
             ) {
-                items(filteredApps) { app ->
+                itemsIndexed(filteredApps) { index, app ->
                     var showAppActions by remember { mutableStateOf(false) }
-                    Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .combinedClickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { 
-                                        val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                        if (intent != null) context.startActivity(intent)
-                                    },
-                                    onLongClick = { showAppActions = true }
+                    
+                    // Kaskadierende Animation
+                    val animVisible = remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        // Kurze Verzögerung basierend auf dem Index
+                        kotlinx.coroutines.delay((index % 4) * 40L + (index / 4) * 20L)
+                        animVisible.value = true
+                    }
+
+                    AnimatedVisibility(
+                        visible = animVisible.value,
+                        enter = slideInVertically(initialOffsetY = { 50 }) + fadeIn(animationSpec = tween(400)),
+                        exit = fadeOut()
+                    ) {
+                        Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .combinedClickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {
+                                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                            if (intent != null) context.startActivity(intent)
+                                        },
+                                        onLongClick = { showAppActions = true }
+                                    )
+                            ) {
+                                AppIconView(app)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = app.label,
+                                    fontSize = 11.sp,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
-                        ) {
-                            AppIconView(app)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = app.label,
-                                fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.7f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        
-                        DropdownMenu(
-                            expanded = showAppActions,
-                            onDismissRequest = { showAppActions = false },
-                            modifier = Modifier.background(Color(0xFF1A1F2B))
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) },
-                                onClick = { onToggleFavorite(app.packageName); showAppActions = false }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("App-Info", color = Color.White) },
-                                onClick = { 
-                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }
-                                    context.startActivity(intent); showAppActions = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Deinstallieren", color = Color.Red) },
-                                onClick = { 
-                                    val intent = Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }
-                                    context.startActivity(intent); showAppActions = false
-                                }
-                            )
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showAppActions,
+                                onDismissRequest = { showAppActions = false },
+                                modifier = Modifier.background(Color(0xFF1A1F2B))
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) },
+                                    onClick = { onToggleFavorite(app.packageName); showAppActions = false }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("App-Info", color = Color.White) },
+                                    onClick = {
+                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }
+                                        context.startActivity(intent); showAppActions = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Deinstallieren", color = Color.Red) },
+                                    onClick = {
+                                        val intent = Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }
+                                        context.startActivity(intent); showAppActions = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -691,7 +705,7 @@ private fun getInstalledApps(context: Context): List<AppInfo> {
     val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
     return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
         val icon = resolveInfo.loadIcon(pm)
-        
+
         // Keine automatischen Lucide-Zuweisungen mehr
         AppInfo(
             label = resolveInfo.loadLabel(pm).toString(),
