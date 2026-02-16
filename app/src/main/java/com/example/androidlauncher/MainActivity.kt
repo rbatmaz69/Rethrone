@@ -9,6 +9,8 @@ import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
+import android.provider.AlarmClock
+import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -18,7 +20,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,7 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.* 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,6 +64,7 @@ import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 
 data class AppInfo(
     val label: String,
@@ -86,7 +88,6 @@ class MainActivity : ComponentActivity() {
                 var allApps by remember { mutableStateOf(emptyList<AppInfo>()) }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
                 
-                // Favoriten basierend auf der gespeicherten Liste (Reihenfolge!) laden
                 val favorites = remember(allApps, favoritePackages) {
                     favoritePackages.mapNotNull { pkg -> allApps.find { it.packageName == pkg } }.take(8)
                 }
@@ -246,7 +247,6 @@ fun HomeScreen(
                 modifier = Modifier.padding(start = 12.dp)
             ) {
                 if (favorites.isEmpty()) {
-                    // Ein "+"-Symbol wird nur dann auf der Startseite angezeigt, wenn noch keine einzige Favoriten-App gesetzt wurde.
                     Surface(
                         color = Color.White.copy(alpha = 0.1f),
                         shape = CircleShape,
@@ -330,7 +330,6 @@ fun FavoritesConfigMenu(
             }
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Suche
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -367,7 +366,6 @@ fun FavoritesConfigMenu(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
-                // SEKTION: Sortierung
                 if (selectedPackages.isNotEmpty()) {
                     item {
                         Text("Reihenfolge (Halten zum Verschieben oder Pfeile nutzen)", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -389,7 +387,6 @@ fun FavoritesConfigMenu(
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
 
-                                    // Sortier-Buttons
                                     IconButton(
                                         onClick = {
                                             if (index > 0) {
@@ -423,7 +420,6 @@ fun FavoritesConfigMenu(
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
 
-                // SEKTION: Alle Apps
                 item {
                     Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
                 }
@@ -574,70 +570,82 @@ fun AppDrawer(
                 itemsIndexed(filteredApps) { index, app ->
                     var showAppActions by remember { mutableStateOf(false) }
                     
-                    // Kaskadierende Animation
-                    val animVisible = remember { mutableStateOf(false) }
+                    val isVisible = remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
-                        // Kurze Verzögerung basierend auf dem Index
-                        kotlinx.coroutines.delay((index % 4) * 40L + (index / 4) * 20L)
-                        animVisible.value = true
+                        val cascadeDelay = if (index < 16) (index % 4) * 40L + (index / 4) * 20L else 0L
+                        kotlinx.coroutines.delay(cascadeDelay)
+                        isVisible.value = true
                     }
 
-                    AnimatedVisibility(
-                        visible = animVisible.value,
-                        enter = slideInVertically(initialOffsetY = { 50 }) + fadeIn(animationSpec = tween(400)),
-                        exit = fadeOut()
+                    val alpha by animateFloatAsState(
+                        targetValue = if (isVisible.value) 1f else 0f,
+                        animationSpec = tween(durationMillis = 400),
+                        label = "alpha"
+                    )
+                    val translateY by animateFloatAsState(
+                        targetValue = if (isVisible.value) 0f else 40f,
+                        animationSpec = tween(durationMillis = 400, easing = EaseOutCubic),
+                        label = "translateY"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .graphicsLayer {
+                                this.alpha = alpha
+                                this.translationY = translateY
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .combinedClickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {
-                                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                            if (intent != null) context.startActivity(intent)
-                                        },
-                                        onLongClick = { showAppActions = true }
-                                    )
-                            ) {
-                                AppIconView(app)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = app.label,
-                                    fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                            
-                            DropdownMenu(
-                                expanded = showAppActions,
-                                onDismissRequest = { showAppActions = false },
-                                modifier = Modifier.background(Color(0xFF1A1F2B))
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) },
-                                    onClick = { onToggleFavorite(app.packageName); showAppActions = false }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("App-Info", color = Color.White) },
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .combinedClickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
                                     onClick = {
-                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }
-                                        context.startActivity(intent); showAppActions = false
-                                    }
+                                        val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                        if (intent != null) context.startActivity(intent)
+                                    },
+                                    onLongClick = { showAppActions = true }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Deinstallieren", color = Color.Red) },
-                                    onClick = {
-                                        val intent = Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }
-                                        context.startActivity(intent); showAppActions = false
-                                    }
-                                )
-                            }
+                        ) {
+                            AppIconView(app)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = app.label,
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.7f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showAppActions,
+                            onDismissRequest = { showAppActions = false },
+                            modifier = Modifier.background(Color(0xFF1A1F2B))
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) },
+                                onClick = { onToggleFavorite(app.packageName); showAppActions = false }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("App-Info", color = Color.White) },
+                                onClick = {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }
+                                    context.startActivity(intent); showAppActions = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Deinstallieren", color = Color.Red) },
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }
+                                    context.startActivity(intent); showAppActions = false
+                                }
+                            )
                         }
                     }
                 }
@@ -657,7 +665,6 @@ fun AppIconView(app: AppInfo) {
             Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
         }
         else -> {
-            // Standardmäßig originales Logo (Vordergrund, weiß gefärbt)
             val drawable = app.icon
             val foregroundDrawable = if (drawable is AdaptiveIconDrawable) {
                 drawable.foreground ?: drawable
@@ -685,6 +692,7 @@ fun SettingsItemView(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
 
 @Composable
 fun ClockHeader() {
+    val context = LocalContext.current
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -694,9 +702,108 @@ fun ClockHeader() {
     }
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val dateFormat = SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault())
-    Column {
-        Text(text = timeFormat.format(currentTime), fontSize = 72.sp, fontWeight = FontWeight.Normal, letterSpacing = (-2).sp, color = Color.White)
-        Text(text = dateFormat.format(currentTime), fontSize = 18.sp, fontWeight = FontWeight.Normal, color = Color.White.copy(alpha = 0.7f))
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = timeFormat.format(currentTime),
+            fontSize = 72.sp,
+            fontWeight = FontWeight.Normal,
+            letterSpacing = (-2).sp,
+            color = Color.White,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    var started = false
+                    try {
+                        val intent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory("android.intent.category.APP_CLOCK")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                        started = true
+                    } catch (e: Exception) {}
+
+                    if (!started) {
+                        try {
+                            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(intent)
+                            started = true
+                        } catch (e: Exception) {}
+                    }
+
+                    if (!started) {
+                        val packages = listOf(
+                            "cn.nubia.deskclock.preset", 
+                            "cn.nubia.deskclock",
+                            "com.zte.deskclock",
+                            "com.android.deskclock",
+                            "com.google.android.deskclock",
+                            "com.sec.android.app.clockpackage",
+                            "com.huawei.android.clock",
+                            "com.miui.clock"
+                        )
+                        for (pkg in packages) {
+                            try {
+                                val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                                if (launchIntent != null) {
+                                    context.startActivity(launchIntent)
+                                    started = true
+                                    break
+                                }
+                            } catch (e: Exception) {}
+                        }
+                    }
+
+                    if (!started) {
+                        try {
+                            val pm = context.packageManager
+                            val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                            val clockApp = apps.find { 
+                                val label = it.loadLabel(pm).toString().lowercase()
+                                val pkg = it.packageName.lowercase()
+                                (pkg.contains("clock") || pkg.contains("deskclock") || label.contains("uhr") || label.contains("clock")) && 
+                                pm.getLaunchIntentForPackage(it.packageName) != null
+                            }
+                            clockApp?.let {
+                                context.startActivity(pm.getLaunchIntentForPackage(it.packageName))
+                                started = true
+                            }
+                        } catch (e: Exception) {}
+                    }
+
+                    if (!started) {
+                        Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
+                    }
+                }
+        )
+        Text(
+            text = dateFormat.format(currentTime),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Normal,
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
+                        data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    try {
+                        context.startActivity(calendarIntent)
+                    } catch (e: Exception) {
+                        val selectorIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        try {
+                            context.startActivity(selectorIntent)
+                        } catch (e2: Exception) {}
+                    }
+                }
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        )
     }
 }
 
@@ -705,8 +812,6 @@ private fun getInstalledApps(context: Context): List<AppInfo> {
     val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
     return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
         val icon = resolveInfo.loadIcon(pm)
-
-        // Keine automatischen Lucide-Zuweisungen mehr
         AppInfo(
             label = resolveInfo.loadLabel(pm).toString(),
             packageName = resolveInfo.activityInfo.packageName,
