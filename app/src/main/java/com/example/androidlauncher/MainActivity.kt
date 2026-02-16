@@ -88,7 +88,6 @@ class MainActivity : ComponentActivity() {
                 var allApps by remember { mutableStateOf(emptyList<AppInfo>()) }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
                 
-                // Favoriten basierend auf der gespeicherten Liste (Reihenfolge!) laden
                 val favorites = remember(allApps, favoritePackages) {
                     favoritePackages.mapNotNull { pkg -> allApps.find { it.packageName == pkg } }.take(8)
                 }
@@ -248,7 +247,6 @@ fun HomeScreen(
                 modifier = Modifier.padding(start = 12.dp)
             ) {
                 if (favorites.isEmpty()) {
-                    // Ein "+"-Symbol wird nur dann auf der Startseite angezeigt, wenn noch keine einzige Favoriten-App gesetzt wurde.
                     Surface(
                         color = Color.White.copy(alpha = 0.1f),
                         shape = CircleShape,
@@ -332,7 +330,6 @@ fun FavoritesConfigMenu(
             }
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Suche
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -369,7 +366,6 @@ fun FavoritesConfigMenu(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
-                // SEKTION: Sortierung
                 if (selectedPackages.isNotEmpty()) {
                     item {
                         Text("Reihenfolge (Halten zum Verschieben oder Pfeile nutzen)", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -391,7 +387,6 @@ fun FavoritesConfigMenu(
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
 
-                                    // Sortier-Buttons
                                     IconButton(
                                         onClick = {
                                             if (index > 0) {
@@ -425,7 +420,6 @@ fun FavoritesConfigMenu(
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
 
-                // SEKTION: Alle Apps
                 item {
                     Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
                 }
@@ -576,10 +570,8 @@ fun AppDrawer(
                 itemsIndexed(filteredApps) { index, app ->
                     var showAppActions by remember { mutableStateOf(false) }
                     
-                    // Kaskadierende Animation
                     val animVisible = remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
-                        // Kurze Verzögerung basierend auf dem Index
                         kotlinx.coroutines.delay((index % 4) * 40L + (index / 4) * 20L)
                         animVisible.value = true
                     }
@@ -659,7 +651,6 @@ fun AppIconView(app: AppInfo) {
             Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
         }
         else -> {
-            // Standardmäßig originales Logo (Vordergrund, weiß gefärbt)
             val drawable = app.icon
             val foregroundDrawable = if (drawable is AdaptiveIconDrawable) {
                 drawable.foreground ?: drawable
@@ -709,40 +700,40 @@ fun ClockHeader() {
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
-                    val clockIntents = listOf(
-                        Intent(AlarmClock.ACTION_SHOW_ALARMS),
-                        Intent(AlarmClock.ACTION_SET_ALARM),
-                        Intent("android.intent.action.SHOW_ALARMS"),
-                        Intent("android.intent.action.SET_ALARM")
-                    )
-                    
                     var started = false
-                    for (intent in clockIntents) {
+                    
+                    // 1. Offizieller "Clock" Selector Weg (String Literal zur Sicherheit)
+                    try {
+                        val intent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory("android.intent.category.APP_CLOCK")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                        started = true
+                    } catch (e: Exception) {}
+
+                    // 2. Alarme anzeigen
+                    if (!started) {
                         try {
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
                             context.startActivity(intent)
                             started = true
-                            break
-                        } catch (e: Exception) {
-                            continue
-                        }
+                        } catch (e: Exception) {}
                     }
 
+                    // 3. Bekannte Pakete (besonders für Nubia/ZTE)
                     if (!started) {
-                        // Letzter Versuch: Bekannte Package-Namen für diverse Hersteller
                         val packages = listOf(
-                            "com.zte.deskclock",       // Nubia/ZTE
-                            "com.android.deskclock",   // AOSP
-                            "com.google.android.deskclock", // Google
-                            "com.sec.android.app.clockpackage", // Samsung
-                            "com.huawei.android.clock", // Huawei
-                            "com.oppo.alarmclock",     // Oppo
-                            "com.coloros.alarmclock",  // ColorOS
-                            "com.oneplus.deskclock",   // OnePlus
-                            "com.motorola.blur.alarmclock", // Motorola
-                            "com.asus.deskclock",      // ASUS
-                            "com.miui.clock",          // Xiaomi
-                            "com.sonyericsson.organizer" // Sony
+                            "cn.nubia.deskclock.preset", 
+                            "cn.nubia.deskclock",
+                            "com.zte.deskclock",
+                            "com.android.deskclock",
+                            "com.google.android.deskclock",
+                            "com.sec.android.app.clockpackage",
+                            "com.huawei.android.clock",
+                            "com.miui.clock"
                         )
                         for (pkg in packages) {
                             try {
@@ -754,6 +745,24 @@ fun ClockHeader() {
                                 }
                             } catch (e: Exception) {}
                         }
+                    }
+
+                    // 4. SMART SEARCH: Suche nach installierten Apps mit "Clock" oder "Uhr" im Namen
+                    if (!started) {
+                        try {
+                            val pm = context.packageManager
+                            val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                            val clockApp = apps.find { 
+                                val label = it.loadLabel(pm).toString().lowercase()
+                                val pkg = it.packageName.lowercase()
+                                (pkg.contains("clock") || pkg.contains("deskclock") || label.contains("uhr") || label.contains("clock")) && 
+                                pm.getLaunchIntentForPackage(it.packageName) != null
+                            }
+                            clockApp?.let {
+                                context.startActivity(pm.getLaunchIntentForPackage(it.packageName))
+                                started = true
+                            }
+                        } catch (e: Exception) {}
                     }
 
                     if (!started) {
@@ -769,24 +778,19 @@ fun ClockHeader() {
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
-                    // Verwende einen spezifischeren Intent für den Kalender, um Google Account Setups zu umgehen
                     val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
-                    
                     try {
                         context.startActivity(calendarIntent)
                     } catch (e: Exception) {
-                        // Zweiter Versuch: Selector Activity (offizieller Weg)
                         val selectorIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
                         try {
                             context.startActivity(selectorIntent)
-                        } catch (e2: Exception) {
-                            // Einfach nichts tun
-                        }
+                        } catch (e2: Exception) {}
                     }
                 }
                 .padding(horizontal = 4.dp, vertical = 2.dp)
@@ -799,8 +803,6 @@ private fun getInstalledApps(context: Context): List<AppInfo> {
     val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
     return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
         val icon = resolveInfo.loadIcon(pm)
-
-        // Keine automatischen Lucide-Zuweisungen mehr
         AppInfo(
             label = resolveInfo.loadLabel(pm).toString(),
             packageName = resolveInfo.activityInfo.packageName,
