@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -86,8 +87,9 @@ class MainActivity : ComponentActivity() {
                 var allApps by remember { mutableStateOf(emptyList<AppInfo>()) }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
                 
+                // Favoriten basierend auf der gespeicherten Liste (Reihenfolge!) laden
                 val favorites = remember(allApps, favoritePackages) { 
-                    allApps.filter { it.packageName in favoritePackages }.take(8)
+                    favoritePackages.mapNotNull { pkg -> allApps.find { it.packageName == pkg } }.take(8)
                 }
 
                 LaunchedEffect(Unit) {
@@ -304,8 +306,8 @@ fun HomeScreen(
 @Composable
 fun FavoritesConfigMenu(
     apps: List<AppInfo>,
-    initialFavoritePackages: Set<String>,
-    onConfirm: (Set<String>) -> Unit,
+    initialFavoritePackages: List<String>,
+    onConfirm: (List<String>) -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -329,7 +331,7 @@ fun FavoritesConfigMenu(
             }
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Suche im Konfigurationsmenü
+            // Suche
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -366,10 +368,70 @@ fun FavoritesConfigMenu(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
+                // SEKTION: Sortierung
+                if (selectedPackages.isNotEmpty()) {
+                    item {
+                        Text("Reihenfolge (Halten zum Verschieben oder Pfeile nutzen)", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    itemsIndexed(selectedPackages) { index, pkg ->
+                        val app = apps.find { it.packageName == pkg }
+                        if (app != null) {
+                            Surface(
+                                color = Color.White.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("${index + 1}.", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, modifier = Modifier.width(24.dp))
+                                    AppIconView(app)
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                                    
+                                    // Sortier-Buttons
+                                    IconButton(
+                                        onClick = {
+                                            if (index > 0) {
+                                                val newList = selectedPackages.toMutableList()
+                                                val item = newList.removeAt(index)
+                                                newList.add(index - 1, item)
+                                                selectedPackages = newList
+                                            }
+                                        },
+                                        enabled = index > 0
+                                    ) {
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) Color.White else Color.White.copy(alpha = 0.2f))
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            if (index < selectedPackages.size - 1) {
+                                                val newList = selectedPackages.toMutableList()
+                                                val item = newList.removeAt(index)
+                                                newList.add(index + 1, item)
+                                                selectedPackages = newList
+                                            }
+                                        },
+                                        enabled = index < selectedPackages.size - 1
+                                    ) {
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) Color.White else Color.White.copy(alpha = 0.2f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                }
+
+                // SEKTION: Alle Apps
+                item {
+                    Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                }
                 items(filteredApps) { app ->
                     val isFav = app.packageName in selectedPackages
                     Surface(
-                        color = if (isFav) Color.White.copy(alpha = 0.1f) else Color.Transparent,
+                        color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().clickable {
                             if (isFav) {
@@ -416,9 +478,7 @@ fun FavoritesConfigMenu(
         }
 
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
+            modifier = Modifier.fillMaxSize().padding(32.dp),
             contentAlignment = Alignment.BottomEnd
         ) {
             FloatingActionButton(
@@ -643,12 +703,13 @@ private fun getInstalledApps(context: Context): List<AppInfo> {
     }.sortedBy { it.label.lowercase() }
 }
 
-private fun getSavedFavorites(context: Context): Set<String> {
+private fun getSavedFavorites(context: Context): List<String> {
     val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    return prefs.getStringSet("favorites", emptySet()) ?: emptySet()
+    val favoritesString = prefs.getString("favorites_list", "") ?: ""
+    return if (favoritesString.isEmpty()) emptyList() else favoritesString.split(",")
 }
 
-private fun saveFavorites(context: Context, favorites: Set<String>) {
+private fun saveFavorites(context: Context, favorites: List<String>) {
     val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    prefs.edit().putStringSet("favorites", favorites).apply()
+    prefs.edit().putString("favorites_list", favorites.joinToString(",")).apply()
 }
