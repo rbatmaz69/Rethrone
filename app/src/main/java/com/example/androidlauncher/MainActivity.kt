@@ -107,23 +107,6 @@ class MainActivity : ComponentActivity() {
                     else if (isSettingsOpen) isSettingsOpen = false
                 }
 
-                val toggleFavorite: (String) -> Unit = { pkg ->
-                    val isFav = pkg in favoritePackages
-                    if (isFav) {
-                        val newFavs = favoritePackages - pkg
-                        saveFavorites(context, newFavs)
-                        favoritePackages = newFavs
-                    } else {
-                        if (favoritePackages.size < 8) {
-                            val newFavs = favoritePackages + pkg
-                            saveFavorites(context, newFavs)
-                            favoritePackages = newFavs
-                        } else {
-                            Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-
                 Box(modifier = Modifier.fillMaxSize()) {
                     SystemWallpaperView()
 
@@ -143,7 +126,16 @@ class MainActivity : ComponentActivity() {
                         if (targetIsDrawerOpen) {
                             AppDrawer(
                                 apps = allApps,
-                                onToggleFavorite = toggleFavorite,
+                                onToggleFavorite = { pkg ->
+                                    val isFav = pkg in favoritePackages
+                                    val newFavs = if (isFav) favoritePackages - pkg else {
+                                        if (favoritePackages.size < 8) favoritePackages + pkg else favoritePackages
+                                    }
+                                    if (newFavs != favoritePackages) {
+                                        saveFavorites(context, newFavs)
+                                        favoritePackages = newFavs
+                                    }
+                                },
                                 isFavorite = { pkg -> pkg in favoritePackages },
                                 onClose = { isDrawerOpen = false }
                             )
@@ -161,8 +153,12 @@ class MainActivity : ComponentActivity() {
                     if (isFavoritesConfigOpen) {
                         FavoritesConfigMenu(
                             apps = allApps,
-                            favoritePackages = favoritePackages,
-                            onToggleFavorite = toggleFavorite,
+                            initialFavoritePackages = favoritePackages,
+                            onConfirm = { newFavs ->
+                                saveFavorites(context, newFavs)
+                                favoritePackages = newFavs
+                                isFavoritesConfigOpen = false
+                            },
                             onClose = { isFavoritesConfigOpen = false }
                         )
                     }
@@ -304,11 +300,14 @@ fun HomeScreen(
 @Composable
 fun FavoritesConfigMenu(
     apps: List<AppInfo>,
-    favoritePackages: Set<String>,
-    onToggleFavorite: (String) -> Unit,
+    initialFavoritePackages: Set<String>,
+    onConfirm: (Set<String>) -> Unit,
     onClose: () -> Unit
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
+    var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
+    
     val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
     val focusRequester = remember { FocusRequester() }
 
@@ -320,7 +319,7 @@ fun FavoritesConfigMenu(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
-                    Text("${favoritePackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
+                    Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
@@ -361,14 +360,24 @@ fun FavoritesConfigMenu(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 32.dp)
+                contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 items(filteredApps) { app ->
-                    val isFav = app.packageName in favoritePackages
+                    val isFav = app.packageName in selectedPackages
                     Surface(
                         color = if (isFav) Color.White.copy(alpha = 0.1f) else Color.Transparent,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().clickable { onToggleFavorite(app.packageName) }
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            if (isFav) {
+                                selectedPackages = selectedPackages - app.packageName
+                            } else {
+                                if (selectedPackages.size < 8) {
+                                    selectedPackages = selectedPackages + app.packageName
+                                } else {
+                                    Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -379,7 +388,17 @@ fun FavoritesConfigMenu(
                             Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
                             Checkbox(
                                 checked = isFav,
-                                onCheckedChange = { onToggleFavorite(app.packageName) },
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        if (selectedPackages.size < 8) {
+                                            selectedPackages = selectedPackages + app.packageName
+                                        } else {
+                                            Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        selectedPackages = selectedPackages - app.packageName
+                                    }
+                                },
                                 colors = CheckboxDefaults.colors(
                                     checkedColor = Color.White,
                                     uncheckedColor = Color.White.copy(alpha = 0.4f),
@@ -389,6 +408,28 @@ fun FavoritesConfigMenu(
                         }
                     }
                 }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.BottomEnd
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    if (selectedPackages.isEmpty()) {
+                        Toast.makeText(context, "Keine Favoriten-App ausgewählt", Toast.LENGTH_SHORT).show()
+                    } else {
+                        onConfirm(selectedPackages)
+                    }
+                },
+                containerColor = Color.White,
+                contentColor = Color(0xFF0F172A),
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Check, contentDescription = "Bestätigen")
             }
         }
     }
