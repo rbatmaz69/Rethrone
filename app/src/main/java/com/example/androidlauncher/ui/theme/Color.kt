@@ -63,5 +63,29 @@ enum class ColorTheme(
         Color(0xFF004D40),
         Color(0xFF00796B),
         Color.White
+    ),
+    SUNSHINE(
+        "Sunshine",
+        Color(0xFFFBC02D),
+        Color(0xFFFFF176),
+        Color.Black
+    ),
+    SKY(
+        "Sky",
+        Color(0xFF0288D1),
+        Color(0xFF4FC3F7),
+        Color.Black
+    ),
+    PEACH(
+        "Peach",
+        Color(0xFFE64A19),
+        Color(0xFFFF8A65),
+        Color.White
+    ),
+    CANDY(
+        "Candy",
+        Color(0xFFC2185B),
+        Color(0xFFF06292),
+        Color.White
     )
 }
