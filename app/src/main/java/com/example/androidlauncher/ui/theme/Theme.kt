@@ -34,8 +34,8 @@ fun AndroidLauncherTheme(
                 primary = colorTheme.primary,
                 secondary = colorTheme.secondary,
                 tertiary = colorTheme.tertiary,
-                background = Color(0xFF0F172A), // Dark blue background as base
-                surface = Color(0xFF1E293B)     // Surface color
+                background = colorTheme.drawerBackground,
+                surface = colorTheme.drawerBackground.copy(alpha = 0.8f)
             )
         }
     }
