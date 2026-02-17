@@ -15,3 +15,13 @@ Ein eleganter, performanter Launcher für Android, der mit **Jetpack Compose** v
 - **UI-Framework:** Jetpack Compose
 - **Design:** Material 3
 - **Icons:** Custom Vector Drawables (Minimalist Style)
+- **Linter:** [detekt](https://detekt.dev/) für Code-Qualität und Stil.
+
+## 🚀 Entwicklung
+
+### Linter ausführen
+Um den Linter lokal auszuführen, nutze folgenden Befehl:
+```bash
+./gradlew detekt
+```
+Der Linter ist auch in die CI-Pipeline integriert und läuft bei jedem Push und Pull-Request.
