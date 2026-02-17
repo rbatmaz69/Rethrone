@@ -19,8 +19,8 @@ enum class ColorTheme(
 ) {
     LAUNCHER(
         "Launcher",
+        Color.Black,
         Color(0xFF9E1A1A),
-        Color(0xFFD32F2F),
         Color.White,
         Color(0xFF1A0505)
     ),
