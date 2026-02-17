@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -91,7 +92,7 @@ fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, modifier
                         if (isHome) {
                             Brush.verticalGradient(listOf(colorTheme.primary.copy(alpha = 0.6f), colorTheme.secondary.copy(alpha = 0.6f)))
                         } else {
-                            Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF0F172A)))
+                            SolidColor(colorTheme.drawerBackground)
                         }
                     )
             ) {
@@ -103,7 +104,7 @@ fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, modifier
                         Spacer(modifier = Modifier.height(12.dp))
                         repeat(3) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(12.dp).background(Color.White.copy(alpha = 0.2f), CircleShape))
+                                Box(modifier = Modifier.size(12.dp).border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Box(modifier = Modifier.width(40.dp).height(4.dp).background(Color.White.copy(alpha = 0.2f), CircleShape))
                             }
@@ -111,14 +112,14 @@ fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, modifier
                     }
                 } else {
                     // Simpler App Drawer content
-                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.8f))) {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             Box(modifier = Modifier.fillMaxWidth().height(16.dp).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
                             Spacer(modifier = Modifier.height(12.dp))
                             repeat(3) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     repeat(4) {
-                                        Box(modifier = Modifier.size(10.dp).background(colorTheme.primary.copy(alpha = 0.5f), CircleShape))
+                                        Box(modifier = Modifier.size(10.dp).border(1.dp, Color.White.copy(alpha = 0.7f), CircleShape))
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))

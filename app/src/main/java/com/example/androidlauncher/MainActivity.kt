@@ -521,6 +521,7 @@ fun AppDrawer(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(apps, searchQuery) {
         LauncherLogic.filterApps(apps, searchQuery)
@@ -530,7 +531,7 @@ fun AppDrawer(
 
     Box(modifier = Modifier.fillMaxSize().testTag("app_drawer")) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.85f)))
+        Box(modifier = Modifier.fillMaxSize().background(colorTheme.drawerBackground.copy(alpha = 0.85f)))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
