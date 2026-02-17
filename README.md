@@ -17,6 +17,29 @@ Ein eleganter, performanter Launcher für Android, der mit **Jetpack Compose** v
 - **Icons:** Custom Vector Drawables (Minimalist Style)
 - **Linter:** [detekt](https://detekt.dev/) für Code-Qualität und Stil.
 
+## 📁 Projektstruktur
+Hier ist ein Überblick über die wichtigsten Verzeichnisse und Dateien des Projekts:
+
+```text
+.
+├── .github/workflows        # CI/CD Workflows (GitHub Actions)
+├── app                      # Hauptmodul der Anwendung
+│   ├── src
+│   │   ├── main
+│   │   │   ├── java         # Kotlin Quellcode
+│   │   │   │   └── com.example.androidlauncher
+│   │   │   │       ├── ui.theme  # Jetpack Compose Themes
+│   │   │   │       └── MainActivity.kt
+│   │   │   └── res          # Android Ressourcen (Icons, XML, etc.)
+│   └── build.gradle.kts     # Modulspezifische Gradle Konfiguration
+├── config                   # Konfigurationsdateien
+│   └── detekt               # Detekt (Linter) Konfiguration
+├── gradle                   # Gradle Wrapper und Version Catalog
+│   └── libs.versions.toml   # Zentrale Verwaltung von Abhängigkeiten (Version Catalog)
+├── build.gradle.kts         # Projektweite Gradle Konfiguration
+└── README.md                # Projektdokumentation
+```
+
 ## 🚀 Entwicklung
 
 ### Linter ausführen
