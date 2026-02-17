@@ -17,6 +17,13 @@ enum class ColorTheme(
     val tertiary: Color,
     val drawerBackground: Color
 ) {
+    LAUNCHER(
+        "Launcher",
+        Color(0xFF9E1A1A),
+        Color(0xFFD32F2F),
+        Color.White,
+        Color(0xFF1A0505)
+    ),
     DEFAULT(
         "Default",
         Color(0xFF1A0B2E),
