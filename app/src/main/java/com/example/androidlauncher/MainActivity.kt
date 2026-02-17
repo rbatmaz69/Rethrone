@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             val themeManager = remember { ThemeManager(context) }
-            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.DEFAULT)
+            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
             val scope = rememberCoroutineScope()
 
             AndroidLauncherTheme(colorTheme = currentTheme) {
@@ -491,8 +491,7 @@ fun FavoritesConfigMenu(
 
         Box(
             modifier = Modifier.fillMaxSize().padding(32.dp),
-            contentAlignment = Alignment.BottomEnd
-        ) {
+            contentAlignment = Alignment.BottomEnd) {
             FloatingActionButton(
                 onClick = {
                     if (selectedPackages.isEmpty()) {
@@ -531,7 +530,7 @@ fun AppDrawer(
 
     Box(modifier = Modifier.fillMaxSize().testTag("app_drawer")) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(colorTheme.drawerBackground.copy(alpha = 0.85f)))
+        Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
