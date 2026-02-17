@@ -50,6 +50,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -224,6 +225,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("home_screen")
             .pointerInput(Unit) {
                 detectVerticalDragGestures { _, dragAmount ->
                     if (dragAmount < -50) onOpenDrawer()
@@ -248,6 +250,7 @@ fun HomeScreen(
                         shape = CircleShape,
                         modifier = Modifier
                             .size(56.dp)
+                            .testTag("add_favorites_button")
                             .clickable { onOpenFavoritesConfig() }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -259,10 +262,12 @@ fun HomeScreen(
                         Surface(
                             color = Color.Transparent,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.clickable {
-                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                if (intent != null) context.startActivity(intent)
-                            }
+                            modifier = Modifier
+                                .testTag("favorite_item_${app.packageName}")
+                                .clickable {
+                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                    if (intent != null) context.startActivity(intent)
+                                }
                         ) {
                             Box(modifier = Modifier.padding(6.dp)) {
                                 AppIconView(app)
@@ -277,7 +282,7 @@ fun HomeScreen(
 
         Box(modifier = Modifier.fillMaxSize().padding(bottom = 80.dp, end = 8.dp), contentAlignment = Alignment.BottomEnd) {
             AnimatedVisibility(visible = isSettingsOpen, enter = scaleIn(transformOrigin = TransformOrigin(1f, 1f)) + fadeIn(), exit = scaleOut(transformOrigin = TransformOrigin(1f, 1f)) + fadeOut()) {
-                Surface(color = Color(0xFF1A1F2B).copy(alpha = 0.98f), shape = RoundedCornerShape(24.dp), modifier = Modifier.width(220.dp)) {
+                Surface(color = Color(0xFF1A1F2B).copy(alpha = 0.98f), shape = RoundedCornerShape(24.dp), modifier = Modifier.width(220.dp).testTag("settings_menu")) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Einstellungen", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                         SettingsItemView(icon = Icons.Default.Star, label = "Favoriten konfigurieren", onClick = { onOpenFavoritesConfig(); onToggleSettings() })
@@ -289,7 +294,7 @@ fun HomeScreen(
         }
 
         Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
-            Surface(modifier = Modifier.padding(8.dp).size(56.dp).clip(CircleShape).clickable { onToggleSettings() }, color = Color.White.copy(alpha = 0.15f), shape = CircleShape) {
+            Surface(modifier = Modifier.padding(8.dp).size(56.dp).clip(CircleShape).testTag("settings_button").clickable { onToggleSettings() }, color = Color.White.copy(alpha = 0.15f), shape = CircleShape) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                     Icon(imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
                 }
@@ -314,7 +319,7 @@ fun FavoritesConfigMenu(
     }
     val focusRequester = remember { FocusRequester() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().testTag("favorites_config_menu")) {
         SystemWallpaperView()
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.95f)))
 
@@ -324,7 +329,7 @@ fun FavoritesConfigMenu(
                     Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
                     Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+                IconButton(onClick = onClose, modifier = Modifier.testTag("close_favorites_config")) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -343,7 +348,7 @@ fun FavoritesConfigMenu(
                     BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("favorites_search_field"),
                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
                         cursorBrush = SolidColor(Color.White),
                         singleLine = true,
@@ -416,7 +421,7 @@ fun FavoritesConfigMenu(
                     Surface(
                         color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().clickable {
+                        modifier = Modifier.fillMaxWidth().testTag("config_app_item_${app.packageName}").clickable {
                             val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
                             if (newFavs.size > LauncherLogic.MAX_FAVORITES && newFavs.size > selectedPackages.size) {
                                 Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
@@ -468,7 +473,8 @@ fun FavoritesConfigMenu(
                 },
                 containerColor = Color.White,
                 contentColor = Color(0xFF0F172A),
-                shape = CircleShape
+                shape = CircleShape,
+                modifier = Modifier.testTag("confirm_favorites")
             ) {
                 Icon(Icons.Default.Check, contentDescription = "Bestätigen")
             }
@@ -492,14 +498,14 @@ fun AppDrawer(
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().testTag("app_drawer")) {
         SystemWallpaperView()
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.85f)))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Apps", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+                IconButton(onClick = onClose, modifier = Modifier.testTag("close_drawer")) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -520,7 +526,8 @@ fun AppDrawer(
                         onValueChange = { searchQuery = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .focusRequester(focusRequester),
+                            .focusRequester(focusRequester)
+                            .testTag("search_field"),
                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
                         cursorBrush = SolidColor(Color.White),
                         singleLine = true,
@@ -578,7 +585,8 @@ fun AppDrawer(
                             .graphicsLayer {
                                 this.alpha = alpha
                                 this.translationY = translateY
-                            },
+                            }
+                            .testTag("app_item_${app.packageName}"),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -697,6 +705,7 @@ fun ClockHeader() {
             color = Color.White,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
+                .testTag("clock_time")
                 .clickable {
                     var started = false
                     try {
@@ -770,6 +779,7 @@ fun ClockHeader() {
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
+                .testTag("clock_date")
                 .clickable {
                     val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
