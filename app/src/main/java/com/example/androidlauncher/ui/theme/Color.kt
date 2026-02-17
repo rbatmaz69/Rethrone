@@ -39,5 +39,29 @@ enum class ColorTheme(
         Color(0xFFF57C00),
         Color(0xFFFFB300),
         Color.Black
+    ),
+    LAVENDER(
+        "Lavender",
+        Color(0xFF311B92),
+        Color(0xFF673AB7),
+        Color.White
+    ),
+    SAKURA(
+        "Sakura",
+        Color(0xFF880E4F),
+        Color(0xFFC2185B),
+        Color.White
+    ),
+    NIGHTSKY(
+        "Nightsky",
+        Color(0xFF263238),
+        Color(0xFF455A64),
+        Color.White
+    ),
+    MINT(
+        "Mint",
+        Color(0xFF004D40),
+        Color(0xFF00796B),
+        Color.White
     )
 }
