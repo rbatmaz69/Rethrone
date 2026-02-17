@@ -61,10 +61,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
+import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.ui.ColorConfigMenu
 import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import kotlinx.coroutines.launch
 
 data class AppInfo(
     val label: String,
@@ -79,11 +84,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AndroidLauncherTheme(dynamicColor = false) {
-                val context = LocalContext.current
+            val context = LocalContext.current
+            val themeManager = remember { ThemeManager(context) }
+            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
+            val scope = rememberCoroutineScope()
+
+            AndroidLauncherTheme(colorTheme = currentTheme) {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
+                var isColorConfigOpen by remember { mutableStateOf(false) }
                 
                 var allApps by remember { mutableStateOf(emptyList<AppInfo>()) }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
@@ -100,12 +110,14 @@ class MainActivity : ComponentActivity() {
                     if (isDrawerOpen) {
                         isSettingsOpen = false
                         isFavoritesConfigOpen = false
+                        isColorConfigOpen = false
                     }
                 }
 
-                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen) {
+                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen) {
                     if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
+                    else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSettingsOpen) isSettingsOpen = false
                 }
 
@@ -144,7 +156,8 @@ class MainActivity : ComponentActivity() {
                                 isSettingsOpen = isSettingsOpen,
                                 onOpenDrawer = { isDrawerOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
-                                onOpenFavoritesConfig = { isFavoritesConfigOpen = true }
+                                onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
+                                onOpenColorConfig = { isColorConfigOpen = true }
                             )
                         }
                     }
@@ -163,6 +176,20 @@ class MainActivity : ComponentActivity() {
                                 isFavoritesConfigOpen = false
                             },
                             onClose = { isFavoritesConfigOpen = false }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = isColorConfigOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeOut()
+                    ) {
+                        ColorConfigMenu(
+                            selectedTheme = currentTheme,
+                            onThemeSelected = { theme ->
+                                scope.launch { themeManager.setTheme(theme) }
+                            },
+                            onClose = { isColorConfigOpen = false }
                         )
                     }
                 }
@@ -186,6 +213,7 @@ private fun expandNotifications(context: Context) {
 @Composable
 fun SystemWallpaperView() {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
     val wallpaper = remember { try { wallpaperManager.drawable } catch (e: Exception) { null } }
 
@@ -198,7 +226,7 @@ fun SystemWallpaperView() {
                 contentScale = ContentScale.Crop
             )
         } else {
-            Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF1A0B2E), Color(0xFF4A148C)))))
+            Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(colorTheme.primary, colorTheme.secondary))))
         }
         Box(
             modifier = Modifier
@@ -214,7 +242,8 @@ fun HomeScreen(
     isSettingsOpen: Boolean,
     onOpenDrawer: () -> Unit, 
     onToggleSettings: () -> Unit,
-    onOpenFavoritesConfig: () -> Unit
+    onOpenFavoritesConfig: () -> Unit,
+    onOpenColorConfig: () -> Unit
 ) {
     val context = LocalContext.current
     val rotation by animateFloatAsState(
@@ -286,6 +315,7 @@ fun HomeScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Einstellungen", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                         SettingsItemView(icon = Icons.Default.Star, label = "Favoriten konfigurieren", onClick = { onOpenFavoritesConfig(); onToggleSettings() })
+                        SettingsItemView(icon = Lucide.Paintbrush, label = "Farben", onClick = { onOpenColorConfig(); onToggleSettings() })
                         SettingsItemView(icon = Icons.Default.Settings, label = "System", onClick = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) })
                         SettingsItemView(icon = Icons.Default.Info, label = "Info", onClick = { /* Action */ })
                     }
@@ -461,8 +491,7 @@ fun FavoritesConfigMenu(
 
         Box(
             modifier = Modifier.fillMaxSize().padding(32.dp),
-            contentAlignment = Alignment.BottomEnd
-        ) {
+            contentAlignment = Alignment.BottomEnd) {
             FloatingActionButton(
                 onClick = {
                     if (selectedPackages.isEmpty()) {
@@ -491,6 +520,7 @@ fun AppDrawer(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(apps, searchQuery) {
         LauncherLogic.filterApps(apps, searchQuery)
@@ -500,7 +530,7 @@ fun AppDrawer(
 
     Box(modifier = Modifier.fillMaxSize().testTag("app_drawer")) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.85f)))
+        Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
