@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -89,7 +88,7 @@ class MainActivity : ComponentActivity() {
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
                 
                 val favorites = remember(allApps, favoritePackages) {
-                    favoritePackages.mapNotNull { pkg -> allApps.find { it.packageName == pkg } }.take(8)
+                    LauncherLogic.getFavoriteApps(allApps, favoritePackages)
                 }
 
                 LaunchedEffect(Unit) {
@@ -129,10 +128,7 @@ class MainActivity : ComponentActivity() {
                             AppDrawer(
                                 apps = allApps,
                                 onToggleFavorite = { pkg ->
-                                    val isFav = pkg in favoritePackages
-                                    val newFavs = if (isFav) favoritePackages - pkg else {
-                                        if (favoritePackages.size < 8) favoritePackages + pkg else favoritePackages
-                                    }
+                                    val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
                                     if (newFavs != favoritePackages) {
                                         saveFavorites(context, newFavs)
                                         favoritePackages = newFavs
@@ -313,7 +309,9 @@ fun FavoritesConfigMenu(
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
     
-    val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+    val filteredApps = remember(apps, searchQuery) {
+        LauncherLogic.filterApps(apps, searchQuery)
+    }
     val focusRequester = remember { FocusRequester() }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -389,12 +387,7 @@ fun FavoritesConfigMenu(
 
                                     IconButton(
                                         onClick = {
-                                            if (index > 0) {
-                                                val newList = selectedPackages.toMutableList()
-                                                val item = newList.removeAt(index)
-                                                newList.add(index - 1, item)
-                                                selectedPackages = newList
-                                            }
+                                            selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index)
                                         },
                                         enabled = index > 0
                                     ) {
@@ -402,12 +395,7 @@ fun FavoritesConfigMenu(
                                     }
                                     IconButton(
                                         onClick = {
-                                            if (index < selectedPackages.size - 1) {
-                                                val newList = selectedPackages.toMutableList()
-                                                val item = newList.removeAt(index)
-                                                newList.add(index + 1, item)
-                                                selectedPackages = newList
-                                            }
+                                            selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index)
                                         },
                                         enabled = index < selectedPackages.size - 1
                                     ) {
@@ -429,14 +417,11 @@ fun FavoritesConfigMenu(
                         color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().clickable {
-                            if (isFav) {
-                                selectedPackages = selectedPackages - app.packageName
+                            val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
+                            if (newFavs.size > LauncherLogic.MAX_FAVORITES && newFavs.size > selectedPackages.size) {
+                                Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
                             } else {
-                                if (selectedPackages.size < 8) {
-                                    selectedPackages = selectedPackages + app.packageName
-                                } else {
-                                    Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
-                                }
+                                selectedPackages = newFavs
                             }
                         }
                     ) {
@@ -450,14 +435,11 @@ fun FavoritesConfigMenu(
                             Checkbox(
                                 checked = isFav,
                                 onCheckedChange = { checked ->
-                                    if (checked) {
-                                        if (selectedPackages.size < 8) {
-                                            selectedPackages = selectedPackages + app.packageName
-                                        } else {
-                                            Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
-                                        }
+                                    val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
+                                    if (newFavs.size > LauncherLogic.MAX_FAVORITES && newFavs.size > selectedPackages.size) {
+                                        Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
                                     } else {
-                                        selectedPackages = selectedPackages - app.packageName
+                                        selectedPackages = newFavs
                                     }
                                 },
                                 colors = CheckboxDefaults.colors(
@@ -504,7 +486,9 @@ fun AppDrawer(
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
-    val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+    val filteredApps = remember(apps, searchQuery) {
+        LauncherLogic.filterApps(apps, searchQuery)
+    }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 

@@ -10,6 +10,8 @@ kotlin = "2.1.0"
 composeBom = "2024.09.00"
 lucide = "1.1.0"
 detekt = "1.23.8"
+mockk = "1.13.12"
+kotlinxCoroutines = "1.7.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -27,6 +29,8 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 lucide-icons = { group = "com.composables", name = "icons-lucide", version.ref = "lucide" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 
 [plugins]
 androidApp = { id = "com.android.application", version.ref = "agp" }
