@@ -87,5 +87,29 @@ enum class ColorTheme(
         Color(0xFFC2185B),
         Color(0xFFF06292),
         Color.White
+    ),
+    LEMONADE(
+        "Lemonade",
+        Color(0xFFCDDC39),
+        Color(0xFFEEFF41),
+        Color.Black
+    ),
+    BUBBLEGUM(
+        "Bubblegum",
+        Color(0xFFF06292),
+        Color(0xFF81D4FA),
+        Color.Black
+    ),
+    TROPICAL(
+        "Tropical",
+        Color(0xFF00BCD4),
+        Color(0xFFCDDC39),
+        Color.Black
+    ),
+    SPRING(
+        "Spring",
+        Color(0xFF8BC34A),
+        Color(0xFFDCE775),
+        Color.Black
     )
 }
