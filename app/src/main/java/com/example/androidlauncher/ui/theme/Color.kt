@@ -24,8 +24,8 @@ enum class ColorTheme(
         Color.White,
         Color(0xFF1A0505)
     ),
-    DEFAULT(
-        "Default",
+    SIGNATURE(
+        "Signature",
         Color(0xFF1A0B2E),
         Color(0xFF4A148C),
         Color.White,

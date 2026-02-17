@@ -14,11 +14,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-val LocalColorTheme = staticCompositionLocalOf { ColorTheme.DEFAULT }
+val LocalColorTheme = staticCompositionLocalOf { ColorTheme.LAUNCHER }
 
 @Composable
 fun AndroidLauncherTheme(
-    colorTheme: ColorTheme = ColorTheme.DEFAULT,
+    colorTheme: ColorTheme = ColorTheme.LAUNCHER,
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false, // Default to false to use our custom themes

@@ -17,11 +17,11 @@ class ThemeManager(private val context: Context) {
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
         .map { preferences ->
-            val themeName = preferences[THEME_KEY] ?: ColorTheme.DEFAULT.name
+            val themeName = preferences[THEME_KEY] ?: ColorTheme.LAUNCHER.name
             try {
                 ColorTheme.valueOf(themeName)
             } catch (e: IllegalArgumentException) {
-                ColorTheme.DEFAULT
+                ColorTheme.LAUNCHER
             }
         }
 
