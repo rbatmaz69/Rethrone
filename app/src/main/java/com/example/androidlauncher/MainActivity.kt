@@ -432,7 +432,7 @@ fun FavoritesConfigMenu(
     val filteredApps = remember(apps, searchQuery) { LauncherLogic.filterApps(apps, searchQuery) }
     val focusRequester = remember { FocusRequester() }
 
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
+    Column(modifier = Modifier.testTag("favorites_config_menu").fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
