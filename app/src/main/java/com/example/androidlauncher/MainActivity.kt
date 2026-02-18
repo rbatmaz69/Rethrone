@@ -24,6 +24,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -42,9 +43,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.* 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.*
@@ -90,6 +93,20 @@ data class AppInfo(
     val customIconResId: Int? = null
 )
 
+// Verbesserter bounceClick Modifier
+fun Modifier.bounceClick(interactionSource: MutableInteractionSource) = composed {
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f, // Deutlicher auf 0.90f
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium // Schneller reagieren
+        ),
+        label = "bounceScale"
+    )
+    this.scale(scale)
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,18 +131,15 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
-                    // 1. Namen laden
                     val basicList = withContext(Dispatchers.IO) { getAppListBasic(context) }
                     allApps.clear()
                     allApps.addAll(basicList)
 
-                    // 2. Icons laden
                     withContext(Dispatchers.IO) {
                         val pm = context.packageManager
                         val cacheDir = File(context.cacheDir, "app_icons")
                         if (!cacheDir.exists()) cacheDir.mkdirs()
 
-                        // Favoriten zuerst laden
                         val favSet = favoritePackages.toSet()
                         val sortedIndices = allApps.indices.sortedByDescending { allApps[it].packageName in favSet }
 
@@ -199,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Overlay Menüs mit solidem Hintergrund
+                    // Overlay Menüs
                     AnimatedVisibility(
                         visible = isFavoritesConfigOpen,
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
@@ -320,11 +334,12 @@ fun HomeScreen(
                 modifier = Modifier.padding(start = 12.dp)
             ) {
                 if (favorites.isEmpty()) {
+                    val intSrc = remember { MutableInteractionSource() }
                     Surface(
                         color = Color.White.copy(alpha = 0.1f),
                         shape = CircleShape,
-                        modifier = Modifier.size(56.dp).clickable(
-                            interactionSource = remember { MutableInteractionSource() },
+                        modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
+                            interactionSource = intSrc,
                             indication = null
                         ) { onOpenFavoritesConfig() }
                     ) {
@@ -332,11 +347,12 @@ fun HomeScreen(
                     }
                 } else {
                     favorites.forEach { app ->
+                        val intSrc = remember { MutableInteractionSource() }
                         Surface(
                             color = Color.Transparent,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
+                            modifier = Modifier.bounceClick(intSrc).clickable(
+                                interactionSource = intSrc,
                                 indication = null
                             ) {
                                 context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
@@ -360,9 +376,10 @@ fun HomeScreen(
         )
 
         Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
+            val intSrc = remember { MutableInteractionSource() }
             Surface(
-                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).bounceClick(intSrc).clickable(
+                    interactionSource = intSrc,
                     indication = null
                 ) { onToggleSettings() }, 
                 color = Color.White.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), 
@@ -405,8 +422,9 @@ fun FavoritesConfigMenu(
         }
         Spacer(modifier = Modifier.height(16.dp))
         
+        val searchIntSrc = remember { MutableInteractionSource() }
         Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
-            interactionSource = remember { MutableInteractionSource() },
+            interactionSource = searchIntSrc,
             indication = null
         ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -452,8 +470,9 @@ fun FavoritesConfigMenu(
             item { Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
-                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                val intSrc = remember { MutableInteractionSource() }
+                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
+                    interactionSource = intSrc,
                     indication = null
                 ) {
                     val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
@@ -471,7 +490,14 @@ fun FavoritesConfigMenu(
     }
 
     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
-        FloatingActionButton(onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, "Keine Auswahl", Toast.LENGTH_SHORT).show() }, containerColor = Color.White, contentColor = Color(0xFF0F172A), shape = CircleShape) {
+        val intSrc = remember { MutableInteractionSource() }
+        FloatingActionButton(
+            onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, "Keine Auswahl", Toast.LENGTH_SHORT).show() }, 
+            containerColor = Color.White, 
+            contentColor = Color(0xFF0F172A), 
+            shape = CircleShape, 
+            modifier = Modifier.bounceClick(intSrc)
+        ) {
             Icon(Icons.Default.Check, contentDescription = null)
         }
     }
@@ -500,8 +526,10 @@ fun AppDrawer(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
+            
+            val searchIntSrc = remember { MutableInteractionSource() }
             Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = searchIntSrc,
                 indication = null
             ) { focusRequester.requestFocus() }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -522,9 +550,10 @@ fun AppDrawer(
             LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(32.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
                 itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { _, app ->
                     var showActions by remember { mutableStateOf(false) }
+                    val intSrc = remember { MutableInteractionSource() }
                     Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.combinedClickable(
-                            interactionSource = remember { MutableInteractionSource() },
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
+                            interactionSource = intSrc,
                             indication = null,
                             onClick = { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } },
                             onLongClick = { showActions = true }
@@ -568,6 +597,9 @@ fun ClockHeader() {
     }
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val dateFormat = SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault())
+    val intSrcTime = remember { MutableInteractionSource() }
+    val intSrcDate = remember { MutableInteractionSource() }
+    
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -579,8 +611,9 @@ fun ClockHeader() {
             color = Color.White,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
+                .bounceClick(intSrcTime)
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = intSrcTime,
                     indication = null
                 ) {
                     var started = false
@@ -655,8 +688,9 @@ fun ClockHeader() {
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
+                .bounceClick(intSrcDate)
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = intSrcDate,
                     indication = null
                 ) {
                     val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
