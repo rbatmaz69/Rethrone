@@ -65,6 +65,7 @@ import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.ColorConfigMenu
+import com.example.androidlauncher.ui.SettingsPaletteMenu
 import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -251,6 +252,11 @@ fun HomeScreen(
         animationSpec = tween(durationMillis = 400, easing = EaseInOutCubic)
     )
     
+    val settingsButtonSize by animateDpAsState(
+        targetValue = if (isSettingsOpen) 72.dp else 56.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -309,24 +315,35 @@ fun HomeScreen(
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        Box(modifier = Modifier.fillMaxSize().padding(bottom = 80.dp, end = 8.dp), contentAlignment = Alignment.BottomEnd) {
-            AnimatedVisibility(visible = isSettingsOpen, enter = scaleIn(transformOrigin = TransformOrigin(1f, 1f)) + fadeIn(), exit = scaleOut(transformOrigin = TransformOrigin(1f, 1f)) + fadeOut()) {
-                Surface(color = Color(0xFF1A1F2B).copy(alpha = 0.98f), shape = RoundedCornerShape(24.dp), modifier = Modifier.width(220.dp).testTag("settings_menu")) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Einstellungen", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
-                        SettingsItemView(icon = Icons.Default.Star, label = "Favoriten konfigurieren", onClick = { onOpenFavoritesConfig(); onToggleSettings() })
-                        SettingsItemView(icon = Lucide.Paintbrush, label = "Farben", onClick = { onOpenColorConfig(); onToggleSettings() })
-                        SettingsItemView(icon = Icons.Default.Settings, label = "System", onClick = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) })
-                        SettingsItemView(icon = Icons.Default.Info, label = "Info", onClick = { /* Action */ })
-                    }
-                }
-            }
-        }
+        // Neues rotierendes Paletten-Menü
+        SettingsPaletteMenu(
+            isSettingsOpen = isSettingsOpen,
+            onToggleSettings = onToggleSettings,
+            onOpenFavoritesConfig = onOpenFavoritesConfig,
+            onOpenColorConfig = onOpenColorConfig,
+            onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
+            onOpenInfo = { /* Action */ }
+        )
 
         Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
-            Surface(modifier = Modifier.padding(8.dp).size(56.dp).clip(CircleShape).testTag("settings_button").clickable { onToggleSettings() }, color = Color.White.copy(alpha = 0.15f), shape = CircleShape) {
+            Surface(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .size(settingsButtonSize)
+                    .clip(CircleShape)
+                    .testTag("settings_button")
+                    .clickable { onToggleSettings() }, 
+                color = Color.White.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), 
+                shape = CircleShape,
+                border = if (isSettingsOpen) BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
+            ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
-                    Icon(imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                    Icon(
+                        imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings, 
+                        contentDescription = null, 
+                        tint = Color.White, 
+                        modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
+                    )
                 }
             }
         }
