@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -51,6 +50,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -61,10 +61,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
+import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.ui.ColorConfigMenu
 import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import kotlinx.coroutines.launch
 
 data class AppInfo(
     val label: String,
@@ -79,17 +84,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AndroidLauncherTheme(dynamicColor = false) {
-                val context = LocalContext.current
+            val context = LocalContext.current
+            val themeManager = remember { ThemeManager(context) }
+            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
+            val scope = rememberCoroutineScope()
+
+            AndroidLauncherTheme(colorTheme = currentTheme) {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
+                var isColorConfigOpen by remember { mutableStateOf(false) }
                 
                 var allApps by remember { mutableStateOf(emptyList<AppInfo>()) }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
                 
                 val favorites = remember(allApps, favoritePackages) {
-                    favoritePackages.mapNotNull { pkg -> allApps.find { it.packageName == pkg } }.take(8)
+                    LauncherLogic.getFavoriteApps(allApps, favoritePackages)
                 }
 
                 LaunchedEffect(Unit) {
@@ -100,12 +110,14 @@ class MainActivity : ComponentActivity() {
                     if (isDrawerOpen) {
                         isSettingsOpen = false
                         isFavoritesConfigOpen = false
+                        isColorConfigOpen = false
                     }
                 }
 
-                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen) {
+                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen) {
                     if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
+                    else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSettingsOpen) isSettingsOpen = false
                 }
 
@@ -129,10 +141,7 @@ class MainActivity : ComponentActivity() {
                             AppDrawer(
                                 apps = allApps,
                                 onToggleFavorite = { pkg ->
-                                    val isFav = pkg in favoritePackages
-                                    val newFavs = if (isFav) favoritePackages - pkg else {
-                                        if (favoritePackages.size < 8) favoritePackages + pkg else favoritePackages
-                                    }
+                                    val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
                                     if (newFavs != favoritePackages) {
                                         saveFavorites(context, newFavs)
                                         favoritePackages = newFavs
@@ -147,7 +156,8 @@ class MainActivity : ComponentActivity() {
                                 isSettingsOpen = isSettingsOpen,
                                 onOpenDrawer = { isDrawerOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
-                                onOpenFavoritesConfig = { isFavoritesConfigOpen = true }
+                                onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
+                                onOpenColorConfig = { isColorConfigOpen = true }
                             )
                         }
                     }
@@ -166,6 +176,20 @@ class MainActivity : ComponentActivity() {
                                 isFavoritesConfigOpen = false
                             },
                             onClose = { isFavoritesConfigOpen = false }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = isColorConfigOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeOut()
+                    ) {
+                        ColorConfigMenu(
+                            selectedTheme = currentTheme,
+                            onThemeSelected = { theme ->
+                                scope.launch { themeManager.setTheme(theme) }
+                            },
+                            onClose = { isColorConfigOpen = false }
                         )
                     }
                 }
@@ -189,6 +213,7 @@ private fun expandNotifications(context: Context) {
 @Composable
 fun SystemWallpaperView() {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
     val wallpaper = remember { try { wallpaperManager.drawable } catch (e: Exception) { null } }
 
@@ -201,7 +226,7 @@ fun SystemWallpaperView() {
                 contentScale = ContentScale.Crop
             )
         } else {
-            Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF1A0B2E), Color(0xFF4A148C)))))
+            Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(colorTheme.primary, colorTheme.secondary))))
         }
         Box(
             modifier = Modifier
@@ -217,7 +242,8 @@ fun HomeScreen(
     isSettingsOpen: Boolean,
     onOpenDrawer: () -> Unit, 
     onToggleSettings: () -> Unit,
-    onOpenFavoritesConfig: () -> Unit
+    onOpenFavoritesConfig: () -> Unit,
+    onOpenColorConfig: () -> Unit
 ) {
     val context = LocalContext.current
     val rotation by animateFloatAsState(
@@ -228,6 +254,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("home_screen")
             .pointerInput(Unit) {
                 detectVerticalDragGestures { _, dragAmount ->
                     if (dragAmount < -50) onOpenDrawer()
@@ -252,6 +279,7 @@ fun HomeScreen(
                         shape = CircleShape,
                         modifier = Modifier
                             .size(56.dp)
+                            .testTag("add_favorites_button")
                             .clickable { onOpenFavoritesConfig() }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -263,10 +291,12 @@ fun HomeScreen(
                         Surface(
                             color = Color.Transparent,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.clickable {
-                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                if (intent != null) context.startActivity(intent)
-                            }
+                            modifier = Modifier
+                                .testTag("favorite_item_${app.packageName}")
+                                .clickable {
+                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                    if (intent != null) context.startActivity(intent)
+                                }
                         ) {
                             Box(modifier = Modifier.padding(6.dp)) {
                                 AppIconView(app)
@@ -281,10 +311,11 @@ fun HomeScreen(
 
         Box(modifier = Modifier.fillMaxSize().padding(bottom = 80.dp, end = 8.dp), contentAlignment = Alignment.BottomEnd) {
             AnimatedVisibility(visible = isSettingsOpen, enter = scaleIn(transformOrigin = TransformOrigin(1f, 1f)) + fadeIn(), exit = scaleOut(transformOrigin = TransformOrigin(1f, 1f)) + fadeOut()) {
-                Surface(color = Color(0xFF1A1F2B).copy(alpha = 0.98f), shape = RoundedCornerShape(24.dp), modifier = Modifier.width(220.dp)) {
+                Surface(color = Color(0xFF1A1F2B).copy(alpha = 0.98f), shape = RoundedCornerShape(24.dp), modifier = Modifier.width(220.dp).testTag("settings_menu")) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Einstellungen", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                         SettingsItemView(icon = Icons.Default.Star, label = "Favoriten konfigurieren", onClick = { onOpenFavoritesConfig(); onToggleSettings() })
+                        SettingsItemView(icon = Lucide.Paintbrush, label = "Farben", onClick = { onOpenColorConfig(); onToggleSettings() })
                         SettingsItemView(icon = Icons.Default.Settings, label = "System", onClick = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) })
                         SettingsItemView(icon = Icons.Default.Info, label = "Info", onClick = { /* Action */ })
                     }
@@ -293,7 +324,7 @@ fun HomeScreen(
         }
 
         Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
-            Surface(modifier = Modifier.padding(8.dp).size(56.dp).clip(CircleShape).clickable { onToggleSettings() }, color = Color.White.copy(alpha = 0.15f), shape = CircleShape) {
+            Surface(modifier = Modifier.padding(8.dp).size(56.dp).clip(CircleShape).testTag("settings_button").clickable { onToggleSettings() }, color = Color.White.copy(alpha = 0.15f), shape = CircleShape) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                     Icon(imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
                 }
@@ -313,10 +344,12 @@ fun FavoritesConfigMenu(
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
     
-    val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+    val filteredApps = remember(apps, searchQuery) {
+        LauncherLogic.filterApps(apps, searchQuery)
+    }
     val focusRequester = remember { FocusRequester() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().testTag("favorites_config_menu")) {
         SystemWallpaperView()
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.95f)))
 
@@ -326,7 +359,7 @@ fun FavoritesConfigMenu(
                     Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
                     Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+                IconButton(onClick = onClose, modifier = Modifier.testTag("close_favorites_config")) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -345,7 +378,7 @@ fun FavoritesConfigMenu(
                     BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("favorites_search_field"),
                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
                         cursorBrush = SolidColor(Color.White),
                         singleLine = true,
@@ -389,12 +422,7 @@ fun FavoritesConfigMenu(
 
                                     IconButton(
                                         onClick = {
-                                            if (index > 0) {
-                                                val newList = selectedPackages.toMutableList()
-                                                val item = newList.removeAt(index)
-                                                newList.add(index - 1, item)
-                                                selectedPackages = newList
-                                            }
+                                            selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index)
                                         },
                                         enabled = index > 0
                                     ) {
@@ -402,12 +430,7 @@ fun FavoritesConfigMenu(
                                     }
                                     IconButton(
                                         onClick = {
-                                            if (index < selectedPackages.size - 1) {
-                                                val newList = selectedPackages.toMutableList()
-                                                val item = newList.removeAt(index)
-                                                newList.add(index + 1, item)
-                                                selectedPackages = newList
-                                            }
+                                            selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index)
                                         },
                                         enabled = index < selectedPackages.size - 1
                                     ) {
@@ -428,15 +451,12 @@ fun FavoritesConfigMenu(
                     Surface(
                         color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            if (isFav) {
-                                selectedPackages = selectedPackages - app.packageName
+                        modifier = Modifier.fillMaxWidth().testTag("config_app_item_${app.packageName}").clickable {
+                            val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
+                            if (newFavs.size > LauncherLogic.MAX_FAVORITES && newFavs.size > selectedPackages.size) {
+                                Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
                             } else {
-                                if (selectedPackages.size < 8) {
-                                    selectedPackages = selectedPackages + app.packageName
-                                } else {
-                                    Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
-                                }
+                                selectedPackages = newFavs
                             }
                         }
                     ) {
@@ -450,14 +470,11 @@ fun FavoritesConfigMenu(
                             Checkbox(
                                 checked = isFav,
                                 onCheckedChange = { checked ->
-                                    if (checked) {
-                                        if (selectedPackages.size < 8) {
-                                            selectedPackages = selectedPackages + app.packageName
-                                        } else {
-                                            Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
-                                        }
+                                    val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
+                                    if (newFavs.size > LauncherLogic.MAX_FAVORITES && newFavs.size > selectedPackages.size) {
+                                        Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
                                     } else {
-                                        selectedPackages = selectedPackages - app.packageName
+                                        selectedPackages = newFavs
                                     }
                                 },
                                 colors = CheckboxDefaults.colors(
@@ -474,8 +491,7 @@ fun FavoritesConfigMenu(
 
         Box(
             modifier = Modifier.fillMaxSize().padding(32.dp),
-            contentAlignment = Alignment.BottomEnd
-        ) {
+            contentAlignment = Alignment.BottomEnd) {
             FloatingActionButton(
                 onClick = {
                     if (selectedPackages.isEmpty()) {
@@ -486,7 +502,8 @@ fun FavoritesConfigMenu(
                 },
                 containerColor = Color.White,
                 contentColor = Color(0xFF0F172A),
-                shape = CircleShape
+                shape = CircleShape,
+                modifier = Modifier.testTag("confirm_favorites")
             ) {
                 Icon(Icons.Default.Check, contentDescription = "Bestätigen")
             }
@@ -503,19 +520,22 @@ fun AppDrawer(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
     var searchQuery by remember { mutableStateOf("") }
-    val filteredApps = apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+    val filteredApps = remember(apps, searchQuery) {
+        LauncherLogic.filterApps(apps, searchQuery)
+    }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().testTag("app_drawer")) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.85f)))
+        Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Apps", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+                IconButton(onClick = onClose, modifier = Modifier.testTag("close_drawer")) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -536,7 +556,8 @@ fun AppDrawer(
                         onValueChange = { searchQuery = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .focusRequester(focusRequester),
+                            .focusRequester(focusRequester)
+                            .testTag("search_field"),
                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
                         cursorBrush = SolidColor(Color.White),
                         singleLine = true,
@@ -594,7 +615,8 @@ fun AppDrawer(
                             .graphicsLayer {
                                 this.alpha = alpha
                                 this.translationY = translateY
-                            },
+                            }
+                            .testTag("app_item_${app.packageName}"),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -713,6 +735,7 @@ fun ClockHeader() {
             color = Color.White,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
+                .testTag("clock_time")
                 .clickable {
                     var started = false
                     try {
@@ -786,6 +809,7 @@ fun ClockHeader() {
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
+                .testTag("clock_date")
                 .clickable {
                     val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
