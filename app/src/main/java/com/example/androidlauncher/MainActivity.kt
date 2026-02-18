@@ -130,11 +130,11 @@ class MainActivity : ComponentActivity() {
                         targetState = isDrawerOpen,
                         transitionSpec = {
                             if (targetState) {
-                                (slideInVertically(initialOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeIn())
-                                    .togetherWith(fadeOut(animationSpec = tween(300)))
+                                (slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)))
+                                    .togetherWith(fadeOut(animationSpec = tween(200)))
                             } else {
-                                fadeIn(animationSpec = tween(300))
-                                    .togetherWith(slideOutVertically(targetOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeOut())
+                                fadeIn(animationSpec = tween(200))
+                                    .togetherWith(slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200)))
                             }
                         },
                         label = "DrawerTransition"
@@ -166,8 +166,8 @@ class MainActivity : ComponentActivity() {
 
                     AnimatedVisibility(
                         visible = isFavoritesConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeOut()
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200))
                     ) {
                         FavoritesConfigMenu(
                             apps = allApps,
@@ -183,8 +183,8 @@ class MainActivity : ComponentActivity() {
 
                     AnimatedVisibility(
                         visible = isColorConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(500, easing = EaseInOutCubic)) + fadeOut()
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200))
                     ) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
@@ -250,7 +250,7 @@ fun HomeScreen(
     val context = LocalContext.current
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
-        animationSpec = tween(durationMillis = 400, easing = EaseInOutCubic)
+        animationSpec = tween(durationMillis = 300, easing = EaseInOutCubic)
     )
     
     val settingsButtonSize by animateDpAsState(
