@@ -500,7 +500,7 @@ fun FavoritesConfigMenu(
             containerColor = Color.White, 
             contentColor = Color(0xFF0F172A), 
             shape = CircleShape, 
-            modifier = Modifier.bounceClick(intSrc)
+            modifier = Modifier.bounceClick(intSrc).testTag("confirm_favorites")
         ) {
             Icon(Icons.Default.Check, contentDescription = null)
         }
