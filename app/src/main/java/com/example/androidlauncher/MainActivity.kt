@@ -114,15 +114,18 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
+                    // 1. Namen laden
                     val basicList = withContext(Dispatchers.IO) { getAppListBasic(context) }
                     allApps.clear()
                     allApps.addAll(basicList)
 
+                    // 2. Icons laden
                     withContext(Dispatchers.IO) {
                         val pm = context.packageManager
                         val cacheDir = File(context.cacheDir, "app_icons")
                         if (!cacheDir.exists()) cacheDir.mkdirs()
 
+                        // Favoriten zuerst laden
                         val favSet = favoritePackages.toSet()
                         val sortedIndices = allApps.indices.sortedByDescending { allApps[it].packageName in favSet }
 
@@ -157,6 +160,7 @@ class MainActivity : ComponentActivity() {
                 Box(modifier = Modifier.fillMaxSize()) {
                     SystemWallpaperView()
 
+                    // Haupt-Inhalt
                     AnimatedContent(
                         targetState = isDrawerOpen,
                         transitionSpec = {
@@ -195,6 +199,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // Overlay Menüs mit solidem Hintergrund
                     AnimatedVisibility(
                         visible = isFavoritesConfigOpen,
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
@@ -551,7 +556,6 @@ fun ClockHeader() {
             color = Color.White,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .testTag("clock_time")
                 .clickable {
                     var started = false
                     try {
@@ -575,14 +579,14 @@ fun ClockHeader() {
 
                     if (!started) {
                         val packages = listOf(
-                            "cn.nubia.deskclock.preset", 
-                            "cn.nubia.deskclock",
-                            "com.zte.deskclock",
-                            "com.android.deskclock",
                             "com.google.android.deskclock",
+                            "com.android.deskclock",
                             "com.sec.android.app.clockpackage",
                             "com.huawei.android.clock",
-                            "com.miui.clock"
+                            "com.miui.clock",
+                            "cn.nubia.deskclock.preset", 
+                            "cn.nubia.deskclock",
+                            "com.zte.deskclock"
                         )
                         for (pkg in packages) {
                             try {
@@ -625,7 +629,6 @@ fun ClockHeader() {
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .testTag("clock_date")
                 .clickable {
                     val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
