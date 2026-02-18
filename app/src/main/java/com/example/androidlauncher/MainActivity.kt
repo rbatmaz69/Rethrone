@@ -364,12 +364,15 @@ fun HomeScreen(
                         Surface(
                             color = Color.Transparent,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.bounceClick(intSrc).clickable(
-                                interactionSource = intSrc,
-                                indication = null
-                            ) {
-                                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
-                            }
+                            modifier = Modifier
+                                .bounceClick(intSrc)
+                                .testTag("favorite_item_${app.packageName}")
+                                .clickable(
+                                    interactionSource = intSrc,
+                                    indication = null
+                                ) {
+                                    context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
+                                }
                         ) {
                             Box(modifier = Modifier.padding(6.dp)) { AppIconView(app) }
                         }
