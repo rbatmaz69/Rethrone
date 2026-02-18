@@ -607,32 +607,10 @@ fun AppDrawer(
             ) {
                 itemsIndexed(filteredApps) { index, app ->
                     var showAppActions by remember { mutableStateOf(false) }
-                    
-                    val isVisible = remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
-                        val cascadeDelay = if (index < 16) (index % 4) * 40L + (index / 4) * 20L else 0L
-                        kotlinx.coroutines.delay(cascadeDelay)
-                        isVisible.value = true
-                    }
-
-                    val alpha by animateFloatAsState(
-                        targetValue = if (isVisible.value) 1f else 0f,
-                        animationSpec = tween(durationMillis = 400),
-                        label = "alpha"
-                    )
-                    val translateY by animateFloatAsState(
-                        targetValue = if (isVisible.value) 0f else 40f,
-                        animationSpec = tween(durationMillis = 400, easing = EaseOutCubic),
-                        label = "translateY"
-                    )
 
                     Box(
                         modifier = Modifier
                             .width(80.dp)
-                            .graphicsLayer {
-                                this.alpha = alpha
-                                this.translationY = translateY
-                            }
                             .testTag("app_item_${app.packageName}"),
                         contentAlignment = Alignment.Center
                     ) {
