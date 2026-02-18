@@ -51,11 +51,10 @@ fun SettingsPaletteMenu(
         )
     }
 
-    // Symmetrie-Parameter mit vergrößertem Winkelbereich für mehr Abstand
+    // Figma Parameter
     val radius = 100f 
-    val startAngle = 85f  // Weiter nach "Rechts/Oben" geöffnet
-    val endAngle = 185f    // Weiter nach "Unten/Links" geöffnet
-    // Mittelpunkt bleibt exakt bei 135° (Diagonale) für perfekte Symmetrie
+    val startAngle = 85f 
+    val endAngle = 185f
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -66,23 +65,32 @@ fun SettingsPaletteMenu(
             
             LaunchedEffect(isSettingsOpen) {
                 if (isSettingsOpen) {
-                    delay(index * 40L)
+                    // Staggered Delay für den "Platsch"-Effekt beim Öffnen
+                    delay(index * 50L)
                     animProgress.animateTo(
                         targetValue = 1f,
                         animationSpec = spring(
-                            dampingRatio = 0.65f, 
+                            dampingRatio = 0.62f, // Damping 20 bei Stiffness 260
                             stiffness = 260f
                         )
                     )
                 } else {
-                    animProgress.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMedium))
+                    // "Saugt" sich zeitversetzt zurück (in umgekehrter Reihenfolge)
+                    val reverseIndex = settingsItems.size - 1 - index
+                    delay(reverseIndex * 30L)
+                    animProgress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(
+                            dampingRatio = 0.7f, 
+                            stiffness = 300f
+                        )
+                    )
                 }
             }
 
             val progress = animProgress.value
             if (progress > 0.001f || isSettingsOpen) {
                 val total = settingsItems.size
-                // Winkelberechnung für perfekte Symmetrie um die 135°-Achse
                 val angle = startAngle + (index.toFloat() / (total - 1)) * (endAngle - startAngle)
                 val angleRad = Math.toRadians(angle.toDouble())
                 
@@ -97,7 +105,7 @@ fun SettingsPaletteMenu(
                             x = (targetX * progress).dp,
                             y = (targetY * progress).dp
                         )
-                        .scale(progress)
+                        .scale(progress) // Von 0 auf 1
                         .alpha(progress.coerceIn(0f, 1f))
                         .clickable(
                             enabled = isSettingsOpen,
