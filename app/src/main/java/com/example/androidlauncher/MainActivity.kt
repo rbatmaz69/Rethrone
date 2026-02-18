@@ -70,7 +70,9 @@ import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class AppInfo(
     val label: String,
@@ -105,7 +107,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
-                    allApps = getInstalledApps(context)
+                    allApps = withContext(Dispatchers.IO) {
+                        getInstalledApps(context)
+                    }
                 }
 
                 LaunchedEffect(isDrawerOpen) {
@@ -217,12 +221,28 @@ fun SystemWallpaperView() {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
-    val wallpaper = remember { try { wallpaperManager.drawable } catch (e: Exception) { null } }
+    
+    var wallpaperBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            try {
+                val drawable = wallpaperManager.drawable
+                if (drawable != null) {
+                    val bitmap = drawable.toBitmap().asImageBitmap()
+                    wallpaperBitmap = bitmap
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (wallpaper != null) {
+        val currentBitmap = wallpaperBitmap
+        if (currentBitmap != null) {
             Image(
-                bitmap = wallpaper.toBitmap().asImageBitmap(),
+                bitmap = currentBitmap,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -368,8 +388,7 @@ fun FavoritesConfigMenu(
     val focusRequester = remember { FocusRequester() }
 
     Box(modifier = Modifier.fillMaxSize().testTag("favorites_config_menu")) {
-        SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.95f)))
+        // Redundant wallpaper removed - root wallpaper is visible behind
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -547,7 +566,7 @@ fun AppDrawer(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     Box(modifier = Modifier.fillMaxSize().testTag("app_drawer")) {
-        SystemWallpaperView()
+        // Redundant wallpaper removed - root wallpaper is visible behind
         Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
@@ -608,7 +627,8 @@ fun AppDrawer(
             ) {
                 itemsIndexed(
                     items = filteredApps,
-                    key = { _, app -> app.packageName }
+                    key = { _, app -> app.packageName },
+                    contentType = { _, _ -> "app" }
                 ) { index, app ->
                     var showAppActions by remember { mutableStateOf(false) }
 
