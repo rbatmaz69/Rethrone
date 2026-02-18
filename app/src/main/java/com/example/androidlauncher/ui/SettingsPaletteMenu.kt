@@ -82,49 +82,52 @@ fun SettingsPaletteMenu(
         }
     }
 
-    // Wenn das Menü zu ist und die Animation fertig, rendern wir gar nichts,
-    // um keine Klicks auf dem HomeScreen zu blockieren.
     if (!isSettingsOpen && animatedProgress == 0f) return
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(isSettingsOpen) {
-                // Wir fangen Gesten nur ab, wenn das Menü offen ist
-                if (!isSettingsOpen) return@pointerInput
-                detectDragGestures(
-                    onDragStart = {
-                        isDragging = true
-                        totalDragDistance = 0f
-                    },
-                    onDragEnd = {
-                        val currentVal = rotationAngle.value
-                        val targetAngle = round(currentVal / angleStep) * angleStep
-                        coroutineScope.launch {
-                            rotationAngle.animateTo(
-                                targetAngle,
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                            )
-                        }
-                        coroutineScope.launch {
-                            kotlinx.coroutines.delay(100)
-                            isDragging = false
-                        }
-                    },
-                    onDragCancel = {
-                        isDragging = false
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        val sensitivity = 0.4f
-                        val delta = (dragAmount.x - dragAmount.y) * sensitivity
-                        totalDragDistance += abs(delta)
-                        coroutineScope.launch {
-                            rotationAngle.snapTo(rotationAngle.value + delta)
-                        }
+            // Der Clou: Wir wenden pointerInput NUR an, wenn das Menü offen ist.
+            // Sobald isSettingsOpen false ist, verschwindet dieser Modifier und
+            // die Box wird sofort komplett transparent für Berührungen.
+            .then(
+                if (isSettingsOpen) {
+                    Modifier.pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = {
+                                isDragging = true
+                                totalDragDistance = 0f
+                            },
+                            onDragEnd = {
+                                val currentVal = rotationAngle.value
+                                val targetAngle = round(currentVal / angleStep) * angleStep
+                                coroutineScope.launch {
+                                    rotationAngle.animateTo(
+                                        targetAngle,
+                                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                                    )
+                                }
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(100)
+                                    isDragging = false
+                                }
+                            },
+                            onDragCancel = {
+                                isDragging = false
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                val sensitivity = 0.4f
+                                val delta = (dragAmount.x - dragAmount.y) * sensitivity
+                                totalDragDistance += abs(delta)
+                                coroutineScope.launch {
+                                    rotationAngle.snapTo(rotationAngle.value + delta)
+                                }
+                            }
+                        )
                     }
-                )
-            }
+                } else Modifier
+            )
     ) {
         val radius = 105.dp 
         
@@ -154,6 +157,7 @@ fun SettingsPaletteMenu(
                     .scale(scale)
                     .alpha(animatedProgress * alpha)
                     .clip(CircleShape)
+                    // clickable wird ebenfalls sofort deaktiviert
                     .clickable(
                         enabled = isSettingsOpen && (!isDragging || totalDragDistance < 5f),
                         onClick = { 
