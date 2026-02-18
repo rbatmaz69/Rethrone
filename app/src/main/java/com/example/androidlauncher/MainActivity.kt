@@ -76,6 +76,7 @@ data class AppInfo(
     val label: String,
     val packageName: String,
     val icon: Drawable,
+    val iconBitmap: ImageBitmap? = null,
     val lucideIcon: ImageVector? = null,
     val customIconResId: Int? = null
 )
@@ -605,7 +606,10 @@ fun AppDrawer(
                 verticalArrangement = Arrangement.spacedBy(32.dp),
                 contentPadding = PaddingValues(bottom = 32.dp)
             ) {
-                itemsIndexed(filteredApps) { index, app ->
+                itemsIndexed(
+                    items = filteredApps,
+                    key = { _, app -> app.packageName }
+                ) { index, app ->
                     var showAppActions by remember { mutableStateOf(false) }
 
                     Box(
@@ -680,6 +684,14 @@ fun AppIconView(app: AppInfo) {
         }
         app.customIconResId != null -> {
             Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
+        }
+        app.iconBitmap != null -> {
+            Image(
+                bitmap = app.iconBitmap,
+                contentDescription = null,
+                modifier = Modifier.size(iconSize),
+                colorFilter = ColorFilter.tint(Color.White)
+            )
         }
         else -> {
             val drawable = app.icon
@@ -831,10 +843,22 @@ private fun getInstalledApps(context: Context): List<AppInfo> {
     val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
     return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
         val icon = resolveInfo.loadIcon(pm)
+        val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
+            icon.foreground ?: icon
+        } else {
+            icon
+        }
+        val bitmap = try {
+            foregroundDrawable.toBitmap().asImageBitmap()
+        } catch (e: Exception) {
+            null
+        }
+
         AppInfo(
             label = resolveInfo.loadLabel(pm).toString(),
             packageName = resolveInfo.activityInfo.packageName,
             icon = icon,
+            iconBitmap = bitmap,
             lucideIcon = null,
             customIconResId = null
         )
