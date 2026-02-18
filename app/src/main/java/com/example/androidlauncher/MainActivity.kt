@@ -135,16 +135,20 @@ class MainActivity : ComponentActivity() {
                     allApps.clear()
                     allApps.addAll(basicList)
 
+                    // Take immutable snapshots of Compose state on the main thread
+                    val appsSnapshot = allApps.toList()
+                    val favSet = favoritePackages.toSet()
+
                     withContext(Dispatchers.IO) {
                         val pm = context.packageManager
                         val cacheDir = File(context.cacheDir, "app_icons")
                         if (!cacheDir.exists()) cacheDir.mkdirs()
 
-                        val favSet = favoritePackages.toSet()
-                        val sortedIndices = allApps.indices.sortedByDescending { allApps[it].packageName in favSet }
+                        val sortedIndices = appsSnapshot.indices
+                            .sortedByDescending { appsSnapshot[it].packageName in favSet }
 
                         sortedIndices.forEachIndexed { loopIdx, appIdx ->
-                            val app = allApps[appIdx]
+                            val app = appsSnapshot[appIdx]
                             val bitmap = loadSingleIcon(context, pm, cacheDir, app.packageName)
                             if (bitmap != null) {
                                 withContext(Dispatchers.Main) {
