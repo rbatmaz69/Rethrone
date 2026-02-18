@@ -159,9 +159,9 @@ class MainActivity : ComponentActivity() {
                         sortedIndices.forEachIndexed { loopIdx, appIdx ->
                             val app = appsSnapshot[appIdx]
                             val bitmap = loadSingleIcon(context, pm, cacheDir, app.packageName)
-                            if (bitmap != null && appIdx < allApps.size) {
+                            if (bitmap != null) {
                                 withContext(Dispatchers.Main) {
-                                    // Double check index is still valid
+                                    // Bounds check inside Main dispatcher to avoid TOCTOU race condition
                                     if (appIdx < allApps.size && allApps[appIdx].packageName == app.packageName) {
                                         allApps[appIdx] = app.copy(iconBitmap = bitmap)
                                     }
