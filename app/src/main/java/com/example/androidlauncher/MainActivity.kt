@@ -491,13 +491,17 @@ fun FavoritesConfigMenu(
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
-                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
-                    interactionSource = intSrc,
-                    indication = null
-                ) {
-                    val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
-                    if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, "Maximal 8 erlaubt", Toast.LENGTH_SHORT).show()
-                }) {
+                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("config_app_item_${app.packageName}")
+                    .bounceClick(intSrc)
+                    .clickable(
+                        interactionSource = intSrc,
+                        indication = null
+                    ) {
+                        val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
+                        if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, "Maximal 8 erlaubt", Toast.LENGTH_SHORT).show()
+                    }) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
                         Spacer(modifier = Modifier.width(16.dp))
