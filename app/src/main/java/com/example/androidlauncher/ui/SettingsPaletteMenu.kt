@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Paintbrush
 import com.composables.icons.lucide.Palette
+import com.example.androidlauncher.ui.theme.LocalColorTheme
 import kotlinx.coroutines.launch
 import kotlin.math.*
 
@@ -42,6 +43,7 @@ fun SettingsPaletteMenu(
     onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit
 ) {
+    val colorTheme = LocalColorTheme.current
     val settingsItems = remember {
         listOf(
             PaletteMenuItem("themes", Lucide.Palette, "Themes", onOpenColorConfig),
@@ -55,11 +57,10 @@ fun SettingsPaletteMenu(
     val coroutineScope = rememberCoroutineScope()
     val rotationAngle = remember { Animatable(0f) }
     
-    // Wir tracken, ob gerade eine Drag-Geste stattfindet, um versehentliche Klicks zu vermeiden
     var isDragging by remember { mutableStateOf(false) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
-    val angleStep = 25f 
+    val angleStep = 30f 
     val baseAngle = 180f 
 
     LaunchedEffect(isSettingsOpen) {
@@ -82,7 +83,6 @@ fun SettingsPaletteMenu(
                         totalDragDistance = 0f
                     },
                     onDragEnd = {
-                        // Snap-to-Position
                         val currentVal = rotationAngle.value
                         val targetAngle = round(currentVal / angleStep) * angleStep
                         coroutineScope.launch {
@@ -91,8 +91,6 @@ fun SettingsPaletteMenu(
                                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
                             )
                         }
-                        // Wir setzen isDragging verzögert zurück, damit der Click-Event-Handler
-                        // des Items weiß, dass gerade ein Drag zu Ende ging.
                         coroutineScope.launch {
                             kotlinx.coroutines.delay(100)
                             isDragging = false
@@ -113,7 +111,7 @@ fun SettingsPaletteMenu(
                 )
             }
     ) {
-        val radius = 130.dp 
+        val radius = 105.dp 
         
         settingsItems.forEachIndexed { index, item ->
             val animatedProgress by animateFloatAsState(
@@ -130,13 +128,11 @@ fun SettingsPaletteMenu(
             val xOffset = (radius.value * cos(angleRad)).dp * animatedProgress
             val yOffset = (radius.value * sin(angleRad)).dp * animatedProgress
 
-            // Fokusbereich (225 Grad ist schräg links oben)
             val focusAngle = 225f
             val normalizedAngle = (currentItemAngle % 360 + 360) % 360
             val distanceToFocus = abs(normalizedAngle - focusAngle)
-            val isFocused = distanceToFocus < (angleStep / 0.8f) && isSettingsOpen // Etwas toleranterer Fokus
+            val isFocused = distanceToFocus < (angleStep / 0.8f) && isSettingsOpen 
 
-            // Animationen für das aktive Element
             val scale by animateFloatAsState(
                 targetValue = if (isFocused) 1.35f else 1.0f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
@@ -159,7 +155,7 @@ fun SettingsPaletteMenu(
                             onToggleSettings()
                         }
                     ),
-                color = if (isFocused) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.12f),
+                color = if (isFocused) colorTheme.secondary.copy(alpha = 0.4f) else colorTheme.secondary.copy(alpha = 0.15f),
                 shape = CircleShape,
                 border = if (isFocused) BorderStroke(2.dp, Color.White.copy(alpha = 0.6f)) else null
             ) {
