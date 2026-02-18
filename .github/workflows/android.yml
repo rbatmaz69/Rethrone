@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ "main", "develop" ]
 
-# Verhindert, dass derselbe Workflow mehrfach für denselben PR läuft
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -53,8 +52,15 @@ jobs:
 
     - name: Add Coverage to Summary
       run: |
-        echo "## Test Coverage Report" >> $GITHUB_STEP_SUMMARY
-        echo "Coverage Report generated successfully." >> $GITHUB_STEP_SUMMARY
+        echo "## 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+        # Extrahiere die Prozentzahl aus der Konsolenausgabe von Kover
+        # Kover gibt standardmäßig "Kover: code coverage: 85.5%" aus
+        COVERAGE=$(./gradlew koverLogDebug | grep "instructions coverage" | awk '{print $NF}')
+        if [ -z "$COVERAGE" ]; then
+          COVERAGE="Check Logs for details"
+        fi
+        echo "### Total Coverage: **$COVERAGE**" >> $GITHUB_STEP_SUMMARY
+        echo "Der detaillierte Bericht wurde als Artifact hochgeladen." >> $GITHUB_STEP_SUMMARY
 
     - name: Upload Coverage Report
       uses: actions/upload-artifact@v4
@@ -65,7 +71,7 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    needs: [lint] # Build kann parallel zu Unit-Tests laufen, braucht nur Lint
+    needs: [lint]
     steps:
     - uses: actions/checkout@v4
     
