@@ -288,12 +288,16 @@ fun SystemWallpaperView() {
 
     LaunchedEffect(Unit) {
         delay(300)
-        withContext(Dispatchers.IO) {
+        val loadedBitmap = withContext(Dispatchers.IO) {
             try {
                 val drawable = wallpaperManager.drawable
-                drawable?.let { wallpaperBitmap = it.toBitmap().asImageBitmap() }
-            } catch (e: Exception) { e.printStackTrace() }
+                drawable?.toBitmap()?.asImageBitmap()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
         }
+        wallpaperBitmap = loadedBitmap
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
