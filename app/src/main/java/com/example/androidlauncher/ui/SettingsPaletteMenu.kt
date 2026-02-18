@@ -1,6 +1,7 @@
 package com.example.androidlauncher.ui
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.*
 
 data class PaletteMenuItem(
+    val id: String,
     val icon: ImageVector,
     val label: String,
     val action: () -> Unit
@@ -42,24 +44,30 @@ fun SettingsPaletteMenu(
 ) {
     val settingsItems = remember {
         listOf(
-            PaletteMenuItem(icon = Lucide.Palette, label = "Themes", action = onOpenColorConfig),
-            PaletteMenuItem(icon = Lucide.Paintbrush, label = "Colors", action = onOpenColorConfig),
-            PaletteMenuItem(icon = Icons.Default.Star, label = "Favorites", action = onOpenFavoritesConfig),
-            PaletteMenuItem(icon = Icons.Default.Settings, label = "System", action = onOpenSystemSettings),
-            PaletteMenuItem(icon = Icons.Default.Info, label = "Info", action = onOpenInfo),
+            PaletteMenuItem("themes", Lucide.Palette, "Themes", onOpenColorConfig),
+            PaletteMenuItem("colors", Lucide.Paintbrush, "Colors", onOpenColorConfig),
+            PaletteMenuItem("favorites", Icons.Default.Star, "Favorites", onOpenFavoritesConfig),
+            PaletteMenuItem("system", Icons.Default.Settings, "System", onOpenSystemSettings),
+            PaletteMenuItem("info", Icons.Default.Info, "Info", onOpenInfo),
         )
     }
 
     val coroutineScope = rememberCoroutineScope()
     val rotationAngle = remember { Animatable(0f) }
     
-    // Verringerter Winkel für engere Abstände (vorher 45f)
+    // Wir tracken, ob gerade eine Drag-Geste stattfindet, um versehentliche Klicks zu vermeiden
+    var isDragging by remember { mutableStateOf(false) }
+    var totalDragDistance by remember { mutableFloatStateOf(0f) }
+
     val angleStep = 25f 
     val baseAngle = 180f 
 
     LaunchedEffect(isSettingsOpen) {
         if (isSettingsOpen) {
             rotationAngle.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessLow))
+        } else {
+            isDragging = false
+            totalDragDistance = 0f
         }
     }
 
@@ -69,7 +77,12 @@ fun SettingsPaletteMenu(
             .pointerInput(isSettingsOpen) {
                 if (!isSettingsOpen) return@pointerInput
                 detectDragGestures(
+                    onDragStart = {
+                        isDragging = true
+                        totalDragDistance = 0f
+                    },
                     onDragEnd = {
+                        // Snap-to-Position
                         val currentVal = rotationAngle.value
                         val targetAngle = round(currentVal / angleStep) * angleStep
                         coroutineScope.launch {
@@ -78,11 +91,21 @@ fun SettingsPaletteMenu(
                                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
                             )
                         }
+                        // Wir setzen isDragging verzögert zurück, damit der Click-Event-Handler
+                        // des Items weiß, dass gerade ein Drag zu Ende ging.
+                        coroutineScope.launch {
+                            kotlinx.coroutines.delay(100)
+                            isDragging = false
+                        }
+                    },
+                    onDragCancel = {
+                        isDragging = false
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
                         val sensitivity = 0.4f
                         val delta = (dragAmount.x - dragAmount.y) * sensitivity
+                        totalDragDistance += abs(delta)
                         coroutineScope.launch {
                             rotationAngle.snapTo(rotationAngle.value + delta)
                         }
@@ -90,10 +113,9 @@ fun SettingsPaletteMenu(
                 )
             }
     ) {
-        val radius = 140.dp // Etwas kleinerer Radius für kompakteres Menü
+        val radius = 130.dp 
         
         settingsItems.forEachIndexed { index, item ->
-            // Stabilere Animation ohne EaseOutBack (um Absturz zu vermeiden)
             val animatedProgress by animateFloatAsState(
                 targetValue = if (isSettingsOpen) 1f else 0f,
                 animationSpec = tween(
@@ -108,37 +130,45 @@ fun SettingsPaletteMenu(
             val xOffset = (radius.value * cos(angleRad)).dp * animatedProgress
             val yOffset = (radius.value * sin(angleRad)).dp * animatedProgress
 
-            // Fokusbereich angepasst
+            // Fokusbereich (225 Grad ist schräg links oben)
             val focusAngle = 225f
             val normalizedAngle = (currentItemAngle % 360 + 360) % 360
             val distanceToFocus = abs(normalizedAngle - focusAngle)
-            val isFocused = distanceToFocus < (angleStep / 2) && isSettingsOpen
+            val isFocused = distanceToFocus < (angleStep / 0.8f) && isSettingsOpen // Etwas toleranterer Fokus
 
-            val scale by animateFloatAsState(targetValue = if (isFocused) 1.25f else 1.0f)
-            val alpha by animateFloatAsState(targetValue = if (isFocused) 1f else 0.7f)
+            // Animationen für das aktive Element
+            val scale by animateFloatAsState(
+                targetValue = if (isFocused) 1.35f else 1.0f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+            )
+            val alpha by animateFloatAsState(targetValue = if (isFocused) 1f else 0.5f)
 
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 32.dp, end = 32.dp)
                     .offset(x = xOffset, y = yOffset)
-                    .size(52.dp) // Leicht verkleinerte Symbole für kompakten Look
+                    .size(50.dp) 
                     .scale(scale)
                     .alpha(animatedProgress * alpha)
                     .clip(CircleShape)
-                    .clickable(enabled = isSettingsOpen) { 
-                        item.action()
-                        onToggleSettings()
-                    },
-                color = if (isFocused) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f),
-                shape = CircleShape
+                    .clickable(
+                        enabled = isSettingsOpen && (!isDragging || totalDragDistance < 5f),
+                        onClick = { 
+                            item.action()
+                            onToggleSettings()
+                        }
+                    ),
+                color = if (isFocused) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.12f),
+                shape = CircleShape,
+                border = if (isFocused) BorderStroke(2.dp, Color.White.copy(alpha = 0.6f)) else null
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = item.icon,
                         contentDescription = item.label,
                         tint = Color.White,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
