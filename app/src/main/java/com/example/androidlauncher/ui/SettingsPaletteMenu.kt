@@ -62,9 +62,16 @@ fun SettingsPaletteMenu(
 
     val angleStep = 30f 
     val focusAngle = 225f
-
-    // Dynamische Berechnung des Startwinkels für perfekte Symmetrie
     val baseAngle = focusAngle - ((settingsItems.size - 1) * angleStep) / 2f
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = if (isSettingsOpen) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 400,
+            easing = LinearOutSlowInEasing
+        ),
+        label = "MenuProgress"
+    )
 
     LaunchedEffect(isSettingsOpen) {
         if (isSettingsOpen) {
@@ -75,10 +82,15 @@ fun SettingsPaletteMenu(
         }
     }
 
+    // Wenn das Menü zu ist und die Animation fertig, rendern wir gar nichts,
+    // um keine Klicks auf dem HomeScreen zu blockieren.
+    if (!isSettingsOpen && animatedProgress == 0f) return
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(isSettingsOpen) {
+                // Wir fangen Gesten nur ab, wenn das Menü offen ist
                 if (!isSettingsOpen) return@pointerInput
                 detectDragGestures(
                     onDragStart = {
@@ -117,14 +129,6 @@ fun SettingsPaletteMenu(
         val radius = 105.dp 
         
         settingsItems.forEachIndexed { index, item ->
-            val animatedProgress by animateFloatAsState(
-                targetValue = if (isSettingsOpen) 1f else 0f,
-                animationSpec = tween(
-                    durationMillis = 400,
-                    easing = LinearOutSlowInEasing
-                )
-            )
-
             val currentItemAngle = baseAngle + (index * angleStep) + rotationAngle.value
             val angleRad = Math.toRadians(currentItemAngle.toDouble())
             
@@ -133,7 +137,6 @@ fun SettingsPaletteMenu(
 
             val normalizedAngle = (currentItemAngle % 360 + 360) % 360
             val distanceToFocus = abs(normalizedAngle - focusAngle)
-            
             val isFocused = distanceToFocus < (angleStep * 1.1f) && isSettingsOpen 
 
             val scale by animateFloatAsState(
