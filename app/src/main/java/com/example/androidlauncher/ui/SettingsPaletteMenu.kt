@@ -3,6 +3,8 @@ package com.example.androidlauncher.ui
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -62,20 +64,27 @@ fun SettingsPaletteMenu(
     ) {
         settingsItems.forEachIndexed { index, item ->
             val animProgress = remember { Animatable(0f) }
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            
+            // Animierter Scale-Faktor für den Klick (0.92f wenn gedrückt, 1f wenn nicht)
+            val pressScale by animateFloatAsState(
+                targetValue = if (isPressed) 0.92f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+                label = "PressScale_${item.id}"
+            )
             
             LaunchedEffect(isSettingsOpen) {
                 if (isSettingsOpen) {
-                    // Staggered Delay für den "Platsch"-Effekt beim Öffnen
                     delay(index * 50L)
                     animProgress.animateTo(
                         targetValue = 1f,
                         animationSpec = spring(
-                            dampingRatio = 0.62f, // Damping 20 bei Stiffness 260
+                            dampingRatio = 0.62f, 
                             stiffness = 260f
                         )
                     )
                 } else {
-                    // "Saugt" sich zeitversetzt zurück (in umgekehrter Reihenfolge)
                     val reverseIndex = settingsItems.size - 1 - index
                     delay(reverseIndex * 30L)
                     animProgress.animateTo(
@@ -105,9 +114,12 @@ fun SettingsPaletteMenu(
                             x = (targetX * progress).dp,
                             y = (targetY * progress).dp
                         )
-                        .scale(progress) // Von 0 auf 1
+                        // Kombinierter Scale: Öffnen/Schließen * Klick-Feedback
+                        .scale(progress * pressScale)
                         .alpha(progress.coerceIn(0f, 1f))
                         .clickable(
+                            interactionSource = interactionSource,
+                            indication = null, // Standard-Ripple entfernen
                             enabled = isSettingsOpen,
                             onClick = {
                                 item.action()
