@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinAndroid) apply false
     alias(libs.plugins.kotlinCompose) apply false
     alias(libs.plugins.detekt)
+    alias(libs.plugins.kover) apply false
 }
 
 detekt {
