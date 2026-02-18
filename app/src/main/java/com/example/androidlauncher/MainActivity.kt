@@ -5,6 +5,9 @@ import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -39,6 +42,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.* 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
@@ -71,13 +75,16 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 
+@Stable
 data class AppInfo(
     val label: String,
     val packageName: String,
-    val icon: Drawable,
     val iconBitmap: ImageBitmap? = null,
     val lucideIcon: ImageVector? = null,
     val customIconResId: Int? = null
@@ -99,16 +106,36 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 
-                var allApps by remember { mutableStateOf(emptyList<AppInfo>()) }
+                val allApps = remember { mutableStateListOf<AppInfo>() }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
                 
-                val favorites = remember(allApps, favoritePackages) {
-                    LauncherLogic.getFavoriteApps(allApps, favoritePackages)
+                val favorites = remember(allApps.toList(), favoritePackages) {
+                    LauncherLogic.getFavoriteApps(allApps.toList(), favoritePackages)
                 }
 
                 LaunchedEffect(Unit) {
-                    allApps = withContext(Dispatchers.IO) {
-                        getInstalledApps(context)
+                    val basicList = withContext(Dispatchers.IO) { getAppListBasic(context) }
+                    allApps.clear()
+                    allApps.addAll(basicList)
+
+                    withContext(Dispatchers.IO) {
+                        val pm = context.packageManager
+                        val cacheDir = File(context.cacheDir, "app_icons")
+                        if (!cacheDir.exists()) cacheDir.mkdirs()
+
+                        val favSet = favoritePackages.toSet()
+                        val sortedIndices = allApps.indices.sortedByDescending { allApps[it].packageName in favSet }
+
+                        sortedIndices.forEachIndexed { loopIdx, appIdx ->
+                            val app = allApps[appIdx]
+                            val bitmap = loadSingleIcon(context, pm, cacheDir, app.packageName)
+                            if (bitmap != null) {
+                                withContext(Dispatchers.Main) {
+                                    allApps[appIdx] = app.copy(iconBitmap = bitmap)
+                                }
+                            }
+                            if (loopIdx % 5 == 0) delay(1)
+                        }
                     }
                 }
 
@@ -170,33 +197,37 @@ class MainActivity : ComponentActivity() {
 
                     AnimatedVisibility(
                         visible = isFavoritesConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200))
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        FavoritesConfigMenu(
-                            apps = allApps,
-                            initialFavoritePackages = favoritePackages,
-                            onConfirm = { newFavs ->
-                                saveFavorites(context, newFavs)
-                                favoritePackages = newFavs
-                                isFavoritesConfigOpen = false
-                            },
-                            onClose = { isFavoritesConfigOpen = false }
-                        )
+                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
+                            FavoritesConfigMenu(
+                                apps = allApps,
+                                initialFavoritePackages = favoritePackages,
+                                onConfirm = { newFavs ->
+                                    saveFavorites(context, newFavs)
+                                    favoritePackages = newFavs
+                                    isFavoritesConfigOpen = false
+                                },
+                                onClose = { isFavoritesConfigOpen = false }
+                            )
+                        }
                     }
 
                     AnimatedVisibility(
                         visible = isColorConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200))
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        ColorConfigMenu(
-                            selectedTheme = currentTheme,
-                            onThemeSelected = { theme ->
-                                scope.launch { themeManager.setTheme(theme) }
-                            },
-                            onClose = { isColorConfigOpen = false }
-                        )
+                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
+                            ColorConfigMenu(
+                                selectedTheme = currentTheme,
+                                onThemeSelected = { theme ->
+                                    scope.launch { themeManager.setTheme(theme) }
+                                },
+                                onClose = { isColorConfigOpen = false }
+                            )
+                        }
                     }
                 }
             }
@@ -221,40 +252,23 @@ fun SystemWallpaperView() {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
-    
     var wallpaperBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
 
     LaunchedEffect(Unit) {
+        delay(300)
         withContext(Dispatchers.IO) {
             try {
                 val drawable = wallpaperManager.drawable
-                if (drawable != null) {
-                    val bitmap = drawable.toBitmap().asImageBitmap()
-                    wallpaperBitmap = bitmap
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+                drawable?.let { wallpaperBitmap = it.toBitmap().asImageBitmap() }
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        val currentBitmap = wallpaperBitmap
-        if (currentBitmap != null) {
-            Image(
-                bitmap = currentBitmap,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(colorTheme.primary, colorTheme.secondary))))
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f))
-        )
+        wallpaperBitmap?.let {
+            Image(bitmap = it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } ?: Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(colorTheme.primary, colorTheme.secondary))))
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)))
     }
 }
 
@@ -270,7 +284,7 @@ fun HomeScreen(
     val context = LocalContext.current
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
-        animationSpec = tween(durationMillis = 300, easing = EaseInOutCubic)
+        animationSpec = tween(300, easing = EaseInOutCubic)
     )
     
     val settingsButtonSize by animateDpAsState(
@@ -304,39 +318,27 @@ fun HomeScreen(
                     Surface(
                         color = Color.White.copy(alpha = 0.1f),
                         shape = CircleShape,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .testTag("add_favorites_button")
-                            .clickable { onOpenFavoritesConfig() }
+                        modifier = Modifier.size(56.dp).clickable { onOpenFavoritesConfig() }
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
-                        }
+                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White) }
                     }
                 } else {
                     favorites.forEach { app ->
                         Surface(
                             color = Color.Transparent,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .testTag("favorite_item_${app.packageName}")
-                                .clickable {
-                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                    if (intent != null) context.startActivity(intent)
-                                }
-                        ) {
-                            Box(modifier = Modifier.padding(6.dp)) {
-                                AppIconView(app)
+                            modifier = Modifier.clickable {
+                                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
                             }
+                        ) {
+                            Box(modifier = Modifier.padding(6.dp)) { AppIconView(app) }
                         }
                     }
                 }
             }
-            
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        // Neues rotierendes Paletten-Menü
         SettingsPaletteMenu(
             isSettingsOpen = isSettingsOpen,
             onToggleSettings = onToggleSettings,
@@ -348,12 +350,7 @@ fun HomeScreen(
 
         Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
             Surface(
-                modifier = Modifier
-                    .padding(8.dp)
-                    .size(settingsButtonSize)
-                    .clip(CircleShape)
-                    .testTag("settings_button")
-                    .clickable { onToggleSettings() }, 
+                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).clickable { onToggleSettings() }, 
                 color = Color.White.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), 
                 shape = CircleShape,
                 border = if (isSettingsOpen) BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
@@ -381,169 +378,81 @@ fun FavoritesConfigMenu(
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
-    
-    val filteredApps = remember(apps, searchQuery) {
-        LauncherLogic.filterApps(apps, searchQuery)
-    }
+    val filteredApps = remember(apps, searchQuery) { LauncherLogic.filterApps(apps, searchQuery) }
     val focusRequester = remember { FocusRequester() }
 
-    Box(modifier = Modifier.fillMaxSize().testTag("favorites_config_menu")) {
-        // Redundant wallpaper removed - root wallpaper is visible behind
-
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
-                    Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
-                }
-                IconButton(onClick = onClose, modifier = Modifier.testTag("close_favorites_config")) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
+                Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                        focusRequester.requestFocus()
-                    }
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    BasicTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("favorites_search_field"),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
-                        cursorBrush = SolidColor(Color.White),
-                        singleLine = true,
-                        decorationBox = { innerTextField ->
-                            if (searchQuery.isEmpty()) {
-                                Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp)
-                            }
-                            innerTextField()
-                        }
-                    )
-                }
+            IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable { focusRequester.requestFocus() }) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
+                    cursorBrush = SolidColor(Color.White),
+                    singleLine = true,
+                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp); it() }
+                )
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)
-            ) {
-                if (selectedPackages.isNotEmpty()) {
-                    item {
-                        Text("Reihenfolge (Halten zum Verschieben oder Pfeile nutzen)", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
-                    }
-                    itemsIndexed(selectedPackages) { index, pkg ->
-                        val app = apps.find { it.packageName == pkg }
-                        if (app != null) {
-                            Surface(
-                                color = Color.White.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("${index + 1}.", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, modifier = Modifier.width(24.dp))
-                                    AppIconView(app)
-                                    Spacer(modifier = Modifier.width(16.dp))
-                                    Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-
-                                    IconButton(
-                                        onClick = {
-                                            selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index)
-                                        },
-                                        enabled = index > 0
-                                    ) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) Color.White else Color.White.copy(alpha = 0.2f))
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index)
-                                        },
-                                        enabled = index < selectedPackages.size - 1
-                                    ) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) Color.White else Color.White.copy(alpha = 0.2f))
-                                    }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
+            if (selectedPackages.isNotEmpty()) {
+                item { Text("Reihenfolge", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+                itemsIndexed(selectedPackages) { index, pkg ->
+                    apps.find { it.packageName == pkg }?.let { app ->
+                        Surface(color = Color.White.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("${index + 1}.", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, modifier = Modifier.width(24.dp))
+                                AppIconView(app)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                                IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index) }, enabled = index > 0) { 
+                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) Color.White else Color.White.copy(alpha = 0.2f)) 
+                                }
+                                IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index) }, enabled = index < selectedPackages.size - 1) { 
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) Color.White else Color.White.copy(alpha = 0.2f)) 
                                 }
                             }
                         }
                     }
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
-
-                item {
-                    Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
-                }
-                items(filteredApps) { app ->
-                    val isFav = app.packageName in selectedPackages
-                    Surface(
-                        color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("config_app_item_${app.packageName}").clickable {
-                            val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
-                            if (newFavs.size > LauncherLogic.MAX_FAVORITES && newFavs.size > selectedPackages.size) {
-                                Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
-                            } else {
-                                selectedPackages = newFavs
-                            }
-                        }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AppIconView(app)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                            Checkbox(
-                                checked = isFav,
-                                onCheckedChange = { checked ->
-                                    val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
-                                    if (newFavs.size > LauncherLogic.MAX_FAVORITES && newFavs.size > selectedPackages.size) {
-                                        Toast.makeText(context, "Maximal 8 Favoriten erlaubt", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        selectedPackages = newFavs
-                                    }
-                                },
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = Color.White,
-                                    uncheckedColor = Color.White.copy(alpha = 0.4f),
-                                    checkmarkColor = Color(0xFF0F172A)
-                                )
-                            )
-                        }
+                item { Spacer(modifier = Modifier.height(24.dp)) }
+            }
+            item { Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+            items(filteredApps) { app ->
+                val isFav = app.packageName in selectedPackages
+                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().clickable {
+                    val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
+                    if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, "Maximal 8 erlaubt", Toast.LENGTH_SHORT).show()
+                }) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        AppIconView(app)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Checkbox(checked = isFav, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = Color.White, uncheckedColor = Color.White.copy(alpha = 0.4f), checkmarkColor = Color(0xFF0F172A)))
                     }
                 }
             }
         }
+    }
 
-        Box(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            contentAlignment = Alignment.BottomEnd) {
-            FloatingActionButton(
-                onClick = {
-                    if (selectedPackages.isEmpty()) {
-                        Toast.makeText(context, "Keine Favoriten-App ausgewählt", Toast.LENGTH_SHORT).show()
-                    } else {
-                        onConfirm(selectedPackages)
-                    }
-                },
-                containerColor = Color.White,
-                contentColor = Color(0xFF0F172A),
-                shape = CircleShape,
-                modifier = Modifier.testTag("confirm_favorites")
-            ) {
-                Icon(Icons.Default.Check, contentDescription = "Bestätigen")
-            }
+    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
+        FloatingActionButton(onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, "Keine Auswahl", Toast.LENGTH_SHORT).show() }, containerColor = Color.White, contentColor = Color(0xFF0F172A), shape = CircleShape) {
+            Icon(Icons.Default.Check, contentDescription = null)
         }
     }
 }
@@ -559,134 +468,47 @@ fun AppDrawer(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     var searchQuery by remember { mutableStateOf("") }
-    val filteredApps = remember(apps, searchQuery) {
-        LauncherLogic.filterApps(apps, searchQuery)
-    }
+    val filteredApps = remember(apps.toList(), searchQuery) { LauncherLogic.filterApps(apps.toList(), searchQuery) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    Box(modifier = Modifier.fillMaxSize().testTag("app_drawer")) {
-        // Redundant wallpaper removed - root wallpaper is visible behind
+    Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
-
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Apps", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
-                IconButton(onClick = onClose, modifier = Modifier.testTag("close_drawer")) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                        focusRequester.requestFocus()
-                    }
-            ) {
+            Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable { focusRequester.requestFocus() }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     BasicTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                            .testTag("search_field"),
+                        value = searchQuery, onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
-                        cursorBrush = SolidColor(Color.White),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.None,
-                            keyboardType = KeyboardType.Text,
-                            autoCorrectEnabled = false
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = { keyboardController?.hide() }
-                        ),
-                        decorationBox = { innerTextField ->
-                            if (searchQuery.isEmpty()) {
-                                Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp)
-                            }
-                            innerTextField()
-                        }
+                        cursorBrush = SolidColor(Color.White), singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp); it() }
                     )
                 }
             }
-            
             Spacer(modifier = Modifier.height(24.dp))
-            
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalArrangement = Arrangement.spacedBy(32.dp),
-                contentPadding = PaddingValues(bottom = 32.dp)
-            ) {
-                itemsIndexed(
-                    items = filteredApps,
-                    key = { _, app -> app.packageName },
-                    contentType = { _, _ -> "app" }
-                ) { index, app ->
-                    var showAppActions by remember { mutableStateOf(false) }
-
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .testTag("app_item_${app.packageName}"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .combinedClickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {
-                                        val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                        if (intent != null) context.startActivity(intent)
-                                    },
-                                    onLongClick = { showAppActions = true }
-                                )
-                        ) {
+            LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(32.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
+                itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { _, app ->
+                    var showActions by remember { mutableStateOf(false) }
+                    Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } }, onLongClick = { showActions = true })) {
                             AppIconView(app)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = app.label,
-                                fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.7f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            Text(text = app.label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         }
-                        
-                        DropdownMenu(
-                            expanded = showAppActions,
-                            onDismissRequest = { showAppActions = false },
-                            modifier = Modifier.background(Color(0xFF1A1F2B))
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) },
-                                onClick = { onToggleFavorite(app.packageName); showAppActions = false }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("App-Info", color = Color.White) },
-                                onClick = {
-                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }
-                                    context.startActivity(intent); showAppActions = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Deinstallieren", color = Color.Red) },
-                                onClick = {
-                                    val intent = Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }
-                                    context.startActivity(intent); showAppActions = false
-                                }
-                            )
+                        DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
+                            DropdownMenuItem(text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
+                            DropdownMenuItem(text = { Text("App-Info", color = Color.White) }, onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
+                            DropdownMenuItem(text = { Text("Deinstallieren", color = Color.Red) }, onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
                         }
                     }
                 }
@@ -699,43 +521,10 @@ fun AppDrawer(
 fun AppIconView(app: AppInfo) {
     val iconSize = 48.dp
     when {
-        app.lucideIcon != null -> {
-            Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
-        }
-        app.customIconResId != null -> {
-            Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
-        }
-        app.iconBitmap != null -> {
-            Image(
-                bitmap = app.iconBitmap,
-                contentDescription = null,
-                modifier = Modifier.size(iconSize),
-                colorFilter = ColorFilter.tint(Color.White)
-            )
-        }
-        else -> {
-            val drawable = app.icon
-            val foregroundDrawable = if (drawable is AdaptiveIconDrawable) {
-                drawable.foreground ?: drawable
-            } else {
-                drawable
-            }
-            Image(
-                bitmap = foregroundDrawable.toBitmap().asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.size(iconSize),
-                colorFilter = ColorFilter.tint(Color.White)
-            )
-        }
-    }
-}
-
-@Composable
-fun SettingsItemView(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(text = label, color = Color.White, fontSize = 14.sp)
+        app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
+        app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
+        app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(Color.White))
+        else -> Box(modifier = Modifier.size(iconSize).background(Color.White.copy(alpha = 0.05f), CircleShape))
     }
 }
 
@@ -746,7 +535,7 @@ fun ClockHeader() {
     LaunchedEffect(Unit) {
         while (true) {
             currentTime = Calendar.getInstance().time
-            kotlinx.coroutines.delay(1000)
+            delay(1000)
         }
     }
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -858,31 +647,53 @@ fun ClockHeader() {
     }
 }
 
-private fun getInstalledApps(context: Context): List<AppInfo> {
+private fun getAppListBasic(context: Context): List<AppInfo> {
     val pm = context.packageManager
     val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
     return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
-        val icon = resolveInfo.loadIcon(pm)
-        val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
-            icon.foreground ?: icon
-        } else {
-            icon
-        }
-        val bitmap = try {
-            foregroundDrawable.toBitmap().asImageBitmap()
-        } catch (e: Exception) {
-            null
-        }
-
         AppInfo(
             label = resolveInfo.loadLabel(pm).toString(),
-            packageName = resolveInfo.activityInfo.packageName,
-            icon = icon,
-            iconBitmap = bitmap,
-            lucideIcon = null,
-            customIconResId = null
+            packageName = resolveInfo.activityInfo.packageName
         )
     }.sortedBy { it.label.lowercase() }
+}
+
+private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
+    val iconFile = File(cacheDir, "$packageName.png")
+    if (iconFile.exists()) {
+        try {
+            val b = BitmapFactory.decodeFile(iconFile.absolutePath)
+            if (b != null) {
+                val ib = b.asImageBitmap()
+                ib.prepareToDraw()
+                return ib
+            }
+        } catch (e: Exception) { }
+    }
+    return withContext(Dispatchers.IO) {
+        try {
+            val info = pm.getApplicationInfo(packageName, 0)
+            val icon = info.loadIcon(pm)
+            val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
+                icon.foreground ?: icon
+            } else {
+                icon
+            }
+            
+            val b = Bitmap.createBitmap(144, 144, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(b)
+            foregroundDrawable.setBounds(0, 0, 144, 144)
+            foregroundDrawable.draw(canvas)
+            
+            val ib = b.asImageBitmap()
+            ib.prepareToDraw()
+
+            FileOutputStream(iconFile).use { out ->
+                b.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            ib
+        } catch (e: Exception) { null }
+    }
 }
 
 private fun getSavedFavorites(context: Context): List<String> {
