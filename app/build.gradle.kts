@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -42,6 +43,17 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes("com.example.androidlauncher.ui.theme.*")
+                classes("com.example.androidlauncher.MainActivityKt")
+            }
+        }
     }
 }
 
