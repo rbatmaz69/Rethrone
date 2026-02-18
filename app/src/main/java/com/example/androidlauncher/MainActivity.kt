@@ -91,7 +91,16 @@ data class AppInfo(
     val iconBitmap: ImageBitmap? = null,
     val lucideIcon: ImageVector? = null,
     val customIconResId: Int? = null
-)
+) {
+    // Übergangskonstruktor für bestehende Aufrufer, die noch ein Drawable übergeben
+    constructor(label: String, packageName: String, iconDrawable: Drawable?) : this(
+        label = label,
+        packageName = packageName,
+        iconBitmap = iconDrawable?.toBitmap()?.asImageBitmap(),
+        lucideIcon = null,
+        customIconResId = null
+    )
+}
 
 // Verbesserter bounceClick Modifier
 fun Modifier.bounceClick(interactionSource: MutableInteractionSource) = composed {
