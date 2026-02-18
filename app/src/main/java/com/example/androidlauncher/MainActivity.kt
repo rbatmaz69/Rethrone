@@ -537,7 +537,7 @@ fun AppDrawer(
                     Spacer(modifier = Modifier.width(12.dp))
                     BasicTextField(
                         value = searchQuery, onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("search_field"),
                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
                         cursorBrush = SolidColor(Color.White), singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
