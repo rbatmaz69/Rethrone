@@ -323,7 +323,10 @@ fun HomeScreen(
                     Surface(
                         color = Color.White.copy(alpha = 0.1f),
                         shape = CircleShape,
-                        modifier = Modifier.size(56.dp).clickable { onOpenFavoritesConfig() }
+                        modifier = Modifier.size(56.dp).clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onOpenFavoritesConfig() }
                     ) {
                         Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White) }
                     }
@@ -332,7 +335,10 @@ fun HomeScreen(
                         Surface(
                             color = Color.Transparent,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.clickable {
+                            modifier = Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
                                 context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
                             }
                         ) {
@@ -355,7 +361,10 @@ fun HomeScreen(
 
         Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
             Surface(
-                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).clickable { onToggleSettings() }, 
+                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onToggleSettings() }, 
                 color = Color.White.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), 
                 shape = CircleShape,
                 border = if (isSettingsOpen) BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
@@ -396,7 +405,10 @@ fun FavoritesConfigMenu(
         }
         Spacer(modifier = Modifier.height(16.dp))
         
-        Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable { focusRequester.requestFocus() }) {
+        Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null
+        ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
@@ -440,7 +452,10 @@ fun FavoritesConfigMenu(
             item { Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
-                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().clickable {
+                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
                     val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
                     if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, "Maximal 8 erlaubt", Toast.LENGTH_SHORT).show()
                 }) {
@@ -485,7 +500,10 @@ fun AppDrawer(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable { focusRequester.requestFocus() }) {
+            Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { focusRequester.requestFocus() }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
@@ -505,7 +523,12 @@ fun AppDrawer(
                 itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { _, app ->
                     var showActions by remember { mutableStateOf(false) }
                     Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } }, onLongClick = { showActions = true })) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } },
+                            onLongClick = { showActions = true }
+                        )) {
                             AppIconView(app)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(text = app.label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -556,7 +579,10 @@ fun ClockHeader() {
             color = Color.White,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .clickable {
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
                     var started = false
                     try {
                         val intent = Intent(Intent.ACTION_MAIN).apply {
@@ -629,7 +655,10 @@ fun ClockHeader() {
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .clickable {
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
                     val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
