@@ -61,7 +61,10 @@ fun SettingsPaletteMenu(
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
     val angleStep = 30f 
-    val baseAngle = 180f 
+    val focusAngle = 225f
+
+    // Dynamische Berechnung des Startwinkels für perfekte Symmetrie
+    val baseAngle = focusAngle - ((settingsItems.size - 1) * angleStep) / 2f
 
     LaunchedEffect(isSettingsOpen) {
         if (isSettingsOpen) {
@@ -128,10 +131,10 @@ fun SettingsPaletteMenu(
             val xOffset = (radius.value * cos(angleRad)).dp * animatedProgress
             val yOffset = (radius.value * sin(angleRad)).dp * animatedProgress
 
-            val focusAngle = 225f
             val normalizedAngle = (currentItemAngle % 360 + 360) % 360
             val distanceToFocus = abs(normalizedAngle - focusAngle)
-            val isFocused = distanceToFocus < (angleStep / 0.8f) && isSettingsOpen 
+            
+            val isFocused = distanceToFocus < (angleStep * 1.1f) && isSettingsOpen 
 
             val scale by animateFloatAsState(
                 targetValue = if (isFocused) 1.35f else 1.0f,
@@ -155,7 +158,7 @@ fun SettingsPaletteMenu(
                             onToggleSettings()
                         }
                     ),
-                color = if (isFocused) colorTheme.secondary.copy(alpha = 0.4f) else colorTheme.secondary.copy(alpha = 0.15f),
+                color = if (isFocused) colorTheme.secondary.copy(alpha = 0.3f) else colorTheme.secondary.copy(alpha = 0.12f),
                 shape = CircleShape,
                 border = if (isFocused) BorderStroke(2.dp, Color.White.copy(alpha = 0.6f)) else null
             ) {
