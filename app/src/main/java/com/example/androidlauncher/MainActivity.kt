@@ -159,9 +159,12 @@ class MainActivity : ComponentActivity() {
                         sortedIndices.forEachIndexed { loopIdx, appIdx ->
                             val app = appsSnapshot[appIdx]
                             val bitmap = loadSingleIcon(context, pm, cacheDir, app.packageName)
-                            if (bitmap != null) {
+                            if (bitmap != null && appIdx < allApps.size) {
                                 withContext(Dispatchers.Main) {
-                                    allApps[appIdx] = app.copy(iconBitmap = bitmap)
+                                    // Double check index is still valid
+                                    if (appIdx < allApps.size && allApps[appIdx].packageName == app.packageName) {
+                                        allApps[appIdx] = app.copy(iconBitmap = bitmap)
+                                    }
                                 }
                             }
                             if (loopIdx % 5 == 0) delay(1)
@@ -355,7 +358,7 @@ fun HomeScreen(
                     Surface(
                         color = Color.White.copy(alpha = 0.1f),
                         shape = CircleShape,
-                        modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
+                        modifier = Modifier.size(56.dp).testTag("add_favorites_button").bounceClick(intSrc).clickable(
                             interactionSource = intSrc,
                             indication = null
                         ) { onOpenFavoritesConfig() }
@@ -398,7 +401,7 @@ fun HomeScreen(
         Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
             val intSrc = remember { MutableInteractionSource() }
             Surface(
-                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).bounceClick(intSrc).clickable(
+                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).testTag("settings_button").bounceClick(intSrc).clickable(
                     interactionSource = intSrc,
                     indication = null
                 ) { onToggleSettings() }, 
@@ -438,7 +441,7 @@ fun FavoritesConfigMenu(
                 Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
                 Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
             }
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+            IconButton(modifier = Modifier.testTag("close_favorites_config"), onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
         }
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -453,7 +456,7 @@ fun FavoritesConfigMenu(
                 BasicTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("favorites_search_field"),
                     textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
                     cursorBrush = SolidColor(Color.White),
                     singleLine = true,
@@ -754,9 +757,7 @@ private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDi
         try {
             val b = BitmapFactory.decodeFile(iconFile.absolutePath)
             if (b != null) {
-                val ib = b.asImageBitmap()
-                ib.prepareToDraw()
-                return ib
+                return b.asImageBitmap()
             }
         } catch (e: Exception) { }
     }
@@ -774,14 +775,11 @@ private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDi
             val canvas = Canvas(b)
             foregroundDrawable.setBounds(0, 0, 144, 144)
             foregroundDrawable.draw(canvas)
-            
-            val ib = b.asImageBitmap()
-            ib.prepareToDraw()
 
             FileOutputStream(iconFile).use { out ->
                 b.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
-            ib
+            b.asImageBitmap()
         } catch (e: Exception) { null }
     }
 }
