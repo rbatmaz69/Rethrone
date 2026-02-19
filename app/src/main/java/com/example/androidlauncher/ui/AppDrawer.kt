@@ -29,17 +29,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.LauncherLogic
@@ -68,6 +75,10 @@ fun AppDrawer(
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
     val iconSize = LocalIconSize.current
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
+    
     var searchQuery by remember { mutableStateOf("") }
 
     val visibleApps = remember(apps.toList(), folders, searchQuery) {
@@ -82,12 +93,30 @@ fun AppDrawer(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     var activeFolder by remember { mutableStateOf<FolderInfo?>(null) }
-    var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
-    var folderNameInput by remember { mutableStateOf("") }
+    var folderPosition by remember { mutableStateOf(Offset.Zero) }
+
+    val blurAnim by animateDpAsState(
+        targetValue = if (activeFolder != null) 16.dp else 0.dp,
+        animationSpec = tween(400),
+        label = "BlurAnimation"
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
+        // Background with Blur
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f)))
+                .blur(blurAnim)
+        )
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .blur(blurAnim) // Apply blur to the app list as well
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -101,8 +130,37 @@ fun AppDrawer(
                 )
                 Row {
                     if (searchQuery.isBlank()) {
+                        var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
+                        var folderNameInput by remember { mutableStateOf("") }
+                        
                         IconButton(onClick = { isCreateFolderDialogOpen = true }) { 
                             Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = Color.White) 
+                        }
+                        
+                        if (isCreateFolderDialogOpen) {
+                            AlertDialog(
+                                onDismissRequest = { isCreateFolderDialogOpen = false },
+                                title = { Text("Neuer Ordner") },
+                                text = {
+                                    TextField(
+                                        value = folderNameInput,
+                                        onValueChange = { folderNameInput = it },
+                                        placeholder = { Text("Name eingeben") }
+                                    )
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        if (folderNameInput.isNotBlank()) {
+                                            onUpdateFolders(LauncherLogic.createFolder(folders, folderNameInput))
+                                            folderNameInput = ""
+                                            isCreateFolderDialogOpen = false
+                                        }
+                                    }) { Text("Erstellen") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { isCreateFolderDialogOpen = false }) { Text("Abbrechen") }
+                                }
+                            )
                         }
                     }
                     IconButton(onClick = onClose) {
@@ -150,7 +208,10 @@ fun AppDrawer(
                     itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
                         FolderItem(
                             folder = folder, 
-                            onClick = { activeFolder = folder }, 
+                            onClick = { pos -> 
+                                folderPosition = pos
+                                activeFolder = folder 
+                            }, 
                             onUpdateFolders = onUpdateFolders, 
                             onOpenFolderConfig = onOpenFolderConfig
                         )
@@ -173,25 +234,52 @@ fun AppDrawer(
         // Folder Popup Overlay
         AnimatedVisibility(
             visible = activeFolder != null,
-            enter = fadeIn() + scaleIn(initialScale = 0.8f),
-            exit = fadeOut() + scaleOut(targetScale = 0.8f)
+            enter = fadeIn(animationSpec = tween(400)) + scaleIn(
+                initialScale = 0.1f,
+                transformOrigin = TransformOrigin(
+                    pivotFractionX = if (folderPosition.x > 0) {
+                        folderPosition.x / (context.resources.displayMetrics.widthPixels.toFloat())
+                    } else 0.5f,
+                    pivotFractionY = if (folderPosition.y > 0) {
+                        folderPosition.y / (context.resources.displayMetrics.heightPixels.toFloat())
+                    } else 0.5f
+                ),
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+            ),
+            exit = fadeOut(animationSpec = tween(300)) + scaleOut(
+                targetScale = 0.1f,
+                transformOrigin = TransformOrigin(
+                    pivotFractionX = if (folderPosition.x > 0) {
+                        folderPosition.x / (context.resources.displayMetrics.widthPixels.toFloat())
+                    } else 0.5f,
+                    pivotFractionY = if (folderPosition.y > 0) {
+                        folderPosition.y / (context.resources.displayMetrics.heightPixels.toFloat())
+                    } else 0.5f
+                ),
+                animationSpec = tween(300)
+            )
         ) {
             activeFolder?.let { folder ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f))
-                        .clickable(onClick = { activeFolder = null }),
+                        .background(Color.Black.copy(alpha = 0.3f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { activeFolder = null }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .wrapContentHeight()
-                            .clickable(enabled = false) {}, // Prevent clicks through to background
+                            .clickable(enabled = false) {},
                         color = colorTheme.drawerBackground.copy(alpha = 0.95f),
-                        shape = RoundedCornerShape(28.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                        shape = RoundedCornerShape(32.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                        shadowElevation = 24.dp
                     ) {
                         Column(
                             modifier = Modifier.padding(24.dp),
@@ -200,8 +288,9 @@ fun AppDrawer(
                             Text(
                                 folder.name,
                                 color = Color.White,
-                                fontSize = 20.sp * fontSize.scale,
-                                fontWeight = FontWeight.Medium
+                                fontSize = 22.sp * fontSize.scale,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                             
@@ -209,10 +298,11 @@ fun AppDrawer(
                             val pages = (folderApps.size + 8) / 9
                             val pagerState = rememberPagerState(pageCount = { pages })
                             
-                            Box(modifier = Modifier.height(320.dp)) {
+                            Box(modifier = Modifier.height(340.dp)) {
                                 HorizontalPager(
                                     state = pagerState,
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize(),
+                                    pageSpacing = 16.dp
                                 ) { page ->
                                     val startIdx = page * 9
                                     val endIdx = minOf(startIdx + 9, folderApps.size)
@@ -246,14 +336,14 @@ fun AppDrawer(
                                     Modifier
                                         .wrapContentHeight()
                                         .fillMaxWidth()
-                                        .padding(bottom = 8.dp),
+                                        .padding(top = 16.dp),
                                     horizontalArrangement = Arrangement.Center
                                 ) {
                                     repeat(pages) { iteration ->
                                         val color = if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.3f)
                                         Box(
                                             modifier = Modifier
-                                                .padding(4.dp)
+                                                .padding(horizontal = 4.dp)
                                                 .clip(CircleShape)
                                                 .background(color)
                                                 .size(6.dp)
@@ -266,32 +356,6 @@ fun AppDrawer(
                 }
             }
         }
-
-        if (isCreateFolderDialogOpen) {
-            AlertDialog(
-                onDismissRequest = { isCreateFolderDialogOpen = false },
-                title = { Text("Neuer Ordner") },
-                text = {
-                    TextField(
-                        value = folderNameInput,
-                        onValueChange = { folderNameInput = it },
-                        placeholder = { Text("Name eingeben") }
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        if (folderNameInput.isNotBlank()) {
-                            onUpdateFolders(LauncherLogic.createFolder(folders, folderNameInput))
-                            folderNameInput = ""
-                            isCreateFolderDialogOpen = false
-                        }
-                    }) { Text("Erstellen") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { isCreateFolderDialogOpen = false }) { Text("Abbrechen") }
-                }
-            )
-        }
     }
 }
 
@@ -299,19 +363,33 @@ fun AppDrawer(
 @Composable
 fun FolderItem(
     folder: FolderInfo,
-    onClick: () -> Unit,
+    onClick: (Offset) -> Unit,
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     onOpenFolderConfig: (FolderInfo) -> Unit
 ) {
     val fontSize = LocalFontSize.current
     val iconSizeValue = LocalIconSize.current.size
     val intSrc = remember { MutableInteractionSource() }
+    var itemOffset by remember { mutableStateOf(Offset.Zero) }
 
-    Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .width(80.dp)
+            .onGloballyPositioned { coordinates ->
+                // Capture the center position of the item for the animation origin
+                val position = coordinates.positionInRoot()
+                val size = coordinates.size
+                itemOffset = Offset(
+                    x = position.x + size.width / 2f,
+                    y = position.y + size.height / 2f
+                )
+            }, 
+        contentAlignment = Alignment.Center
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
             interactionSource = intSrc,
             indication = null,
-            onClick = onClick,
+            onClick = { onClick(itemOffset) },
             onLongClick = { onOpenFolderConfig(folder) }
         )) {
             Box(modifier = Modifier.size(iconSizeValue).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
