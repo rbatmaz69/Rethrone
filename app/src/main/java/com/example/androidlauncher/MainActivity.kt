@@ -24,12 +24,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -43,27 +39,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.* 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -75,10 +62,15 @@ import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
+import com.example.androidlauncher.data.FolderInfo
+import com.example.androidlauncher.data.FolderManager
+import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.SettingsPaletteMenu
 import com.example.androidlauncher.ui.SizeConfigMenu
-import com.composables.icons.lucide.*
+import com.example.androidlauncher.ui.AppDrawer
+import com.example.androidlauncher.ui.AppIconView
+import com.example.androidlauncher.ui.bounceClick
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -89,29 +81,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
-@Stable
-data class AppInfo(
-    val label: String,
-    val packageName: String,
-    val iconBitmap: ImageBitmap? = null,
-    val lucideIcon: ImageVector? = null,
-    val customIconResId: Int? = null
-)
-
-// Verbesserter bounceClick Modifier
-fun Modifier.bounceClick(interactionSource: MutableInteractionSource) = composed {
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f, // Deutlicher auf 0.90f
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium // Schneller reagieren
-        ),
-        label = "bounceScale"
-    )
-    this.scale(scale)
-}
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -119,9 +88,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             val themeManager = remember { ThemeManager(context) }
+            val folderManager = remember { FolderManager(context) }
+            
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
+            val folders by folderManager.folders.collectAsState(initial = emptyList())
+            
             val scope = rememberCoroutineScope()
 
             AndroidLauncherTheme(
@@ -205,6 +178,7 @@ class MainActivity : ComponentActivity() {
                         if (targetIsDrawerOpen) {
                             AppDrawer(
                                 apps = allApps,
+                                folders = folders,
                                 onToggleFavorite = { pkg ->
                                     val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
                                     if (newFavs != favoritePackages) {
@@ -213,6 +187,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 isFavorite = { pkg -> pkg in favoritePackages },
+                                onUpdateFolders = { newFolders ->
+                                    scope.launch { folderManager.saveFolders(newFolders) }
+                                },
                                 onClose = { isDrawerOpen = false }
                             )
                         } else {
@@ -537,103 +514,6 @@ fun FavoritesConfigMenu(
         ) {
             Icon(Icons.Default.Check, contentDescription = null)
         }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun AppDrawer(
-    apps: List<AppInfo>, 
-    onToggleFavorite: (String) -> Unit,
-    isFavorite: (String) -> Boolean,
-    onClose: () -> Unit
-) {
-    val context = LocalContext.current
-    val colorTheme = LocalColorTheme.current
-    val fontSize = LocalFontSize.current
-    val iconSize = LocalIconSize.current
-    var searchQuery by remember { mutableStateOf("") }
-    val filteredApps = remember(apps.toList(), searchQuery) { LauncherLogic.filterApps(apps.toList(), searchQuery) }
-    val focusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Apps", fontSize = 24.sp * fontSize.scale, fontWeight = FontWeight.Light, color = Color.White)
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            val searchIntSrc = remember { MutableInteractionSource() }
-            Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
-                interactionSource = searchIntSrc,
-                indication = null
-            ) { focusRequester.requestFocus() }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    BasicTextField(
-                        value = searchQuery, onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp * fontSize.scale),
-                        cursorBrush = SolidColor(Color.White), singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            val adaptiveColumns = when (iconSize) {
-                IconSize.SMALL -> 5
-                IconSize.STANDARD -> 4
-                IconSize.LARGE -> 3
-            }
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(adaptiveColumns), 
-                modifier = Modifier.fillMaxSize(), 
-                horizontalArrangement = Arrangement.SpaceEvenly, 
-                verticalArrangement = Arrangement.spacedBy(32.dp), 
-                contentPadding = PaddingValues(bottom = 32.dp)
-            ) {
-                itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { _, app ->
-                    var showActions by remember { mutableStateOf(false) }
-                    val intSrc = remember { MutableInteractionSource() }
-                    Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
-                            interactionSource = intSrc,
-                            indication = null,
-                            onClick = { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } },
-                            onLongClick = { showActions = true }
-                        )) {
-                            AppIconView(app)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                        }
-                        DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
-                            DropdownMenuItem(text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
-                            DropdownMenuItem(text = { Text("App-Info", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
-                            DropdownMenuItem(text = { Text("Deinstallieren", color = Color.Red, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AppIconView(app: AppInfo) {
-    val iconSize = LocalIconSize.current.size
-    when {
-        app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
-        app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
-        app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(Color.White))
-        else -> Box(modifier = Modifier.size(iconSize).background(Color.White.copy(alpha = 0.05f), CircleShape))
     }
 }
 
