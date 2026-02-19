@@ -70,7 +70,9 @@ import androidx.core.graphics.drawable.toBitmap
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.SettingsPaletteMenu
 import com.example.androidlauncher.ui.SizeConfigMenu
@@ -116,9 +118,10 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val themeManager = remember { ThemeManager(context) }
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
+            val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val scope = rememberCoroutineScope()
 
-            AndroidLauncherTheme(colorTheme = currentTheme) {
+            AndroidLauncherTheme(colorTheme = currentTheme, fontSize = currentFontSize) {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
@@ -261,6 +264,10 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
                             SizeConfigMenu(
+                                currentFontSize = currentFontSize,
+                                onFontSizeSelected = { size ->
+                                    scope.launch { themeManager.setFontSize(size) }
+                                },
                                 onClose = { isSizeConfigOpen = false }
                             )
                         }
@@ -532,6 +539,7 @@ fun AppDrawer(
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
+    val fontSize = LocalFontSize.current
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(apps.toList(), searchQuery) { LauncherLogic.filterApps(apps.toList(), searchQuery) }
     val focusRequester = remember { FocusRequester() }
@@ -541,7 +549,7 @@ fun AppDrawer(
         Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Apps", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
+                Text("Apps", fontSize = 24.sp * fontSize.scale, fontWeight = FontWeight.Light, color = Color.White)
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -557,11 +565,11 @@ fun AppDrawer(
                     BasicTextField(
                         value = searchQuery, onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp * fontSize.scale),
                         cursorBrush = SolidColor(Color.White), singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp); it() }
+                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
                     )
                 }
             }
@@ -579,12 +587,12 @@ fun AppDrawer(
                         )) {
                             AppIconView(app)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = app.label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         }
                         DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
-                            DropdownMenuItem(text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
-                            DropdownMenuItem(text = { Text("App-Info", color = Color.White) }, onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
-                            DropdownMenuItem(text = { Text("Deinstallieren", color = Color.Red) }, onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
+                            DropdownMenuItem(text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
+                            DropdownMenuItem(text = { Text("App-Info", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
+                            DropdownMenuItem(text = { Text("Deinstallieren", color = Color.Red, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
                         }
                     }
                 }
@@ -607,6 +615,7 @@ fun AppIconView(app: AppInfo) {
 @Composable
 fun ClockHeader() {
     val context = LocalContext.current
+    val fontSize = LocalFontSize.current
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -624,7 +633,7 @@ fun ClockHeader() {
     ) {
         Text(
             text = timeFormat.format(currentTime),
-            fontSize = 72.sp,
+            fontSize = 72.sp * fontSize.scale,
             fontWeight = FontWeight.Normal,
             letterSpacing = (-2).sp,
             color = Color.White,
@@ -702,7 +711,7 @@ fun ClockHeader() {
         )
         Text(
             text = dateFormat.format(currentTime),
-            fontSize = 18.sp,
+            fontSize = 18.sp * fontSize.scale,
             fontWeight = FontWeight.Normal,
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier

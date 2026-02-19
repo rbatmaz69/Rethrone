@@ -13,6 +13,7 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
 class ThemeManager(private val context: Context) {
     companion object {
         private val THEME_KEY = stringPreferencesKey("selected_theme")
+        private val FONT_SIZE_KEY = stringPreferencesKey("font_size")
     }
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
@@ -25,9 +26,25 @@ class ThemeManager(private val context: Context) {
             }
         }
 
+    val selectedFontSize: Flow<FontSize> = context.dataStore.data
+        .map { preferences ->
+            val fontSizeName = preferences[FONT_SIZE_KEY] ?: FontSize.STANDARD.name
+            try {
+                FontSize.valueOf(fontSizeName)
+            } catch (e: IllegalArgumentException) {
+                FontSize.STANDARD
+            }
+        }
+
     suspend fun setTheme(theme: ColorTheme) {
         context.dataStore.edit { preferences ->
             preferences[THEME_KEY] = theme.name
+        }
+    }
+
+    suspend fun setFontSize(fontSize: FontSize) {
+        context.dataStore.edit { preferences ->
+            preferences[FONT_SIZE_KEY] = fontSize.name
         }
     }
 }

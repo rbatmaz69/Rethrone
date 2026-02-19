@@ -13,15 +13,17 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.example.androidlauncher.data.FontSize
 
 val LocalColorTheme = staticCompositionLocalOf { ColorTheme.LAUNCHER }
+val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 
 @Composable
 fun AndroidLauncherTheme(
     colorTheme: ColorTheme = ColorTheme.LAUNCHER,
+    fontSize: FontSize = FontSize.STANDARD,
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Default to false to use our custom themes
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -40,7 +42,10 @@ fun AndroidLauncherTheme(
         }
     }
 
-    CompositionLocalProvider(LocalColorTheme provides colorTheme) {
+    CompositionLocalProvider(
+        LocalColorTheme provides colorTheme,
+        LocalFontSize provides fontSize
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,
