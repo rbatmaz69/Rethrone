@@ -71,8 +71,10 @@ import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
+import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.SettingsPaletteMenu
 import com.example.androidlauncher.ui.SizeConfigMenu
@@ -119,9 +121,14 @@ class MainActivity : ComponentActivity() {
             val themeManager = remember { ThemeManager(context) }
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
+            val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val scope = rememberCoroutineScope()
 
-            AndroidLauncherTheme(colorTheme = currentTheme, fontSize = currentFontSize) {
+            AndroidLauncherTheme(
+                colorTheme = currentTheme, 
+                fontSize = currentFontSize,
+                iconSize = currentIconSize
+            ) {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
@@ -267,6 +274,10 @@ class MainActivity : ComponentActivity() {
                                 currentFontSize = currentFontSize,
                                 onFontSizeSelected = { size ->
                                     scope.launch { themeManager.setFontSize(size) }
+                                },
+                                currentIconSize = currentIconSize,
+                                onIconSizeSelected = { size ->
+                                    scope.launch { themeManager.setIconSize(size) }
                                 },
                                 onClose = { isSizeConfigOpen = false }
                             )
@@ -540,6 +551,7 @@ fun AppDrawer(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
+    val iconSize = LocalIconSize.current
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(apps.toList(), searchQuery) { LauncherLogic.filterApps(apps.toList(), searchQuery) }
     val focusRequester = remember { FocusRequester() }
@@ -574,11 +586,24 @@ fun AppDrawer(
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-            LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(32.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
+            
+            val adaptiveColumns = when (iconSize) {
+                IconSize.SMALL -> 5
+                IconSize.STANDARD -> 4
+                IconSize.LARGE -> 3
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(adaptiveColumns), 
+                modifier = Modifier.fillMaxSize(), 
+                horizontalArrangement = Arrangement.SpaceEvenly, 
+                verticalArrangement = Arrangement.spacedBy(32.dp), 
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
                 itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { _, app ->
                     var showActions by remember { mutableStateOf(false) }
                     val intSrc = remember { MutableInteractionSource() }
-                    Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
                             interactionSource = intSrc,
                             indication = null,
@@ -603,7 +628,7 @@ fun AppDrawer(
 
 @Composable
 fun AppIconView(app: AppInfo) {
-    val iconSize = 48.dp
+    val iconSize = LocalIconSize.current.size
     when {
         app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
         app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)

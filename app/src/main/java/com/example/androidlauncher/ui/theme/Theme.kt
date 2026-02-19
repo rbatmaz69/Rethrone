@@ -14,14 +14,17 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.example.androidlauncher.data.FontSize
+import com.example.androidlauncher.data.IconSize
 
 val LocalColorTheme = staticCompositionLocalOf { ColorTheme.LAUNCHER }
 val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
+val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
 
 @Composable
 fun AndroidLauncherTheme(
     colorTheme: ColorTheme = ColorTheme.LAUNCHER,
     fontSize: FontSize = FontSize.STANDARD,
+    iconSize: IconSize = IconSize.STANDARD,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -44,7 +47,8 @@ fun AndroidLauncherTheme(
 
     CompositionLocalProvider(
         LocalColorTheme provides colorTheme,
-        LocalFontSize provides fontSize
+        LocalFontSize provides fontSize,
+        LocalIconSize provides iconSize
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

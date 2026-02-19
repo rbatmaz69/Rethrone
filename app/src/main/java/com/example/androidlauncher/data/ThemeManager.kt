@@ -14,6 +14,7 @@ class ThemeManager(private val context: Context) {
     companion object {
         private val THEME_KEY = stringPreferencesKey("selected_theme")
         private val FONT_SIZE_KEY = stringPreferencesKey("font_size")
+        private val ICON_SIZE_KEY = stringPreferencesKey("icon_size")
     }
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
@@ -36,6 +37,16 @@ class ThemeManager(private val context: Context) {
             }
         }
 
+    val selectedIconSize: Flow<IconSize> = context.dataStore.data
+        .map { preferences ->
+            val iconSizeName = preferences[ICON_SIZE_KEY] ?: IconSize.STANDARD.name
+            try {
+                IconSize.valueOf(iconSizeName)
+            } catch (e: IllegalArgumentException) {
+                IconSize.STANDARD
+            }
+        }
+
     suspend fun setTheme(theme: ColorTheme) {
         context.dataStore.edit { preferences ->
             preferences[THEME_KEY] = theme.name
@@ -45,6 +56,12 @@ class ThemeManager(private val context: Context) {
     suspend fun setFontSize(fontSize: FontSize) {
         context.dataStore.edit { preferences ->
             preferences[FONT_SIZE_KEY] = fontSize.name
+        }
+    }
+
+    suspend fun setIconSize(iconSize: IconSize) {
+        context.dataStore.edit { preferences ->
+            preferences[ICON_SIZE_KEY] = iconSize.name
         }
     }
 }
