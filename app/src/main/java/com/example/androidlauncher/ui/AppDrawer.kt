@@ -9,7 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -29,6 +29,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -39,11 +40,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -84,6 +87,7 @@ fun AppDrawer(
     val iconSize = LocalIconSize.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
     
     var searchQuery by remember { mutableStateOf("") }
 
@@ -106,11 +110,17 @@ fun AppDrawer(
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
     
+    // Globale Drag-States
+    var draggingItemPkg by remember { mutableStateOf<String?>(null) }
+    var touchPosition by remember { mutableStateOf(Offset.Zero) }
+    var initialTouchOffsetInItem by remember { mutableStateOf(Offset.Zero) }
+
     LaunchedEffect(activeFolderId) {
         if (activeFolderId != null) {
             editingFolderName = folders.find { it.id == activeFolderId }?.name ?: ""
         } else {
             isEditMode = false
+            draggingItemPkg = null
         }
     }
 
@@ -222,7 +232,6 @@ fun AppDrawer(
                                 folderPosition = pos
                                 activeFolderId = folder.id 
                             }, 
-                            onUpdateFolders = onUpdateFolders, 
                             onOpenFolderConfig = onOpenFolderConfig
                         )
                     }
@@ -375,16 +384,77 @@ fun AppDrawer(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
                                     pageSpacing = 16.dp,
-                                    userScrollEnabled = !isEditMode
+                                    userScrollEnabled = !isEditMode && draggingItemPkg == null
                                 ) { page ->
                                     val startIdx = page * 9
                                     val endIdx = (startIdx + 9).coerceAtMost(folderApps.size)
                                     val pageApps = folderApps.subList(startIdx, endIdx)
                                     
-                                    var draggingItemPackageName by remember { mutableStateOf<String?>(null) }
-                                    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+                                    var gridWidth by remember { mutableStateOf(0f) }
+                                    var gridHeight by remember { mutableStateOf(0f) }
                                     
-                                    Box(modifier = Modifier.fillMaxSize()) {
+                                    val currentFolderState by rememberUpdatedState(currentActiveFolder)
+                                    val currentFoldersState by rememberUpdatedState(folders)
+                                    val currentPageAppsState by rememberUpdatedState(pageApps)
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .onGloballyPositioned { 
+                                                gridWidth = it.size.width.toFloat()
+                                                gridHeight = it.size.height.toFloat()
+                                            }
+                                            .pointerInput(isEditMode) {
+                                                if (!isEditMode) return@pointerInput
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { offset ->
+                                                        val cellW = (gridWidth + 16.dp.toPx()) / 3f
+                                                        val cellH = (gridHeight + 24.dp.toPx()) / 3f
+                                                        
+                                                        val col = (offset.x / cellW).toInt().coerceIn(0, 2)
+                                                        val row = (offset.y / cellH).toInt().coerceIn(0, 2)
+                                                        val idxInPage = row * 3 + col
+                                                        
+                                                        if (idxInPage < currentPageAppsState.size) {
+                                                            draggingItemPkg = currentPageAppsState[idxInPage].packageName
+                                                            touchPosition = offset
+                                                            initialTouchOffsetInItem = Offset(offset.x % cellW, offset.y % cellH)
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        }
+                                                    },
+                                                    onDragEnd = { draggingItemPkg = null },
+                                                    onDragCancel = { draggingItemPkg = null },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        touchPosition += dragAmount
+                                                        
+                                                        val pkg = draggingItemPkg ?: return@detectDragGesturesAfterLongPress
+                                                        val fromIdx = currentFolderState.appPackageNames.indexOf(pkg)
+                                                        
+                                                        if (fromIdx != -1) {
+                                                            val cellW = (gridWidth + 16.dp.toPx()) / 3f
+                                                            val cellH = (gridHeight + 24.dp.toPx()) / 3f
+
+                                                            val targetCol = (touchPosition.x / cellW).toInt().coerceIn(0, 2)
+                                                            val targetRow = (touchPosition.y / cellH).toInt().coerceIn(0, 2)
+                                                            val targetIdxInPage = targetRow * 3 + targetCol
+                                                            val targetIdx = (fromIdx / 9) * 9 + targetIdxInPage
+
+                                                            if (targetIdx != fromIdx && targetIdx < currentFolderState.appPackageNames.size) {
+                                                                val newList = currentFolderState.appPackageNames.toMutableList()
+                                                                val item = newList.removeAt(fromIdx)
+                                                                newList.add(targetIdx, item)
+
+                                                                onUpdateFolders(currentFoldersState.map { 
+                                                                    if (it.id == currentFolderState.id) it.copy(appPackageNames = newList) else it 
+                                                                })
+                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                            }
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                    ) {
                                         LazyVerticalGrid(
                                             columns = GridCells.Fixed(3),
                                             modifier = Modifier.fillMaxSize(),
@@ -392,68 +462,20 @@ fun AppDrawer(
                                             verticalArrangement = Arrangement.spacedBy(24.dp),
                                             userScrollEnabled = false
                                         ) {
-                                            itemsIndexed(pageApps, key = { _, app -> app.packageName }) { index, app ->
-                                                val isDragging = draggingItemPackageName == app.packageName
+                                            itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
+                                                val globalIndex = startIdx + indexInPage
+                                                val isDragging = draggingItemPkg == app.packageName
                                                 
-                                                val rotation = if (isEditMode && !isDragging) {
-                                                    if ((startIdx + index) % 2 == 0) wiggleAngle else -wiggleAngle
-                                                } else 0f
-
                                                 Box(
                                                     modifier = Modifier
-                                                        .zIndex(if (isDragging) 10f else 1f)
-                                                        .graphicsLayer { rotationZ = rotation }
-                                                        .then(if (isEditMode) {
-                                                            Modifier.pointerInput(app.packageName) {
-                                                                detectDragGestures(
-                                                                    onDragStart = { 
-                                                                        draggingItemPackageName = app.packageName 
-                                                                    },
-                                                                    onDragEnd = {
-                                                                        draggingItemPackageName?.let { pkg ->
-                                                                            val fromIdx = currentActiveFolder.appPackageNames.indexOf(pkg)
-                                                                            if (fromIdx != -1) {
-                                                                                // Improved calculation for grid reordering
-                                                                                val cellW = size.width.toFloat() + with(density) { 16.dp.toPx() }
-                                                                                val cellH = size.height.toFloat() + with(density) { 24.dp.toPx() }
-                                                                                
-                                                                                val colMove = (dragOffset.x / (size.width.toFloat() / 3f)).roundToInt()
-                                                                                val rowMove = (dragOffset.y / (size.height.toFloat() / 3f)).roundToInt()
-                                                                                
-                                                                                var targetIdx = fromIdx + rowMove * 3 + colMove
-                                                                                targetIdx = targetIdx.coerceIn(0, currentActiveFolder.appPackageNames.size - 1)
-                                                                                
-                                                                                if (fromIdx != targetIdx) {
-                                                                                    val newList = currentActiveFolder.appPackageNames.toMutableList()
-                                                                                    val item = newList.removeAt(fromIdx)
-                                                                                    newList.add(targetIdx, item)
-                                                                                    val updatedFolders = folders.map { 
-                                                                                        if (it.id == currentActiveFolder.id) it.copy(appPackageNames = newList) else it 
-                                                                                    }
-                                                                                    onUpdateFolders(updatedFolders)
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                        draggingItemPackageName = null
-                                                                        dragOffset = Offset.Zero
-                                                                    },
-                                                                    onDragCancel = {
-                                                                        draggingItemPackageName = null
-                                                                        dragOffset = Offset.Zero
-                                                                    },
-                                                                    onDrag = { change, dragAmount ->
-                                                                        change.consume()
-                                                                        dragOffset += dragAmount
-                                                                    }
-                                                                )
-                                                            }
-                                                        } else Modifier)
-                                                        .offset {
-                                                            if (isDragging) IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt())
-                                                            else IntOffset.Zero
+                                                        .let { if (isDragging) it else it.animateItem() }
+                                                        .zIndex(if (isDragging) 0f else 1f)
+                                                        .graphicsLayer { 
+                                                            rotationZ = if (isEditMode && !isDragging) {
+                                                                if (globalIndex % 2 == 0) wiggleAngle else -wiggleAngle
+                                                            } else 0f
+                                                            alpha = if (isDragging) 0f else 1f
                                                         }
-                                                        .scale(if (isDragging) 1.15f else 1f)
-                                                        .shadow(if (isDragging) 12.dp else 0.dp, RoundedCornerShape(12.dp))
                                                 ) {
                                                     AppItem(
                                                         app = app,
@@ -465,6 +487,38 @@ fun AppDrawer(
                                                         isInFolder = true,
                                                         currentFolderId = currentActiveFolder.id,
                                                         isEditMode = isEditMode
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Ghost-Icon das am Finger klebt
+                                        if (draggingItemPkg != null) {
+                                            val draggedApp = folderApps.find { it.packageName == draggingItemPkg }
+                                            if (draggedApp != null) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(80.dp)
+                                                        .graphicsLayer {
+                                                            translationX = touchPosition.x - initialTouchOffsetInItem.x
+                                                            translationY = touchPosition.y - initialTouchOffsetInItem.y
+                                                            scaleX = 1.3f
+                                                            scaleY = 1.3f
+                                                            alpha = 0.9f
+                                                        }
+                                                        .zIndex(1000f)
+                                                        .shadow(24.dp, RoundedCornerShape(16.dp))
+                                                ) {
+                                                    AppItem(
+                                                        app = draggedApp,
+                                                        adaptiveColumns = 3,
+                                                        isFavorite = isFavorite(draggedApp.packageName),
+                                                        onToggleFavorite = onToggleFavorite,
+                                                        folders = folders,
+                                                        onUpdateFolders = onUpdateFolders,
+                                                        isInFolder = true,
+                                                        currentFolderId = currentActiveFolder.id,
+                                                        isEditMode = true
                                                     )
                                                 }
                                             }
@@ -506,7 +560,6 @@ fun AppDrawer(
 fun FolderItem(
     folder: FolderInfo,
     onClick: (Offset) -> Unit,
-    onUpdateFolders: (List<FolderInfo>) -> Unit,
     onOpenFolderConfig: (FolderInfo) -> Unit
 ) {
     val fontSize = LocalFontSize.current
@@ -562,7 +615,7 @@ fun AppItem(
     val intSrc = remember { MutableInteractionSource() }
 
     Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc, enabled = !isEditMode).combinedClickable(
             interactionSource = intSrc,
             indication = null,
             enabled = !isEditMode,

@@ -23,10 +23,10 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.theme.LocalIconSize
 
 // Verbesserter bounceClick Modifier
-fun Modifier.bounceClick(interactionSource: MutableInteractionSource) = composed {
+fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: Boolean = true) = composed {
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
+        targetValue = if (isPressed && enabled) 0.90f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
