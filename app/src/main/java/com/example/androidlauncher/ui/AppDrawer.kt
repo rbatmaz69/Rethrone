@@ -9,6 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -29,12 +30,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -43,8 +48,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
@@ -55,6 +62,9 @@ import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Folder
 import com.composables.icons.lucide.FolderPlus
+import com.composables.icons.lucide.Pencil
+import com.composables.icons.lucide.Check
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -71,6 +81,7 @@ fun AppDrawer(
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
     val iconSize = LocalIconSize.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     
     var searchQuery by remember { mutableStateOf("") }
 
@@ -83,20 +94,22 @@ fun AppDrawer(
     }
 
     val focusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
 
     var activeFolder by remember { mutableStateOf<FolderInfo?>(null) }
     var folderPosition by remember { mutableStateOf(Offset.Zero) }
     
+    var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
+    
     LaunchedEffect(activeFolder) {
         if (activeFolder != null) {
             editingFolderName = activeFolder!!.name
+        } else {
+            isEditMode = false
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Background
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -236,7 +249,7 @@ fun AppDrawer(
                         folderPosition.y / (context.resources.displayMetrics.heightPixels.toFloat())
                     } else 0.5f
                 ),
-                animationSpec = tween(250, easing = FastOutSlowInEasing)
+                animationSpec = tween(200, easing = FastOutSlowInEasing)
             ),
             exit = fadeOut(animationSpec = tween(100)) + scaleOut(
                 targetScale = 0.3f,
@@ -251,7 +264,7 @@ fun AppDrawer(
                 animationSpec = tween(150)
             )
         ) {
-            activeFolder?.let { folder ->
+            activeFolder?.let { currentActiveFolder ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -259,7 +272,9 @@ fun AppDrawer(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { activeFolder = null }
+                            onClick = { 
+                                if (isEditMode) isEditMode = false else activeFolder = null 
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -277,61 +292,167 @@ fun AppDrawer(
                             modifier = Modifier.padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            BasicTextField(
-                                value = editingFolderName,
-                                onValueChange = { newName ->
-                                    editingFolderName = newName
-                                    onUpdateFolders(folders.map { 
-                                        if (it.id == folder.id) it.copy(name = newName) else it 
-                                    })
-                                },
-                                textStyle = androidx.compose.ui.text.TextStyle(
-                                    color = Color.White,
-                                    fontSize = 22.sp * fontSize.scale,
-                                    fontWeight = FontWeight.SemiBold,
-                                    textAlign = TextAlign.Center
-                                ),
-                                cursorBrush = SolidColor(Color.White),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                if (isEditMode) {
+                                    BasicTextField(
+                                        value = editingFolderName,
+                                        onValueChange = { newName ->
+                                            editingFolderName = newName
+                                            val updatedFolder = currentActiveFolder.copy(name = newName)
+                                            onUpdateFolders(folders.map { 
+                                                if (it.id == currentActiveFolder.id) updatedFolder else it 
+                                            })
+                                        },
+                                        textStyle = androidx.compose.ui.text.TextStyle(
+                                            color = Color.White,
+                                            fontSize = 22.sp * fontSize.scale,
+                                            fontWeight = FontWeight.SemiBold,
+                                            textAlign = TextAlign.Center
+                                        ),
+                                        cursorBrush = SolidColor(Color.White),
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        keyboardActions = KeyboardActions(onDone = { 
+                                            isEditMode = false
+                                            keyboardController?.hide() 
+                                        }),
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp)
+                                    )
+                                } else {
+                                    Text(
+                                        currentActiveFolder.name,
+                                        color = Color.White,
+                                        fontSize = 22.sp * fontSize.scale,
+                                        fontWeight = FontWeight.SemiBold,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp)
+                                    )
+                                }
+                                
+                                IconButton(
+                                    onClick = { isEditMode = !isEditMode },
+                                    modifier = Modifier.align(Alignment.CenterEnd).size(32.dp)
+                                ) {
+                                    Icon(
+                                        if (isEditMode) Lucide.Check else Lucide.Pencil, 
+                                        contentDescription = "EditMode", 
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            
                             Spacer(modifier = Modifier.height(24.dp))
                             
-                            val folderApps = apps.filter { it.packageName in folder.appPackageNames }
+                            val folderApps = apps.filter { it.packageName in currentActiveFolder.appPackageNames }
+                                .sortedBy { currentActiveFolder.appPackageNames.indexOf(it.packageName) }
+                            
                             val pages = (folderApps.size + 8) / 9
                             val pagerState = rememberPagerState(pageCount = { pages })
                             
+                            val infiniteTransition = rememberInfiniteTransition(label = "WiggleTransition")
+                            val wiggleAngle by infiniteTransition.animateFloat(
+                                initialValue = -1.5f,
+                                targetValue = 1.5f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(120, easing = LinearEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "WiggleAngle"
+                            )
+
                             Box(modifier = Modifier.height(340.dp)) {
                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
-                                    pageSpacing = 16.dp
+                                    pageSpacing = 16.dp,
+                                    userScrollEnabled = !isEditMode
                                 ) { page ->
                                     val startIdx = page * 9
                                     val endIdx = minOf(startIdx + 9, folderApps.size)
                                     val pageApps = folderApps.subList(startIdx, endIdx)
                                     
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Fixed(3),
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(24.dp),
-                                        userScrollEnabled = false
-                                    ) {
-                                        itemsIndexed(pageApps) { _, app ->
-                                            AppItem(
-                                                app = app,
-                                                adaptiveColumns = 3,
-                                                isFavorite = isFavorite(app.packageName),
-                                                onToggleFavorite = onToggleFavorite,
-                                                folders = folders,
-                                                onUpdateFolders = onUpdateFolders,
-                                                isInFolder = true,
-                                                currentFolderId = folder.id
-                                            )
+                                    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+                                    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+                                    
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        LazyVerticalGrid(
+                                            columns = GridCells.Fixed(3),
+                                            modifier = Modifier.fillMaxSize(),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(24.dp),
+                                            userScrollEnabled = false
+                                        ) {
+                                            itemsIndexed(pageApps) { index, app ->
+                                                val absoluteIndex = startIdx + index
+                                                val isDragging = draggingIndex == absoluteIndex
+                                                
+                                                val rotation = if (isEditMode && !isDragging) {
+                                                    if (index % 2 == 0) wiggleAngle else -wiggleAngle
+                                                } else 0f
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .zIndex(if (isDragging) 10f else 1f)
+                                                        .graphicsLayer { rotationZ = rotation }
+                                                        .then(if (isEditMode) {
+                                                            Modifier.pointerInput(currentActiveFolder.appPackageNames) {
+                                                                detectDragGesturesAfterLongPress(
+                                                                    onDragStart = { draggingIndex = absoluteIndex },
+                                                                    onDragEnd = {
+                                                                        draggingIndex?.let { fromIdx ->
+                                                                            val columnWidth = size.width / 3f
+                                                                            val rowHeight = size.height / 3f
+                                                                            val colMove = (dragOffset.x / columnWidth).roundToInt()
+                                                                            val rowMove = (dragOffset.y / rowHeight).roundToInt()
+                                                                            
+                                                                            var targetIdx = fromIdx + rowMove * 3 + colMove
+                                                                            targetIdx = targetIdx.coerceIn(0, currentActiveFolder.appPackageNames.size - 1)
+                                                                            
+                                                                            if (fromIdx != targetIdx) {
+                                                                                val newList = currentActiveFolder.appPackageNames.toMutableList()
+                                                                                val item = newList.removeAt(fromIdx)
+                                                                                newList.add(targetIdx, item)
+                                                                                val updatedFolders = folders.map { 
+                                                                                    if (it.id == currentActiveFolder.id) it.copy(appPackageNames = newList) else it 
+                                                                                }
+                                                                                onUpdateFolders(updatedFolders)
+                                                                            }
+                                                                        }
+                                                                        draggingIndex = null
+                                                                        dragOffset = Offset.Zero
+                                                                    },
+                                                                    onDragCancel = {
+                                                                        draggingIndex = null
+                                                                        dragOffset = Offset.Zero
+                                                                    },
+                                                                    onDrag = { change, dragAmount ->
+                                                                        change.consume()
+                                                                        dragOffset += dragAmount
+                                                                    }
+                                                                )
+                                                            }
+                                                        } else Modifier)
+                                                        .offset {
+                                                            if (isDragging) IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt())
+                                                            else IntOffset.Zero
+                                                        }
+                                                        .scale(if (isDragging) 1.15f else 1f)
+                                                        .shadow(if (isDragging) 12.dp else 0.dp, RoundedCornerShape(12.dp))
+                                                ) {
+                                                    AppItem(
+                                                        app = app,
+                                                        adaptiveColumns = 3,
+                                                        isFavorite = isFavorite(app.packageName),
+                                                        onToggleFavorite = onToggleFavorite,
+                                                        folders = folders,
+                                                        onUpdateFolders = onUpdateFolders,
+                                                        isInFolder = true,
+                                                        currentFolderId = currentActiveFolder.id,
+                                                        isDragEnabled = !isEditMode
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -416,7 +537,8 @@ fun AppItem(
     folders: List<FolderInfo>,
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     isInFolder: Boolean = false,
-    currentFolderId: String? = null
+    currentFolderId: String? = null,
+    isDragEnabled: Boolean = true
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
@@ -428,8 +550,14 @@ fun AppItem(
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
             interactionSource = intSrc,
             indication = null,
-            onClick = { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } },
-            onLongClick = { showActions = true }
+            onClick = { 
+                if (isDragEnabled) {
+                    context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } 
+                }
+            },
+            onLongClick = { 
+                if (isDragEnabled) showActions = true 
+            }
         )) {
             AppIconView(app)
             Spacer(modifier = Modifier.height(8.dp))
