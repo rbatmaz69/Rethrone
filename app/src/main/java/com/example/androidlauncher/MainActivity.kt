@@ -70,9 +70,14 @@ import androidx.core.graphics.drawable.toBitmap
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.data.FontSize
+import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.SettingsPaletteMenu
+import com.example.androidlauncher.ui.SizeConfigMenu
 import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -115,13 +120,20 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val themeManager = remember { ThemeManager(context) }
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
+            val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
+            val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val scope = rememberCoroutineScope()
 
-            AndroidLauncherTheme(colorTheme = currentTheme) {
+            AndroidLauncherTheme(
+                colorTheme = currentTheme, 
+                fontSize = currentFontSize,
+                iconSize = currentIconSize
+            ) {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
+                var isSizeConfigOpen by remember { mutableStateOf(false) }
                 
                 val allApps = remember { mutableStateListOf<AppInfo>() }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
@@ -161,13 +173,15 @@ class MainActivity : ComponentActivity() {
                         isSettingsOpen = false
                         isFavoritesConfigOpen = false
                         isColorConfigOpen = false
+                        isSizeConfigOpen = false
                     }
                 }
 
-                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen) {
+                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen) {
                     if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
+                    else if (isSizeConfigOpen) isSizeConfigOpen = false
                     else if (isSettingsOpen) isSettingsOpen = false
                 }
 
@@ -208,7 +222,8 @@ class MainActivity : ComponentActivity() {
                                 onOpenDrawer = { isDrawerOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
-                                onOpenColorConfig = { isColorConfigOpen = true }
+                                onOpenColorConfig = { isColorConfigOpen = true },
+                                onOpenSizeConfig = { isSizeConfigOpen = true }
                             )
                         }
                     }
@@ -219,7 +234,7 @@ class MainActivity : ComponentActivity() {
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
+                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
                             FavoritesConfigMenu(
                                 apps = allApps,
                                 initialFavoritePackages = favoritePackages,
@@ -238,13 +253,33 @@ class MainActivity : ComponentActivity() {
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
+                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
                             ColorConfigMenu(
                                 selectedTheme = currentTheme,
                                 onThemeSelected = { theme ->
                                     scope.launch { themeManager.setTheme(theme) }
                                 },
                                 onClose = { isColorConfigOpen = false }
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isSizeConfigOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                            SizeConfigMenu(
+                                currentFontSize = currentFontSize,
+                                onFontSizeSelected = { size ->
+                                    scope.launch { themeManager.setFontSize(size) }
+                                },
+                                currentIconSize = currentIconSize,
+                                onIconSizeSelected = { size ->
+                                    scope.launch { themeManager.setIconSize(size) }
+                                },
+                                onClose = { isSizeConfigOpen = false }
                             )
                         }
                     }
@@ -298,7 +333,8 @@ fun HomeScreen(
     onOpenDrawer: () -> Unit, 
     onToggleSettings: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
-    onOpenColorConfig: () -> Unit
+    onOpenColorConfig: () -> Unit,
+    onOpenSizeConfig: () -> Unit
 ) {
     val context = LocalContext.current
     val rotation by animateFloatAsState(
@@ -371,6 +407,7 @@ fun HomeScreen(
             onToggleSettings = onToggleSettings,
             onOpenFavoritesConfig = onOpenFavoritesConfig,
             onOpenColorConfig = onOpenColorConfig,
+            onOpenSizeConfig = onOpenSizeConfig,
             onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
             onOpenInfo = { /* Action */ }
         )
@@ -513,6 +550,8 @@ fun AppDrawer(
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
+    val fontSize = LocalFontSize.current
+    val iconSize = LocalIconSize.current
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(apps.toList(), searchQuery) { LauncherLogic.filterApps(apps.toList(), searchQuery) }
     val focusRequester = remember { FocusRequester() }
@@ -522,7 +561,7 @@ fun AppDrawer(
         Box(modifier = Modifier.fillMaxSize().background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f))))
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Apps", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
+                Text("Apps", fontSize = 24.sp * fontSize.scale, fontWeight = FontWeight.Light, color = Color.White)
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -538,20 +577,33 @@ fun AppDrawer(
                     BasicTextField(
                         value = searchQuery, onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp * fontSize.scale),
                         cursorBrush = SolidColor(Color.White), singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp); it() }
+                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
                     )
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-            LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(32.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
+            
+            val adaptiveColumns = when (iconSize) {
+                IconSize.SMALL -> 5
+                IconSize.STANDARD -> 4
+                IconSize.LARGE -> 3
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(adaptiveColumns), 
+                modifier = Modifier.fillMaxSize(), 
+                horizontalArrangement = Arrangement.SpaceEvenly, 
+                verticalArrangement = Arrangement.spacedBy(32.dp), 
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
                 itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { _, app ->
                     var showActions by remember { mutableStateOf(false) }
                     val intSrc = remember { MutableInteractionSource() }
-                    Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
                             interactionSource = intSrc,
                             indication = null,
@@ -560,12 +612,12 @@ fun AppDrawer(
                         )) {
                             AppIconView(app)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = app.label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         }
                         DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
-                            DropdownMenuItem(text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
-                            DropdownMenuItem(text = { Text("App-Info", color = Color.White) }, onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
-                            DropdownMenuItem(text = { Text("Deinstallieren", color = Color.Red) }, onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
+                            DropdownMenuItem(text = { Text(if (isFavorite(app.packageName)) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
+                            DropdownMenuItem(text = { Text("App-Info", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
+                            DropdownMenuItem(text = { Text("Deinstallieren", color = Color.Red, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
                         }
                     }
                 }
@@ -576,7 +628,7 @@ fun AppDrawer(
 
 @Composable
 fun AppIconView(app: AppInfo) {
-    val iconSize = 48.dp
+    val iconSize = LocalIconSize.current.size
     when {
         app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
         app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
@@ -588,6 +640,7 @@ fun AppIconView(app: AppInfo) {
 @Composable
 fun ClockHeader() {
     val context = LocalContext.current
+    val fontSize = LocalFontSize.current
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -605,7 +658,7 @@ fun ClockHeader() {
     ) {
         Text(
             text = timeFormat.format(currentTime),
-            fontSize = 72.sp,
+            fontSize = 72.sp * fontSize.scale,
             fontWeight = FontWeight.Normal,
             letterSpacing = (-2).sp,
             color = Color.White,
@@ -683,7 +736,7 @@ fun ClockHeader() {
         )
         Text(
             text = dateFormat.format(currentTime),
-            fontSize = 18.sp,
+            fontSize = 18.sp * fontSize.scale,
             fontWeight = FontWeight.Normal,
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier

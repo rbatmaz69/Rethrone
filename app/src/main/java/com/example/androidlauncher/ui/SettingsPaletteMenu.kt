@@ -19,8 +19,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Paintbrush
 import com.composables.icons.lucide.Palette
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import kotlinx.coroutines.delay
@@ -40,13 +40,14 @@ fun SettingsPaletteMenu(
     onToggleSettings: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
+    onOpenSizeConfig: () -> Unit,
     onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit
 ) {
     val settingsItems = remember {
         listOf(
             PaletteMenuItem("themes", Lucide.Palette, "Themes", onOpenColorConfig),
-            PaletteMenuItem("colors", Lucide.Paintbrush, "Colors", onOpenColorConfig),
+            PaletteMenuItem("size", Lucide.ALargeSmall, "Größe", onOpenSizeConfig),
             PaletteMenuItem("favorites", Icons.Default.Star, "Favorites", onOpenFavoritesConfig),
             PaletteMenuItem("system", Icons.Default.Settings, "System", onOpenSystemSettings),
             PaletteMenuItem("info", Icons.Default.Info, "Info", onOpenInfo),
@@ -54,7 +55,7 @@ fun SettingsPaletteMenu(
     }
 
     // Figma Parameter
-    val radius = 100f 
+    val radius = 110f // Leicht vergrößert für 5 Items
     val startAngle = 85f 
     val endAngle = 185f
 
@@ -67,7 +68,6 @@ fun SettingsPaletteMenu(
             val interactionSource = remember { MutableInteractionSource() }
             val isPressed by interactionSource.collectIsPressedAsState()
             
-            // Animierter Scale-Faktor für den Klick (0.92f wenn gedrückt, 1f wenn nicht)
             val pressScale by animateFloatAsState(
                 targetValue = if (isPressed) 0.92f else 1f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
@@ -114,12 +114,11 @@ fun SettingsPaletteMenu(
                             x = (targetX * progress).dp,
                             y = (targetY * progress).dp
                         )
-                        // Kombinierter Scale: Öffnen/Schließen * Klick-Feedback
                         .scale(progress * pressScale)
                         .alpha(progress.coerceIn(0f, 1f))
                         .clickable(
                             interactionSource = interactionSource,
-                            indication = null, // Standard-Ripple entfernen
+                            indication = null,
                             enabled = isSettingsOpen,
                             onClick = {
                                 item.action()
