@@ -71,6 +71,7 @@ import com.example.androidlauncher.ui.SizeConfigMenu
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.AppIconView
 import com.example.androidlauncher.ui.bounceClick
+import com.example.androidlauncher.ui.FolderConfigMenu
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -107,6 +108,7 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
+                var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
                 
                 val allApps = remember { mutableStateListOf<AppInfo>() }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
@@ -147,11 +149,13 @@ class MainActivity : ComponentActivity() {
                         isFavoritesConfigOpen = false
                         isColorConfigOpen = false
                         isSizeConfigOpen = false
+                        selectedFolderForConfig = null
                     }
                 }
 
-                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen) {
-                    if (isDrawerOpen) isDrawerOpen = false
+                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
+                    if (selectedFolderForConfig != null) selectedFolderForConfig = null
+                    else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
@@ -190,6 +194,9 @@ class MainActivity : ComponentActivity() {
                                 onUpdateFolders = { newFolders ->
                                     scope.launch { folderManager.saveFolders(newFolders) }
                                 },
+                                onOpenFolderConfig = { folder ->
+                                    selectedFolderForConfig = folder
+                                },
                                 onClose = { isDrawerOpen = false }
                             )
                         } else {
@@ -222,6 +229,27 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onClose = { isFavoritesConfigOpen = false }
                             )
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = selectedFolderForConfig != null,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        selectedFolderForConfig?.let { folder ->
+                            Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                                FolderConfigMenu(
+                                    folder = folder,
+                                    allApps = allApps,
+                                    onConfirm = { updatedFolder ->
+                                        val newFolders = folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                        scope.launch { folderManager.saveFolders(newFolders) }
+                                        selectedFolderForConfig = null
+                                    },
+                                    onClose = { selectedFolderForConfig = null }
+                                )
+                            }
                         }
                     }
 

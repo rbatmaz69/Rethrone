@@ -55,6 +55,7 @@ fun AppDrawer(
     onToggleFavorite: (String) -> Unit,
     isFavorite: (String) -> Boolean,
     onUpdateFolders: (List<FolderInfo>) -> Unit,
+    onOpenFolderConfig: (FolderInfo) -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -67,6 +68,7 @@ fun AppDrawer(
         if (searchQuery.isBlank()) {
             LauncherLogic.getVisibleApps(apps.toList(), folders)
         } else {
+            // Search should find all apps
             LauncherLogic.filterApps(apps.toList(), searchQuery)
         }
     }
@@ -142,7 +144,13 @@ fun AppDrawer(
                 ) {
                     if (searchQuery.isBlank()) {
                         itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
-                            FolderItem(folder = folder, onClick = { selectedFolderId = folder.id }, onUpdateFolders = onUpdateFolders, folders = folders)
+                            FolderItem(
+                                folder = folder, 
+                                onClick = { selectedFolderId = folder.id }, 
+                                onUpdateFolders = onUpdateFolders, 
+                                onOpenFolderConfig = onOpenFolderConfig,
+                                folders = folders
+                            )
                         }
                     }
 
@@ -218,21 +226,20 @@ fun FolderItem(
     folder: FolderInfo,
     onClick: () -> Unit,
     folders: List<FolderInfo>,
-    onUpdateFolders: (List<FolderInfo>) -> Unit
+    onUpdateFolders: (List<FolderInfo>) -> Unit,
+    onOpenFolderConfig: (FolderInfo) -> Unit
 ) {
     val fontSize = LocalFontSize.current
     val iconSizeValue = LocalIconSize.current.size
     val intSrc = remember { MutableInteractionSource() }
     var showMenu by remember { mutableStateOf(false) }
-    var isRenameDialogOpen by remember { mutableStateOf(false) }
-    var folderNameInput by remember { mutableStateOf(folder.name) }
 
     Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
             interactionSource = intSrc,
             indication = null,
             onClick = onClick,
-            onLongClick = { showMenu = true }
+            onLongClick = { onOpenFolderConfig(folder) }
         )) {
             Box(modifier = Modifier.size(iconSizeValue).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
                 Icon(Lucide.Folder, contentDescription = null, tint = Color.White, modifier = Modifier.size(iconSizeValue * 0.6f))
@@ -242,34 +249,9 @@ fun FolderItem(
         }
 
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
-            DropdownMenuItem(text = { Text("Umbenennen", color = Color.White) }, onClick = { isRenameDialogOpen = true; showMenu = false })
+            DropdownMenuItem(text = { Text("Bearbeiten", color = Color.White) }, onClick = { onOpenFolderConfig(folder); showMenu = false })
             DropdownMenuItem(text = { Text("Löschen", color = Color.Red) }, onClick = { onUpdateFolders(LauncherLogic.deleteFolder(folders, folder.id)); showMenu = false })
         }
-    }
-
-    if (isRenameDialogOpen) {
-        AlertDialog(
-            onDismissRequest = { isRenameDialogOpen = false },
-            title = { Text("Ordner umbenennen") },
-            text = {
-                TextField(
-                    value = folderNameInput,
-                    onValueChange = { folderNameInput = it },
-                    placeholder = { Text("Neuer Name") }
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (folderNameInput.isNotBlank()) {
-                        onUpdateFolders(LauncherLogic.renameFolder(folders, folder.id, folderNameInput))
-                        isRenameDialogOpen = false
-                    }
-                }) { Text("Speichern") }
-            },
-            dismissButton = {
-                TextButton(onClick = { isRenameDialogOpen = false }) { Text("Abbrechen") }
-            }
-        )
     }
 }
 
