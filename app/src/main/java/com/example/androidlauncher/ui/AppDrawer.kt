@@ -87,6 +87,13 @@ fun AppDrawer(
 
     var activeFolder by remember { mutableStateOf<FolderInfo?>(null) }
     var folderPosition by remember { mutableStateOf(Offset.Zero) }
+    
+    var editingFolderName by remember { mutableStateOf("") }
+    LaunchedEffect(activeFolder) {
+        if (activeFolder != null) {
+            editingFolderName = activeFolder!!.name
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Background
@@ -270,13 +277,27 @@ fun AppDrawer(
                             modifier = Modifier.padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                folder.name,
-                                color = Color.White,
-                                fontSize = 22.sp * fontSize.scale,
-                                fontWeight = FontWeight.SemiBold,
-                                textAlign = TextAlign.Center
+                            BasicTextField(
+                                value = editingFolderName,
+                                onValueChange = { newName ->
+                                    editingFolderName = newName
+                                    onUpdateFolders(folders.map { 
+                                        if (it.id == folder.id) it.copy(name = newName) else it 
+                                    })
+                                },
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = Color.White,
+                                    fontSize = 22.sp * fontSize.scale,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textAlign = TextAlign.Center
+                                ),
+                                cursorBrush = SolidColor(Color.White),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                                modifier = Modifier.fillMaxWidth()
                             )
+
                             Spacer(modifier = Modifier.height(24.dp))
                             
                             val folderApps = apps.filter { it.packageName in folder.appPackageNames }
