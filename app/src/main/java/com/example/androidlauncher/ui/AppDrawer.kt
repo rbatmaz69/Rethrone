@@ -22,14 +22,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -39,14 +37,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.LauncherLogic
@@ -75,9 +71,6 @@ fun AppDrawer(
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
     val iconSize = LocalIconSize.current
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val screenHeight = configuration.screenHeightDp.dp
     
     var searchQuery by remember { mutableStateOf("") }
 
@@ -95,19 +88,12 @@ fun AppDrawer(
     var activeFolder by remember { mutableStateOf<FolderInfo?>(null) }
     var folderPosition by remember { mutableStateOf(Offset.Zero) }
 
-    val blurAnim by animateDpAsState(
-        targetValue = if (activeFolder != null) 16.dp else 0.dp,
-        animationSpec = tween(400),
-        label = "BlurAnimation"
-    )
-
     Box(modifier = Modifier.fillMaxSize()) {
-        // Background with Blur
+        // Background
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f)))
-                .blur(blurAnim)
         )
         
         Column(
@@ -115,7 +101,6 @@ fun AppDrawer(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
-                .blur(blurAnim) // Apply blur to the app list as well
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -234,8 +219,8 @@ fun AppDrawer(
         // Folder Popup Overlay
         AnimatedVisibility(
             visible = activeFolder != null,
-            enter = fadeIn(animationSpec = tween(400)) + scaleIn(
-                initialScale = 0.1f,
+            enter = fadeIn(animationSpec = tween(150)) + scaleIn(
+                initialScale = 0.3f,
                 transformOrigin = TransformOrigin(
                     pivotFractionX = if (folderPosition.x > 0) {
                         folderPosition.x / (context.resources.displayMetrics.widthPixels.toFloat())
@@ -244,10 +229,10 @@ fun AppDrawer(
                         folderPosition.y / (context.resources.displayMetrics.heightPixels.toFloat())
                     } else 0.5f
                 ),
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                animationSpec = tween(250, easing = FastOutSlowInEasing)
             ),
-            exit = fadeOut(animationSpec = tween(300)) + scaleOut(
-                targetScale = 0.1f,
+            exit = fadeOut(animationSpec = tween(100)) + scaleOut(
+                targetScale = 0.3f,
                 transformOrigin = TransformOrigin(
                     pivotFractionX = if (folderPosition.x > 0) {
                         folderPosition.x / (context.resources.displayMetrics.widthPixels.toFloat())
@@ -256,14 +241,14 @@ fun AppDrawer(
                         folderPosition.y / (context.resources.displayMetrics.heightPixels.toFloat())
                     } else 0.5f
                 ),
-                animationSpec = tween(300)
+                animationSpec = tween(150)
             )
         ) {
             activeFolder?.let { folder ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f))
+                        .background(Color.Black.copy(alpha = 0.25f))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -276,7 +261,7 @@ fun AppDrawer(
                             .fillMaxWidth(0.85f)
                             .wrapContentHeight()
                             .clickable(enabled = false) {},
-                        color = colorTheme.drawerBackground.copy(alpha = 0.95f),
+                        color = colorTheme.drawerBackground.copy(alpha = 0.98f),
                         shape = RoundedCornerShape(32.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
                         shadowElevation = 24.dp
@@ -376,7 +361,6 @@ fun FolderItem(
         modifier = Modifier
             .width(80.dp)
             .onGloballyPositioned { coordinates ->
-                // Capture the center position of the item for the animation origin
                 val position = coordinates.positionInRoot()
                 val size = coordinates.size
                 itemOffset = Offset(
