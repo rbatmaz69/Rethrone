@@ -3,6 +3,8 @@ package com.example.androidlauncher.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,6 +14,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -24,6 +29,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -68,7 +74,6 @@ fun AppDrawer(
         if (searchQuery.isBlank()) {
             LauncherLogic.getVisibleApps(apps.toList(), folders)
         } else {
-            // Search should find all apps
             LauncherLogic.filterApps(apps.toList(), searchQuery)
         }
     }
@@ -76,7 +81,7 @@ fun AppDrawer(
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    var selectedFolderId by remember { mutableStateOf<String?>(null) }
+    var activeFolder by remember { mutableStateOf<FolderInfo?>(null) }
     var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
     var folderNameInput by remember { mutableStateOf("") }
 
@@ -89,19 +94,19 @@ fun AppDrawer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    if (selectedFolderId == null) "Apps" else folders.find { it.id == selectedFolderId }?.name ?: "Ordner",
+                    "Apps",
                     fontSize = 24.sp * fontSize.scale,
                     fontWeight = FontWeight.Light,
                     color = Color.White
                 )
                 Row {
-                    if (selectedFolderId == null && searchQuery.isBlank()) {
+                    if (searchQuery.isBlank()) {
                         IconButton(onClick = { isCreateFolderDialogOpen = true }) { 
                             Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = Color.White) 
                         }
                     }
-                    IconButton(onClick = { if (selectedFolderId != null) selectedFolderId = null else onClose() }) {
-                        Icon(if (selectedFolderId != null) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close, contentDescription = "Back/Close", tint = Color.White)
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                     }
                 }
             }
@@ -134,59 +139,129 @@ fun AppDrawer(
                 IconSize.LARGE -> 3
             }
 
-            if (selectedFolderId == null) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(adaptiveColumns),
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalArrangement = Arrangement.spacedBy(32.dp),
-                    contentPadding = PaddingValues(bottom = 32.dp)
-                ) {
-                    if (searchQuery.isBlank()) {
-                        itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
-                            FolderItem(
-                                folder = folder, 
-                                onClick = { selectedFolderId = folder.id }, 
-                                onUpdateFolders = onUpdateFolders, 
-                                onOpenFolderConfig = onOpenFolderConfig,
-                                folders = folders
-                            )
-                        }
-                    }
-
-                    itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { _, app ->
-                        AppItem(
-                            app = app,
-                            adaptiveColumns = adaptiveColumns,
-                            isFavorite = isFavorite(app.packageName),
-                            onToggleFavorite = onToggleFavorite,
-                            folders = folders,
-                            onUpdateFolders = onUpdateFolders
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(adaptiveColumns),
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalArrangement = Arrangement.spacedBy(32.dp),
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
+                if (searchQuery.isBlank()) {
+                    itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
+                        FolderItem(
+                            folder = folder, 
+                            onClick = { activeFolder = folder }, 
+                            onUpdateFolders = onUpdateFolders, 
+                            onOpenFolderConfig = onOpenFolderConfig
                         )
                     }
                 }
-            } else {
-                val folder = folders.find { it.id == selectedFolderId }
-                val folderApps = apps.filter { it.packageName in (folder?.appPackageNames ?: emptyList()) }
 
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(adaptiveColumns),
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalArrangement = Arrangement.spacedBy(32.dp),
-                    contentPadding = PaddingValues(bottom = 32.dp)
+                itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { _, app ->
+                    AppItem(
+                        app = app,
+                        adaptiveColumns = adaptiveColumns,
+                        isFavorite = isFavorite(app.packageName),
+                        onToggleFavorite = onToggleFavorite,
+                        folders = folders,
+                        onUpdateFolders = onUpdateFolders
+                    )
+                }
+            }
+        }
+
+        // Folder Popup Overlay
+        AnimatedVisibility(
+            visible = activeFolder != null,
+            enter = fadeIn() + scaleIn(initialScale = 0.8f),
+            exit = fadeOut() + scaleOut(targetScale = 0.8f)
+        ) {
+            activeFolder?.let { folder ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f))
+                        .clickable(onClick = { activeFolder = null }),
+                    contentAlignment = Alignment.Center
                 ) {
-                    itemsIndexed(items = folderApps, key = { _, app -> app.packageName }) { _, app ->
-                        AppItem(
-                            app = app,
-                            adaptiveColumns = adaptiveColumns,
-                            isFavorite = isFavorite(app.packageName),
-                            onToggleFavorite = onToggleFavorite,
-                            folders = folders,
-                            onUpdateFolders = onUpdateFolders,
-                            isInFolder = true,
-                            currentFolderId = selectedFolderId
-                        )
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .wrapContentHeight()
+                            .clickable(enabled = false) {}, // Prevent clicks through to background
+                        color = colorTheme.drawerBackground.copy(alpha = 0.95f),
+                        shape = RoundedCornerShape(28.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                folder.name,
+                                color = Color.White,
+                                fontSize = 20.sp * fontSize.scale,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            
+                            val folderApps = apps.filter { it.packageName in folder.appPackageNames }
+                            val pages = (folderApps.size + 8) / 9
+                            val pagerState = rememberPagerState(pageCount = { pages })
+                            
+                            Box(modifier = Modifier.height(320.dp)) {
+                                HorizontalPager(
+                                    state = pagerState,
+                                    modifier = Modifier.fillMaxSize()
+                                ) { page ->
+                                    val startIdx = page * 9
+                                    val endIdx = minOf(startIdx + 9, folderApps.size)
+                                    val pageApps = folderApps.subList(startIdx, endIdx)
+                                    
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Fixed(3),
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                                        userScrollEnabled = false
+                                    ) {
+                                        itemsIndexed(pageApps) { _, app ->
+                                            AppItem(
+                                                app = app,
+                                                adaptiveColumns = 3,
+                                                isFavorite = isFavorite(app.packageName),
+                                                onToggleFavorite = onToggleFavorite,
+                                                folders = folders,
+                                                onUpdateFolders = onUpdateFolders,
+                                                isInFolder = true,
+                                                currentFolderId = folder.id
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (pages > 1) {
+                                Row(
+                                    Modifier
+                                        .wrapContentHeight()
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    repeat(pages) { iteration ->
+                                        val color = if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.3f)
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(4.dp)
+                                                .clip(CircleShape)
+                                                .background(color)
+                                                .size(6.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -225,14 +300,12 @@ fun AppDrawer(
 fun FolderItem(
     folder: FolderInfo,
     onClick: () -> Unit,
-    folders: List<FolderInfo>,
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     onOpenFolderConfig: (FolderInfo) -> Unit
 ) {
     val fontSize = LocalFontSize.current
     val iconSizeValue = LocalIconSize.current.size
     val intSrc = remember { MutableInteractionSource() }
-    var showMenu by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
@@ -246,11 +319,6 @@ fun FolderItem(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = folder.name, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        }
-
-        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
-            DropdownMenuItem(text = { Text("Bearbeiten", color = Color.White) }, onClick = { onOpenFolderConfig(folder); showMenu = false })
-            DropdownMenuItem(text = { Text("Löschen", color = Color.Red) }, onClick = { onUpdateFolders(LauncherLogic.deleteFolder(folders, folder.id)); showMenu = false })
         }
     }
 }
