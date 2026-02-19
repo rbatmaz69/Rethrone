@@ -247,6 +247,11 @@ class MainActivity : ComponentActivity() {
                                         scope.launch { folderManager.saveFolders(newFolders) }
                                         selectedFolderForConfig = null
                                     },
+                                    onDelete = { folderId ->
+                                        val newFolders = folders.filter { it.id != folderId }
+                                        scope.launch { folderManager.saveFolders(newFolders) }
+                                        selectedFolderForConfig = null
+                                    },
                                     onClose = { selectedFolderForConfig = null }
                                 )
                             }

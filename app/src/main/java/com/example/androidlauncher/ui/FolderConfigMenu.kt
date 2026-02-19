@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,18 +35,22 @@ import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Trash2
 
 @Composable
 fun FolderConfigMenu(
     folder: FolderInfo,
     allApps: List<AppInfo>,
     onConfirm: (FolderInfo) -> Unit,
+    onDelete: (String) -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(folder.appPackageNames) }
     var folderName by remember { mutableStateOf(folder.name) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     
     val filteredApps = remember(allApps, searchQuery) { LauncherLogic.filterApps(allApps, searchQuery) }
     val focusRequester = remember { FocusRequester() }
@@ -62,7 +67,12 @@ fun FolderConfigMenu(
                 )
                 Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
             }
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+            Row {
+                IconButton(onClick = { showDeleteConfirm = true }) { 
+                    Icon(Lucide.Trash2, contentDescription = "Ordner löschen", tint = Color.Red.copy(alpha = 0.8f)) 
+                }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -196,6 +206,23 @@ fun FolderConfigMenu(
                 }
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Ordner löschen?") },
+            text = { Text("Möchtest du diesen Ordner wirklich entfernen? Die Apps bleiben weiterhin im AppDrawer verfügbar.") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    onDelete(folder.id)
+                    showDeleteConfirm = false 
+                }) { Text("Löschen", color = Color.Red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Abbrechen") }
+            }
+        )
     }
 
     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
