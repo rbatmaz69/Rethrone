@@ -9,7 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -43,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -82,6 +83,7 @@ fun AppDrawer(
     val fontSize = LocalFontSize.current
     val iconSize = LocalIconSize.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val density = LocalDensity.current
     
     var searchQuery by remember { mutableStateOf("") }
 
@@ -95,15 +97,18 @@ fun AppDrawer(
 
     val focusRequester = remember { FocusRequester() }
 
-    var activeFolder by remember { mutableStateOf<FolderInfo?>(null) }
-    var folderPosition by remember { mutableStateOf(Offset.Zero) }
+    var activeFolderId by remember { mutableStateOf<String?>(null) }
+    val activeFolder = remember(activeFolderId, folders) {
+        folders.find { it.id == activeFolderId }
+    }
     
+    var folderPosition by remember { mutableStateOf(Offset.Zero) }
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
     
-    LaunchedEffect(activeFolder) {
-        if (activeFolder != null) {
-            editingFolderName = activeFolder!!.name
+    LaunchedEffect(activeFolderId) {
+        if (activeFolderId != null) {
+            editingFolderName = folders.find { it.id == activeFolderId }?.name ?: ""
         } else {
             isEditMode = false
         }
@@ -215,7 +220,7 @@ fun AppDrawer(
                             folder = folder, 
                             onClick = { pos -> 
                                 folderPosition = pos
-                                activeFolder = folder 
+                                activeFolderId = folder.id 
                             }, 
                             onUpdateFolders = onUpdateFolders, 
                             onOpenFolderConfig = onOpenFolderConfig
@@ -273,7 +278,7 @@ fun AppDrawer(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = { 
-                                if (isEditMode) isEditMode = false else activeFolder = null 
+                                if (isEditMode) isEditMode = false else activeFolderId = null 
                             }
                         ),
                     contentAlignment = Alignment.Center
@@ -299,9 +304,10 @@ fun AppDrawer(
                                         onValueChange = { newName ->
                                             editingFolderName = newName
                                             val updatedFolder = currentActiveFolder.copy(name = newName)
-                                            onUpdateFolders(folders.map { 
+                                            val updatedFolders = folders.map { 
                                                 if (it.id == currentActiveFolder.id) updatedFolder else it 
-                                            })
+                                            }
+                                            onUpdateFolders(updatedFolders)
                                         },
                                         textStyle = androidx.compose.ui.text.TextStyle(
                                             color = Color.White,
@@ -344,18 +350,21 @@ fun AppDrawer(
                             
                             Spacer(modifier = Modifier.height(24.dp))
                             
-                            val folderApps = apps.filter { it.packageName in currentActiveFolder.appPackageNames }
-                                .sortedBy { currentActiveFolder.appPackageNames.indexOf(it.packageName) }
+                            val folderApps = remember(currentActiveFolder.appPackageNames, apps) {
+                                currentActiveFolder.appPackageNames.mapNotNull { pkg -> 
+                                    apps.find { it.packageName == pkg } 
+                                }
+                            }
                             
                             val pages = (folderApps.size + 8) / 9
                             val pagerState = rememberPagerState(pageCount = { pages })
                             
                             val infiniteTransition = rememberInfiniteTransition(label = "WiggleTransition")
                             val wiggleAngle by infiniteTransition.animateFloat(
-                                initialValue = -1.5f,
-                                targetValue = 1.5f,
+                                initialValue = -2.5f,
+                                targetValue = 2.5f,
                                 animationSpec = infiniteRepeatable(
-                                    animation = tween(120, easing = LinearEasing),
+                                    animation = tween(110, easing = LinearEasing),
                                     repeatMode = RepeatMode.Reverse
                                 ),
                                 label = "WiggleAngle"
@@ -369,10 +378,10 @@ fun AppDrawer(
                                     userScrollEnabled = !isEditMode
                                 ) { page ->
                                     val startIdx = page * 9
-                                    val endIdx = minOf(startIdx + 9, folderApps.size)
+                                    val endIdx = (startIdx + 9).coerceAtMost(folderApps.size)
                                     val pageApps = folderApps.subList(startIdx, endIdx)
                                     
-                                    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+                                    var draggingItemPackageName by remember { mutableStateOf<String?>(null) }
                                     var dragOffset by remember { mutableStateOf(Offset.Zero) }
                                     
                                     Box(modifier = Modifier.fillMaxSize()) {
@@ -383,12 +392,11 @@ fun AppDrawer(
                                             verticalArrangement = Arrangement.spacedBy(24.dp),
                                             userScrollEnabled = false
                                         ) {
-                                            itemsIndexed(pageApps) { index, app ->
-                                                val absoluteIndex = startIdx + index
-                                                val isDragging = draggingIndex == absoluteIndex
+                                            itemsIndexed(pageApps, key = { _, app -> app.packageName }) { index, app ->
+                                                val isDragging = draggingItemPackageName == app.packageName
                                                 
                                                 val rotation = if (isEditMode && !isDragging) {
-                                                    if (index % 2 == 0) wiggleAngle else -wiggleAngle
+                                                    if ((startIdx + index) % 2 == 0) wiggleAngle else -wiggleAngle
                                                 } else 0f
 
                                                 Box(
@@ -396,34 +404,41 @@ fun AppDrawer(
                                                         .zIndex(if (isDragging) 10f else 1f)
                                                         .graphicsLayer { rotationZ = rotation }
                                                         .then(if (isEditMode) {
-                                                            Modifier.pointerInput(currentActiveFolder.appPackageNames) {
-                                                                detectDragGesturesAfterLongPress(
-                                                                    onDragStart = { draggingIndex = absoluteIndex },
+                                                            Modifier.pointerInput(app.packageName) {
+                                                                detectDragGestures(
+                                                                    onDragStart = { 
+                                                                        draggingItemPackageName = app.packageName 
+                                                                    },
                                                                     onDragEnd = {
-                                                                        draggingIndex?.let { fromIdx ->
-                                                                            val columnWidth = size.width / 3f
-                                                                            val rowHeight = size.height / 3f
-                                                                            val colMove = (dragOffset.x / columnWidth).roundToInt()
-                                                                            val rowMove = (dragOffset.y / rowHeight).roundToInt()
-                                                                            
-                                                                            var targetIdx = fromIdx + rowMove * 3 + colMove
-                                                                            targetIdx = targetIdx.coerceIn(0, currentActiveFolder.appPackageNames.size - 1)
-                                                                            
-                                                                            if (fromIdx != targetIdx) {
-                                                                                val newList = currentActiveFolder.appPackageNames.toMutableList()
-                                                                                val item = newList.removeAt(fromIdx)
-                                                                                newList.add(targetIdx, item)
-                                                                                val updatedFolders = folders.map { 
-                                                                                    if (it.id == currentActiveFolder.id) it.copy(appPackageNames = newList) else it 
+                                                                        draggingItemPackageName?.let { pkg ->
+                                                                            val fromIdx = currentActiveFolder.appPackageNames.indexOf(pkg)
+                                                                            if (fromIdx != -1) {
+                                                                                // Improved calculation for grid reordering
+                                                                                val cellW = size.width.toFloat() + with(density) { 16.dp.toPx() }
+                                                                                val cellH = size.height.toFloat() + with(density) { 24.dp.toPx() }
+                                                                                
+                                                                                val colMove = (dragOffset.x / (size.width.toFloat() / 3f)).roundToInt()
+                                                                                val rowMove = (dragOffset.y / (size.height.toFloat() / 3f)).roundToInt()
+                                                                                
+                                                                                var targetIdx = fromIdx + rowMove * 3 + colMove
+                                                                                targetIdx = targetIdx.coerceIn(0, currentActiveFolder.appPackageNames.size - 1)
+                                                                                
+                                                                                if (fromIdx != targetIdx) {
+                                                                                    val newList = currentActiveFolder.appPackageNames.toMutableList()
+                                                                                    val item = newList.removeAt(fromIdx)
+                                                                                    newList.add(targetIdx, item)
+                                                                                    val updatedFolders = folders.map { 
+                                                                                        if (it.id == currentActiveFolder.id) it.copy(appPackageNames = newList) else it 
+                                                                                    }
+                                                                                    onUpdateFolders(updatedFolders)
                                                                                 }
-                                                                                onUpdateFolders(updatedFolders)
                                                                             }
                                                                         }
-                                                                        draggingIndex = null
+                                                                        draggingItemPackageName = null
                                                                         dragOffset = Offset.Zero
                                                                     },
                                                                     onDragCancel = {
-                                                                        draggingIndex = null
+                                                                        draggingItemPackageName = null
                                                                         dragOffset = Offset.Zero
                                                                     },
                                                                     onDrag = { change, dragAmount ->
@@ -449,7 +464,7 @@ fun AppDrawer(
                                                         onUpdateFolders = onUpdateFolders,
                                                         isInFolder = true,
                                                         currentFolderId = currentActiveFolder.id,
-                                                        isDragEnabled = !isEditMode
+                                                        isEditMode = isEditMode
                                                     )
                                                 }
                                             }
@@ -538,7 +553,7 @@ fun AppItem(
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     isInFolder: Boolean = false,
     currentFolderId: String? = null,
-    isDragEnabled: Boolean = true
+    isEditMode: Boolean = false
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
@@ -550,13 +565,12 @@ fun AppItem(
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(
             interactionSource = intSrc,
             indication = null,
+            enabled = !isEditMode,
             onClick = { 
-                if (isDragEnabled) {
-                    context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } 
-                }
+                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } 
             },
             onLongClick = { 
-                if (isDragEnabled) showActions = true 
+                showActions = true
             }
         )) {
             AppIconView(app)

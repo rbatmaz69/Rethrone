@@ -6,18 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,7 +24,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.LauncherLogic
@@ -74,91 +68,8 @@ fun FolderConfigMenu(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
         
-        // Horizontal Reordering Section
-        if (selectedPackages.isNotEmpty()) {
-            Text("Reihenfolge anpassen", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(end = 16.dp)
-            ) {
-                itemsIndexed(selectedPackages) { index, pkg ->
-                    val app = allApps.find { it.packageName == pkg }
-                    if (app != null) {
-                        Surface(
-                            color = Color.White.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.width(100.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Box(modifier = Modifier.size(40.dp)) {
-                                    AppIconView(app)
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    app.label,
-                                    color = Color.White,
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    IconButton(
-                                        onClick = {
-                                            if (index > 0) {
-                                                val newList = selectedPackages.toMutableList()
-                                                val item = newList.removeAt(index)
-                                                newList.add(index - 1, item)
-                                                selectedPackages = newList
-                                            }
-                                        },
-                                        enabled = index > 0,
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                                            contentDescription = null,
-                                            tint = if (index > 0) Color.White else Color.White.copy(alpha = 0.2f),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            if (index < selectedPackages.size - 1) {
-                                                val newList = selectedPackages.toMutableList()
-                                                val item = newList.removeAt(index)
-                                                newList.add(index + 1, item)
-                                                selectedPackages = newList
-                                            }
-                                        },
-                                        enabled = index < selectedPackages.size - 1,
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                            contentDescription = null,
-                                            tint = if (index < selectedPackages.size - 1) Color.White else Color.White.copy(alpha = 0.2f),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        Spacer(modifier = Modifier.height(24.dp))
 
         val searchIntSrc = remember { MutableInteractionSource() }
         Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
@@ -183,7 +94,7 @@ fun FolderConfigMenu(
         Spacer(modifier = Modifier.height(16.dp))
         
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
-            item { Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+            item { Text("Apps verwalten", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isSelected = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
