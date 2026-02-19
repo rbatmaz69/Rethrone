@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -102,10 +103,17 @@ fun AppDrawer(
     val focusRequester = remember { FocusRequester() }
 
     var activeFolderId by remember { mutableStateOf<String?>(null) }
+    
+    // Wir halten den Ordner-Inhalt stabil, auch wenn activeFolderId null wird (für die Exit-Animation)
     val activeFolder = remember(activeFolderId, folders) {
-        folders.find { it.id == activeFolderId }
+        if (activeFolderId != null) folders.find { it.id == activeFolderId } else null
+    }
+    var lastValidFolder by remember { mutableStateOf<FolderInfo?>(null) }
+    if (activeFolder != null) {
+        lastValidFolder = activeFolder
     }
     
+    var drawerSize by remember { mutableStateOf(IntSize.Zero) }
     var folderPosition by remember { mutableStateOf(Offset.Zero) }
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
@@ -124,7 +132,7 @@ fun AppDrawer(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { drawerSize = it.size }) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -250,39 +258,35 @@ fun AppDrawer(
             }
         }
 
-        // Folder Popup Overlay
+        // Folder Popup Overlay with precise symmetric animation
+        val pivotOrigin = remember(folderPosition, drawerSize) {
+            if (drawerSize.width > 0 && drawerSize.height > 0) {
+                TransformOrigin(
+                    pivotFractionX = folderPosition.x / drawerSize.width.toFloat(),
+                    pivotFractionY = folderPosition.y / drawerSize.height.toFloat()
+                )
+            } else TransformOrigin.Center
+        }
+
         AnimatedVisibility(
-            visible = activeFolder != null,
-            enter = fadeIn(animationSpec = tween(150)) + scaleIn(
-                initialScale = 0.3f,
-                transformOrigin = TransformOrigin(
-                    pivotFractionX = if (folderPosition.x > 0) {
-                        folderPosition.x / (context.resources.displayMetrics.widthPixels.toFloat())
-                    } else 0.5f,
-                    pivotFractionY = if (folderPosition.y > 0) {
-                        folderPosition.y / (context.resources.displayMetrics.heightPixels.toFloat())
-                    } else 0.5f
-                ),
-                animationSpec = tween(200, easing = FastOutSlowInEasing)
+            visible = activeFolderId != null,
+            enter = fadeIn(animationSpec = tween(250)) + scaleIn(
+                initialScale = 0.05f,
+                transformOrigin = pivotOrigin,
+                animationSpec = tween(400, easing = FastOutSlowInEasing)
             ),
-            exit = fadeOut(animationSpec = tween(100)) + scaleOut(
-                targetScale = 0.3f,
-                transformOrigin = TransformOrigin(
-                    pivotFractionX = if (folderPosition.x > 0) {
-                        folderPosition.x / (context.resources.displayMetrics.widthPixels.toFloat())
-                    } else 0.5f,
-                    pivotFractionY = if (folderPosition.y > 0) {
-                        folderPosition.y / (context.resources.displayMetrics.heightPixels.toFloat())
-                    } else 0.5f
-                ),
-                animationSpec = tween(150)
+            exit = fadeOut(animationSpec = tween(250)) + scaleOut(
+                targetScale = 0.05f,
+                transformOrigin = pivotOrigin,
+                animationSpec = tween(400, easing = FastOutSlowInEasing)
             )
         ) {
-            activeFolder?.let { currentActiveFolder ->
+            // Benutze lastValidFolder, damit der Inhalt während der gesamten Exit-Animation bleibt
+            lastValidFolder?.let { currentActiveFolder ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.25f))
+                        .background(Color.Black.copy(alpha = 0.35f))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
