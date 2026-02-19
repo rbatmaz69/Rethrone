@@ -73,6 +73,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.SettingsPaletteMenu
+import com.example.androidlauncher.ui.SizeConfigMenu
 import com.composables.icons.lucide.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -122,6 +123,7 @@ class MainActivity : ComponentActivity() {
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
+                var isSizeConfigOpen by remember { mutableStateOf(false) }
                 
                 val allApps = remember { mutableStateListOf<AppInfo>() }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
@@ -161,13 +163,15 @@ class MainActivity : ComponentActivity() {
                         isSettingsOpen = false
                         isFavoritesConfigOpen = false
                         isColorConfigOpen = false
+                        isSizeConfigOpen = false
                     }
                 }
 
-                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen) {
+                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen) {
                     if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
+                    else if (isSizeConfigOpen) isSizeConfigOpen = false
                     else if (isSettingsOpen) isSettingsOpen = false
                 }
 
@@ -208,7 +212,8 @@ class MainActivity : ComponentActivity() {
                                 onOpenDrawer = { isDrawerOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
-                                onOpenColorConfig = { isColorConfigOpen = true }
+                                onOpenColorConfig = { isColorConfigOpen = true },
+                                onOpenSizeConfig = { isSizeConfigOpen = true }
                             )
                         }
                     }
@@ -245,6 +250,18 @@ class MainActivity : ComponentActivity() {
                                     scope.launch { themeManager.setTheme(theme) }
                                 },
                                 onClose = { isColorConfigOpen = false }
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isSizeConfigOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
+                            SizeConfigMenu(
+                                onClose = { isSizeConfigOpen = false }
                             )
                         }
                     }
@@ -298,7 +315,8 @@ fun HomeScreen(
     onOpenDrawer: () -> Unit, 
     onToggleSettings: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
-    onOpenColorConfig: () -> Unit
+    onOpenColorConfig: () -> Unit,
+    onOpenSizeConfig: () -> Unit
 ) {
     val context = LocalContext.current
     val rotation by animateFloatAsState(
@@ -371,6 +389,7 @@ fun HomeScreen(
             onToggleSettings = onToggleSettings,
             onOpenFavoritesConfig = onOpenFavoritesConfig,
             onOpenColorConfig = onOpenColorConfig,
+            onOpenSizeConfig = onOpenSizeConfig,
             onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
             onOpenInfo = { /* Action */ }
         )
