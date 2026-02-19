@@ -234,7 +234,7 @@ class MainActivity : ComponentActivity() {
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
+                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
                             FavoritesConfigMenu(
                                 apps = allApps,
                                 initialFavoritePackages = favoritePackages,
@@ -253,7 +253,7 @@ class MainActivity : ComponentActivity() {
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
+                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
                             ColorConfigMenu(
                                 selectedTheme = currentTheme,
                                 onThemeSelected = { theme ->
@@ -269,7 +269,7 @@ class MainActivity : ComponentActivity() {
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
+                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
                             SizeConfigMenu(
                                 currentFontSize = currentFontSize,
                                 onFontSizeSelected = { size ->

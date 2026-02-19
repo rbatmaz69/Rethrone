@@ -34,9 +34,10 @@ fun SizeConfigMenu(
     onIconSizeSelected: (IconSize) -> Unit,
     onClose: () -> Unit
 ) {
+    val colorTheme = LocalColorTheme.current
     Box(modifier = Modifier.fillMaxSize()) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.95f)))
+        Box(modifier = Modifier.fillMaxSize().background(colorTheme.drawerBackground.copy(alpha = 0.95f)))
 
         Column(
             modifier = Modifier

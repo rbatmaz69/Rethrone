@@ -32,7 +32,8 @@ fun ColorConfigMenu(
 ) {
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A).copy(alpha = 0.95f)))
+        // Nutzt nun die Farbe des aktuell ausgewählten Themes statt des statischen Blaus
+        Box(modifier = Modifier.fillMaxSize().background(selectedTheme.drawerBackground.copy(alpha = 0.95f)))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
