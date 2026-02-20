@@ -332,8 +332,8 @@ fun AppDrawer(
                                         onValueChange = { newName ->
                                             editingFolderName = newName
                                             val updatedFolder = currentActiveFolder.copy(name = newName)
-                                            val updatedFolders = folders.map { 
-                                                if (it.id == currentActiveFolder.id) updatedFolder else it 
+                                            val updatedFolders = folders.map {
+                                                if (it.id == currentActiveFolder.id) updatedFolder else it
                                             }
                                             onUpdateFolders(updatedFolders)
                                         },
@@ -418,10 +418,10 @@ fun AppDrawer(
 
                             Box(modifier = Modifier.height(340.dp)) {
                                 var gridAreaSize by remember { mutableStateOf(IntSize.Zero) }
-                                
+
                                 val currentFolderState by rememberUpdatedState(currentActiveFolder)
                                 val currentFoldersState by rememberUpdatedState(folders)
-                                
+
                                 // Hilfsfunktion für den Positionswechsel
                                 fun performReorder(currentTouch: Offset, currentPage: Int) {
                                     val pkg = draggingItemPkg ?: return
@@ -439,8 +439,8 @@ fun AppDrawer(
                                         newList.removeAt(fromIdx)
                                         newList.add(targetIdx, pkg)
 
-                                        onUpdateFolders(currentFoldersState.map { 
-                                            if (it.id == currentFolderState.id) it.copy(appPackageNames = newList) else it 
+                                        onUpdateFolders(currentFoldersState.map {
+                                            if (it.id == currentFolderState.id) it.copy(appPackageNames = newList) else it
                                         })
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     }
