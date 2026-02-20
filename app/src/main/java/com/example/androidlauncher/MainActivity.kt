@@ -687,7 +687,7 @@ private fun getAppListBasic(context: Context): List<AppInfo> {
             label = resolveInfo.loadLabel(pm).toString(),
             packageName = resolveInfo.activityInfo.packageName
         )
-    }.sortedBy { it.label.lowercase() }
+    }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
 }
 
 private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
