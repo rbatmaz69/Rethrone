@@ -17,6 +17,7 @@ import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -83,9 +84,22 @@ import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : ComponentActivity() {
+    // OnBackPressedCallback als Instanzvariable um ihn später zu steuern
+    private lateinit var backCallback: OnBackPressedCallback
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // OnBackPressedCallback um Back-Gesten auf dem Homescreen zu ignorieren
+        backCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // Absichtlich leer: Back-Geste wird ignoriert
+                // Dies ist das typische Verhalten eines System-Launchers
+            }
+        }
+        onBackPressedDispatcher.addCallback(this, backCallback)
+
         setContent {
             val context = LocalContext.current
             val themeManager = remember { ThemeManager(context) }
@@ -153,13 +167,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
+                // Steuere den OnBackPressedCallback basierend auf Modal-State
+                // Wenn Menüs offen sind, deaktiviere den Callback, damit BackHandler funktioniert
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, selectedFolderForConfig) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null
+                    backCallback.isEnabled = !anyModalOpen
+                }
+
+                // BackHandler für das Schließen von offenen Menüs
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
-                    else if (isSettingsOpen) isSettingsOpen = false
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -311,6 +332,7 @@ private fun expandNotifications(context: Context) {
     }
 }
 
+@SuppressLint("MissingPermission")
 @Composable
 fun SystemWallpaperView() {
     val context = LocalContext.current
