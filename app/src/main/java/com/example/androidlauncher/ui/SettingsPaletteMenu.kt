@@ -67,12 +67,12 @@ fun SettingsPaletteMenu(
         contentAlignment = Alignment.BottomEnd
     ) {
         val total = settingsItems.size
-        
+
         // Wir benötigen die Zustände aller Items gleichzeitig für das Clipping
         val animStates = List(total) { index ->
             remember { Animatable(0f) }
         }
-        
+
         settingsItems.forEachIndexed { index, item ->
             LaunchedEffect(isSettingsOpen) {
                 if (isSettingsOpen) {
@@ -90,11 +90,11 @@ fun SettingsPaletteMenu(
         for (index in (total - 1) downTo 0) {
             val item = settingsItems[index]
             val progress = animStates[index].value
-            
+
             if (progress > 0.001f || isSettingsOpen) {
                 val interactionSource = remember { MutableInteractionSource() }
                 val isPressed by interactionSource.collectIsPressedAsState()
-                
+
                 val pressScale by animateFloatAsState(
                     targetValue = if (isPressed) 0.92f else 1f,
                     animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
@@ -117,7 +117,7 @@ fun SettingsPaletteMenu(
                             // Das Clipping: Wir schneiden alles weg, was von Items ÜBER uns (j < index) verdeckt wird
                             val path = Path()
                             var needsClip = false
-                            
+
                             for (j in 0 until index) {
                                 val progressJ = animStates[j].value
                                 if (progressJ > 0.001f) {
@@ -125,11 +125,11 @@ fun SettingsPaletteMenu(
                                     val angleRadJ = Math.toRadians(angleJ.toDouble())
                                     val tXj = (cos(angleRadJ) * radius).toFloat()
                                     val tYj = (-sin(angleRadJ) * radius).toFloat()
-                                    
+
                                     // Relativer Versatz des "oberen" Kreises zum aktuellen
                                     val dx = (tXj * progressJ - targetX * progress)
                                     val dy = (tYj * progressJ - targetY * progress)
-                                    
+
                                     with(density) {
                                         val cx = size.width / 2 + dx.dp.toPx()
                                         val cy = size.height / 2 + dy.dp.toPx()
@@ -139,7 +139,7 @@ fun SettingsPaletteMenu(
                                     needsClip = true
                                 }
                             }
-                            
+
                             if (needsClip) {
                                 clipPath(path, clipOp = ClipOp.Difference) {
                                     this@drawWithContent.drawContent()

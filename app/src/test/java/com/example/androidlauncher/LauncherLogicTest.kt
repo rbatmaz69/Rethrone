@@ -1,5 +1,6 @@
 package com.example.androidlauncher
 
+import com.example.androidlauncher.data.AppInfo
 import org.junit.Assert.*
 import org.junit.Test
 
