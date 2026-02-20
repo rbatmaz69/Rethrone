@@ -3,6 +3,7 @@ package com.example.androidlauncher.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -104,13 +105,17 @@ fun AppDrawer(
 
     var activeFolderId by remember { mutableStateOf<String?>(null) }
     
-    // Wir halten den Ordner-Inhalt stabil, auch wenn activeFolderId null wird (für die Exit-Animation)
-    val activeFolder = remember(activeFolderId, folders) {
-        if (activeFolderId != null) folders.find { it.id == activeFolderId } else null
+    // Stabilisierung des Zustands: Wir merken uns den Ordner, solange die Animation läuft
+    var folderToDisplay by remember { mutableStateOf<FolderInfo?>(null) }
+    
+    val currentActiveFolder = remember(activeFolderId, folders) {
+        folders.find { it.id == activeFolderId }
     }
-    var lastValidFolder by remember { mutableStateOf<FolderInfo?>(null) }
-    if (activeFolder != null) {
-        lastValidFolder = activeFolder
+    
+    LaunchedEffect(currentActiveFolder) {
+        if (currentActiveFolder != null) {
+            folderToDisplay = currentActiveFolder
+        }
     }
     
     var drawerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -118,7 +123,16 @@ fun AppDrawer(
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
     
-    // Globale Drag-States
+    // BackHandler: Schließt zuerst den Bearbeitungsmodus oder den Ordner
+    BackHandler(enabled = activeFolderId != null) {
+        if (isEditMode) {
+            isEditMode = false
+        } else {
+            activeFolderId = null
+        }
+    }
+
+    // Drag-States
     var draggingItemPkg by remember { mutableStateOf<String?>(null) }
     var touchPosition by remember { mutableStateOf(Offset.Zero) }
     var initialTouchOffsetInItem by remember { mutableStateOf(Offset.Zero) }
@@ -258,7 +272,7 @@ fun AppDrawer(
             }
         }
 
-        // Folder Popup Overlay with precise symmetric animation
+        // Folder Popup Overlay mit symmetrischer Animation
         val pivotOrigin = remember(folderPosition, drawerSize) {
             if (drawerSize.width > 0 && drawerSize.height > 0) {
                 TransformOrigin(
@@ -270,19 +284,18 @@ fun AppDrawer(
 
         AnimatedVisibility(
             visible = activeFolderId != null,
-            enter = fadeIn(animationSpec = tween(250)) + scaleIn(
-                initialScale = 0.05f,
+            enter = fadeIn(animationSpec = tween(300)) + scaleIn(
+                initialScale = 0.01f,
                 transformOrigin = pivotOrigin,
                 animationSpec = tween(400, easing = FastOutSlowInEasing)
             ),
-            exit = fadeOut(animationSpec = tween(250)) + scaleOut(
-                targetScale = 0.05f,
+            exit = fadeOut(animationSpec = tween(300)) + scaleOut(
+                targetScale = 0.01f,
                 transformOrigin = pivotOrigin,
                 animationSpec = tween(400, easing = FastOutSlowInEasing)
             )
         ) {
-            // Benutze lastValidFolder, damit der Inhalt während der gesamten Exit-Animation bleibt
-            lastValidFolder?.let { currentActiveFolder ->
+            folderToDisplay?.let { currentActiveFolder ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -444,13 +457,13 @@ fun AppDrawer(
                                                             val targetIdxInPage = targetRow * 3 + targetCol
                                                             val targetIdx = (fromIdx / 9) * 9 + targetIdxInPage
 
-                                                            if (targetIdx != fromIdx && targetIdx < currentFolderState.appPackageNames.size) {
-                                                                val newList = currentFolderState.appPackageNames.toMutableList()
+                                                            if (targetIdx != fromIdx && targetIdx < currentActiveFolder.appPackageNames.size) {
+                                                                val newList = currentActiveFolder.appPackageNames.toMutableList()
                                                                 val item = newList.removeAt(fromIdx)
                                                                 newList.add(targetIdx, item)
 
                                                                 onUpdateFolders(currentFoldersState.map { 
-                                                                    if (it.id == currentFolderState.id) it.copy(appPackageNames = newList) else it 
+                                                                    if (it.id == currentActiveFolder.id) it.copy(appPackageNames = newList) else it
                                                                 })
                                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                             }
