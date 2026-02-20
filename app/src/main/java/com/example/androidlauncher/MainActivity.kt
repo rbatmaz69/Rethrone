@@ -1,6 +1,7 @@
 package com.example.androidlauncher
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
@@ -11,6 +12,7 @@ import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -37,7 +39,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.* 
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,6 +93,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Versuche das Exclude-Flag auch auf dem Start-Intent zu setzen
+        intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+
         // OnBackPressedCallback um Back-Gesten auf dem Homescreen zu ignorieren
         backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -100,20 +105,23 @@ class MainActivity : ComponentActivity() {
         }
         onBackPressedDispatcher.addCallback(this, backCallback)
 
+        // Erzwinge zur Sicherheit das Ausblenden aus dem Recents-Screen
+        enforceExcludeFromRecents()
+
         setContent {
             val context = LocalContext.current
             val themeManager = remember { ThemeManager(context) }
             val folderManager = remember { FolderManager(context) }
-            
+
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
-            
+
             val scope = rememberCoroutineScope()
 
             AndroidLauncherTheme(
-                colorTheme = currentTheme, 
+                colorTheme = currentTheme,
                 fontSize = currentFontSize,
                 iconSize = currentIconSize
             ) {
@@ -318,6 +326,23 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        enforceExcludeFromRecents()
+    }
+
+    private fun enforceExcludeFromRecents() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            am.appTasks?.forEach { task ->
+                val base = task.taskInfo.baseIntent.component
+                if (base != null && base.className == componentName.className) {
+                    task.setExcludeFromRecents(true)
+                }
+            }
+        }
+    }
 }
 
 @SuppressLint("WrongConstant")
@@ -394,9 +419,9 @@ fun HomeScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(64.dp))
             ClockHeader()
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
+
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(start = 12.dp)
