@@ -1,19 +1,16 @@
 package com.example.androidlauncher
 
-import android.graphics.drawable.Drawable
-import io.mockk.mockk
+import com.example.androidlauncher.data.AppInfo
 import org.junit.Assert.*
 import org.junit.Test
 
 class LauncherLogicTest {
 
-    private val mockDrawable = mockk<Drawable>()
-
     private val apps = listOf(
-        AppInfo("Browser", "com.android.browser", mockDrawable),
-        AppInfo("Camera", "com.android.camera", mockDrawable),
-        AppInfo("Contacts", "com.android.contacts", mockDrawable),
-        AppInfo("Email", "com.android.email", mockDrawable)
+        AppInfo("Browser", "com.android.browser", null),
+        AppInfo("Camera", "com.android.camera", null),
+        AppInfo("Contacts", "com.android.contacts", null),
+        AppInfo("Email", "com.android.email", null)
     )
 
     @Test

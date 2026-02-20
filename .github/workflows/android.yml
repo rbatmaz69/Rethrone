@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main", "develop" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Run Linter (Detekt)
@@ -27,7 +31,7 @@ jobs:
       run: ./gradlew detekt
 
   unit-test:
-    name: Run Unit Tests
+    name: Run Unit Tests & Coverage
     runs-on: ubuntu-latest
     needs: [lint]
     steps:
@@ -43,13 +47,31 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Run Unit Tests
-      run: ./gradlew test
+    - name: Run Tests with Coverage
+      run: ./gradlew koverLogDebug koverXmlReportDebug
+
+    - name: Add Coverage to Summary
+      run: |
+        echo "## 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+        # Extrahiere die Prozentzahl aus der Konsolenausgabe von Kover
+        # Kover gibt standardmäßig "Kover: code coverage: 85.5%" aus
+        COVERAGE=$(./gradlew koverLogDebug | grep "instructions coverage" | awk '{print $NF}')
+        if [ -z "$COVERAGE" ]; then
+          COVERAGE="Check Logs for details"
+        fi
+        echo "### Total Coverage: **$COVERAGE**" >> $GITHUB_STEP_SUMMARY
+        echo "Der detaillierte Bericht wurde als Artifact hochgeladen." >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload Coverage Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: app/build/reports/kover/
 
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    needs: [unit-test]
+    needs: [lint]
     steps:
     - uses: actions/checkout@v4
     
