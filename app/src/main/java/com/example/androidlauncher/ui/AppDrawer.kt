@@ -70,6 +70,7 @@ import com.composables.icons.lucide.Folder
 import com.composables.icons.lucide.FolderPlus
 import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Check
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -105,16 +106,16 @@ fun AppDrawer(
 
     var activeFolderId by remember { mutableStateOf<String?>(null) }
     
-    // Stabilisierung des Zustands: Wir merken uns den Ordner, solange die Animation läuft
-    var folderToDisplay by remember { mutableStateOf<FolderInfo?>(null) }
-    
-    val currentActiveFolder = remember(activeFolderId, folders) {
-        folders.find { it.id == activeFolderId }
+    // Stabilisierung des Ordner-Zustands für die Schließanimation
+    val activeFolder = remember(activeFolderId, folders) {
+        if (activeFolderId != null) folders.find { it.id == activeFolderId } else null
     }
     
-    LaunchedEffect(currentActiveFolder) {
-        if (currentActiveFolder != null) {
-            folderToDisplay = currentActiveFolder
+    // lastValidFolder sorgt dafür, dass der Inhalt während des Ausblendens sichtbar bleibt
+    var lastValidFolder by remember { mutableStateOf<FolderInfo?>(null) }
+    LaunchedEffect(activeFolder) {
+        if (activeFolder != null) {
+            lastValidFolder = activeFolder
         }
     }
     
@@ -123,7 +124,7 @@ fun AppDrawer(
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
     
-    // BackHandler: Schließt zuerst den Bearbeitungsmodus oder den Ordner
+    // Zurück-Taste / Geste: Erst Bearbeitungsmodus beenden, dann Ordner schließen
     BackHandler(enabled = activeFolderId != null) {
         if (isEditMode) {
             isEditMode = false
@@ -132,7 +133,7 @@ fun AppDrawer(
         }
     }
 
-    // Drag-States
+    // Globale Drag-States
     var draggingItemPkg by remember { mutableStateOf<String?>(null) }
     var touchPosition by remember { mutableStateOf(Offset.Zero) }
     var initialTouchOffsetInItem by remember { mutableStateOf(Offset.Zero) }
@@ -272,7 +273,7 @@ fun AppDrawer(
             }
         }
 
-        // Folder Popup Overlay mit symmetrischer Animation
+        // Folder Popup Overlay with symmetric animation
         val pivotOrigin = remember(folderPosition, drawerSize) {
             if (drawerSize.width > 0 && drawerSize.height > 0) {
                 TransformOrigin(
@@ -284,18 +285,19 @@ fun AppDrawer(
 
         AnimatedVisibility(
             visible = activeFolderId != null,
-            enter = fadeIn(animationSpec = tween(300)) + scaleIn(
-                initialScale = 0.01f,
+            enter = fadeIn(animationSpec = tween(250)) + scaleIn(
+                initialScale = 0.05f,
                 transformOrigin = pivotOrigin,
                 animationSpec = tween(400, easing = FastOutSlowInEasing)
             ),
-            exit = fadeOut(animationSpec = tween(300)) + scaleOut(
-                targetScale = 0.01f,
+            exit = fadeOut(animationSpec = tween(250)) + scaleOut(
+                targetScale = 0.05f,
                 transformOrigin = pivotOrigin,
                 animationSpec = tween(400, easing = FastOutSlowInEasing)
             )
         ) {
-            folderToDisplay?.let { currentActiveFolder ->
+            // Nutze lastValidFolder, damit der Inhalt während der gesamten Schließanimation bleibt
+            lastValidFolder?.let { currentActiveFolder ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -396,82 +398,106 @@ fun AppDrawer(
                                 label = "WiggleAngle"
                             )
 
+                            // Auto-Paging Logik
+                            LaunchedEffect(draggingItemPkg, touchPosition) {
+                                if (draggingItemPkg != null) {
+                                    val threshold = with(density) { 45.dp.toPx() }
+                                    while (draggingItemPkg != null) {
+                                        val surfaceWidth = drawerSize.width * 0.85f
+                                        if (touchPosition.x < threshold && pagerState.currentPage > 0) {
+                                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                            delay(900)
+                                        } else if (touchPosition.x > surfaceWidth - threshold && pagerState.currentPage < pages - 1) {
+                                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                            delay(900)
+                                        }
+                                        delay(100)
+                                    }
+                                }
+                            }
+
                             Box(modifier = Modifier.height(340.dp)) {
-                                HorizontalPager(
-                                    state = pagerState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    pageSpacing = 16.dp,
-                                    userScrollEnabled = !isEditMode && draggingItemPkg == null
-                                ) { page ->
-                                    val startIdx = page * 9
-                                    val endIdx = (startIdx + 9).coerceAtMost(folderApps.size)
-                                    val pageApps = folderApps.subList(startIdx, endIdx)
-                                    
-                                    var gridWidth by remember { mutableStateOf(0f) }
-                                    var gridHeight by remember { mutableStateOf(0f) }
-                                    
-                                    val currentFolderState by rememberUpdatedState(currentActiveFolder)
-                                    val currentFoldersState by rememberUpdatedState(folders)
-                                    val currentPageAppsState by rememberUpdatedState(pageApps)
+                                var gridAreaSize by remember { mutableStateOf(IntSize.Zero) }
+                                
+                                val currentFolderState by rememberUpdatedState(currentActiveFolder)
+                                val currentFoldersState by rememberUpdatedState(folders)
+                                
+                                // Hilfsfunktion für den Positionswechsel
+                                fun performReorder(currentTouch: Offset, currentPage: Int) {
+                                    val pkg = draggingItemPkg ?: return
+                                    val fromIdx = currentFolderState.appPackageNames.indexOf(pkg)
+                                    if (fromIdx == -1) return
 
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .onGloballyPositioned { 
-                                                gridWidth = it.size.width.toFloat()
-                                                gridHeight = it.size.height.toFloat()
-                                            }
-                                            .pointerInput(isEditMode) {
-                                                if (!isEditMode) return@pointerInput
-                                                detectDragGesturesAfterLongPress(
-                                                    onDragStart = { offset ->
-                                                        val cellW = (gridWidth + 16.dp.toPx()) / 3f
-                                                        val cellH = (gridHeight + 24.dp.toPx()) / 3f
-                                                        
-                                                        val col = (offset.x / cellW).toInt().coerceIn(0, 2)
-                                                        val row = (offset.y / cellH).toInt().coerceIn(0, 2)
-                                                        val idxInPage = row * 3 + col
-                                                        
-                                                        if (idxInPage < currentPageAppsState.size) {
-                                                            draggingItemPkg = currentPageAppsState[idxInPage].packageName
-                                                            touchPosition = offset
-                                                            initialTouchOffsetInItem = Offset(offset.x % cellW, offset.y % cellH)
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        }
-                                                    },
-                                                    onDragEnd = { draggingItemPkg = null },
-                                                    onDragCancel = { draggingItemPkg = null },
-                                                    onDrag = { change, dragAmount ->
-                                                        change.consume()
-                                                        touchPosition += dragAmount
-                                                        
-                                                        val pkg = draggingItemPkg ?: return@detectDragGesturesAfterLongPress
-                                                        val fromIdx = currentFolderState.appPackageNames.indexOf(pkg)
-                                                        
-                                                        if (fromIdx != -1) {
-                                                            val cellW = (gridWidth + 16.dp.toPx()) / 3f
-                                                            val cellH = (gridHeight + 24.dp.toPx()) / 3f
+                                    val cellW = gridAreaSize.width / 3f
+                                    val cellH = gridAreaSize.height / 3f
+                                    val targetCol = (currentTouch.x / cellW).toInt().coerceIn(0, 2)
+                                    val targetRow = (currentTouch.y / cellH).toInt().coerceIn(0, 2)
+                                    val targetIdx = (currentPage * 9 + (targetRow * 3 + targetCol)).coerceIn(0, currentFolderState.appPackageNames.size - 1)
 
-                                                            val targetCol = (touchPosition.x / cellW).toInt().coerceIn(0, 2)
-                                                            val targetRow = (touchPosition.y / cellH).toInt().coerceIn(0, 2)
-                                                            val targetIdxInPage = targetRow * 3 + targetCol
-                                                            val targetIdx = (fromIdx / 9) * 9 + targetIdxInPage
+                                    if (targetIdx != fromIdx) {
+                                        val newList = currentFolderState.appPackageNames.toMutableList()
+                                        newList.removeAt(fromIdx)
+                                        newList.add(targetIdx, pkg)
 
-                                                            if (targetIdx != fromIdx && targetIdx < currentActiveFolder.appPackageNames.size) {
-                                                                val newList = currentActiveFolder.appPackageNames.toMutableList()
-                                                                val item = newList.removeAt(fromIdx)
-                                                                newList.add(targetIdx, item)
+                                        onUpdateFolders(currentFoldersState.map { 
+                                            if (it.id == currentFolderState.id) it.copy(appPackageNames = newList) else it 
+                                        })
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    }
+                                }
 
-                                                                onUpdateFolders(currentFoldersState.map { 
-                                                                    if (it.id == currentActiveFolder.id) it.copy(appPackageNames = newList) else it
-                                                                })
-                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                            }
-                                                        }
+                                // Reaktive Reorder-Logik bei Seitenwechsel
+                                LaunchedEffect(pagerState.currentPage) {
+                                    if (draggingItemPkg != null) {
+                                        performReorder(touchPosition, pagerState.currentPage)
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .onGloballyPositioned { 
+                                            gridAreaSize = it.size 
+                                        }
+                                        .pointerInput(isEditMode) {
+                                            if (!isEditMode) return@pointerInput
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = { offset ->
+                                                    val cellW = gridAreaSize.width / 3f
+                                                    val cellH = gridAreaSize.height / 3f
+                                                    
+                                                    val col = (offset.x / cellW).toInt().coerceIn(0, 2)
+                                                    val row = (offset.y / cellH).toInt().coerceIn(0, 2)
+                                                    val idxInPage = row * 3 + col
+                                                    val globalIdx = pagerState.currentPage * 9 + idxInPage
+                                                    
+                                                    if (globalIdx < folderApps.size) {
+                                                        draggingItemPkg = folderApps[globalIdx].packageName
+                                                        touchPosition = offset
+                                                        initialTouchOffsetInItem = Offset(offset.x % cellW, offset.y % cellH)
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     }
-                                                )
-                                            }
-                                    ) {
+                                                },
+                                                onDragEnd = { draggingItemPkg = null },
+                                                onDragCancel = { draggingItemPkg = null },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    touchPosition += dragAmount
+                                                    performReorder(touchPosition, pagerState.currentPage)
+                                                }
+                                            )
+                                        }
+                                ) {
+                                    HorizontalPager(
+                                        state = pagerState,
+                                        modifier = Modifier.fillMaxSize(),
+                                        pageSpacing = 16.dp,
+                                        userScrollEnabled = !isEditMode && draggingItemPkg == null
+                                    ) { page ->
+                                        val startIdx = page * 9
+                                        val endIdx = (startIdx + 9).coerceAtMost(folderApps.size)
+                                        val pageApps = folderApps.subList(startIdx, endIdx)
+                                        
                                         LazyVerticalGrid(
                                             columns = GridCells.Fixed(3),
                                             modifier = Modifier.fillMaxSize(),
@@ -508,36 +534,36 @@ fun AppDrawer(
                                                 }
                                             }
                                         }
-                                        
-                                        // Ghost-Icon das am Finger klebt
-                                        if (draggingItemPkg != null) {
-                                            val draggedApp = folderApps.find { it.packageName == draggingItemPkg }
-                                            if (draggedApp != null) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(80.dp)
-                                                        .graphicsLayer {
-                                                            translationX = touchPosition.x - initialTouchOffsetInItem.x
-                                                            translationY = touchPosition.y - initialTouchOffsetInItem.y
-                                                            scaleX = 1.3f
-                                                            scaleY = 1.3f
-                                                            alpha = 0.9f
-                                                        }
-                                                        .zIndex(1000f)
-                                                        .shadow(24.dp, RoundedCornerShape(16.dp))
-                                                ) {
-                                                    AppItem(
-                                                        app = draggedApp,
-                                                        adaptiveColumns = 3,
-                                                        isFavorite = isFavorite(draggedApp.packageName),
-                                                        onToggleFavorite = onToggleFavorite,
-                                                        folders = folders,
-                                                        onUpdateFolders = onUpdateFolders,
-                                                        isInFolder = true,
-                                                        currentFolderId = currentActiveFolder.id,
-                                                        isEditMode = true
-                                                    )
-                                                }
+                                    }
+                                    
+                                    // Ghost-Icon das am Finger klebt
+                                    if (draggingItemPkg != null) {
+                                        val draggedApp = folderApps.find { it.packageName == draggingItemPkg }
+                                        if (draggedApp != null) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(80.dp)
+                                                    .graphicsLayer {
+                                                        translationX = touchPosition.x - initialTouchOffsetInItem.x
+                                                        translationY = touchPosition.y - initialTouchOffsetInItem.y
+                                                        scaleX = 1.3f
+                                                        scaleY = 1.3f
+                                                        alpha = 0.9f
+                                                    }
+                                                    .zIndex(1000f)
+                                                    .shadow(24.dp, RoundedCornerShape(16.dp))
+                                            ) {
+                                                AppItem(
+                                                    app = draggedApp,
+                                                    adaptiveColumns = 3,
+                                                    isFavorite = isFavorite(draggedApp.packageName),
+                                                    onToggleFavorite = onToggleFavorite,
+                                                    folders = folders,
+                                                    onUpdateFolders = onUpdateFolders,
+                                                    isInFolder = true,
+                                                    currentFolderId = currentActiveFolder.id,
+                                                    isEditMode = true
+                                                )
                                             }
                                         }
                                     }
