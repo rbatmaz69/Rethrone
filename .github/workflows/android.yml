@@ -53,8 +53,6 @@ jobs:
     - name: Add Coverage to Summary
       run: |
         echo "## 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
-        # Extrahiere die Prozentzahl aus der Konsolenausgabe von Kover
-        # Kover gibt standardmäßig "Kover: code coverage: 85.5%" aus
         COVERAGE=$(./gradlew koverLogDebug | grep "instructions coverage" | awk '{print $NF}')
         if [ -z "$COVERAGE" ]; then
           COVERAGE="Check Logs for details"
@@ -71,7 +69,7 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    needs: [lint]
+    needs: [unit-test]
     steps:
     - uses: actions/checkout@v4
     
