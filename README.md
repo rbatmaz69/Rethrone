@@ -16,6 +16,7 @@ Ein eleganter, performanter Launcher für Android, der mit **Jetpack Compose** v
 - **Design:** Material 3
 - **Icons:** Custom Vector Drawables (Minimalist Style)
 - **Linter:** [detekt](https://detekt.dev/) für Code-Qualität und Stil.
+- **Test Coverage:** [Kover](https://github.com/Kotlin/kotlinx-kover) für Unit-Test-Coverage.
 
 ## 📁 Projektstruktur
 Hier ist ein Überblick über die wichtigsten Verzeichnisse und Dateien des Projekts:
@@ -23,14 +24,17 @@ Hier ist ein Überblick über die wichtigsten Verzeichnisse und Dateien des Proj
 ```text
 .
 ├── .github/workflows        # CI/CD Workflows (GitHub Actions)
+├── .github/scripts          # Hilfsskripte für CI (Coverage Summary)
 ├── app                      # Hauptmodul der Anwendung
 │   ├── src
 │   │   ├── main
 │   │   │   ├── java         # Kotlin Quellcode
 │   │   │   │   └── com.example.androidlauncher
-│   │   │   │       ├── ui.theme  # Jetpack Compose Themes
+│   │   │   │       ├── data       # Datenmodelle & Logik
+│   │   │   │       ├── ui         # Compose UI
 │   │   │   │       └── MainActivity.kt
 │   │   │   └── res          # Android Ressourcen (Icons, XML, etc.)
+│   │   └── test             # JVM Unit-Tests
 │   └── build.gradle.kts     # Modulspezifische Gradle Konfiguration
 ├── config                   # Konfigurationsdateien
 │   └── detekt               # Detekt (Linter) Konfiguration
@@ -42,9 +46,31 @@ Hier ist ein Überblick über die wichtigsten Verzeichnisse und Dateien des Proj
 
 ## 🚀 Entwicklung
 
+### Voraussetzungen
+- Android Studio (aktuelle stabile Version)
+- JDK 17
+
+### Projekt bauen
+```bash
+./gradlew assembleDebug
+```
+
+### Tests ausführen
+```bash
+./gradlew :app:testDebugUnitTest
+```
+
+### Coverage erzeugen
+```bash
+./gradlew koverXmlReportDebug koverLogDebug
+```
+
 ### Linter ausführen
 Um den Linter lokal auszuführen, nutze folgenden Befehl:
 ```bash
 ./gradlew detekt
 ```
-Der Linter ist auch in die CI-Pipeline integriert und läuft bei jedem Push und Pull-Request.
+
+## 🤖 CI (GitHub Actions)
+- Läuft **nur** bei Pull Requests auf den Branch `develop`.
+- Enthält Lint, Unit-Tests und Coverage-Summary im Actions-Tab.
