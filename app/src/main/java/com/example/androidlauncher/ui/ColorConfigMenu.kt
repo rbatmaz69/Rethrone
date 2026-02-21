@@ -21,6 +21,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Moon
+import com.composables.icons.lucide.Sun
 import com.example.androidlauncher.SystemWallpaperView
 import com.example.androidlauncher.ui.theme.ColorTheme
 
@@ -28,6 +31,8 @@ import com.example.androidlauncher.ui.theme.ColorTheme
 fun ColorConfigMenu(
     selectedTheme: ColorTheme,
     onThemeSelected: (ColorTheme) -> Unit,
+    isDarkTextEnabled: Boolean,
+    onDarkTextToggled: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
@@ -40,18 +45,56 @@ fun ColorConfigMenu(
                 Text("Farben", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
-            Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                Switch(
+                    checked = isDarkTextEnabled,
+                    onCheckedChange = onDarkTextToggled,
+                    thumbContent = {
+                        if (isDarkTextEnabled) {
+                            Icon(
+                                imageVector = Lucide.Moon,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Lucide.Sun,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             // Preview Area
             Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Home Screen Preview
-                PreviewCard(title = "Startseite", colorTheme = selectedTheme, isHome = true, modifier = Modifier.weight(1f))
+                PreviewCard(
+                    title = "Startseite", 
+                    colorTheme = selectedTheme, 
+                    isHome = true, 
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    modifier = Modifier.weight(1f)
+                )
                 // App Drawer Preview
-                PreviewCard(title = "App Drawer", colorTheme = selectedTheme, isHome = false, modifier = Modifier.weight(1f))
+                PreviewCard(
+                    title = "App Drawer", 
+                    colorTheme = selectedTheme, 
+                    isHome = false, 
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -76,7 +119,15 @@ fun ColorConfigMenu(
 }
 
 @Composable
-fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, modifier: Modifier = Modifier) {
+fun PreviewCard(
+    title: String, 
+    colorTheme: ColorTheme, 
+    isHome: Boolean, 
+    isDarkTextEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val textColor = if (isDarkTextEnabled) Color.Black else Color.White
+
     Surface(
         color = Color.White.copy(alpha = 0.05f),
         shape = RoundedCornerShape(16.dp),
@@ -100,14 +151,14 @@ fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, modifier
                 if (isHome) {
                     // Simpler Home Screen content
                     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = Modifier.width(40.dp).height(8.dp).background(Color.White.copy(alpha = 0.8f), CircleShape))
-                        Box(modifier = Modifier.width(30.dp).height(4.dp).background(Color.White.copy(alpha = 0.4f), CircleShape))
+                        Box(modifier = Modifier.width(40.dp).height(8.dp).background(textColor.copy(alpha = 0.8f), CircleShape))
+                        Box(modifier = Modifier.width(30.dp).height(4.dp).background(textColor.copy(alpha = 0.4f), CircleShape))
                         Spacer(modifier = Modifier.height(12.dp))
                         repeat(3) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(12.dp).border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape))
+                                Box(modifier = Modifier.size(12.dp).border(1.dp, textColor.copy(alpha = 0.5f), CircleShape))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Box(modifier = Modifier.width(40.dp).height(4.dp).background(Color.White.copy(alpha = 0.2f), CircleShape))
+                                Box(modifier = Modifier.width(40.dp).height(4.dp).background(textColor.copy(alpha = 0.2f), CircleShape))
                             }
                         }
                     }
@@ -115,12 +166,12 @@ fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, modifier
                     // Simpler App Drawer content
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.padding(8.dp)) {
-                            Box(modifier = Modifier.fillMaxWidth().height(16.dp).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
+                            Box(modifier = Modifier.fillMaxWidth().height(16.dp).background(textColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
                             Spacer(modifier = Modifier.height(12.dp))
                             repeat(3) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     repeat(4) {
-                                        Box(modifier = Modifier.size(10.dp).border(1.dp, Color.White.copy(alpha = 0.7f), CircleShape))
+                                        Box(modifier = Modifier.size(10.dp).border(1.dp, textColor.copy(alpha = 0.7f), CircleShape))
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
