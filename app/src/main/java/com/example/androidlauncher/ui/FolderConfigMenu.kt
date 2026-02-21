@@ -31,6 +31,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 
 @Composable
 fun FolderConfigMenu(
@@ -41,6 +42,9 @@ fun FolderConfigMenu(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(folder.appPackageNames) }
     var folderName by remember { mutableStateOf(folder.name) }
@@ -55,38 +59,38 @@ fun FolderConfigMenu(
                 BasicTextField(
                     value = folderName,
                     onValueChange = { folderName = it },
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Light),
-                    cursorBrush = SolidColor(Color.White),
-                    decorationBox = { if (folderName.isEmpty()) Text("Ordnername", color = Color.White.copy(alpha = 0.4f), fontSize = 24.sp); it() }
+                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 24.sp, fontWeight = FontWeight.Light),
+                    cursorBrush = SolidColor(mainTextColor),
+                    decorationBox = { if (folderName.isEmpty()) Text("Ordnername", color = mainTextColor.copy(alpha = 0.4f), fontSize = 24.sp); it() }
                 )
-                Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
+                Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = mainTextColor.copy(alpha = 0.6f))
             }
             Row {
                 IconButton(onClick = { showDeleteConfirm = true }) { 
                     Icon(Lucide.Trash2, contentDescription = "Ordner löschen", tint = Color.Red.copy(alpha = 0.8f)) 
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
             }
         }
         
         Spacer(modifier = Modifier.height(24.dp))
 
         val searchIntSrc = remember { MutableInteractionSource() }
-        Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
+        Box(modifier = Modifier.fillMaxWidth().background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
             interactionSource = searchIntSrc,
             indication = null
         ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 BasicTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
-                    cursorBrush = SolidColor(Color.White),
+                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
+                    cursorBrush = SolidColor(mainTextColor),
                     singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp); it() }
+                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 15.sp); it() }
                 )
             }
         }
@@ -94,11 +98,11 @@ fun FolderConfigMenu(
         Spacer(modifier = Modifier.height(16.dp))
         
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
-            item { Text("Apps verwalten", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+            item { Text("Apps verwalten", color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isSelected = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
-                Surface(color = if (isSelected) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
+                Surface(color = if (isSelected) mainTextColor.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
                     interactionSource = intSrc,
                     indication = null
                 ) {
@@ -111,8 +115,16 @@ fun FolderConfigMenu(
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Checkbox(checked = isSelected, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = Color.White, uncheckedColor = Color.White.copy(alpha = 0.4f), checkmarkColor = Color(0xFF0F172A)))
+                        Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Checkbox(
+                            checked = isSelected, 
+                            onCheckedChange = null, 
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = mainTextColor, 
+                                uncheckedColor = mainTextColor.copy(alpha = 0.4f), 
+                                checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+                            )
+                        )
                     }
                 }
             }
@@ -146,8 +158,8 @@ fun FolderConfigMenu(
                     Toast.makeText(context, "Bitte Namen eingeben", Toast.LENGTH_SHORT).show()
                 }
             }, 
-            containerColor = Color.White, 
-            contentColor = Color(0xFF0F172A), 
+            containerColor = mainTextColor, 
+            contentColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A), 
             shape = CircleShape, 
             modifier = Modifier.bounceClick(intSrc)
         ) {
