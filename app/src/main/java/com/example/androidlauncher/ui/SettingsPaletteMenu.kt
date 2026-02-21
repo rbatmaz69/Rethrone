@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Palette
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import kotlinx.coroutines.delay
 import kotlin.math.*
 
@@ -47,6 +48,9 @@ fun SettingsPaletteMenu(
     onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit
 ) {
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+    
     val settingsItems = remember {
         listOf(
             PaletteMenuItem("themes", Lucide.Palette, "Themes", onOpenColorConfig),
@@ -151,9 +155,9 @@ fun SettingsPaletteMenu(
                 ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
-                        color = Color.White.copy(alpha = 0.15f),
+                        color = mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f),
                         shape = CircleShape,
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+                        border = BorderStroke(1.dp, mainTextColor.copy(alpha = 0.25f))
                     ) {
                         Box(
                             modifier = Modifier
@@ -172,7 +176,7 @@ fun SettingsPaletteMenu(
                             Icon(
                                 imageVector = item.icon,
                                 contentDescription = item.label,
-                                tint = Color.White,
+                                tint = mainTextColor,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
