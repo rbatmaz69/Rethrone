@@ -62,6 +62,7 @@ import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalIconSize
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
@@ -116,6 +117,7 @@ class MainActivity : ComponentActivity() {
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
+            val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
 
             val scope = rememberCoroutineScope()
@@ -123,7 +125,8 @@ class MainActivity : ComponentActivity() {
             AndroidLauncherTheme(
                 colorTheme = currentTheme,
                 fontSize = currentFontSize,
-                iconSize = currentIconSize
+                iconSize = currentIconSize,
+                darkTextEnabled = isDarkTextEnabled
             ) {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
@@ -190,6 +193,8 @@ class MainActivity : ComponentActivity() {
                     else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
                 }
+
+                val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     SystemWallpaperView()
@@ -298,6 +303,10 @@ class MainActivity : ComponentActivity() {
                                 onThemeSelected = { theme ->
                                     scope.launch { themeManager.setTheme(theme) }
                                 },
+                                isDarkTextEnabled = isDarkTextEnabled,
+                                onDarkTextToggled = { enabled ->
+                                    scope.launch { themeManager.setDarkTextEnabled(enabled) }
+                                },
                                 onClose = { isColorConfigOpen = false }
                             )
                         }
@@ -394,6 +403,9 @@ fun HomeScreen(
     onOpenSizeConfig: () -> Unit
 ) {
     val context = LocalContext.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
         animationSpec = tween(300, easing = EaseInOutCubic)
@@ -429,14 +441,14 @@ fun HomeScreen(
                 if (favorites.isEmpty()) {
                     val intSrc = remember { MutableInteractionSource() }
                     Surface(
-                        color = Color.White.copy(alpha = 0.1f),
+                        color = mainTextColor.copy(alpha = 0.1f),
                         shape = CircleShape,
                         modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
                             interactionSource = intSrc,
                             indication = null
                         ) { onOpenFavoritesConfig() }
                     ) {
-                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White) }
+                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor) }
                     }
                 } else {
                     favorites.forEach { app ->
@@ -476,15 +488,15 @@ fun HomeScreen(
                     interactionSource = intSrc,
                     indication = null
                 ) { onToggleSettings() }, 
-                color = Color.White.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), 
+                color = mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), 
                 shape = CircleShape,
-                border = if (isSettingsOpen) BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
+                border = if (isSettingsOpen) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)) else null
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                     Icon(
                         imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings, 
                         contentDescription = null, 
-                        tint = Color.White, 
+                        tint = mainTextColor, 
                         modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
                     )
                 }
@@ -601,6 +613,9 @@ fun FavoritesConfigMenu(
 fun ClockHeader() {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -621,7 +636,7 @@ fun ClockHeader() {
             fontSize = 72.sp * fontSize.scale,
             fontWeight = FontWeight.Normal,
             letterSpacing = (-2).sp,
-            color = Color.White,
+            color = mainTextColor,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcTime)
@@ -698,7 +713,7 @@ fun ClockHeader() {
             text = dateFormat.format(currentTime),
             fontSize = 18.sp * fontSize.scale,
             fontWeight = FontWeight.Normal,
-            color = Color.White.copy(alpha = 0.7f),
+            color = mainTextColor.copy(alpha = 0.7f),
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcDate)
