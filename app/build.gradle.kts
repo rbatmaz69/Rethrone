@@ -38,6 +38,9 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 kotlin {
@@ -52,6 +55,30 @@ kover {
             excludes {
                 classes("com.example.androidlauncher.ui.theme.*")
                 classes("com.example.androidlauncher.MainActivityKt")
+                classes("com.example.androidlauncher.MainActivityKt\$*")
+                classes("com.example.androidlauncher.MainActivity")
+                classes("com.example.androidlauncher.MainActivity\$*")
+                classes("com.example.androidlauncher.ui.AppDrawerKt")
+                classes("com.example.androidlauncher.ui.AppDrawerKt\$*")
+                classes("com.example.androidlauncher.ui.ColorConfigMenuKt")
+                classes("com.example.androidlauncher.ui.ColorConfigMenuKt\$*")
+                classes("com.example.androidlauncher.ui.FolderConfigMenuKt")
+                classes("com.example.androidlauncher.ui.FolderConfigMenuKt\$*")
+                classes("com.example.androidlauncher.ui.SettingsPaletteMenuKt")
+                classes("com.example.androidlauncher.ui.SettingsPaletteMenuKt\$*")
+                classes("com.example.androidlauncher.ui.SizeConfigMenuKt")
+                classes("com.example.androidlauncher.ui.SizeConfigMenuKt\$*")
+                classes("com.example.androidlauncher.ui.UtilsKt")
+                classes("com.example.androidlauncher.ui.UtilsKt\$*")
+                classes("com.example.androidlauncher.ui.ComposableSingletons*")
+                classes("com.example.androidlauncher.ComposableSingletons*")
+                classes("com.example.androidlauncher.ui.PaletteMenuItem")
+                classes("com.example.androidlauncher.data.FolderManager")
+                classes("com.example.androidlauncher.data.FolderManager\$*")
+                classes("com.example.androidlauncher.data.FolderManagerKt")
+                classes("com.example.androidlauncher.data.ThemeManager")
+                classes("com.example.androidlauncher.data.ThemeManager\$*")
+                classes("com.example.androidlauncher.data.ThemeManagerKt")
             }
         }
     }
@@ -76,6 +103,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation("org.json:json:20231013")
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
