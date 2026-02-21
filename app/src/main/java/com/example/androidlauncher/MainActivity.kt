@@ -1,6 +1,7 @@
 package com.example.androidlauncher
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
@@ -11,12 +12,14 @@ import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -36,7 +39,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.* 
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,23 +86,42 @@ import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : ComponentActivity() {
+    // OnBackPressedCallback als Instanzvariable um ihn später zu steuern
+    private lateinit var backCallback: OnBackPressedCallback
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Versuche das Exclude-Flag auch auf dem Start-Intent zu setzen
+        intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+
+        // OnBackPressedCallback um Back-Gesten auf dem Homescreen zu ignorieren
+        backCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // Absichtlich leer: Back-Geste wird ignoriert
+                // Dies ist das typische Verhalten eines System-Launchers
+            }
+        }
+        onBackPressedDispatcher.addCallback(this, backCallback)
+
+        // Erzwinge zur Sicherheit das Ausblenden aus dem Recents-Screen
+        enforceExcludeFromRecents()
+
         setContent {
             val context = LocalContext.current
             val themeManager = remember { ThemeManager(context) }
             val folderManager = remember { FolderManager(context) }
-            
+
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
-            
+
             val scope = rememberCoroutineScope()
 
             AndroidLauncherTheme(
-                colorTheme = currentTheme, 
+                colorTheme = currentTheme,
                 fontSize = currentFontSize,
                 iconSize = currentIconSize
             ) {
@@ -153,13 +175,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                BackHandler(enabled = isDrawerOpen || isSettingsOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
+                // Steuere den OnBackPressedCallback basierend auf Modal-State
+                // Wenn Menüs offen sind, deaktiviere den Callback, damit BackHandler funktioniert
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, selectedFolderForConfig) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null
+                    backCallback.isEnabled = !anyModalOpen
+                }
+
+                // BackHandler für das Schließen von offenen Menüs
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
-                    else if (isSettingsOpen) isSettingsOpen = false
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -297,6 +326,23 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        enforceExcludeFromRecents()
+    }
+
+    private fun enforceExcludeFromRecents() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            am.appTasks?.forEach { task ->
+                val base = task.taskInfo.baseIntent.component
+                if (base != null && base.className == componentName.className) {
+                    task.setExcludeFromRecents(true)
+                }
+            }
+        }
+    }
 }
 
 @SuppressLint("WrongConstant")
@@ -311,6 +357,7 @@ private fun expandNotifications(context: Context) {
     }
 }
 
+@SuppressLint("MissingPermission")
 @Composable
 fun SystemWallpaperView() {
     val context = LocalContext.current
@@ -372,9 +419,9 @@ fun HomeScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(64.dp))
             ClockHeader()
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
+
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(start = 12.dp)
