@@ -63,6 +63,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.composables.icons.lucide.Lucide
@@ -88,6 +89,9 @@ fun AppDrawer(
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
     val iconSize = LocalIconSize.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+
     val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
@@ -169,7 +173,7 @@ fun AppDrawer(
                     "Apps",
                     fontSize = 24.sp * fontSize.scale,
                     fontWeight = FontWeight.Light,
-                    color = Color.White
+                    color = mainTextColor
                 )
                 Row {
                     if (searchQuery.isBlank()) {
@@ -177,7 +181,7 @@ fun AppDrawer(
                         var folderNameInput by remember { mutableStateOf("") }
                         
                         IconButton(onClick = { isCreateFolderDialogOpen = true }) { 
-                            Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = Color.White) 
+                            Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = mainTextColor) 
                         }
                         
                         if (isCreateFolderDialogOpen) {
@@ -207,28 +211,28 @@ fun AppDrawer(
                         }
                     }
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
                     }
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
 
             val searchIntSrc = remember { MutableInteractionSource() }
-            Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
+            Box(modifier = Modifier.fillMaxWidth().background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
                 interactionSource = searchIntSrc,
                 indication = null
             ) { focusRequester.requestFocus() }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     BasicTextField(
                         value = searchQuery, onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp * fontSize.scale),
-                        cursorBrush = SolidColor(Color.White), singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp * fontSize.scale),
+                        cursorBrush = SolidColor(mainTextColor), singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
+                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
                     )
                 }
             }
@@ -318,7 +322,7 @@ fun AppDrawer(
                             .clickable(enabled = false) {},
                         color = colorTheme.drawerBackground.copy(alpha = 0.98f),
                         shape = RoundedCornerShape(32.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f)),
                         shadowElevation = 24.dp
                     ) {
                         Column(
@@ -338,12 +342,12 @@ fun AppDrawer(
                                             onUpdateFolders(updatedFolders)
                                         },
                                         textStyle = androidx.compose.ui.text.TextStyle(
-                                            color = Color.White,
+                                            color = mainTextColor,
                                             fontSize = 22.sp * fontSize.scale,
                                             fontWeight = FontWeight.SemiBold,
                                             textAlign = TextAlign.Center
                                         ),
-                                        cursorBrush = SolidColor(Color.White),
+                                        cursorBrush = SolidColor(mainTextColor),
                                         singleLine = true,
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                         keyboardActions = KeyboardActions(onDone = { 
@@ -355,7 +359,7 @@ fun AppDrawer(
                                 } else {
                                     Text(
                                         currentActiveFolder.name,
-                                        color = Color.White,
+                                        color = mainTextColor,
                                         fontSize = 22.sp * fontSize.scale,
                                         fontWeight = FontWeight.SemiBold,
                                         textAlign = TextAlign.Center,
@@ -370,7 +374,7 @@ fun AppDrawer(
                                     Icon(
                                         if (isEditMode) Lucide.Check else Lucide.Pencil, 
                                         contentDescription = "EditMode", 
-                                        tint = Color.White,
+                                        tint = mainTextColor,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -579,7 +583,7 @@ fun AppDrawer(
                                     horizontalArrangement = Arrangement.Center
                                 ) {
                                     repeat(pages) { iteration ->
-                                        val color = if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.3f)
+                                        val color = if (pagerState.currentPage == iteration) mainTextColor else mainTextColor.copy(alpha = 0.3f)
                                         Box(
                                             modifier = Modifier
                                                 .padding(horizontal = 4.dp)
@@ -607,6 +611,9 @@ fun FolderItem(
 ) {
     val fontSize = LocalFontSize.current
     val iconSizeValue = LocalIconSize.current.size
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+
     val intSrc = remember { MutableInteractionSource() }
     var itemOffset by remember { mutableStateOf(Offset.Zero) }
 
@@ -629,11 +636,11 @@ fun FolderItem(
             onClick = { onClick(itemOffset) },
             onLongClick = { onOpenFolderConfig(folder) }
         )) {
-            Box(modifier = Modifier.size(iconSizeValue).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                Icon(Lucide.Folder, contentDescription = null, tint = Color.White, modifier = Modifier.size(iconSizeValue * 0.6f))
+            Box(modifier = Modifier.size(iconSizeValue).background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                Icon(Lucide.Folder, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(iconSizeValue * 0.6f))
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = folder.name, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(text = folder.name, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -653,6 +660,9 @@ fun AppItem(
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+
     var showActions by remember { mutableStateOf(false) }
     var showFolderSelection by remember { mutableStateOf(false) }
     val intSrc = remember { MutableInteractionSource() }
@@ -671,7 +681,7 @@ fun AppItem(
         )) {
             AppIconView(app)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
         DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
             DropdownMenuItem(text = { Text(if (isFavorite) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
