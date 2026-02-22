@@ -41,24 +41,31 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.core.graphics.applyCanvas
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
+import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalShowFavoriteLabels
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
@@ -107,6 +114,7 @@ class MainActivity : ComponentActivity() {
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
+            val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
 
             val scope = rememberCoroutineScope()
@@ -115,7 +123,8 @@ class MainActivity : ComponentActivity() {
                 colorTheme = currentTheme,
                 fontSize = currentFontSize,
                 iconSize = currentIconSize,
-                darkTextEnabled = isDarkTextEnabled
+                darkTextEnabled = isDarkTextEnabled,
+                showFavoriteLabels = showFavoriteLabels
             ) {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
@@ -238,6 +247,10 @@ class MainActivity : ComponentActivity() {
                             FavoritesConfigMenu(
                                 apps = allApps,
                                 initialFavoritePackages = favoritePackages,
+                                showFavoriteLabels = showFavoriteLabels,
+                                onShowLabelsToggled = { show ->
+                                    scope.launch { themeManager.setShowFavoriteLabels(show) }
+                                },
                                 onConfirm = { newFavs ->
                                     saveFavorites(context, newFavs)
                                     favoritePackages = newFavs
@@ -382,6 +395,8 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val showLabels = LocalShowFavoriteLabels.current
+    val fontSize = LocalFontSize.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     val rotation by animateFloatAsState(
@@ -413,7 +428,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.padding(start = 12.dp)
             ) {
                 if (favorites.isEmpty()) {
@@ -431,17 +446,29 @@ fun HomeScreen(
                 } else {
                     favorites.forEach { app ->
                         val intSrc = remember { MutableInteractionSource() }
-                        Surface(
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(12.dp),
+                        Column(
                             modifier = Modifier.bounceClick(intSrc).clickable(
                                 interactionSource = intSrc,
                                 indication = null
                             ) {
                                 context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
-                            }
+                            },
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Box(modifier = Modifier.padding(6.dp)) { AppIconView(app) }
+                            AppIconView(app)
+                            if (showLabels) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = app.label,
+                                    color = mainTextColor,
+                                    fontSize = 14.sp * fontSize.scale,
+                                    fontWeight = FontWeight.Light,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.widthIn(max = 80.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -487,13 +514,15 @@ fun HomeScreen(
 fun FavoritesConfigMenu(
     apps: List<AppInfo>,
     initialFavoritePackages: List<String>,
+    showFavoriteLabels: Boolean,
+    onShowLabelsToggled: (Boolean) -> Unit,
     onConfirm: (List<String>) -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val grayTone = Color.White.copy(alpha = 0.6f)
+    val grayTone = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
@@ -503,12 +532,56 @@ fun FavoritesConfigMenu(
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
-                Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = grayTone)
+                Text(stringResource(R.string.favorites_title), fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
+                Text(stringResource(R.string.favorites_count, selectedPackages.size, LauncherLogic.MAX_FAVORITES), fontSize = 14.sp, color = grayTone)
             }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Option Toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("App-Titel", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+            Switch(
+                checked = showFavoriteLabels,
+                onCheckedChange = onShowLabelsToggled,
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = Color.White.copy(alpha = 0.2f),
+                    uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
+                    checkedThumbColor = Color.White,
+                    uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
+                    checkedBorderColor = Color.White.copy(alpha = 0.1f),
+                    uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
+                ),
+                thumbContent = {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "T",
+                            color = if (isDarkTextEnabled) Color.Black else Color(0xFF0F172A),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal,
+                            modifier = if (!showFavoriteLabels) {
+                                Modifier.drawBehind {
+                                    drawLine(
+                                        color = if (isDarkTextEnabled) Color.Black else Color(0xFF0F172A),
+                                        start = Offset(0f, size.height),
+                                        end = Offset(size.width, 0f),
+                                        strokeWidth = 1.5.dp.toPx()
+                                    )
+                                }
+                            } else Modifier
+                        )
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
         
         val searchIntSrc = remember { MutableInteractionSource() }
         Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
@@ -525,7 +598,7 @@ fun FavoritesConfigMenu(
                     textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
                     cursorBrush = SolidColor(mainTextColor),
                     singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = grayTone, fontSize = 15.sp); it() }
+                    decorationBox = { if (searchQuery.isEmpty()) Text(stringResource(R.string.search_apps), color = grayTone, fontSize = 15.sp); it() }
                 )
             }
         }
@@ -534,7 +607,7 @@ fun FavoritesConfigMenu(
         
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
             if (selectedPackages.isNotEmpty()) {
-                item { Text("Reihenfolge", color = grayTone, fontSize = 12.sp) }
+                item { Text(stringResource(R.string.order_label), color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(selectedPackages) { index, pkg ->
                     apps.find { it.packageName == pkg }?.let { app ->
                         Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -555,7 +628,7 @@ fun FavoritesConfigMenu(
                 }
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
-            item { Text("Alle Apps", color = grayTone, fontSize = 12.sp) }
+            item { Text(stringResource(R.string.all_apps_label), color = grayTone, fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
@@ -564,7 +637,7 @@ fun FavoritesConfigMenu(
                     indication = null
                 ) {
                     val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
-                    if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, "Maximal 8 erlaubt", Toast.LENGTH_SHORT).show()
+                    if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, context.getString(R.string.max_favorites_reached), Toast.LENGTH_SHORT).show()
                 }) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
@@ -575,7 +648,7 @@ fun FavoritesConfigMenu(
                             onCheckedChange = null, 
                             colors = CheckboxDefaults.colors(
                                 checkedColor = mainTextColor, 
-                                uncheckedColor = Color.White.copy(alpha = 0.4f), 
+                                uncheckedColor = mainTextColor.copy(alpha = 0.4f), 
                                 checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
                             )
                         )
@@ -603,7 +676,7 @@ fun FavoritesConfigMenu(
                 .clickable(
                     interactionSource = intSrc,
                     indication = null,
-                    onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, "Keine Auswahl", Toast.LENGTH_SHORT).show() }
+                    onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, context.getString(R.string.no_selection), Toast.LENGTH_SHORT).show() }
                 ),
             contentAlignment = Alignment.Center
         ) {
