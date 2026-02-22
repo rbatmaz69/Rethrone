@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
@@ -50,6 +51,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -77,6 +79,7 @@ import com.composables.icons.lucide.FolderPlus
 import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Check
 import kotlinx.coroutines.delay
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -127,6 +130,7 @@ fun AppDrawer(
     
     var drawerSize by remember { mutableStateOf(IntSize.Zero) }
     var folderPosition by remember { mutableStateOf(Offset.Zero) }
+    var launchRequest by remember { mutableStateOf<LaunchRequest?>(null) }
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
     
@@ -151,6 +155,15 @@ fun AppDrawer(
             isEditMode = false
             draggingItemPkg = null
         }
+    }
+
+    LaunchedEffect(launchRequest) {
+        val request = launchRequest ?: return@LaunchedEffect
+        delay(280)
+        context.packageManager.getLaunchIntentForPackage(request.app.packageName)?.let {
+            launchAppNoTransition(context, it)
+        }
+        launchRequest = null
     }
 
     Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { drawerSize = it.size }) {
@@ -315,10 +328,78 @@ fun AppDrawer(
                             isFavorite = isFavorite(app.packageName),
                             onToggleFavorite = onToggleFavorite,
                             folders = folders,
-                            onUpdateFolders = onUpdateFolders
+                            onUpdateFolders = onUpdateFolders,
+                            onAppLaunchRequested = { requestedApp, bounds ->
+                                if (launchRequest == null) {
+                                    launchRequest = LaunchRequest(requestedApp, bounds)
+                                }
+                            }
                         )
                     }
                 }
+            }
+        }
+
+        val launchTransition = updateTransition(targetState = launchRequest != null, label = "LaunchTransition")
+        val launchProgress by launchTransition.animateFloat(
+            transitionSpec = { tween(durationMillis = 280, easing = FastOutSlowInEasing) },
+            label = "LaunchProgress"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val launchOverlayAlpha by launchTransition.animateFloat(
+            transitionSpec = { tween(durationMillis = 220, easing = LinearEasing) },
+            label = "LaunchOverlayAlpha"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val launchBounds = launchRequest?.bounds
+        val launchTranslation = remember(launchBounds, drawerSize) {
+            if (launchBounds != null && drawerSize.width > 0 && drawerSize.height > 0) {
+                val centerX = drawerSize.width / 2f
+                val centerY = drawerSize.height / 2f
+                Offset(launchBounds.center.x - centerX, launchBounds.center.y - centerY)
+            } else {
+                Offset.Zero
+            }
+        }
+        val launchStartScale = remember(launchBounds, drawerSize) {
+            if (launchBounds != null && drawerSize.width > 0 && drawerSize.height > 0) {
+                val wScale = launchBounds.width / drawerSize.width.toFloat()
+                val hScale = launchBounds.height / drawerSize.height.toFloat()
+                max(wScale, hScale).coerceIn(0.06f, 0.35f)
+            } else {
+                0.08f
+            }
+        }
+
+        if (launchProgress > 0f) {
+            val scale = launchStartScale + (1f - launchStartScale) * launchProgress
+            val translationX = launchTranslation.x * (1f - launchProgress)
+            val translationY = launchTranslation.y * (1f - launchProgress)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(2000f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            this.scaleX = scale
+                            this.scaleY = scale
+                            this.translationX = translationX
+                            this.translationY = translationY
+                            this.transformOrigin = TransformOrigin.Center
+                            this.alpha = launchOverlayAlpha
+                        }
+                        .background(colorTheme.drawerBackground)
+                )
             }
         }
 
@@ -596,7 +677,12 @@ fun AppDrawer(
                                                         onUpdateFolders = onUpdateFolders,
                                                         isInFolder = true,
                                                         currentFolderId = currentActiveFolder.id,
-                                                        isEditMode = isEditMode
+                                                        isEditMode = isEditMode,
+                                                        onAppLaunchRequested = { requestedApp, bounds ->
+                                                            if (launchRequest == null) {
+                                                                launchRequest = LaunchRequest(requestedApp, bounds)
+                                                            }
+                                                        }
                                                     )
                                                 }
                                             }
@@ -629,7 +715,8 @@ fun AppDrawer(
                                                     onUpdateFolders = onUpdateFolders,
                                                     isInFolder = true,
                                                     currentFolderId = currentActiveFolder.id,
-                                                    isEditMode = true
+                                                    isEditMode = true,
+                                                    onAppLaunchRequested = null
                                                 )
                                             }
                                         }
@@ -716,26 +803,43 @@ fun AppItem(
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     isInFolder: Boolean = false,
     currentFolderId: String? = null,
-    isEditMode: Boolean = false
+    isEditMode: Boolean = false,
+    onAppLaunchRequested: ((AppInfo, Rect?) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
     var showActions by remember { mutableStateOf(false) }
     var showFolderSelection by remember { mutableStateOf(false) }
     val intSrc = remember { MutableInteractionSource() }
+    var itemBounds by remember { mutableStateOf<Rect?>(null) }
 
     Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc, enabled = !isEditMode).combinedClickable(
-            interactionSource = intSrc,
-            indication = null,
-            enabled = !isEditMode,
-            onClick = { 
-                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } 
-            },
-            onLongClick = { 
-                showActions = true
-            }
-        )) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .onGloballyPositioned { coordinates ->
+                    itemBounds = coordinates.boundsInRoot()
+                }
+                .bounceClick(intSrc, enabled = !isEditMode)
+                .combinedClickable(
+                    interactionSource = intSrc,
+                    indication = null,
+                    enabled = !isEditMode,
+                    onClick = {
+                        val handled = onAppLaunchRequested != null
+                        if (handled) {
+                            onAppLaunchRequested?.invoke(app, itemBounds)
+                        } else {
+                            context.packageManager.getLaunchIntentForPackage(app.packageName)?.let {
+                                context.startActivity(it)
+                            }
+                        }
+                    },
+                    onLongClick = {
+                        showActions = true
+                    }
+                )
+        ) {
             AppIconView(app)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -774,3 +878,8 @@ fun AppItem(
         }
     }
 }
+
+private data class LaunchRequest(
+    val app: AppInfo,
+    val bounds: Rect?
+)

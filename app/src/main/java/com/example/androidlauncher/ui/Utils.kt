@@ -1,5 +1,9 @@
 package com.example.androidlauncher.ui
 
+import android.app.Activity
+import android.app.ActivityOptions
+import android.content.Context
+import android.content.Intent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -44,5 +48,14 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
         app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = modifier.size(iconSize), tint = Color.White)
         app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = modifier.size(iconSize), colorFilter = ColorFilter.tint(Color.White))
         else -> Box(modifier = modifier.size(iconSize).background(Color.White.copy(alpha = 0.05f), CircleShape))
+    }
+}
+
+fun launchAppNoTransition(context: Context, intent: Intent) {
+    intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+    val options = ActivityOptions.makeCustomAnimation(context, 0, 0)
+    context.startActivity(intent, options.toBundle())
+    if (context is Activity) {
+        context.overridePendingTransition(0, 0)
     }
 }

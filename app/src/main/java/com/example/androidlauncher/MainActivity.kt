@@ -46,16 +46,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.core.graphics.drawable.toBitmap
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
@@ -75,6 +79,7 @@ import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.AppIconView
 import com.example.androidlauncher.ui.bounceClick
 import com.example.androidlauncher.ui.FolderConfigMenu
+import com.example.androidlauncher.ui.launchAppNoTransition
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -84,6 +89,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.max
 
 class MainActivity : ComponentActivity() {
     // OnBackPressedCallback als Instanzvariable um ihn später zu steuern
@@ -385,113 +391,207 @@ fun SystemWallpaperView() {
 
 @Composable
 fun HomeScreen(
-    favorites: List<AppInfo>, 
+    favorites: List<AppInfo>,
     isSettingsOpen: Boolean,
-    onOpenDrawer: () -> Unit, 
+    onOpenDrawer: () -> Unit,
     onToggleSettings: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
     onOpenSizeConfig: () -> Unit
 ) {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
+    var rootSize by remember { mutableStateOf(IntSize.Zero) }
+    var launchRequest by remember { mutableStateOf<HomeLaunchRequest?>(null) }
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
         animationSpec = tween(300, easing = EaseInOutCubic)
     )
-    
+
     val settingsButtonSize by animateDpAsState(
         targetValue = if (isSettingsOpen) 72.dp else 56.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
     )
 
+    LaunchedEffect(launchRequest) {
+        val request = launchRequest ?: return@LaunchedEffect
+        delay(280)
+        context.packageManager.getLaunchIntentForPackage(request.app.packageName)?.let {
+            launchAppNoTransition(context, it)
+        }
+        launchRequest = null
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .testTag("home_screen")
+            .onGloballyPositioned { rootSize = it.size }
             .pointerInput(Unit) {
                 detectVerticalDragGestures { _, dragAmount ->
                     if (dragAmount < -50) onOpenDrawer()
                     else if (dragAmount > 50) expandNotifications(context)
                 }
             }
-            .padding(24.dp)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Spacer(modifier = Modifier.height(64.dp))
-            ClockHeader()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Spacer(modifier = Modifier.height(64.dp))
+                ClockHeader()
 
-            Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f))
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(start = 12.dp)
-            ) {
-                if (favorites.isEmpty()) {
-                    val intSrc = remember { MutableInteractionSource() }
-                    Surface(
-                        color = Color.White.copy(alpha = 0.1f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
-                            interactionSource = intSrc,
-                            indication = null
-                        ) { onOpenFavoritesConfig() }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White) }
-                    }
-                } else {
-                    favorites.forEach { app ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(start = 12.dp)
+                ) {
+                    if (favorites.isEmpty()) {
                         val intSrc = remember { MutableInteractionSource() }
                         Surface(
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.bounceClick(intSrc).clickable(
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = CircleShape,
+                            modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
                                 interactionSource = intSrc,
                                 indication = null
-                            ) {
-                                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
-                            }
+                            ) { onOpenFavoritesConfig() }
                         ) {
-                            Box(modifier = Modifier.padding(6.dp)) { AppIconView(app) }
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White) }
+                        }
+                    } else {
+                        favorites.forEach { app ->
+                            val intSrc = remember { MutableInteractionSource() }
+                            val itemBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
+                            Surface(
+                                color = Color.Transparent,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .onGloballyPositioned { coordinates ->
+                                        itemBounds.value = coordinates.boundsInRoot()
+                                    }
+                                    .bounceClick(intSrc)
+                                    .clickable(
+                                        interactionSource = intSrc,
+                                        indication = null
+                                    ) {
+                                        if (launchRequest == null) {
+                                            launchRequest = HomeLaunchRequest(app, itemBounds.value)
+                                        }
+                                    }
+                            ) {
+                                Box(modifier = Modifier.padding(6.dp)) { AppIconView(app) }
+                            }
                         }
                     }
                 }
+                Spacer(modifier = Modifier.weight(1f))
             }
-            Spacer(modifier = Modifier.weight(1f))
+
+            SettingsPaletteMenu(
+                isSettingsOpen = isSettingsOpen,
+                onToggleSettings = onToggleSettings,
+                onOpenFavoritesConfig = onOpenFavoritesConfig,
+                onOpenColorConfig = onOpenColorConfig,
+                onOpenSizeConfig = onOpenSizeConfig,
+                onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
+                onOpenInfo = { /* Action */ }
+            )
+
+            Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
+                val intSrc = remember { MutableInteractionSource() }
+                Surface(
+                    modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).bounceClick(intSrc).clickable(
+                        interactionSource = intSrc,
+                        indication = null
+                    ) { onToggleSettings() },
+                    color = Color.White.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f),
+                    shape = CircleShape,
+                    border = if (isSettingsOpen) BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
+                        Icon(
+                            imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
+                        )
+                    }
+                }
+            }
         }
 
-        SettingsPaletteMenu(
-            isSettingsOpen = isSettingsOpen,
-            onToggleSettings = onToggleSettings,
-            onOpenFavoritesConfig = onOpenFavoritesConfig,
-            onOpenColorConfig = onOpenColorConfig,
-            onOpenSizeConfig = onOpenSizeConfig,
-            onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
-            onOpenInfo = { /* Action */ }
-        )
+        val launchTransition = updateTransition(targetState = launchRequest != null, label = "HomeLaunchTransition")
+        val launchProgress by launchTransition.animateFloat(
+            transitionSpec = { tween(durationMillis = 280, easing = FastOutSlowInEasing) },
+            label = "HomeLaunchProgress"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val launchOverlayAlpha by launchTransition.animateFloat(
+            transitionSpec = { tween(durationMillis = 220, easing = LinearEasing) },
+            label = "HomeLaunchOverlayAlpha"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val launchBounds = launchRequest?.bounds
+        val launchTranslation = remember(launchBounds, rootSize) {
+            if (launchBounds != null && rootSize.width > 0 && rootSize.height > 0) {
+                val centerX = rootSize.width / 2f
+                val centerY = rootSize.height / 2f
+                Offset(launchBounds.center.x - centerX, launchBounds.center.y - centerY)
+            } else {
+                Offset.Zero
+            }
+        }
+        val launchStartScale = remember(launchBounds, rootSize) {
+            if (launchBounds != null && rootSize.width > 0 && rootSize.height > 0) {
+                val wScale = launchBounds.width / rootSize.width.toFloat()
+                val hScale = launchBounds.height / rootSize.height.toFloat()
+                max(wScale, hScale).coerceIn(0.06f, 0.35f)
+            } else {
+                0.08f
+            }
+        }
 
-        Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
-            val intSrc = remember { MutableInteractionSource() }
-            Surface(
-                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).bounceClick(intSrc).clickable(
-                    interactionSource = intSrc,
-                    indication = null
-                ) { onToggleSettings() }, 
-                color = Color.White.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), 
-                shape = CircleShape,
-                border = if (isSettingsOpen) BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
-                    Icon(
-                        imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings, 
-                        contentDescription = null, 
-                        tint = Color.White, 
-                        modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
+        if (launchProgress > 0f) {
+            val scale = launchStartScale + (1f - launchStartScale) * launchProgress
+            val translationX = launchTranslation.x * (1f - launchProgress)
+            val translationY = launchTranslation.y * (1f - launchProgress)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(2000f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
                     )
-                }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            this.scaleX = scale
+                            this.scaleY = scale
+                            this.translationX = translationX
+                            this.translationY = translationY
+                            this.transformOrigin = TransformOrigin.Center
+                            this.alpha = launchOverlayAlpha
+                        }
+                        .background(colorTheme.drawerBackground)
+                )
             }
         }
     }
 }
+
+private data class HomeLaunchRequest(
+    val app: AppInfo,
+    val bounds: Rect?
+)
 
 @Composable
 fun FavoritesConfigMenu(
