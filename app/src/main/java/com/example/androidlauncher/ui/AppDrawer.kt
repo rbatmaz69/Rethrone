@@ -323,47 +323,65 @@ fun AppDrawer(
         }
 
         // Folder Popup Overlay with symmetric animation
-        val pivotOrigin = remember(folderPosition, drawerSize) {
-            if (drawerSize.width > 0 && drawerSize.height > 0) {
-                TransformOrigin(
-                    pivotFractionX = folderPosition.x / drawerSize.width.toFloat(),
-                    pivotFractionY = folderPosition.y / drawerSize.height.toFloat()
+        val showFolder = activeFolderId != null
+        val folderTransition = updateTransition(targetState = showFolder, label = "FolderTransition")
+        val folderProgress by folderTransition.animateFloat(
+            transitionSpec = {
+                tween(
+                    durationMillis = if (targetState) 420 else 320,
+                    easing = FastOutSlowInEasing
                 )
-            } else TransformOrigin.Center
+            },
+            label = "FolderProgress"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val overlayAlpha by folderTransition.animateFloat(
+            transitionSpec = { tween(durationMillis = 260, easing = LinearEasing) },
+            label = "OverlayAlpha"
+        ) { isVisible ->
+            if (isVisible) 0.35f else 0f
+        }
+        val folderTranslation = remember(folderPosition, drawerSize) {
+            if (drawerSize.width > 0 && drawerSize.height > 0) {
+                val centerX = drawerSize.width / 2f
+                val centerY = drawerSize.height / 2f
+                Offset(folderPosition.x - centerX, folderPosition.y - centerY)
+            } else {
+                Offset.Zero
+            }
         }
 
-        AnimatedVisibility(
-            visible = activeFolderId != null,
-            enter = fadeIn(animationSpec = tween(250)) + scaleIn(
-                initialScale = 0.05f,
-                transformOrigin = pivotOrigin,
-                animationSpec = tween(400, easing = FastOutSlowInEasing)
-            ),
-            exit = fadeOut(animationSpec = tween(250)) + scaleOut(
-                targetScale = 0.05f,
-                transformOrigin = pivotOrigin,
-                animationSpec = tween(400, easing = FastOutSlowInEasing)
-            )
-        ) {
+        if (folderProgress > 0f || showFolder) {
             // Nutze lastValidFolder, damit der Inhalt während der gesamten Schließanimation bleibt
             lastValidFolder?.let { currentActiveFolder ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.35f))
+                        .background(Color.Black.copy(alpha = overlayAlpha))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { 
-                                if (isEditMode) isEditMode = false else activeFolderId = null 
+                            onClick = {
+                                if (isEditMode) isEditMode = false else activeFolderId = null
                             }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
+                    val scale = 0.05f + (1f - 0.05f) * folderProgress
+                    val translationX = folderTranslation.x * (1f - folderProgress)
+                    val translationY = folderTranslation.y * (1f - folderProgress)
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .wrapContentHeight()
+                            .graphicsLayer {
+                                this.scaleX = scale
+                                this.scaleY = scale
+                                this.translationX = translationX
+                                this.translationY = translationY
+                                this.transformOrigin = TransformOrigin.Center
+                            }
                             .clickable(enabled = false) {},
                         color = colorTheme.drawerBackground.copy(alpha = 0.98f),
                         shape = RoundedCornerShape(32.dp),
@@ -593,11 +611,11 @@ fun AppDrawer(
                                                 modifier = Modifier
                                                     .size(80.dp)
                                                     .graphicsLayer {
-                                                        translationX = touchPosition.x - initialTouchOffsetInItem.x
-                                                        translationY = touchPosition.y - initialTouchOffsetInItem.y
-                                                        scaleX = 1.3f
-                                                        scaleY = 1.3f
-                                                        alpha = 0.9f
+                                                        this.translationX = touchPosition.x - initialTouchOffsetInItem.x
+                                                        this.translationY = touchPosition.y - initialTouchOffsetInItem.y
+                                                        this.scaleX = 1.3f
+                                                        this.scaleY = 1.3f
+                                                        this.alpha = 0.9f
                                                     }
                                                     .zIndex(1000f)
                                                     .shadow(24.dp, RoundedCornerShape(16.dp))
