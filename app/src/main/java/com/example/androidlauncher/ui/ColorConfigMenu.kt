@@ -60,10 +60,13 @@ fun ColorConfigMenu(
                     checked = isDarkTextEnabled,
                     onCheckedChange = onDarkTextToggled,
                     colors = SwitchDefaults.colors(
+                        // Vereinheitlichte Farben für die Umrandung (Track) in beiden Modi
+                        checkedTrackColor = Color.White.copy(alpha = 0.2f),
+                        uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = Color.Black.copy(alpha = 0.3f),
-                        uncheckedThumbColor = Color.White.copy(alpha = 0.8f),
-                        uncheckedTrackColor = Color.White.copy(alpha = 0.2f)
+                        uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
+                        checkedBorderColor = Color.White.copy(alpha = 0.1f),
+                        uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
                     ),
                     thumbContent = {
                         if (isDarkTextEnabled) {
