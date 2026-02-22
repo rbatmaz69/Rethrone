@@ -841,7 +841,7 @@ fun ClockHeader(
                     indication = null
                 ) {
                     val pm = context.packageManager
-                    var clockIntent: Intent? = null
+                    var foundPkg: String? = null
                     
                     // 1. nubia & bekannte Pakete direkt probieren
                     val packages = listOf(
@@ -859,56 +859,57 @@ fun ClockHeader(
                     
                     for (pkg in packages) {
                         try {
-                            val li = pm.getLaunchIntentForPackage(pkg)
-                            if (li != null) {
-                                clockIntent = li
+                            if (pm.getLaunchIntentForPackage(pkg) != null) {
+                                foundPkg = pkg
                                 break
                             }
                         } catch (e: Exception) {}
                     }
 
-                    if (clockIntent == null) {
+                    // 2. Weg: Suche über Standard-Clock-Kategorie
+                    if (foundPkg == null) {
                         try {
                             val stdIntent = Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_CLOCK")
                             val res = pm.resolveActivity(stdIntent, 0)
                             if (res != null) {
-                                clockIntent = pm.getLaunchIntentForPackage(res.activityInfo.packageName)
+                                foundPkg = res.activityInfo.packageName
                             }
                         } catch (e: Exception) {}
                     }
 
-                    if (clockIntent == null) {
+                    // 3. Weg: Suche über Alarm-Aktion
+                    if (foundPkg == null) {
                         try {
                             val alarmIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
                             val res = pm.resolveActivity(alarmIntent, 0)
                             if (res != null) {
-                                clockIntent = pm.getLaunchIntentForPackage(res.activityInfo.packageName)
+                                foundPkg = res.activityInfo.packageName
                             }
                         } catch (e: Exception) {}
                     }
 
-                    if (clockIntent == null) {
+                    // 4. Weg: Aggressiver Scan aller installierten Apps
+                    if (foundPkg == null) {
                         try {
                             val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
                             val foundApp = apps.find { 
                                 val pkg = it.packageName.lowercase()
-                                val label = it.loadLabel(pm).toString().lowercase()
-                                (pkg.contains("deskclock") || pkg.contains("uhr") || pkg.contains("clock")) && 
+                                (pkg.contains("deskclock") || pkg.contains("uhr") || (pkg.contains("clock") && !pkg.contains("widget"))) && 
                                 pm.getLaunchIntentForPackage(it.packageName) != null
                             }
-                            foundApp?.let {
-                                clockIntent = pm.getLaunchIntentForPackage(it.packageName)
-                            }
+                            foundPkg = foundApp?.packageName
                         } catch (e: Exception) {}
                     }
 
-                    if (clockIntent != null) {
-                        // Wichtige Flags für Launcher-Starts
-                        clockIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-                        
-                        val pkg = clockIntent?.`package` ?: clockIntent?.component?.packageName ?: "clock"
-                        onAppLaunchForReturn(pkg, clockBounds.value)
-                        onLaunchRequest(HomeLaunchRequest(pkg, clockBounds.value, clockIntent))
+                    if (foundPkg != null) {
+                        val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
+                        if (launchIntent != null) {
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                            onAppLaunchForReturn(foundPkg, clockBounds.value)
+                            onLaunchRequest(HomeLaunchRequest(foundPkg, clockBounds.value, launchIntent))
+                        } else {
+                            Toast.makeText(context, "App-Start fehlgeschlagen", Toast.LENGTH_SHORT).show()
+                        }
                     } else {
                         Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
                     }
@@ -927,19 +928,29 @@ fun ClockHeader(
                     interactionSource = intSrcDate,
                     indication = null
                 ) {
+                    val pm = context.packageManager
                     var calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                    }
-                    if (context.packageManager.resolveActivity(calendarIntent, 0) == null) {
-                        calendarIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                        }
                     }
                     
-                    val pkg = calendarIntent.`package` ?: calendarIntent.component?.packageName ?: "calendar"
-                    onAppLaunchForReturn(pkg, calendarBounds.value)
-                    onLaunchRequest(HomeLaunchRequest(pkg, calendarBounds.value, calendarIntent))
+                    val res = pm.resolveActivity(calendarIntent, 0)
+                    if (res == null) {
+                        calendarIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
+                    }
+                    
+                    val foundPkg = pm.resolveActivity(calendarIntent, 0)?.activityInfo?.packageName
+                    if (foundPkg != null) {
+                        val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
+                        if (launchIntent != null) {
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                            onAppLaunchForReturn(foundPkg, calendarBounds.value)
+                            onLaunchRequest(HomeLaunchRequest(foundPkg, calendarBounds.value, launchIntent))
+                        } else {
+                            calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            onAppLaunchForReturn(foundPkg, calendarBounds.value)
+                            onLaunchRequest(HomeLaunchRequest(foundPkg, calendarBounds.value, calendarIntent))
+                        }
+                    }
                 }
                 .padding(horizontal = 4.dp, vertical = 2.dp)
         )

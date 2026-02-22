@@ -5,6 +5,7 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -89,16 +90,23 @@ fun launchAppNoTransition(context: Context, intent: Intent) {
     try {
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        
         val options = ActivityOptions.makeCustomAnimation(context, 0, 0)
         context.startActivity(intent, options.toBundle())
-        activity?.overridePendingTransition(0, 0)
+        
+        if (activity != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
+            } else {
+                activity.overridePendingTransition(0, 0)
+            }
+        }
     } catch (e: Exception) {
         try {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            activity?.overridePendingTransition(0, 0)
         } catch (e2: Exception) {
-            Toast.makeText(context, "Start fehlgeschlagen", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "App konnte nicht gestartet werden", Toast.LENGTH_SHORT).show()
         }
     }
 }
