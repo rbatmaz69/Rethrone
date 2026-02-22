@@ -37,6 +37,7 @@ fun SizeConfigMenu(
 ) {
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    // Nur für primäre Schriften und Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -73,7 +74,8 @@ fun SizeConfigMenu(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
+            // Bleibt grau
+            Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
             
             // Preview Area
@@ -98,9 +100,10 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(32.dp))
             
+            // Bleibt grau
             Text(
                 text = "Schriftgröße",
-                color = mainTextColor.copy(alpha = 0.5f),
+                color = Color.White.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -117,9 +120,10 @@ fun SizeConfigMenu(
                             .weight(1f)
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) mainTextColor else mainTextColor.copy(alpha = 0.1f),
+                        // Inaktive Buttons bleiben grau
+                        color = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f),
                         contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor,
-                        border = if (isSelected) null else BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f))
+                        border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
@@ -134,9 +138,10 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Bleibt grau
             Text(
                 text = "Icon-Größe",
-                color = mainTextColor.copy(alpha = 0.5f),
+                color = Color.White.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -153,9 +158,10 @@ fun SizeConfigMenu(
                             .weight(1f)
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) mainTextColor else mainTextColor.copy(alpha = 0.1f),
+                        // Inaktive Buttons bleiben grau
+                        color = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f),
                         contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor,
-                        border = if (isSelected) null else BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f))
+                        border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
@@ -181,14 +187,15 @@ fun SizeConfigMenu(
                     onFontSizeSelected(FontSize.STANDARD)
                     onIconSizeSelected(IconSize.STANDARD)
                 },
-                colors = ButtonDefaults.textButtonColors(contentColor = mainTextColor.copy(alpha = 0.6f))
+                // Bleibt grau
+                colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.6f))
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = mainTextColor.copy(alpha = 0.6f)
+                        tint = Color.White.copy(alpha = 0.6f)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Auf Standardwerte zurücksetzen", fontSize = 14.sp)
@@ -202,12 +209,14 @@ fun SizeConfigMenu(
 fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHome: Boolean, mainTextColor: Color, modifier: Modifier = Modifier) {
     val colorTheme = LocalColorTheme.current
     Surface(
-        color = mainTextColor.copy(alpha = 0.05f),
+        // Hintergrund der Karte bleibt grau
+        color = Color.White.copy(alpha = 0.05f),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            // Karten-Titel bleibt grau
+            Text(title, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
