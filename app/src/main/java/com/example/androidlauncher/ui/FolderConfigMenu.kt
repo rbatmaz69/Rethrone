@@ -46,7 +46,7 @@ fun FolderConfigMenu(
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     
-    // Vermeidung von Pure-Black, um HW-Overlay-Fehler zu umgehen
+    // Nur primäre Schriften & Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     var searchQuery by remember { mutableStateOf("") }
@@ -65,9 +65,16 @@ fun FolderConfigMenu(
                     onValueChange = { folderName = it },
                     textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 24.sp, fontWeight = FontWeight.Light),
                     cursorBrush = SolidColor(mainTextColor),
-                    decorationBox = { if (folderName.isEmpty()) Text("Ordnername", color = mainTextColor.copy(alpha = 0.4f), fontSize = 24.sp); it() }
+                    decorationBox = { 
+                        if (folderName.isEmpty()) {
+                            // Bleibt grau
+                            Text("Ordnername", color = Color.White.copy(alpha = 0.4f), fontSize = 24.sp)
+                        }
+                        it() 
+                    }
                 )
-                Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = mainTextColor.copy(alpha = 0.6f))
+                // Bleibt grau
+                Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
             }
             Row {
                 IconButton(onClick = { showDeleteConfirm = true }) { 
@@ -80,12 +87,13 @@ fun FolderConfigMenu(
         Spacer(modifier = Modifier.height(24.dp))
 
         val searchIntSrc = remember { MutableInteractionSource() }
-        Box(modifier = Modifier.fillMaxWidth().background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
+        Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
             interactionSource = searchIntSrc,
             indication = null
         ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                // Bleibt grau
+                Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 BasicTextField(
                     value = searchQuery,
@@ -94,7 +102,13 @@ fun FolderConfigMenu(
                     textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
                     cursorBrush = SolidColor(mainTextColor),
                     singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 15.sp); it() }
+                    decorationBox = { 
+                        if (searchQuery.isEmpty()) {
+                            // Bleibt grau
+                            Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp)
+                        }
+                        it() 
+                    }
                 )
             }
         }
@@ -102,11 +116,13 @@ fun FolderConfigMenu(
         Spacer(modifier = Modifier.height(16.dp))
         
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
-            item { Text("Apps verwalten", color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp) }
+            // Bleibt grau
+            item { Text("Apps verwalten", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isSelected = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
-                Surface(color = if (isSelected) mainTextColor.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
+                // Kartenhintergrund bleibt grau
+                Surface(color = if (isSelected) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
                     interactionSource = intSrc,
                     indication = null
                 ) {
@@ -119,13 +135,17 @@ fun FolderConfigMenu(
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
                         Spacer(modifier = Modifier.width(16.dp))
+                        // App-Label wird schwarz
                         Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
                         Checkbox(
                             checked = isSelected, 
                             onCheckedChange = null, 
                             colors = CheckboxDefaults.colors(
+                                // Füllung wird schwarz im Dark Mode
                                 checkedColor = mainTextColor, 
-                                uncheckedColor = mainTextColor.copy(alpha = 0.4f), 
+                                // Rahmen bleibt grau
+                                uncheckedColor = Color.White.copy(alpha = 0.4f), 
+                                // Haken wird weiß im Dark Mode
                                 checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
                             )
                         )
@@ -152,7 +172,7 @@ fun FolderConfigMenu(
         )
     }
 
-    // DER BUTTON - Finale Isolation gegen alle Rendering-Fehler
+    // DER BUTTON
     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
         val intSrc = remember { MutableInteractionSource() }
         val checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
@@ -160,10 +180,8 @@ fun FolderConfigMenu(
         Box(
             modifier = Modifier
                 .size(56.dp)
-                // Isolation in einen eigenen Graphics Layer
                 .graphicsLayer(alpha = 0.99f) 
                 .drawBehind {
-                    // Safe Zone Radius (2.0f Pixel Abstand)
                     drawCircle(
                         color = mainTextColor,
                         radius = (size.minDimension / 2.0f) - 2.0f,
