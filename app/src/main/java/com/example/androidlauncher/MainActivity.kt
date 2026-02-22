@@ -428,7 +428,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(start = 12.dp)
             ) {
                 if (favorites.isEmpty()) {
@@ -446,27 +446,25 @@ fun HomeScreen(
                 } else {
                     favorites.forEach { app ->
                         val intSrc = remember { MutableInteractionSource() }
-                        Column(
+                        Row(
                             modifier = Modifier.bounceClick(intSrc).clickable(
                                 interactionSource = intSrc,
                                 indication = null
                             ) {
                                 context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
-                            },
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            }.padding(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             AppIconView(app)
                             if (showLabels) {
-                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = app.label,
                                     color = mainTextColor,
-                                    fontSize = 14.sp * fontSize.scale,
-                                    fontWeight = FontWeight.Light,
+                                    fontSize = 18.sp * fontSize.scale,
+                                    fontWeight = FontWeight.Normal,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.widthIn(max = 80.dp)
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -569,8 +567,8 @@ fun FavoritesConfigMenu(
                                 Modifier.drawBehind {
                                     drawLine(
                                         color = if (isDarkTextEnabled) Color.Black else Color(0xFF0F172A),
-                                        start = Offset(0f, size.height),
-                                        end = Offset(size.width, 0f),
+                                        start = Offset(0f, 0f),
+                                        end = Offset(size.width, size.height),
                                         strokeWidth = 1.5.dp.toPx()
                                     )
                                 }
