@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +44,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -55,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -91,7 +97,7 @@ fun AppDrawer(
     val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
-    
+
     var searchQuery by remember { mutableStateOf("") }
 
     val visibleApps = remember(apps.toList(), folders, searchQuery) {
@@ -240,35 +246,78 @@ fun AppDrawer(
                 IconSize.LARGE -> 3
             }
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(adaptiveColumns),
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalArrangement = Arrangement.spacedBy(32.dp),
-                contentPadding = PaddingValues(bottom = 32.dp)
-            ) {
-                if (searchQuery.isBlank()) {
-                    itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
-                        FolderItem(
-                            folder = folder, 
-                            onClick = { pos -> 
-                                folderPosition = pos
-                                activeFolderId = folder.id 
-                            }, 
-                            onOpenFolderConfig = onOpenFolderConfig
-                        )
+            val gridState = rememberLazyGridState()
+            var swipeDragY by remember { mutableStateOf(0f) }
+            val swipeCloseThresholdPx = with(density) { 64.dp.toPx() }
+            val swipeToCloseConnection = remember(gridState, swipeCloseThresholdPx, onClose) {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        val atTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+                        if (source == NestedScrollSource.UserInput && atTop && available.y > 0f) {
+                            swipeDragY += available.y
+                            if (swipeDragY >= swipeCloseThresholdPx) {
+                                swipeDragY = 0f
+                                onClose()
+                            }
+                            return Offset(0f, available.y)
+                        }
+                        if (!atTop || available.y < 0f) {
+                            swipeDragY = 0f
+                        }
+                        return Offset.Zero
+                    }
+
+                    override suspend fun onPreFling(available: Velocity): Velocity {
+                        val atTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+                        if (atTop && available.y > 1500f) {
+                            swipeDragY = 0f
+                            onClose()
+                            return available
+                        }
+                        return Velocity.Zero
+                    }
+
+                    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                        swipeDragY = 0f
+                        return Velocity.Zero
                     }
                 }
+            }
 
-                itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { _, app ->
-                    AppItem(
-                        app = app,
-                        adaptiveColumns = adaptiveColumns,
-                        isFavorite = isFavorite(app.packageName),
-                        onToggleFavorite = onToggleFavorite,
-                        folders = folders,
-                        onUpdateFolders = onUpdateFolders
-                    )
+            CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(adaptiveColumns),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(swipeToCloseConnection),
+                    state = gridState,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalArrangement = Arrangement.spacedBy(32.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp)
+                ) {
+                    if (searchQuery.isBlank()) {
+                        itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
+                            FolderItem(
+                                folder = folder,
+                                onClick = { pos ->
+                                    folderPosition = pos
+                                    activeFolderId = folder.id
+                            },
+                            onOpenFolderConfig = onOpenFolderConfig
+                            )
+                        }
+                    }
+
+                    itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { _, app ->
+                        AppItem(
+                            app = app,
+                            adaptiveColumns = adaptiveColumns,
+                            isFavorite = isFavorite(app.packageName),
+                            onToggleFavorite = onToggleFavorite,
+                            folders = folders,
+                            onUpdateFolders = onUpdateFolders
+                        )
+                    }
                 }
             }
         }
