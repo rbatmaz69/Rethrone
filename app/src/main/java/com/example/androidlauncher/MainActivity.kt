@@ -497,7 +497,7 @@ fun HomeScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Spacer(modifier = Modifier.height(64.dp))
-                ClockHeader(onAppLaunchForReturn = onAppLaunchForReturn, onLaunchRequest = { launchRequest = it })
+                ClockHeader(onAppLaunchForReturn = onAppLaunchForReturn, onLaunchRequest = { launchRequest = it }, returnIconPackage = returnIconPackage)
 
                 Spacer(modifier = Modifier.weight(1f))
 
@@ -802,7 +802,8 @@ fun FavoritesConfigMenu(
 @Composable
 fun ClockHeader(
     onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit
+    onLaunchRequest: (HomeLaunchRequest) -> Unit,
+    returnIconPackage: String?
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
@@ -822,6 +823,21 @@ fun ClockHeader(
     val intSrcDate = remember { MutableInteractionSource() }
     val clockBounds = remember { mutableStateOf<Rect?>(null) }
     val calendarBounds = remember { mutableStateOf<Rect?>(null) }
+
+    // Identifizieren der Pakete für die Return-Animation
+    var clockPackage by remember { mutableStateOf<String?>(null) }
+    var calendarPackage by remember { mutableStateOf<String?>(null) }
+
+    val bounceScaleTime by animateFloatAsState(
+        targetValue = if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "ClockReturnBounce"
+    )
+    val bounceScaleDate by animateFloatAsState(
+        targetValue = if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "CalendarReturnBounce"
+    )
     
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -834,6 +850,10 @@ fun ClockHeader(
             color = mainTextColor,
             modifier = Modifier
                 .onGloballyPositioned { clockBounds.value = it.boundsInRoot() }
+                .graphicsLayer {
+                    scaleX = bounceScaleTime
+                    scaleY = bounceScaleTime
+                }
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcTime)
                 .clickable(
@@ -888,7 +908,7 @@ fun ClockHeader(
                         } catch (e: Exception) {}
                     }
 
-                    // 4. Weg: Aggressiver Scan aller installierten Apps
+                    // 4. Weg: Scan
                     if (foundPkg == null) {
                         try {
                             val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
@@ -902,13 +922,12 @@ fun ClockHeader(
                     }
 
                     if (foundPkg != null) {
+                        clockPackage = foundPkg
                         val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
                         if (launchIntent != null) {
                             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
                             onAppLaunchForReturn(foundPkg, clockBounds.value)
                             onLaunchRequest(HomeLaunchRequest(foundPkg, clockBounds.value, launchIntent))
-                        } else {
-                            Toast.makeText(context, "App-Start fehlgeschlagen", Toast.LENGTH_SHORT).show()
                         }
                     } else {
                         Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
@@ -922,6 +941,10 @@ fun ClockHeader(
             color = mainTextColor.copy(alpha = 0.7f),
             modifier = Modifier
                 .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
+                .graphicsLayer {
+                    scaleX = bounceScaleDate
+                    scaleY = bounceScaleDate
+                }
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcDate)
                 .clickable(
@@ -940,13 +963,14 @@ fun ClockHeader(
                     
                     val foundPkg = pm.resolveActivity(calendarIntent, 0)?.activityInfo?.packageName
                     if (foundPkg != null) {
+                        calendarPackage = foundPkg
                         val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
                         if (launchIntent != null) {
                             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
                             onAppLaunchForReturn(foundPkg, calendarBounds.value)
                             onLaunchRequest(HomeLaunchRequest(foundPkg, calendarBounds.value, launchIntent))
                         } else {
-                            calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
                             onAppLaunchForReturn(foundPkg, calendarBounds.value)
                             onLaunchRequest(HomeLaunchRequest(foundPkg, calendarBounds.value, calendarIntent))
                         }
