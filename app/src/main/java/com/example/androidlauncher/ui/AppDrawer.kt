@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -30,21 +32,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -55,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -63,6 +69,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.composables.icons.lucide.Lucide
@@ -71,6 +78,7 @@ import com.composables.icons.lucide.FolderPlus
 import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Check
 import kotlinx.coroutines.delay
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -82,16 +90,21 @@ fun AppDrawer(
     isFavorite: (String) -> Boolean,
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     onOpenFolderConfig: (FolderInfo) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    returnIconPackage: String?
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
     val iconSize = LocalIconSize.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
     val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
-    
+
     var searchQuery by remember { mutableStateOf("") }
 
     val visibleApps = remember(apps.toList(), folders, searchQuery) {
@@ -106,12 +119,10 @@ fun AppDrawer(
 
     var activeFolderId by remember { mutableStateOf<String?>(null) }
     
-    // Stabilisierung des Ordner-Zustands für die Schließanimation
     val activeFolder = remember(activeFolderId, folders) {
         if (activeFolderId != null) folders.find { it.id == activeFolderId } else null
     }
     
-    // lastValidFolder sorgt dafür, dass der Inhalt während des Ausblendens sichtbar bleibt
     var lastValidFolder by remember { mutableStateOf<FolderInfo?>(null) }
     LaunchedEffect(activeFolder) {
         if (activeFolder != null) {
@@ -121,10 +132,10 @@ fun AppDrawer(
     
     var drawerSize by remember { mutableStateOf(IntSize.Zero) }
     var folderPosition by remember { mutableStateOf(Offset.Zero) }
+    var launchRequest by remember { mutableStateOf<LaunchRequest?>(null) }
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
     
-    // Zurück-Taste / Geste: Erst Bearbeitungsmodus beenden, dann Ordner schließen
     BackHandler(enabled = activeFolderId != null) {
         if (isEditMode) {
             isEditMode = false
@@ -133,7 +144,6 @@ fun AppDrawer(
         }
     }
 
-    // Globale Drag-States
     var draggingItemPkg by remember { mutableStateOf<String?>(null) }
     var touchPosition by remember { mutableStateOf(Offset.Zero) }
     var initialTouchOffsetInItem by remember { mutableStateOf(Offset.Zero) }
@@ -145,6 +155,15 @@ fun AppDrawer(
             isEditMode = false
             draggingItemPkg = null
         }
+    }
+
+    LaunchedEffect(launchRequest) {
+        val request = launchRequest ?: return@LaunchedEffect
+        delay(280)
+        context.packageManager.getLaunchIntentForPackage(request.app.packageName)?.let {
+            launchAppNoTransition(context, it)
+        }
+        launchRequest = null
     }
 
     Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { drawerSize = it.size }) {
@@ -169,7 +188,7 @@ fun AppDrawer(
                     "Apps",
                     fontSize = 24.sp * fontSize.scale,
                     fontWeight = FontWeight.Light,
-                    color = Color.White
+                    color = mainTextColor
                 )
                 Row {
                     if (searchQuery.isBlank()) {
@@ -177,7 +196,7 @@ fun AppDrawer(
                         var folderNameInput by remember { mutableStateOf("") }
                         
                         IconButton(onClick = { isCreateFolderDialogOpen = true }) { 
-                            Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = Color.White) 
+                            Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = mainTextColor) 
                         }
                         
                         if (isCreateFolderDialogOpen) {
@@ -207,28 +226,28 @@ fun AppDrawer(
                         }
                     }
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
                     }
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
 
             val searchIntSrc = remember { MutableInteractionSource() }
-            Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
+            Box(modifier = Modifier.fillMaxWidth().background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
                 interactionSource = searchIntSrc,
                 indication = null
             ) { focusRequester.requestFocus() }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     BasicTextField(
                         value = searchQuery, onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp * fontSize.scale),
-                        cursorBrush = SolidColor(Color.White), singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp * fontSize.scale),
+                        cursorBrush = SolidColor(mainTextColor), singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
+                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
                     )
                 }
             }
@@ -240,85 +259,216 @@ fun AppDrawer(
                 IconSize.LARGE -> 3
             }
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(adaptiveColumns),
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalArrangement = Arrangement.spacedBy(32.dp),
-                contentPadding = PaddingValues(bottom = 32.dp)
-            ) {
-                if (searchQuery.isBlank()) {
-                    itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
-                        FolderItem(
-                            folder = folder, 
-                            onClick = { pos -> 
-                                folderPosition = pos
-                                activeFolderId = folder.id 
-                            }, 
-                            onOpenFolderConfig = onOpenFolderConfig
-                        )
+            val gridState = rememberLazyGridState()
+            var swipeDragY by remember { mutableStateOf(0f) }
+            val swipeCloseThresholdPx = with(density) { 64.dp.toPx() }
+            val swipeToCloseConnection = remember(gridState, swipeCloseThresholdPx, onClose) {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        val atTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+                        if (source == NestedScrollSource.UserInput && atTop && available.y > 0f) {
+                            swipeDragY += available.y
+                            if (swipeDragY >= swipeCloseThresholdPx) {
+                                swipeDragY = 0f
+                                onClose()
+                            }
+                            return Offset(0f, available.y)
+                        }
+                        if (!atTop || available.y < 0f) {
+                            swipeDragY = 0f
+                        }
+                        return Offset.Zero
+                    }
+
+                    override suspend fun onPreFling(available: Velocity): Velocity {
+                        val atTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+                        if (atTop && available.y > 1500f) {
+                            swipeDragY = 0f
+                            onClose()
+                            return available
+                        }
+                        return Velocity.Zero
+                    }
+
+                    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                        swipeDragY = 0f
+                        return Velocity.Zero
                     }
                 }
+            }
 
-                itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { _, app ->
-                    AppItem(
-                        app = app,
-                        adaptiveColumns = adaptiveColumns,
-                        isFavorite = isFavorite(app.packageName),
-                        onToggleFavorite = onToggleFavorite,
-                        folders = folders,
-                        onUpdateFolders = onUpdateFolders
-                    )
+            CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(adaptiveColumns),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(swipeToCloseConnection),
+                    state = gridState,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalArrangement = Arrangement.spacedBy(32.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp)
+                ) {
+                    if (searchQuery.isBlank()) {
+                        itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
+                            FolderItem(
+                                folder = folder,
+                                onClick = { pos ->
+                                    folderPosition = pos
+                                    activeFolderId = folder.id
+                            },
+                            onOpenFolderConfig = onOpenFolderConfig
+                            )
+                        }
+                    }
+
+                    itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { _, app ->
+                        AppItem(
+                            app = app,
+                            adaptiveColumns = adaptiveColumns,
+                            isFavorite = isFavorite(app.packageName),
+                            onToggleFavorite = onToggleFavorite,
+                            folders = folders,
+                            onUpdateFolders = onUpdateFolders,
+                            bouncePackage = returnIconPackage,
+                            onAppLaunchRequested = { requestedApp, bounds ->
+                                if (launchRequest == null) {
+                                    onAppLaunchForReturn(requestedApp.packageName, bounds)
+                                    launchRequest = LaunchRequest(requestedApp, bounds)
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
 
-        // Folder Popup Overlay with symmetric animation
-        val pivotOrigin = remember(folderPosition, drawerSize) {
-            if (drawerSize.width > 0 && drawerSize.height > 0) {
-                TransformOrigin(
-                    pivotFractionX = folderPosition.x / drawerSize.width.toFloat(),
-                    pivotFractionY = folderPosition.y / drawerSize.height.toFloat()
-                )
-            } else TransformOrigin.Center
+        val launchTransition = updateTransition(targetState = launchRequest != null, label = "LaunchTransition")
+        val launchProgress by launchTransition.animateFloat(
+            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium) },
+            label = "LaunchProgress"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val launchOverlayAlpha by launchTransition.animateFloat(
+            transitionSpec = { tween(durationMillis = 220, easing = LinearEasing) },
+            label = "LaunchOverlayAlpha"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val launchBounds = launchRequest?.bounds
+        val launchTranslation = remember(launchBounds, drawerSize) {
+            if (launchBounds != null && drawerSize.width > 0 && drawerSize.height > 0) {
+                val centerX = drawerSize.width / 2f
+                val centerY = drawerSize.height / 2f
+                Offset(launchBounds.center.x - centerX, launchBounds.center.y - centerY)
+            } else {
+                Offset.Zero
+            }
+        }
+        val launchStartScale = remember(launchBounds, drawerSize) {
+            if (launchBounds != null && drawerSize.width > 0 && drawerSize.height > 0) {
+                val wScale = launchBounds.width / drawerSize.width.toFloat()
+                val hScale = launchBounds.height / drawerSize.height.toFloat()
+                max(wScale, hScale).coerceIn(0.06f, 0.35f)
+            } else {
+                0.08f
+            }
         }
 
-        AnimatedVisibility(
-            visible = activeFolderId != null,
-            enter = fadeIn(animationSpec = tween(250)) + scaleIn(
-                initialScale = 0.05f,
-                transformOrigin = pivotOrigin,
-                animationSpec = tween(400, easing = FastOutSlowInEasing)
-            ),
-            exit = fadeOut(animationSpec = tween(250)) + scaleOut(
-                targetScale = 0.05f,
-                transformOrigin = pivotOrigin,
-                animationSpec = tween(400, easing = FastOutSlowInEasing)
-            )
-        ) {
+        if (launchProgress > 0f) {
+            val scale = launchStartScale + (1f - launchStartScale) * launchProgress
+            val translationX = launchTranslation.x * (1f - launchProgress)
+            val translationY = launchTranslation.y * (1f - launchProgress)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(2000f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            this.scaleX = scale
+                            this.scaleY = scale
+                            this.translationX = translationX
+                            this.translationY = translationY
+                            this.transformOrigin = TransformOrigin.Center
+                            this.alpha = launchOverlayAlpha
+                        }
+                        .background(colorTheme.drawerBackground)
+                )
+            }
+        }
+
+        // Folder Popup Overlay with symmetric animation
+        val showFolder = activeFolderId != null
+        val folderTransition = updateTransition(targetState = showFolder, label = "FolderTransition")
+        val folderProgress by folderTransition.animateFloat(
+            transitionSpec = {
+                tween(
+                    durationMillis = if (targetState) 420 else 320,
+                    easing = FastOutSlowInEasing
+                )
+            },
+            label = "FolderProgress"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val overlayAlpha by folderTransition.animateFloat(
+            transitionSpec = { tween(durationMillis = 260, easing = LinearEasing) },
+            label = "OverlayAlpha"
+        ) { isVisible ->
+            if (isVisible) 0.35f else 0f
+        }
+        val folderTranslation = remember(folderPosition, drawerSize) {
+            if (drawerSize.width > 0 && drawerSize.height > 0) {
+                val centerX = drawerSize.width / 2f
+                val centerY = drawerSize.height / 2f
+                Offset(folderPosition.x - centerX, folderPosition.y - centerY)
+            } else {
+                Offset.Zero
+            }
+        }
+
+        if (folderProgress > 0f || showFolder) {
             // Nutze lastValidFolder, damit der Inhalt während der gesamten Schließanimation bleibt
             lastValidFolder?.let { currentActiveFolder ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.35f))
+                        .background(Color.Black.copy(alpha = overlayAlpha))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { 
-                                if (isEditMode) isEditMode = false else activeFolderId = null 
+                            onClick = {
+                                if (isEditMode) isEditMode = false else activeFolderId = null
                             }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
+                    val scale = 0.05f + (1f - 0.05f) * folderProgress
+                    val translationX = folderTranslation.x * (1f - folderProgress)
+                    val translationY = folderTranslation.y * (1f - folderProgress)
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .wrapContentHeight()
+                            .graphicsLayer {
+                                this.scaleX = scale
+                                this.scaleY = scale
+                                this.translationX = translationX
+                                this.translationY = translationY
+                                this.transformOrigin = TransformOrigin.Center
+                            }
                             .clickable(enabled = false) {},
                         color = colorTheme.drawerBackground.copy(alpha = 0.98f),
                         shape = RoundedCornerShape(32.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f)),
                         shadowElevation = 24.dp
                     ) {
                         Column(
@@ -338,12 +488,12 @@ fun AppDrawer(
                                             onUpdateFolders(updatedFolders)
                                         },
                                         textStyle = androidx.compose.ui.text.TextStyle(
-                                            color = Color.White,
+                                            color = mainTextColor,
                                             fontSize = 22.sp * fontSize.scale,
                                             fontWeight = FontWeight.SemiBold,
                                             textAlign = TextAlign.Center
                                         ),
-                                        cursorBrush = SolidColor(Color.White),
+                                        cursorBrush = SolidColor(mainTextColor),
                                         singleLine = true,
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                         keyboardActions = KeyboardActions(onDone = { 
@@ -355,7 +505,7 @@ fun AppDrawer(
                                 } else {
                                     Text(
                                         currentActiveFolder.name,
-                                        color = Color.White,
+                                        color = mainTextColor,
                                         fontSize = 22.sp * fontSize.scale,
                                         fontWeight = FontWeight.SemiBold,
                                         textAlign = TextAlign.Center,
@@ -370,7 +520,7 @@ fun AppDrawer(
                                     Icon(
                                         if (isEditMode) Lucide.Check else Lucide.Pencil, 
                                         contentDescription = "EditMode", 
-                                        tint = Color.White,
+                                        tint = mainTextColor,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -398,7 +548,6 @@ fun AppDrawer(
                                 label = "WiggleAngle"
                             )
 
-                            // Auto-Paging Logik
                             LaunchedEffect(draggingItemPkg, touchPosition) {
                                 if (draggingItemPkg != null) {
                                     val threshold = with(density) { 45.dp.toPx() }
@@ -422,7 +571,6 @@ fun AppDrawer(
                                 val currentFolderState by rememberUpdatedState(currentActiveFolder)
                                 val currentFoldersState by rememberUpdatedState(folders)
 
-                                // Hilfsfunktion für den Positionswechsel
                                 fun performReorder(currentTouch: Offset, currentPage: Int) {
                                     val pkg = draggingItemPkg ?: return
                                     val fromIdx = currentFolderState.appPackageNames.indexOf(pkg)
@@ -446,7 +594,6 @@ fun AppDrawer(
                                     }
                                 }
 
-                                // Reaktive Reorder-Logik bei Seitenwechsel
                                 LaunchedEffect(pagerState.currentPage) {
                                     if (draggingItemPkg != null) {
                                         performReorder(touchPosition, pagerState.currentPage)
@@ -529,14 +676,20 @@ fun AppDrawer(
                                                         onUpdateFolders = onUpdateFolders,
                                                         isInFolder = true,
                                                         currentFolderId = currentActiveFolder.id,
-                                                        isEditMode = isEditMode
+                                                        isEditMode = isEditMode,
+                                                        bouncePackage = returnIconPackage,
+                                                        onAppLaunchRequested = { requestedApp, bounds ->
+                                                            if (launchRequest == null) {
+                                                                onAppLaunchForReturn(requestedApp.packageName, bounds)
+                                                                launchRequest = LaunchRequest(requestedApp, bounds)
+                                                            }
+                                                        }
                                                     )
                                                 }
                                             }
                                         }
                                     }
                                     
-                                    // Ghost-Icon das am Finger klebt
                                     if (draggingItemPkg != null) {
                                         val draggedApp = folderApps.find { it.packageName == draggingItemPkg }
                                         if (draggedApp != null) {
@@ -544,11 +697,11 @@ fun AppDrawer(
                                                 modifier = Modifier
                                                     .size(80.dp)
                                                     .graphicsLayer {
-                                                        translationX = touchPosition.x - initialTouchOffsetInItem.x
-                                                        translationY = touchPosition.y - initialTouchOffsetInItem.y
-                                                        scaleX = 1.3f
-                                                        scaleY = 1.3f
-                                                        alpha = 0.9f
+                                                        this.translationX = touchPosition.x - initialTouchOffsetInItem.x
+                                                        this.translationY = touchPosition.y - initialTouchOffsetInItem.y
+                                                        this.scaleX = 1.3f
+                                                        this.scaleY = 1.3f
+                                                        this.alpha = 0.9f
                                                     }
                                                     .zIndex(1000f)
                                                     .shadow(24.dp, RoundedCornerShape(16.dp))
@@ -562,7 +715,8 @@ fun AppDrawer(
                                                     onUpdateFolders = onUpdateFolders,
                                                     isInFolder = true,
                                                     currentFolderId = currentActiveFolder.id,
-                                                    isEditMode = true
+                                                    isEditMode = true,
+                                                    onAppLaunchRequested = null
                                                 )
                                             }
                                         }
@@ -579,7 +733,7 @@ fun AppDrawer(
                                     horizontalArrangement = Arrangement.Center
                                 ) {
                                     repeat(pages) { iteration ->
-                                        val color = if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.3f)
+                                        val color = if (pagerState.currentPage == iteration) mainTextColor else mainTextColor.copy(alpha = 0.3f)
                                         Box(
                                             modifier = Modifier
                                                 .padding(horizontal = 4.dp)
@@ -607,6 +761,9 @@ fun FolderItem(
 ) {
     val fontSize = LocalFontSize.current
     val iconSizeValue = LocalIconSize.current.size
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
     val intSrc = remember { MutableInteractionSource() }
     var itemOffset by remember { mutableStateOf(Offset.Zero) }
 
@@ -629,11 +786,11 @@ fun FolderItem(
             onClick = { onClick(itemOffset) },
             onLongClick = { onOpenFolderConfig(folder) }
         )) {
-            Box(modifier = Modifier.size(iconSizeValue).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                Icon(Lucide.Folder, contentDescription = null, tint = Color.White, modifier = Modifier.size(iconSizeValue * 0.6f))
+            Box(modifier = Modifier.size(iconSizeValue).background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                Icon(Lucide.Folder, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(iconSizeValue * 0.6f))
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = folder.name, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(text = folder.name, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -649,61 +806,128 @@ fun AppItem(
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     isInFolder: Boolean = false,
     currentFolderId: String? = null,
-    isEditMode: Boolean = false
+    isEditMode: Boolean = false,
+    onAppLaunchRequested: ((AppInfo, Rect?) -> Unit)? = null,
+    bouncePackage: String? = null
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val dropdownTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
     var showActions by remember { mutableStateOf(false) }
     var showFolderSelection by remember { mutableStateOf(false) }
     val intSrc = remember { MutableInteractionSource() }
+    var itemBounds by remember { mutableStateOf<Rect?>(null) }
+    val bounceScale by animateFloatAsState(
+        targetValue = if (bouncePackage == app.packageName) 1.12f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "DrawerReturnBounce"
+    )
 
     Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc, enabled = !isEditMode).combinedClickable(
-            interactionSource = intSrc,
-            indication = null,
-            enabled = !isEditMode,
-            onClick = { 
-                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } 
-            },
-            onLongClick = { 
-                showActions = true
-            }
-        )) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .onGloballyPositioned { coordinates ->
+                    itemBounds = coordinates.boundsInRoot()
+                }
+                .graphicsLayer {
+                    scaleX = bounceScale
+                    scaleY = bounceScale
+                }
+                .bounceClick(intSrc, enabled = !isEditMode)
+                .combinedClickable(
+                    interactionSource = intSrc,
+                    indication = null,
+                    enabled = !isEditMode,
+                    onClick = {
+                        onAppLaunchRequested?.let { it(app, itemBounds) } ?: run {
+                            context.packageManager.getLaunchIntentForPackage(app.packageName)?.let {
+                                context.startActivity(it)
+                            }
+                        }
+                    },
+                    onLongClick = {
+                        showActions = true
+                    }
+                )
+        ) {
             AppIconView(app)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
-        DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
-            DropdownMenuItem(text = { Text(if (isFavorite) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
+        
+        DropdownMenu(
+            expanded = showActions, 
+            onDismissRequest = { showActions = false }, 
+            modifier = Modifier.background(Color(0xFF1A1F2B))
+        ) {
+            DropdownMenuItem(
+                text = { Text(if (isFavorite) "Vom Home entfernen" else "Als Favorit setzen", color = dropdownTextColor, fontSize = 14.sp * fontSize.scale) }, 
+                onClick = { onToggleFavorite(app.packageName); showActions = false }
+            )
 
             if (isInFolder && currentFolderId != null) {
-                DropdownMenuItem(text = { Text("Aus Ordner entfernen", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = {
-                    onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, currentFolderId, app.packageName))
-                    showActions = false
-                })
+                DropdownMenuItem(
+                    text = { Text("Aus Ordner entfernen", color = dropdownTextColor, fontSize = 14.sp * fontSize.scale) }, 
+                    onClick = {
+                        onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, currentFolderId, app.packageName))
+                        showActions = false
+                    }
+                )
             } else {
-                DropdownMenuItem(text = { Text("In Ordner verschieben", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = {
-                    showFolderSelection = true
-                    showActions = false
-                })
+                DropdownMenuItem(
+                    text = { Text("In Ordner verschieben", color = dropdownTextColor, fontSize = 14.sp * fontSize.scale) }, 
+                    onClick = {
+                        showFolderSelection = true
+                        showActions = false
+                    }
+                )
             }
 
-            DropdownMenuItem(text = { Text("App-Info", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
-            DropdownMenuItem(text = { Text("Deinstallieren", color = Color.Red, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
+            DropdownMenuItem(
+                text = { Text("App-Info", color = dropdownTextColor, fontSize = 14.sp * fontSize.scale) }, 
+                onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false }
+            )
+            DropdownMenuItem(
+                text = { Text("Deinstallieren", color = Color.Red, fontSize = 14.sp * fontSize.scale) }, 
+                onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false }
+            )
         }
 
         if (showFolderSelection) {
-            DropdownMenu(expanded = showFolderSelection, onDismissRequest = { showFolderSelection = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
+            DropdownMenu(
+                expanded = showFolderSelection, 
+                onDismissRequest = { showFolderSelection = false }, 
+                modifier = Modifier.background(Color(0xFF1A1F2B))
+            ) {
                 if (folders.isEmpty()) {
-                    DropdownMenuItem(text = { Text("Keine Ordner vorhanden", color = Color.White.copy(alpha = 0.5f)) }, onClick = { showFolderSelection = false })
+                    DropdownMenuItem(
+                        text = { Text("Keine Ordner vorhanden", color = dropdownTextColor.copy(alpha = 0.5f)) }, 
+                        onClick = { showFolderSelection = false }
+                    )
                 }
                 folders.forEach { folder ->
-                    DropdownMenuItem(text = { Text(folder.name, color = Color.White) }, onClick = {
-                        onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, app.packageName))
-                        showFolderSelection = false
-                    })
+                    DropdownMenuItem(
+                        text = { Text(folder.name, color = dropdownTextColor) }, 
+                        onClick = {
+                            onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, app.packageName))
+                            showFolderSelection = false
+                        }
+                    )
                 }
             }
         }
     }
 }
+
+private data class LaunchRequest(
+    val app: AppInfo,
+    val bounds: Rect?
+)

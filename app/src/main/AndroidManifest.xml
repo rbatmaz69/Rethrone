@@ -5,11 +5,19 @@
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
 
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_CLOCK" />
+        </intent>
+        <intent>
+            <action android:name="android.provider.AlarmClock.ACTION_SHOW_ALARMS" />
         </intent>
     </queries>
 
@@ -28,6 +36,9 @@
             android:label="@string/app_name"
             android:launchMode="singleTask"
             android:stateNotNeeded="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="false"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.AndroidLauncher">
             <intent-filter>

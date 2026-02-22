@@ -18,10 +18,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,6 +33,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 
 @Composable
 fun FolderConfigMenu(
@@ -41,6 +44,11 @@ fun FolderConfigMenu(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    
+    // Nur primäre Schriften & Symbole
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(folder.appPackageNames) }
     var folderName by remember { mutableStateOf(folder.name) }
@@ -55,17 +63,24 @@ fun FolderConfigMenu(
                 BasicTextField(
                     value = folderName,
                     onValueChange = { folderName = it },
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Light),
-                    cursorBrush = SolidColor(Color.White),
-                    decorationBox = { if (folderName.isEmpty()) Text("Ordnername", color = Color.White.copy(alpha = 0.4f), fontSize = 24.sp); it() }
+                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 24.sp, fontWeight = FontWeight.Light),
+                    cursorBrush = SolidColor(mainTextColor),
+                    decorationBox = { 
+                        if (folderName.isEmpty()) {
+                            // Bleibt grau
+                            Text("Ordnername", color = Color.White.copy(alpha = 0.4f), fontSize = 24.sp)
+                        }
+                        it() 
+                    }
                 )
+                // Bleibt grau
                 Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
             }
             Row {
                 IconButton(onClick = { showDeleteConfirm = true }) { 
                     Icon(Lucide.Trash2, contentDescription = "Ordner löschen", tint = Color.Red.copy(alpha = 0.8f)) 
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
             }
         }
         
@@ -77,27 +92,36 @@ fun FolderConfigMenu(
             indication = null
         ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Bleibt grau
                 Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 BasicTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
-                    cursorBrush = SolidColor(Color.White),
+                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
+                    cursorBrush = SolidColor(mainTextColor),
                     singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp); it() }
+                    decorationBox = { 
+                        if (searchQuery.isEmpty()) {
+                            // Bleibt grau
+                            Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp)
+                        }
+                        it() 
+                    }
                 )
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
+            // Bleibt grau
             item { Text("Apps verwalten", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isSelected = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
+                // Kartenhintergrund bleibt grau
                 Surface(color = if (isSelected) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
                     interactionSource = intSrc,
                     indication = null
@@ -111,8 +135,20 @@ fun FolderConfigMenu(
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Checkbox(checked = isSelected, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = Color.White, uncheckedColor = Color.White.copy(alpha = 0.4f), checkmarkColor = Color(0xFF0F172A)))
+                        // App-Label wird schwarz
+                        Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Checkbox(
+                            checked = isSelected, 
+                            onCheckedChange = null, 
+                            colors = CheckboxDefaults.colors(
+                                // Füllung wird schwarz im Dark Mode
+                                checkedColor = mainTextColor, 
+                                // Rahmen bleibt grau
+                                uncheckedColor = Color.White.copy(alpha = 0.4f), 
+                                // Haken wird weiß im Dark Mode
+                                checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+                            )
+                        )
                     }
                 }
             }
@@ -136,22 +172,41 @@ fun FolderConfigMenu(
         )
     }
 
+    // DER BUTTON
     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
         val intSrc = remember { MutableInteractionSource() }
-        FloatingActionButton(
-            onClick = { 
-                if (folderName.isNotBlank()) {
-                    onConfirm(folder.copy(name = folderName, appPackageNames = selectedPackages))
-                } else {
-                    Toast.makeText(context, "Bitte Namen eingeben", Toast.LENGTH_SHORT).show()
+        val checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+        
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .graphicsLayer(alpha = 0.99f) 
+                .drawBehind {
+                    drawCircle(
+                        color = mainTextColor,
+                        radius = (size.minDimension / 2.0f) - 2.0f,
+                        center = center
+                    )
                 }
-            }, 
-            containerColor = Color.White, 
-            contentColor = Color(0xFF0F172A), 
-            shape = CircleShape, 
-            modifier = Modifier.bounceClick(intSrc)
+                .clickable(
+                    interactionSource = intSrc,
+                    indication = null,
+                    onClick = { 
+                        if (folderName.isNotBlank()) {
+                            onConfirm(folder.copy(name = folderName, appPackageNames = selectedPackages))
+                        } else {
+                            Toast.makeText(context, "Bitte Namen eingeben", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Check, contentDescription = null)
+            Icon(
+                Icons.Default.Check, 
+                contentDescription = "Bestätigen", 
+                tint = checkmarkColor,
+                modifier = Modifier.size(28.dp)
+            )
         }
     }
 }

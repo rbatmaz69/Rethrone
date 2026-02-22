@@ -1,6 +1,7 @@
 package com.example.androidlauncher.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -15,6 +16,8 @@ class ThemeManager(private val context: Context) {
         private val THEME_KEY = stringPreferencesKey("selected_theme")
         private val FONT_SIZE_KEY = stringPreferencesKey("font_size")
         private val ICON_SIZE_KEY = stringPreferencesKey("icon_size")
+        private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
+        private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
     }
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
@@ -47,6 +50,16 @@ class ThemeManager(private val context: Context) {
             }
         }
 
+    val isDarkTextEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[DARK_TEXT_KEY] ?: false
+        }
+
+    val showFavoriteLabels: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[SHOW_FAVORITE_LABELS_KEY] ?: false
+        }
+
     suspend fun setTheme(theme: ColorTheme) {
         context.dataStore.edit { preferences ->
             preferences[THEME_KEY] = theme.name
@@ -62,6 +75,18 @@ class ThemeManager(private val context: Context) {
     suspend fun setIconSize(iconSize: IconSize) {
         context.dataStore.edit { preferences ->
             preferences[ICON_SIZE_KEY] = iconSize.name
+        }
+    }
+
+    suspend fun setDarkTextEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[DARK_TEXT_KEY] = enabled
+        }
+    }
+
+    suspend fun setShowFavoriteLabels(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SHOW_FAVORITE_LABELS_KEY] = show
         }
     }
 }

@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Android Launcher</string>
+    <string name="show_app_titles">App-Titel anzeigen</string>
+    <string name="favorites_title">Favoriten</string>
+    <string name="favorites_count">%1$d von %2$d ausgewählt</string>
+    <string name="search_apps">Apps suchen...</string>
+    <string name="order_label">Reihenfolge</string>
+    <string name="all_apps_label">Alle Apps</string>
+    <string name="max_favorites_reached">Maximal 8 erlaubt</string>
+    <string name="no_selection">Keine Auswahl</string>
 </resources>
