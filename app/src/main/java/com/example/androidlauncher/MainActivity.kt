@@ -88,26 +88,19 @@ import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : ComponentActivity() {
-    // OnBackPressedCallback als Instanzvariable um ihn später zu steuern
     private lateinit var backCallback: OnBackPressedCallback
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Versuche das Exclude-Flag auch auf dem Start-Intent zu setzen
         intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
 
-        // OnBackPressedCallback um Back-Gesten auf dem Homescreen zu ignorieren
         backCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // Absichtlich leer: Back-Geste wird ignoriert
-                // Dies ist das typische Verhalten eines System-Launchers
-            }
+            override fun handleOnBackPressed() {}
         }
         onBackPressedDispatcher.addCallback(this, backCallback)
 
-        // Erzwinge zur Sicherheit das Ausblenden aus dem Recents-Screen
         enforceExcludeFromRecents()
 
         setContent {
@@ -179,14 +172,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Steuere den OnBackPressedCallback basierend auf Modal-State
-                // Wenn Menüs offen sind, deaktiviere den Callback, damit BackHandler funktioniert
                 LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, selectedFolderForConfig) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                // BackHandler für das Schließen von offenen Menüs
                 BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isDrawerOpen) isDrawerOpen = false
@@ -200,7 +190,6 @@ class MainActivity : ComponentActivity() {
                 Box(modifier = Modifier.fillMaxSize()) {
                     SystemWallpaperView()
 
-                    // Haupt-Inhalt
                     AnimatedContent(
                         targetState = isDrawerOpen,
                         transitionSpec = {
@@ -247,7 +236,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Overlay Menüs
                     AnimatedVisibility(
                         visible = isFavoritesConfigOpen,
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
@@ -412,8 +400,8 @@ fun HomeScreen(
         animationSpec = tween(300, easing = EaseInOutCubic)
     )
     
-    val settingsButtonSize by animateDpAsState(
-        targetValue = if (isSettingsOpen) 72.dp else 56.dp,
+    val settingsButtonSize by animateFloatAsState(
+        targetValue = if (isSettingsOpen) 72f else 56f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
     )
 
@@ -485,7 +473,7 @@ fun HomeScreen(
         Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
             val intSrc = remember { MutableInteractionSource() }
             Surface(
-                modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).bounceClick(intSrc).clickable(
+                modifier = Modifier.padding(8.dp).size(settingsButtonSize.dp).clip(CircleShape).bounceClick(intSrc).clickable(
                     interactionSource = intSrc,
                     indication = null
                 ) { onToggleSettings() }, 
@@ -515,8 +503,9 @@ fun FavoritesConfigMenu(
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    // Nur primäre Schriften & Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    // Der von dir gewünschte Grauton (basierend auf dem Counter-Text)
+    val grayTone = Color.White.copy(alpha = 0.6f)
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
@@ -527,8 +516,7 @@ fun FavoritesConfigMenu(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
-                // Bleibt grau
-                Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
+                Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = grayTone)
             }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
         }
@@ -540,7 +528,7 @@ fun FavoritesConfigMenu(
             indication = null
         ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Search, contentDescription = null, tint = grayTone, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 BasicTextField(
                     value = searchQuery,
@@ -549,7 +537,7 @@ fun FavoritesConfigMenu(
                     textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
                     cursorBrush = SolidColor(mainTextColor),
                     singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp); it() }
+                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = grayTone, fontSize = 15.sp); it() }
                 )
             }
         }
@@ -558,24 +546,22 @@ fun FavoritesConfigMenu(
         
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
             if (selectedPackages.isNotEmpty()) {
-                // Bleibt grau
-                item { Text("Reihenfolge", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+                item { Text("Reihenfolge", color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(selectedPackages) { index, pkg ->
                     apps.find { it.packageName == pkg }?.let { app ->
-                        // Karte bleibt grau
                         Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                // Die Reihenfolgeanzeige wird im Dark Mode jetzt ebenfalls schwarz (solid)
                                 Text("${index + 1}.", color = mainTextColor, fontSize = 14.sp, modifier = Modifier.width(24.dp))
                                 AppIconView(app)
                                 Spacer(modifier = Modifier.width(16.dp))
-                                // App-Name wird schwarz
                                 Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
                                 IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index) }, enabled = index > 0) { 
-                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) mainTextColor else Color.White.copy(alpha = 0.2f)) 
+                                    // Inaktiv (unmöglich) -> Solid Schwarz | Aktiv (möglich) -> Wunsch-Grauton
+                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) grayTone else mainTextColor) 
                                 }
                                 IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index) }, enabled = index < selectedPackages.size - 1) { 
-                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) mainTextColor else Color.White.copy(alpha = 0.2f)) 
+                                    // Inaktiv (unmöglich) -> Solid Schwarz | Aktiv (möglich) -> Wunsch-Grauton
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) grayTone else mainTextColor) 
                                 }
                             }
                         }
@@ -583,8 +569,7 @@ fun FavoritesConfigMenu(
                 }
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
-            // Bleibt grau
-            item { Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+            item { Text("Alle Apps", color = grayTone, fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
@@ -598,16 +583,13 @@ fun FavoritesConfigMenu(
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
                         Spacer(modifier = Modifier.width(16.dp))
-                        // App-Name wird schwarz
                         Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
                         Checkbox(
                             checked = isFav, 
                             onCheckedChange = null, 
                             colors = CheckboxDefaults.colors(
-                                // Checkbox Rahmen & Hintergrund (Schwarz im Dark Mode)
                                 checkedColor = mainTextColor, 
                                 uncheckedColor = Color.White.copy(alpha = 0.4f), 
-                                // Hakenfarbe (Weiß im Dark Mode auf schwarzem Grund)
                                 checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
                             )
                         )
