@@ -51,13 +51,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.core.graphics.drawable.toBitmap
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -77,9 +77,15 @@ import com.example.androidlauncher.ui.AppIconView
 import com.example.androidlauncher.ui.bounceClick
 import com.example.androidlauncher.ui.FolderConfigMenu
 import com.example.androidlauncher.ui.launchAppNoTransition
+import com.example.androidlauncher.ui.ReturnAnimationOverlay
+import com.example.androidlauncher.LaunchSource
+import com.example.androidlauncher.ReturnAnimation
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -123,16 +129,50 @@ class MainActivity : ComponentActivity() {
                 iconSize = currentIconSize,
                 darkTextEnabled = isDarkTextEnabled
             ) {
+                val lifecycleOwner = LocalLifecycleOwner.current
+                var rootSize by remember { mutableStateOf(IntSize.Zero) }
+                var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
+                var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
+                var returnIconPackage by remember { mutableStateOf<String?>(null) }
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
-                
+
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            pendingReturnAnimation?.let {
+                                isDrawerOpen = it.source == LaunchSource.DRAWER
+                                if (!isDrawerOpen) {
+                                    isSettingsOpen = false
+                                    isFavoritesConfigOpen = false
+                                    isColorConfigOpen = false
+                                    isSizeConfigOpen = false
+                                    selectedFolderForConfig = null
+                                }
+                                activeReturnAnimation = it
+                                returnIconPackage = it.packageName
+                                pendingReturnAnimation = null
+                            }
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+
+                LaunchedEffect(returnIconPackage) {
+                    if (returnIconPackage != null) {
+                        delay(240)
+                        returnIconPackage = null
+                    }
+                }
+
                 val allApps = remember { mutableStateListOf<AppInfo>() }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
-                
+
                 val favorites = remember(allApps.toList(), favoritePackages) {
                     LauncherLogic.getFavoriteApps(allApps.toList(), favoritePackages)
                 }
@@ -186,41 +226,48 @@ class MainActivity : ComponentActivity() {
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .onGloballyPositioned { rootSize = it.size }
+                ) {
                     SystemWallpaperView()
 
                     AnimatedContent(
-                        targetState = isDrawerOpen,
-                        transitionSpec = {
-                            if (targetState) {
-                                (slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)))
-                                    .togetherWith(fadeOut(animationSpec = tween(200)))
-                            } else {
-                                fadeIn(animationSpec = tween(200))
-                                    .togetherWith(slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200)))
-                            }
-                        },
-                        label = "DrawerTransition"
-                    ) { targetIsDrawerOpen ->
-                        if (targetIsDrawerOpen) {
-                            AppDrawer(
-                                apps = allApps,
-                                folders = folders,
-                                onToggleFavorite = { pkg ->
-                                    val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
-                                    if (newFavs != favoritePackages) {
-                                        saveFavorites(context, newFavs)
-                                        favoritePackages = newFavs
-                                    }
-                                },
-                                isFavorite = { pkg -> pkg in favoritePackages },
-                                onUpdateFolders = { newFolders ->
-                                    scope.launch { folderManager.saveFolders(newFolders) }
-                                },
-                                onOpenFolderConfig = { folder ->
-                                    selectedFolderForConfig = folder
-                                },
-                                onClose = { isDrawerOpen = false }
+                         targetState = isDrawerOpen,
+                         transitionSpec = {
+                             if (targetState) {
+                                 (slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)))
+                                     .togetherWith(fadeOut(animationSpec = tween(200)))
+                             } else {
+                                 fadeIn(animationSpec = tween(200))
+                                     .togetherWith(slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200)))
+                             }
+                         },
+                         label = "DrawerTransition"
+                     ) { targetIsDrawerOpen ->
+                         if (targetIsDrawerOpen) {
+                             AppDrawer(
+                                 apps = allApps,
+                                 folders = folders,
+                                 onToggleFavorite = { pkg ->
+                                     val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
+                                     if (newFavs != favoritePackages) {
+                                         saveFavorites(context, newFavs)
+                                         favoritePackages = newFavs
+                                     }
+                                 },
+                                 isFavorite = { pkg -> pkg in favoritePackages },
+                                 onUpdateFolders = { newFolders ->
+                                     scope.launch { folderManager.saveFolders(newFolders) }
+                                 },
+                                 onOpenFolderConfig = { folder ->
+                                     selectedFolderForConfig = folder
+                                 },
+                                 onClose = { isDrawerOpen = false },
+                                 onAppLaunchForReturn = { pkg, bounds ->
+                                    pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.DRAWER, pkg)
+                                 },
+                                 returnIconPackage = returnIconPackage
                             )
                         } else {
                             HomeScreen(
@@ -230,94 +277,108 @@ class MainActivity : ComponentActivity() {
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
-                                onOpenSizeConfig = { isSizeConfigOpen = true }
+                                onOpenSizeConfig = { isSizeConfigOpen = true },
+                                onAppLaunchForReturn = { pkg, bounds ->
+                                    pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.HOME, pkg)
+                                },
+                                returnIconPackage = returnIconPackage
                             )
                         }
-                    }
+                     }
 
                     AnimatedVisibility(
-                        visible = isFavoritesConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                            FavoritesConfigMenu(
-                                apps = allApps,
-                                initialFavoritePackages = favoritePackages,
-                                onConfirm = { newFavs ->
-                                    saveFavorites(context, newFavs)
-                                    favoritePackages = newFavs
-                                    isFavoritesConfigOpen = false
-                                },
-                                onClose = { isFavoritesConfigOpen = false }
-                            )
-                        }
-                    }
+                         visible = isFavoritesConfigOpen,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                             FavoritesConfigMenu(
+                                 apps = allApps,
+                                 initialFavoritePackages = favoritePackages,
+                                 onConfirm = { newFavs ->
+                                     saveFavorites(context, newFavs)
+                                     favoritePackages = newFavs
+                                     isFavoritesConfigOpen = false
+                                 },
+                                 onClose = { isFavoritesConfigOpen = false }
+                             )
+                         }
+                     }
 
                     AnimatedVisibility(
-                        visible = selectedFolderForConfig != null,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                    ) {
-                        selectedFolderForConfig?.let { folder ->
-                            Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                                FolderConfigMenu(
-                                    folder = folder,
-                                    allApps = allApps,
-                                    onConfirm = { updatedFolder ->
-                                        val newFolders = folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
-                                        scope.launch { folderManager.saveFolders(newFolders) }
-                                        selectedFolderForConfig = null
-                                    },
-                                    onDelete = { folderId ->
-                                        val newFolders = folders.filter { it.id != folderId }
-                                        scope.launch { folderManager.saveFolders(newFolders) }
-                                        selectedFolderForConfig = null
-                                    },
-                                    onClose = { selectedFolderForConfig = null }
-                                )
-                            }
-                        }
-                    }
+                         visible = selectedFolderForConfig != null,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         selectedFolderForConfig?.let { folder ->
+                             Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                                 FolderConfigMenu(
+                                     folder = folder,
+                                     allApps = allApps,
+                                     onConfirm = { updatedFolder ->
+                                         val newFolders = folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                         scope.launch { folderManager.saveFolders(newFolders) }
+                                         selectedFolderForConfig = null
+                                     },
+                                     onDelete = { folderId ->
+                                         val newFolders = folders.filter { it.id != folderId }
+                                         scope.launch { folderManager.saveFolders(newFolders) }
+                                         selectedFolderForConfig = null
+                                     },
+                                     onClose = { selectedFolderForConfig = null }
+                                 )
+                             }
+                         }
+                     }
 
                     AnimatedVisibility(
-                        visible = isColorConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                            ColorConfigMenu(
-                                selectedTheme = currentTheme,
-                                onThemeSelected = { theme ->
-                                    scope.launch { themeManager.setTheme(theme) }
-                                },
-                                isDarkTextEnabled = isDarkTextEnabled,
-                                onDarkTextToggled = { enabled ->
-                                    scope.launch { themeManager.setDarkTextEnabled(enabled) }
-                                },
-                                onClose = { isColorConfigOpen = false }
-                            )
-                        }
-                    }
+                         visible = isColorConfigOpen,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                             ColorConfigMenu(
+                                 selectedTheme = currentTheme,
+                                 onThemeSelected = { theme ->
+                                     scope.launch { themeManager.setTheme(theme) }
+                                 },
+                                 isDarkTextEnabled = isDarkTextEnabled,
+                                 onDarkTextToggled = { enabled ->
+                                     scope.launch { themeManager.setDarkTextEnabled(enabled) }
+                                 },
+                                 onClose = { isColorConfigOpen = false }
+                             )
+                         }
+                     }
 
                     AnimatedVisibility(
-                        visible = isSizeConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                            SizeConfigMenu(
-                                currentFontSize = currentFontSize,
-                                onFontSizeSelected = { size ->
-                                    scope.launch { themeManager.setFontSize(size) }
-                                },
-                                currentIconSize = currentIconSize,
-                                onIconSizeSelected = { size ->
-                                    scope.launch { themeManager.setIconSize(size) }
-                                },
-                                onClose = { isSizeConfigOpen = false }
-                            )
-                        }
+                         visible = isSizeConfigOpen,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                             SizeConfigMenu(
+                                 currentFontSize = currentFontSize,
+                                 onFontSizeSelected = { size ->
+                                     scope.launch { themeManager.setFontSize(size) }
+                                 },
+                                 currentIconSize = currentIconSize,
+                                 onIconSizeSelected = { size ->
+                                     scope.launch { themeManager.setIconSize(size) }
+                                 },
+                                 onClose = { isSizeConfigOpen = false }
+                             )
+                         }
+                     }
+
+                    activeReturnAnimation?.let { animation ->
+                        ReturnAnimationOverlay(
+                            bounds = animation.bounds,
+                            rootSize = rootSize,
+                            background = currentTheme.drawerBackground,
+                            onFinished = { activeReturnAnimation = null },
+                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.65f else 0.7f
+                        )
                     }
                 }
             }
@@ -388,7 +449,9 @@ fun HomeScreen(
     onToggleSettings: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
-    onOpenSizeConfig: () -> Unit
+    onOpenSizeConfig: () -> Unit,
+    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    returnIconPackage: String?
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
@@ -459,6 +522,14 @@ fun HomeScreen(
                     } else {
                         favorites.forEach { app ->
                             val intSrc = remember { MutableInteractionSource() }
+                            val bounceScale by animateFloatAsState(
+                                targetValue = if (returnIconPackage == app.packageName) 1.12f else 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                ),
+                                label = "HomeReturnBounce"
+                            )
                             val itemBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
                             Surface(
                                 color = Color.Transparent,
@@ -473,11 +544,17 @@ fun HomeScreen(
                                         indication = null
                                     ) {
                                         if (launchRequest == null) {
+                                            onAppLaunchForReturn(app.packageName, itemBounds.value)
                                             launchRequest = HomeLaunchRequest(app, itemBounds.value)
                                         }
                                     }
                             ) {
-                                Box(modifier = Modifier.padding(6.dp)) { AppIconView(app) }
+                                Box(modifier = Modifier.padding(6.dp).graphicsLayer {
+                                    scaleX = bounceScale
+                                    scaleY = bounceScale
+                                }) {
+                                    AppIconView(app)
+                                }
                             }
                         }
                     }
@@ -520,7 +597,7 @@ fun HomeScreen(
 
         val launchTransition = updateTransition(targetState = launchRequest != null, label = "HomeLaunchTransition")
         val launchProgress by launchTransition.animateFloat(
-            transitionSpec = { tween(durationMillis = 280, easing = FastOutSlowInEasing) },
+            transitionSpec = { spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow) },
             label = "HomeLaunchProgress"
         ) { isVisible ->
             if (isVisible) 1f else 0f

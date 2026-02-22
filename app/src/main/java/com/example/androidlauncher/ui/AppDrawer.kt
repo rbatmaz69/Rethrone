@@ -90,7 +90,9 @@ fun AppDrawer(
     isFavorite: (String) -> Boolean,
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     onOpenFolderConfig: (FolderInfo) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    returnIconPackage: String?
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
@@ -327,8 +329,10 @@ fun AppDrawer(
                             onToggleFavorite = onToggleFavorite,
                             folders = folders,
                             onUpdateFolders = onUpdateFolders,
+                            bouncePackage = returnIconPackage,
                             onAppLaunchRequested = { requestedApp, bounds ->
                                 if (launchRequest == null) {
+                                    onAppLaunchForReturn(requestedApp.packageName, bounds)
                                     launchRequest = LaunchRequest(requestedApp, bounds)
                                 }
                             }
@@ -340,7 +344,7 @@ fun AppDrawer(
 
         val launchTransition = updateTransition(targetState = launchRequest != null, label = "LaunchTransition")
         val launchProgress by launchTransition.animateFloat(
-            transitionSpec = { tween(durationMillis = 280, easing = FastOutSlowInEasing) },
+            transitionSpec = { spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow) },
             label = "LaunchProgress"
         ) { isVisible ->
             if (isVisible) 1f else 0f
@@ -675,6 +679,7 @@ fun AppDrawer(
                                                         isEditMode = isEditMode,
                                                         onAppLaunchRequested = { requestedApp, bounds ->
                                                             if (launchRequest == null) {
+                                                                onAppLaunchForReturn(requestedApp.packageName, bounds)
                                                                 launchRequest = LaunchRequest(requestedApp, bounds)
                                                             }
                                                         }
@@ -801,7 +806,8 @@ fun AppItem(
     isInFolder: Boolean = false,
     currentFolderId: String? = null,
     isEditMode: Boolean = false,
-    onAppLaunchRequested: ((AppInfo, Rect?) -> Unit)? = null
+    onAppLaunchRequested: ((AppInfo, Rect?) -> Unit)? = null,
+    bouncePackage: String? = null
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
@@ -814,6 +820,14 @@ fun AppItem(
     var showFolderSelection by remember { mutableStateOf(false) }
     val intSrc = remember { MutableInteractionSource() }
     var itemBounds by remember { mutableStateOf<Rect?>(null) }
+    val bounceScale by animateFloatAsState(
+        targetValue = if (bouncePackage == app.packageName) 1.12f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "DrawerReturnBounce"
+    )
 
     Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
         Column(
@@ -821,6 +835,10 @@ fun AppItem(
             modifier = Modifier
                 .onGloballyPositioned { coordinates ->
                     itemBounds = coordinates.boundsInRoot()
+                }
+                .graphicsLayer {
+                    scaleX = bounceScale
+                    scaleY = bounceScale
                 }
                 .bounceClick(intSrc, enabled = !isEditMode)
                 .combinedClickable(
