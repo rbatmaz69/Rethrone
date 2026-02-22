@@ -8,11 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
-import android.graphics.drawable.Drawable
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -34,8 +30,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -54,15 +48,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
+import androidx.core.graphics.applyCanvas
+import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
-import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
@@ -151,7 +146,7 @@ class MainActivity : ComponentActivity() {
 
                         sortedIndices.forEachIndexed { loopIdx, appIdx ->
                             val app = allApps[appIdx]
-                            val bitmap = loadSingleIcon(context, pm, cacheDir, app.packageName)
+                            val bitmap = loadSingleIcon(pm, cacheDir, app.packageName)
                             if (bitmap != null) {
                                 withContext(Dispatchers.Main) {
                                     allApps[appIdx] = app.copy(iconBitmap = bitmap)
@@ -184,8 +179,6 @@ class MainActivity : ComponentActivity() {
                     else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
                 }
-
-                val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     SystemWallpaperView()
@@ -331,13 +324,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun enforceExcludeFromRecents() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            am.appTasks?.forEach { task ->
-                val base = task.taskInfo.baseIntent.component
-                if (base != null && base.className == componentName.className) {
-                    task.setExcludeFromRecents(true)
-                }
+        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        am.appTasks?.forEach { task ->
+            val base = task.taskInfo.baseIntent.component
+            if (base != null && base.className == componentName.className) {
+                task.setExcludeFromRecents(true)
             }
         }
     }
@@ -350,9 +341,7 @@ private fun expandNotifications(context: Context) {
         val statusBarManager = Class.forName("android.app.StatusBarManager")
         val method = statusBarManager.getMethod("expandNotificationsPanel")
         method.invoke(statusBarService)
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
+    } catch (_: Exception) {}
 }
 
 @SuppressLint("MissingPermission")
@@ -369,7 +358,7 @@ fun SystemWallpaperView() {
             try {
                 val drawable = wallpaperManager.drawable
                 drawable?.let { wallpaperBitmap = it.toBitmap().asImageBitmap() }
-            } catch (e: Exception) { e.printStackTrace() }
+            } catch (_: Exception) {}
         }
     }
 
@@ -397,12 +386,12 @@ fun HomeScreen(
 
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
-        animationSpec = tween(300, easing = EaseInOutCubic)
+        animationSpec = tween(300, easing = EaseInOutCubic), label = ""
     )
     
     val settingsButtonSize by animateFloatAsState(
         targetValue = if (isSettingsOpen) 72f else 56f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = ""
     )
 
     Box(
@@ -504,7 +493,6 @@ fun FavoritesConfigMenu(
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    // Der von dir gewünschte Grauton (basierend auf dem Counter-Text)
     val grayTone = Color.White.copy(alpha = 0.6f)
 
     var searchQuery by remember { mutableStateOf("") }
@@ -556,11 +544,9 @@ fun FavoritesConfigMenu(
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
                                 IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index) }, enabled = index > 0) { 
-                                    // Inaktiv (unmöglich) -> Solid Schwarz | Aktiv (möglich) -> Wunsch-Grauton
                                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) grayTone else mainTextColor) 
                                 }
                                 IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index) }, enabled = index < selectedPackages.size - 1) { 
-                                    // Inaktiv (unmöglich) -> Solid Schwarz | Aktiv (möglich) -> Wunsch-Grauton
                                     Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) grayTone else mainTextColor) 
                                 }
                             }
@@ -669,7 +655,7 @@ fun ClockHeader() {
                         }
                         context.startActivity(intent)
                         started = true
-                    } catch (e: Exception) {}
+                    } catch (_: Exception) {}
 
                     if (!started) {
                         try {
@@ -678,7 +664,7 @@ fun ClockHeader() {
                             }
                             context.startActivity(intent)
                             started = true
-                        } catch (e: Exception) {}
+                        } catch (_: Exception) {}
                     }
 
                     if (!started) {
@@ -700,25 +686,25 @@ fun ClockHeader() {
                                     started = true
                                     break
                                 }
-                            } catch (e: Exception) {}
+                            } catch (_: Exception) {}
                         }
                     }
 
                     if (!started) {
                         try {
                             val pm = context.packageManager
-                            val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                            val apps = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
                             val clockApp = apps.find { 
                                 val label = it.loadLabel(pm).toString().lowercase()
-                                val pkg = it.packageName.lowercase()
+                                val pkg = it.activityInfo.packageName.lowercase()
                                 (pkg.contains("clock") || pkg.contains("deskclock") || label.contains("uhr") || label.contains("clock")) && 
-                                pm.getLaunchIntentForPackage(it.packageName) != null
+                                pm.getLaunchIntentForPackage(it.activityInfo.packageName) != null
                             }
                             clockApp?.let {
-                                context.startActivity(pm.getLaunchIntentForPackage(it.packageName))
+                                context.startActivity(pm.getLaunchIntentForPackage(it.activityInfo.packageName))
                                 started = true
                             }
-                        } catch (e: Exception) {}
+                        } catch (_: Exception) {}
                     }
 
                     if (!started) {
@@ -744,13 +730,13 @@ fun ClockHeader() {
                     }
                     try {
                         context.startActivity(calendarIntent)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         val selectorIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
                         try {
                             context.startActivity(selectorIntent)
-                        } catch (e2: Exception) {}
+                        } catch (_: Exception) {}
                     }
                 }
                 .padding(horizontal = 4.dp, vertical = 2.dp)
@@ -769,7 +755,7 @@ private fun getAppListBasic(context: Context): List<AppInfo> {
     }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
 }
 
-private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
+private suspend fun loadSingleIcon(pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
     val iconFile = File(cacheDir, "$packageName.png")
     if (iconFile.exists()) {
         try {
@@ -779,7 +765,7 @@ private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDi
                 ib.prepareToDraw()
                 return ib
             }
-        } catch (e: Exception) { }
+        } catch (_: Exception) { }
     }
     return withContext(Dispatchers.IO) {
         try {
@@ -791,10 +777,11 @@ private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDi
                 icon
             }
             
-            val b = Bitmap.createBitmap(144, 144, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(b)
-            foregroundDrawable.setBounds(0, 0, 144, 144)
-            foregroundDrawable.draw(canvas)
+            val b = createBitmap(144, 144)
+            b.applyCanvas {
+                foregroundDrawable.setBounds(0, 0, 144, 144)
+                foregroundDrawable.draw(this)
+            }
             
             val ib = b.asImageBitmap()
             ib.prepareToDraw()
@@ -803,7 +790,7 @@ private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDi
                 b.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
             ib
-        } catch (e: Exception) { null }
+        } catch (_: Exception) { null }
     }
 }
 
@@ -815,5 +802,5 @@ private fun getSavedFavorites(context: Context): List<String> {
 
 private fun saveFavorites(context: Context, favorites: List<String>) {
     val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    prefs.edit().putString("favorites_list", favorites.joinToString(",")).apply()
+    prefs.edit { putString("favorites_list", favorites.joinToString(",")) }
 }
