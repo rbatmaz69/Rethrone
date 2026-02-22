@@ -35,7 +35,7 @@ fun ColorConfigMenu(
     onDarkTextToggled: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
-    // Farbe für den dunklen Modus (Vermeidung von Pure Black HW-Artefakten)
+    // Nur für die primären Schriften und Symbole verwenden
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
@@ -55,12 +55,12 @@ fun ColorConfigMenu(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
+                // Bleibt grau (weiß mit alpha), da es eine sekundäre Info ist
+                Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
                 Switch(
                     checked = isDarkTextEnabled,
                     onCheckedChange = onDarkTextToggled,
                     colors = SwitchDefaults.colors(
-                        // Vereinheitlichte Farben für die Umrandung (Track) in beiden Modi
                         checkedTrackColor = Color.White.copy(alpha = 0.2f),
                         uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                         checkedThumbColor = Color.White,
@@ -109,7 +109,8 @@ fun ColorConfigMenu(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-            Text("Themen", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
+            // Bleibt grau
+            Text("Themen", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
 
             LazyColumn(
@@ -139,12 +140,14 @@ fun PreviewCard(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = mainTextColor.copy(alpha = 0.05f),
+        // Hintergrund der Karte bleibt grau
+        color = Color.White.copy(alpha = 0.05f),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            // Karten-Titel bleibt grau
+            Text(title, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
@@ -158,6 +161,7 @@ fun PreviewCard(
                         }
                     )
             ) {
+                // In der Vorschau spiegeln wir die Schriftfarbe wider
                 if (isHome) {
                     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Box(modifier = Modifier.width(40.dp).height(8.dp).background(mainTextColor.copy(alpha = 0.8f), CircleShape))
@@ -195,9 +199,11 @@ fun PreviewCard(
 @Composable
 fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color, onClick: () -> Unit) {
     Surface(
-        color = if (isSelected) mainTextColor.copy(alpha = 0.15f) else mainTextColor.copy(alpha = 0.05f),
+        // Hintergrund der Items bleibt grau (weiß-transparent)
+        color = if (isSelected) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
         shape = RoundedCornerShape(16.dp),
-        border = if (isSelected) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.3f)) else null,
+        // Rahmen bleibt grau
+        border = if (isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else null,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
     ) {
         Row(
@@ -205,14 +211,16 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(modifier = Modifier.width(60.dp), horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                Box(modifier = Modifier.size(24.dp).background(theme.primary, CircleShape).border(2.dp, mainTextColor.copy(alpha = 0.2f), CircleShape))
-                Box(modifier = Modifier.size(24.dp).background(theme.secondary, CircleShape).border(2.dp, mainTextColor.copy(alpha = 0.2f), CircleShape))
+                Box(modifier = Modifier.size(24.dp).background(theme.primary, CircleShape).border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape))
+                Box(modifier = Modifier.size(24.dp).background(theme.secondary, CircleShape).border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape))
             }
             
             Spacer(modifier = Modifier.width(16.dp))
             
+            // Name des Themes wird schwarz (Schrift)
             Text(theme.themeName, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
             
+            // Haken wird schwarz (Symbol)
             if (isSelected) {
                 Icon(Icons.Default.Check, contentDescription = null, tint = mainTextColor)
             }
