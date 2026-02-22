@@ -4,6 +4,7 @@ Ein eleganter, performanter Launcher für Android, der mit **Jetpack Compose** v
 
 ## ✨ Features
 - **Minimalistisches Design:** Fokus auf Typografie und Platz.
+- **Dynamische Kontraste:** Wähle zwischen hellen und dunklen Schrift- und Icon-Farben für optimale Lesbarkeit auf jedem Hintergrund.
 - **Custom Line-Art Icons:** Integrierte minimalistische Symbole für System-Apps (Telefon, Kamera, Browser, Cloud-Dienste etc.).
 - **Smart App Drawer:** Schneller Zugriff auf alle Apps mit integrierter Suchfunktion.
 - **Favoriten-Liste:** Deine wichtigsten Apps direkt auf dem Home-Screen.
