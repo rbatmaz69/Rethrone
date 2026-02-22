@@ -59,7 +59,9 @@ import androidx.core.content.edit
 import androidx.core.graphics.applyCanvas
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
+import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Type
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -447,12 +449,15 @@ fun HomeScreen(
                     favorites.forEach { app ->
                         val intSrc = remember { MutableInteractionSource() }
                         Row(
-                            modifier = Modifier.bounceClick(intSrc).clickable(
-                                interactionSource = intSrc,
-                                indication = null
-                            ) {
-                                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
-                            }.padding(6.dp),
+                            modifier = Modifier
+                                .bounceClick(intSrc)
+                                .clickable(
+                                    interactionSource = intSrc,
+                                    indication = null
+                                ) {
+                                    context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
+                                }
+                                .padding(vertical = 4.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
@@ -558,21 +563,20 @@ fun FavoritesConfigMenu(
                 ),
                 thumbContent = {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "T",
-                            color = if (isDarkTextEnabled) Color.Black else Color(0xFF0F172A),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Normal,
-                            modifier = if (!showFavoriteLabels) {
-                                Modifier.drawBehind {
+                        Icon(
+                            imageVector = Lucide.Type,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp).drawBehind {
+                                if (!showFavoriteLabels) {
                                     drawLine(
                                         color = if (isDarkTextEnabled) Color.Black else Color(0xFF0F172A),
                                         start = Offset(0f, 0f),
                                         end = Offset(size.width, size.height),
-                                        strokeWidth = 1.5.dp.toPx()
+                                        strokeWidth = 2.dp.toPx()
                                     )
                                 }
-                            } else Modifier
+                            },
+                            tint = if (isDarkTextEnabled) Color.Black else Color(0xFF0F172A)
                         )
                     }
                 }
