@@ -44,6 +44,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -524,6 +525,10 @@ fun FavoritesConfigMenu(
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    
+    // Einheitliche Textfarbe für "App-Titel" (Grau wie im White Mode)
+    val labelTextColor = Color.White.copy(alpha = 0.6f)
+    
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val grayTone = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
 
@@ -549,35 +554,43 @@ fun FavoritesConfigMenu(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("App-Titel", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+            Text("App-Titel", color = labelTextColor, fontSize = 14.sp)
+            
+            // Toggle Logik: 
+            // White Mode: Kreis Schwarz, Symbole Weiß
+            // Dark Mode: Kreis Weiß, Symbole Schwarz
+            val thumbColor = if (isDarkTextEnabled) Color.Black else Color.White
+            val symbolColor = if (isDarkTextEnabled) Color.White else Color.Black
+            
             Switch(
                 checked = showFavoriteLabels,
                 onCheckedChange = onShowLabelsToggled,
                 colors = SwitchDefaults.colors(
                     checkedTrackColor = Color.White.copy(alpha = 0.2f),
                     uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
-                    checkedThumbColor = Color.White,
-                    uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
+                    checkedThumbColor = thumbColor,
+                    uncheckedThumbColor = thumbColor,
                     checkedBorderColor = Color.White.copy(alpha = 0.1f),
                     uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
                 ),
                 thumbContent = {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Lucide.Type,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp).drawBehind {
-                                if (!showFavoriteLabels) {
-                                    drawLine(
-                                        color = if (isDarkTextEnabled) Color.Black else Color(0xFF0F172A),
-                                        start = Offset(0f, 0f),
-                                        end = Offset(size.width, size.height),
-                                        strokeWidth = 2.dp.toPx()
-                                    )
-                                }
-                            },
-                            tint = if (isDarkTextEnabled) Color.Black else Color(0xFF0F172A)
-                        )
+                        if (showFavoriteLabels) {
+                            // Symbol für AN (I)
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 1.5.dp, height = 12.dp)
+                                    .background(symbolColor, RoundedCornerShape(0.5.dp))
+                            )
+                        } else {
+                            // Symbol für AUS (0)
+                            Surface(
+                                modifier = Modifier.size(width = 8.dp, height = 12.dp),
+                                color = Color.Transparent,
+                                border = BorderStroke(1.5.dp, symbolColor),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {}
+                        }
                     }
                 }
             )
@@ -753,9 +766,9 @@ fun ClockHeader() {
                             "cn.nubia.deskclock",
                             "com.zte.deskclock"
                         )
-                        for (pkg in packages) {
+                        for (pName in packages) {
                             try {
-                                val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                                val launchIntent = context.packageManager.getLaunchIntentForPackage(pName)
                                 if (launchIntent != null) {
                                     context.startActivity(launchIntent)
                                     started = true
@@ -770,9 +783,9 @@ fun ClockHeader() {
                             val pm = context.packageManager
                             val apps = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
                             val clockApp = apps.find { 
-                                val label = it.loadLabel(pm).toString().lowercase()
-                                val pkg = it.activityInfo.packageName.lowercase()
-                                (pkg.contains("clock") || pkg.contains("deskclock") || label.contains("uhr") || label.contains("clock")) && 
+                                val labelText = it.loadLabel(pm).toString().lowercase()
+                                val appPackageName = it.activityInfo.packageName.lowercase()
+                                (appPackageName.contains("clock") || appPackageName.contains("deskclock") || labelText.contains("uhr") || labelText.contains("clock")) && 
                                 pm.getLaunchIntentForPackage(it.activityInfo.packageName) != null
                             }
                             clockApp?.let {
