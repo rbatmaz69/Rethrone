@@ -165,7 +165,7 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(returnIconPackage) {
                     if (returnIconPackage != null) {
-                        delay(240)
+                        delay(160)
                         returnIconPackage = null
                     }
                 }
@@ -597,7 +597,7 @@ fun HomeScreen(
 
         val launchTransition = updateTransition(targetState = launchRequest != null, label = "HomeLaunchTransition")
         val launchProgress by launchTransition.animateFloat(
-            transitionSpec = { spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow) },
+            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium) },
             label = "HomeLaunchProgress"
         ) { isVisible ->
             if (isVisible) 1f else 0f

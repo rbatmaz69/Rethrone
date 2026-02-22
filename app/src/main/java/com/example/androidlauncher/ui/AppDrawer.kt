@@ -344,7 +344,7 @@ fun AppDrawer(
 
         val launchTransition = updateTransition(targetState = launchRequest != null, label = "LaunchTransition")
         val launchProgress by launchTransition.animateFloat(
-            transitionSpec = { spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow) },
+            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium) },
             label = "LaunchProgress"
         ) { isVisible ->
             if (isVisible) 1f else 0f
