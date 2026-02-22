@@ -8,7 +8,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.os.Build
 import android.os.Bundle
@@ -46,6 +45,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
@@ -53,16 +54,28 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.core.content.edit
+import androidx.core.graphics.applyCanvas
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toBitmap
+import com.composables.icons.lucide.ALargeSmall
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Type
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalShowFavoriteLabels
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
@@ -85,7 +98,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -119,6 +131,7 @@ class MainActivity : ComponentActivity() {
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
+            val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
 
             val scope = rememberCoroutineScope()
@@ -127,7 +140,8 @@ class MainActivity : ComponentActivity() {
                 colorTheme = currentTheme,
                 fontSize = currentFontSize,
                 iconSize = currentIconSize,
-                darkTextEnabled = isDarkTextEnabled
+                darkTextEnabled = isDarkTextEnabled,
+                showFavoriteLabels = showFavoriteLabels
             ) {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
@@ -192,7 +206,7 @@ class MainActivity : ComponentActivity() {
 
                         sortedIndices.forEachIndexed { loopIdx, appIdx ->
                             val app = allApps[appIdx]
-                            val bitmap = loadSingleIcon(context, pm, cacheDir, app.packageName)
+                            val bitmap = loadSingleIcon(pm, cacheDir, app.packageName)
                             if (bitmap != null) {
                                 withContext(Dispatchers.Main) {
                                     allApps[appIdx] = app.copy(iconBitmap = bitmap)
@@ -287,23 +301,27 @@ class MainActivity : ComponentActivity() {
                      }
 
                     AnimatedVisibility(
-                         visible = isFavoritesConfigOpen,
-                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                     ) {
-                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                             FavoritesConfigMenu(
-                                 apps = allApps,
-                                 initialFavoritePackages = favoritePackages,
-                                 onConfirm = { newFavs ->
-                                     saveFavorites(context, newFavs)
-                                     favoritePackages = newFavs
-                                     isFavoritesConfigOpen = false
-                                 },
-                                 onClose = { isFavoritesConfigOpen = false }
-                             )
-                         }
-                     }
+                        visible = isFavoritesConfigOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                            FavoritesConfigMenu(
+                                apps = allApps,
+                                initialFavoritePackages = favoritePackages,
+                                showFavoriteLabels = showFavoriteLabels,
+                                onShowLabelsToggled = { show ->
+                                    scope.launch { themeManager.setShowFavoriteLabels(show) }
+                                },
+                                onConfirm = { newFavs ->
+                                    saveFavorites(context, newFavs)
+                                    favoritePackages = newFavs
+                                    isFavoritesConfigOpen = false
+                                },
+                                onClose = { isFavoritesConfigOpen = false }
+                            )
+                        }
+                    }
 
                     AnimatedVisibility(
                          visible = selectedFolderForConfig != null,
@@ -391,13 +409,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun enforceExcludeFromRecents() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            am.appTasks?.forEach { task ->
-                val base = task.taskInfo.baseIntent.component
-                if (base != null && base.className == componentName.className) {
-                    task.setExcludeFromRecents(true)
-                }
+        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        am.appTasks?.forEach { task ->
+            val base = task.taskInfo.baseIntent.component
+            if (base != null && base.className == componentName.className) {
+                task.setExcludeFromRecents(true)
             }
         }
     }
@@ -410,9 +426,7 @@ private fun expandNotifications(context: Context) {
         val statusBarManager = Class.forName("android.app.StatusBarManager")
         val method = statusBarManager.getMethod("expandNotificationsPanel")
         method.invoke(statusBarService)
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
+    } catch (_: Exception) {}
 }
 
 @SuppressLint("MissingPermission")
@@ -429,7 +443,7 @@ fun SystemWallpaperView() {
             try {
                 val drawable = wallpaperManager.drawable
                 drawable?.let { wallpaperBitmap = it.toBitmap().asImageBitmap() }
-            } catch (e: Exception) { e.printStackTrace() }
+            } catch (_: Exception) {}
         }
     }
 
@@ -456,17 +470,20 @@ fun HomeScreen(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val showLabels = LocalShowFavoriteLabels.current
+    val fontSize = LocalFontSize.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     var launchRequest by remember { mutableStateOf<HomeLaunchRequest?>(null) }
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
-        animationSpec = tween(300, easing = EaseInOutCubic)
+        animationSpec = tween(300, easing = EaseInOutCubic), label = ""
     )
 
     val settingsButtonSize by animateDpAsState(
         targetValue = if (isSettingsOpen) 72.dp else 56.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = ""
     )
 
     LaunchedEffect(launchRequest) {
@@ -550,11 +567,27 @@ fun HomeScreen(
                                         }
                                     }
                             ) {
-                                Box(modifier = Modifier.padding(6.dp).graphicsLayer {
-                                    scaleX = bounceScale
-                                    scaleY = bounceScale
-                                }) {
-                                    AppIconView(app)
+                                Row(
+                                    modifier = Modifier.padding(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(modifier = Modifier.graphicsLayer {
+                                        scaleX = bounceScale
+                                        scaleY = bounceScale
+                                    }) {
+                                        AppIconView(app)
+                                    }
+                                    if (showLabels) {
+                                        Text(
+                                            text = app.label,
+                                            color = mainTextColor,
+                                            fontSize = 18.sp * fontSize.scale,
+                                            fontWeight = FontWeight.Normal,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -671,14 +704,19 @@ data class HomeLaunchRequest(
 fun FavoritesConfigMenu(
     apps: List<AppInfo>,
     initialFavoritePackages: List<String>,
+    showFavoriteLabels: Boolean,
+    onShowLabelsToggled: (Boolean) -> Unit,
     onConfirm: (List<String>) -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    
+    // Einheitliche Textfarbe für "App-Titel" (Grau wie im White Mode)
+    val labelTextColor = Color.White.copy(alpha = 0.6f)
+    
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    // Der von dir gewünschte Grauton (basierend auf dem Counter-Text)
-    val grayTone = Color.White.copy(alpha = 0.6f)
+    val grayTone = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
@@ -688,12 +726,63 @@ fun FavoritesConfigMenu(
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
-                Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = grayTone)
+                Text(stringResource(R.string.favorites_title), fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
+                Text(stringResource(R.string.favorites_count, selectedPackages.size, LauncherLogic.MAX_FAVORITES), fontSize = 14.sp, color = grayTone)
             }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Option Toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("App-Titel", color = labelTextColor, fontSize = 14.sp)
+            
+            // Toggle Logik: 
+            // White Mode: Kreis Schwarz, Symbole Weiß
+            // Dark Mode: Kreis Weiß, Symbole Schwarz
+            val thumbColor = if (isDarkTextEnabled) Color.Black else Color.White
+            val symbolColor = if (isDarkTextEnabled) Color.White else Color.Black
+            
+            Switch(
+                checked = showFavoriteLabels,
+                onCheckedChange = onShowLabelsToggled,
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = Color.White.copy(alpha = 0.2f),
+                    uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
+                    checkedThumbColor = thumbColor,
+                    uncheckedThumbColor = thumbColor,
+                    checkedBorderColor = Color.White.copy(alpha = 0.1f),
+                    uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
+                ),
+                thumbContent = {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (showFavoriteLabels) {
+                            // Symbol für AN (I)
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 1.5.dp, height = 12.dp)
+                                    .background(symbolColor, RoundedCornerShape(0.5.dp))
+                            )
+                        } else {
+                            // Symbol für AUS (0)
+                            Surface(
+                                modifier = Modifier.size(width = 8.dp, height = 12.dp),
+                                color = Color.Transparent,
+                                border = BorderStroke(1.5.dp, symbolColor),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {}
+                        }
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
         
         val searchIntSrc = remember { MutableInteractionSource() }
         Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
@@ -710,7 +799,7 @@ fun FavoritesConfigMenu(
                     textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
                     cursorBrush = SolidColor(mainTextColor),
                     singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = grayTone, fontSize = 15.sp); it() }
+                    decorationBox = { if (searchQuery.isEmpty()) Text(stringResource(R.string.search_apps), color = grayTone, fontSize = 15.sp); it() }
                 )
             }
         }
@@ -719,7 +808,7 @@ fun FavoritesConfigMenu(
         
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
             if (selectedPackages.isNotEmpty()) {
-                item { Text("Reihenfolge", color = grayTone, fontSize = 12.sp) }
+                item { Text(stringResource(R.string.order_label), color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(selectedPackages) { index, pkg ->
                     apps.find { it.packageName == pkg }?.let { app ->
                         Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -729,11 +818,9 @@ fun FavoritesConfigMenu(
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
                                 IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index) }, enabled = index > 0) { 
-                                    // Inaktiv (unmöglich) -> Solid Schwarz | Aktiv (möglich) -> Wunsch-Grauton
                                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) grayTone else mainTextColor) 
                                 }
                                 IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index) }, enabled = index < selectedPackages.size - 1) { 
-                                    // Inaktiv (unmöglich) -> Solid Schwarz | Aktiv (möglich) -> Wunsch-Grauton
                                     Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) grayTone else mainTextColor) 
                                 }
                             }
@@ -742,7 +829,7 @@ fun FavoritesConfigMenu(
                 }
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
-            item { Text("Alle Apps", color = grayTone, fontSize = 12.sp) }
+            item { Text(stringResource(R.string.all_apps_label), color = grayTone, fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
@@ -751,7 +838,7 @@ fun FavoritesConfigMenu(
                     indication = null
                 ) {
                     val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
-                    if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, "Maximal 8 erlaubt", Toast.LENGTH_SHORT).show()
+                    if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, context.getString(R.string.max_favorites_reached), Toast.LENGTH_SHORT).show()
                 }) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
@@ -762,7 +849,7 @@ fun FavoritesConfigMenu(
                             onCheckedChange = null, 
                             colors = CheckboxDefaults.colors(
                                 checkedColor = mainTextColor, 
-                                uncheckedColor = Color.White.copy(alpha = 0.4f), 
+                                uncheckedColor = mainTextColor.copy(alpha = 0.4f), 
                                 checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
                             )
                         )
@@ -790,7 +877,7 @@ fun FavoritesConfigMenu(
                 .clickable(
                     interactionSource = intSrc,
                     indication = null,
-                    onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, "Keine Auswahl", Toast.LENGTH_SHORT).show() }
+                    onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, context.getString(R.string.no_selection), Toast.LENGTH_SHORT).show() }
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -862,10 +949,9 @@ fun ClockHeader(
                 ) {
                     val pm = context.packageManager
                     var foundPkg: String? = null
-                    
-                    // 1. nubia & bekannte Pakete direkt probieren
+
                     val packages = listOf(
-                        "cn.nubia.deskclock.preset", 
+                        "cn.nubia.deskclock.preset",
                         "cn.nubia.deskclock",
                         "cn.nubia.clock",
                         "com.android.deskclock",
@@ -876,17 +962,16 @@ fun ClockHeader(
                         "com.zte.deskclock",
                         "com.android.clock"
                     )
-                    
+
                     for (pkg in packages) {
                         try {
                             if (pm.getLaunchIntentForPackage(pkg) != null) {
                                 foundPkg = pkg
                                 break
                             }
-                        } catch (e: Exception) {}
+                        } catch (_: Exception) {}
                     }
 
-                    // 2. Weg: Suche über Standard-Clock-Kategorie
                     if (foundPkg == null) {
                         try {
                             val stdIntent = Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_CLOCK")
@@ -894,10 +979,9 @@ fun ClockHeader(
                             if (res != null) {
                                 foundPkg = res.activityInfo.packageName
                             }
-                        } catch (e: Exception) {}
+                        } catch (_: Exception) {}
                     }
 
-                    // 3. Weg: Suche über Alarm-Aktion
                     if (foundPkg == null) {
                         try {
                             val alarmIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
@@ -905,20 +989,32 @@ fun ClockHeader(
                             if (res != null) {
                                 foundPkg = res.activityInfo.packageName
                             }
-                        } catch (e: Exception) {}
+                        } catch (_: Exception) {}
                     }
 
-                    // 4. Weg: Scan
                     if (foundPkg == null) {
                         try {
                             val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                            val foundApp = apps.find { 
+                            val foundApp = apps.find {
                                 val pkg = it.packageName.lowercase()
-                                (pkg.contains("deskclock") || pkg.contains("uhr") || (pkg.contains("clock") && !pkg.contains("widget"))) && 
-                                pm.getLaunchIntentForPackage(it.packageName) != null
+                                (pkg.contains("deskclock") || pkg.contains("uhr") || (pkg.contains("clock") && !pkg.contains("widget"))) &&
+                                    pm.getLaunchIntentForPackage(it.packageName) != null
                             }
                             foundPkg = foundApp?.packageName
-                        } catch (e: Exception) {}
+                        } catch (_: Exception) {}
+                    }
+
+                    if (foundPkg == null) {
+                        try {
+                            val apps = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+                            val clockApp = apps.find {
+                                val labelText = it.loadLabel(pm).toString().lowercase()
+                                val appPackageName = it.activityInfo.packageName.lowercase()
+                                (appPackageName.contains("clock") || appPackageName.contains("deskclock") || labelText.contains("uhr") || labelText.contains("clock")) &&
+                                    pm.getLaunchIntentForPackage(it.activityInfo.packageName) != null
+                            }
+                            foundPkg = clockApp?.activityInfo?.packageName
+                        } catch (_: Exception) {}
                     }
 
                     if (foundPkg != null) {
@@ -928,8 +1024,17 @@ fun ClockHeader(
                             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
                             onAppLaunchForReturn(foundPkg, clockBounds.value)
                             onLaunchRequest(HomeLaunchRequest(foundPkg, clockBounds.value, launchIntent))
+                            return@clickable
                         }
-                    } else {
+                    }
+
+                    try {
+                        val intent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory("android.intent.category.APP_CLOCK")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    } catch (_: Exception) {
                         Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -955,12 +1060,12 @@ fun ClockHeader(
                     var calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
                     }
-                    
+
                     val res = pm.resolveActivity(calendarIntent, 0)
                     if (res == null) {
                         calendarIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
                     }
-                    
+
                     val foundPkg = pm.resolveActivity(calendarIntent, 0)?.activityInfo?.packageName
                     if (foundPkg != null) {
                         calendarPackage = foundPkg
@@ -974,6 +1079,19 @@ fun ClockHeader(
                             onAppLaunchForReturn(foundPkg, calendarBounds.value)
                             onLaunchRequest(HomeLaunchRequest(foundPkg, calendarBounds.value, calendarIntent))
                         }
+                        return@clickable
+                    }
+
+                    try {
+                        calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(calendarIntent)
+                    } catch (_: Exception) {
+                        val selectorIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        try {
+                            context.startActivity(selectorIntent)
+                        } catch (_: Exception) {}
                     }
                 }
                 .padding(horizontal = 4.dp, vertical = 2.dp)
@@ -992,7 +1110,7 @@ private fun getAppListBasic(context: Context): List<AppInfo> {
     }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
 }
 
-private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
+private suspend fun loadSingleIcon(pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
     val iconFile = File(cacheDir, "$packageName.png")
     if (iconFile.exists()) {
         try {
@@ -1002,7 +1120,7 @@ private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDi
                 ib.prepareToDraw()
                 return ib
             }
-        } catch (e: Exception) { }
+        } catch (_: Exception) { }
     }
     return withContext(Dispatchers.IO) {
         try {
@@ -1014,10 +1132,11 @@ private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDi
                 icon
             }
             
-            val b = Bitmap.createBitmap(144, 144, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(b)
-            foregroundDrawable.setBounds(0, 0, 144, 144)
-            foregroundDrawable.draw(canvas)
+            val b = createBitmap(144, 144)
+            b.applyCanvas {
+                foregroundDrawable.setBounds(0, 0, 144, 144)
+                foregroundDrawable.draw(this)
+            }
             
             val ib = b.asImageBitmap()
             ib.prepareToDraw()
@@ -1026,7 +1145,7 @@ private suspend fun loadSingleIcon(context: Context, pm: PackageManager, cacheDi
                 b.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
             ib
-        } catch (e: Exception) { null }
+        } catch (_: Exception) { null }
     }
 }
 
@@ -1038,5 +1157,5 @@ private fun getSavedFavorites(context: Context): List<String> {
 
 private fun saveFavorites(context: Context, favorites: List<String>) {
     val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    prefs.edit().putString("favorites_list", favorites.joinToString(",")).apply()
+    prefs.edit { putString("favorites_list", favorites.joinToString(",")) }
 }
