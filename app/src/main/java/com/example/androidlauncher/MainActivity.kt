@@ -165,7 +165,7 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(returnIconPackage) {
                     if (returnIconPackage != null) {
-                        delay(160)
+                        delay(300)
                         returnIconPackage = null
                     }
                 }
@@ -472,7 +472,7 @@ fun HomeScreen(
     LaunchedEffect(launchRequest) {
         val request = launchRequest ?: return@LaunchedEffect
         delay(280)
-        context.packageManager.getLaunchIntentForPackage(request.app.packageName)?.let {
+        request.intent?.let {
             launchAppNoTransition(context, it)
         }
         launchRequest = null
@@ -497,7 +497,7 @@ fun HomeScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Spacer(modifier = Modifier.height(64.dp))
-                ClockHeader()
+                ClockHeader(onAppLaunchForReturn = onAppLaunchForReturn, onLaunchRequest = { launchRequest = it })
 
                 Spacer(modifier = Modifier.weight(1f))
 
@@ -545,7 +545,8 @@ fun HomeScreen(
                                     ) {
                                         if (launchRequest == null) {
                                             onAppLaunchForReturn(app.packageName, itemBounds.value)
-                                            launchRequest = HomeLaunchRequest(app, itemBounds.value)
+                                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                            launchRequest = HomeLaunchRequest(app.packageName, itemBounds.value, intent)
                                         }
                                     }
                             ) {
@@ -660,9 +661,10 @@ fun HomeScreen(
     }
 }
 
-private data class HomeLaunchRequest(
-    val app: AppInfo,
-    val bounds: Rect?
+data class HomeLaunchRequest(
+    val packageName: String,
+    val bounds: Rect?,
+    val intent: Intent?
 )
 
 @Composable
@@ -798,7 +800,10 @@ fun FavoritesConfigMenu(
 }
 
 @Composable
-fun ClockHeader() {
+fun ClockHeader(
+    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    onLaunchRequest: (HomeLaunchRequest) -> Unit
+) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
@@ -815,6 +820,8 @@ fun ClockHeader() {
     val dateFormat = SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault())
     val intSrcTime = remember { MutableInteractionSource() }
     val intSrcDate = remember { MutableInteractionSource() }
+    val clockBounds = remember { mutableStateOf<Rect?>(null) }
+    val calendarBounds = remember { mutableStateOf<Rect?>(null) }
     
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -826,56 +833,57 @@ fun ClockHeader() {
             letterSpacing = (-2).sp,
             color = mainTextColor,
             modifier = Modifier
+                .onGloballyPositioned { clockBounds.value = it.boundsInRoot() }
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcTime)
                 .clickable(
                     interactionSource = intSrcTime,
                     indication = null
                 ) {
-                    var started = false
-                    try {
-                        val intent = Intent(Intent.ACTION_MAIN).apply {
-                            addCategory("android.intent.category.APP_CLOCK")
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                        started = true
-                    } catch (e: Exception) {}
-
-                    if (!started) {
+                    var clockIntent: Intent? = null
+                    
+                    // nubia spezifische App-Suche zuerst
+                    val packages = listOf(
+                        "cn.nubia.deskclock.preset", 
+                        "cn.nubia.deskclock",
+                        "com.android.deskclock",
+                        "com.google.android.deskclock",
+                        "com.sec.android.app.clockpackage",
+                        "com.huawei.android.clock",
+                        "com.miui.clock",
+                        "com.zte.deskclock"
+                    )
+                    
+                    for (pkg in packages) {
                         try {
-                            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+                            if (launchIntent != null) {
+                                clockIntent = launchIntent
+                                break
                             }
-                            context.startActivity(intent)
-                            started = true
                         } catch (e: Exception) {}
                     }
 
-                    if (!started) {
-                        val packages = listOf(
-                            "com.google.android.deskclock",
-                            "com.android.deskclock",
-                            "com.sec.android.app.clockpackage",
-                            "com.huawei.android.clock",
-                            "com.miui.clock",
-                            "cn.nubia.deskclock.preset", 
-                            "cn.nubia.deskclock",
-                            "com.zte.deskclock"
-                        )
-                        for (pkg in packages) {
-                            try {
-                                val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
-                                if (launchIntent != null) {
-                                    context.startActivity(launchIntent)
-                                    started = true
-                                    break
-                                }
-                            } catch (e: Exception) {}
-                        }
+                    if (clockIntent == null) {
+                        try {
+                            clockIntent = Intent(Intent.ACTION_MAIN).apply {
+                                addCategory("android.intent.category.APP_CLOCK")
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            if (context.packageManager.resolveActivity(clockIntent, 0) == null) { clockIntent = null }
+                        } catch (e: Exception) { clockIntent = null }
                     }
 
-                    if (!started) {
+                    if (clockIntent == null) {
+                        try {
+                            clockIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            if (context.packageManager.resolveActivity(clockIntent, 0) == null) { clockIntent = null }
+                        } catch (e: Exception) { clockIntent = null }
+                    }
+
+                    if (clockIntent == null) {
                         try {
                             val pm = context.packageManager
                             val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
@@ -886,13 +894,16 @@ fun ClockHeader() {
                                 pm.getLaunchIntentForPackage(it.packageName) != null
                             }
                             clockApp?.let {
-                                context.startActivity(pm.getLaunchIntentForPackage(it.packageName))
-                                started = true
+                                clockIntent = pm.getLaunchIntentForPackage(it.packageName)
                             }
                         } catch (e: Exception) {}
                     }
 
-                    if (!started) {
+                    if (clockIntent != null) {
+                        val pkg = clockIntent?.`package` ?: clockIntent?.component?.packageName ?: "clock"
+                        onAppLaunchForReturn(pkg, clockBounds.value)
+                        onLaunchRequest(HomeLaunchRequest(pkg, clockBounds.value, clockIntent))
+                    } else {
                         Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -903,26 +914,26 @@ fun ClockHeader() {
             fontWeight = FontWeight.Normal,
             color = mainTextColor.copy(alpha = 0.7f),
             modifier = Modifier
+                .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcDate)
                 .clickable(
                     interactionSource = intSrcDate,
                     indication = null
                 ) {
-                    val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
+                    var calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
-                    try {
-                        context.startActivity(calendarIntent)
-                    } catch (e: Exception) {
-                        val selectorIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
+                    if (context.packageManager.resolveActivity(calendarIntent, 0) == null) {
+                        calendarIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
-                        try {
-                            context.startActivity(selectorIntent)
-                        } catch (e2: Exception) {}
                     }
+                    
+                    val pkg = calendarIntent.`package` ?: calendarIntent.component?.packageName ?: "calendar"
+                    onAppLaunchForReturn(pkg, calendarBounds.value)
+                    onLaunchRequest(HomeLaunchRequest(pkg, calendarBounds.value, calendarIntent))
                 }
                 .padding(horizontal = 4.dp, vertical = 2.dp)
         )

@@ -3,6 +3,7 @@ package com.example.androidlauncher.ui
 import android.app.Activity
 import android.app.ActivityOptions
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -45,6 +46,15 @@ import com.example.androidlauncher.ui.theme.LocalIconSize
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
+}
+
 // Verbesserter bounceClick Modifier
 fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: Boolean = true) = composed {
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -74,12 +84,17 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
 }
 
 fun launchAppNoTransition(context: Context, intent: Intent) {
+    // Aggressive Unterdrückung der System-Animation
     intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    
+    val activity = context.findActivity()
+    activity?.overridePendingTransition(0, 0)
+    
     val options = ActivityOptions.makeCustomAnimation(context, 0, 0)
     context.startActivity(intent, options.toBundle())
-    if (context is Activity) {
-        context.overridePendingTransition(0, 0)
-    }
+    
+    activity?.overridePendingTransition(0, 0)
 }
 
 @Composable
