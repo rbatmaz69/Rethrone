@@ -840,25 +840,28 @@ fun ClockHeader(
                     interactionSource = intSrcTime,
                     indication = null
                 ) {
+                    val pm = context.packageManager
                     var clockIntent: Intent? = null
                     
-                    // nubia spezifische App-Suche zuerst
+                    // 1. nubia & bekannte Pakete direkt probieren
                     val packages = listOf(
                         "cn.nubia.deskclock.preset", 
                         "cn.nubia.deskclock",
+                        "cn.nubia.clock",
                         "com.android.deskclock",
                         "com.google.android.deskclock",
                         "com.sec.android.app.clockpackage",
                         "com.huawei.android.clock",
                         "com.miui.clock",
-                        "com.zte.deskclock"
+                        "com.zte.deskclock",
+                        "com.android.clock"
                     )
                     
                     for (pkg in packages) {
                         try {
-                            val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
-                            if (launchIntent != null) {
-                                clockIntent = launchIntent
+                            val li = pm.getLaunchIntentForPackage(pkg)
+                            if (li != null) {
+                                clockIntent = li
                                 break
                             }
                         } catch (e: Exception) {}
@@ -866,40 +869,43 @@ fun ClockHeader(
 
                     if (clockIntent == null) {
                         try {
-                            clockIntent = Intent(Intent.ACTION_MAIN).apply {
-                                addCategory("android.intent.category.APP_CLOCK")
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            val stdIntent = Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_CLOCK")
+                            val res = pm.resolveActivity(stdIntent, 0)
+                            if (res != null) {
+                                clockIntent = pm.getLaunchIntentForPackage(res.activityInfo.packageName)
                             }
-                            if (context.packageManager.resolveActivity(clockIntent, 0) == null) { clockIntent = null }
-                        } catch (e: Exception) { clockIntent = null }
+                        } catch (e: Exception) {}
                     }
 
                     if (clockIntent == null) {
                         try {
-                            clockIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            val alarmIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                            val res = pm.resolveActivity(alarmIntent, 0)
+                            if (res != null) {
+                                clockIntent = pm.getLaunchIntentForPackage(res.activityInfo.packageName)
                             }
-                            if (context.packageManager.resolveActivity(clockIntent, 0) == null) { clockIntent = null }
-                        } catch (e: Exception) { clockIntent = null }
+                        } catch (e: Exception) {}
                     }
 
                     if (clockIntent == null) {
                         try {
-                            val pm = context.packageManager
                             val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                            val clockApp = apps.find { 
-                                val label = it.loadLabel(pm).toString().lowercase()
+                            val foundApp = apps.find { 
                                 val pkg = it.packageName.lowercase()
-                                (pkg.contains("clock") || pkg.contains("deskclock") || label.contains("uhr") || label.contains("clock")) && 
+                                val label = it.loadLabel(pm).toString().lowercase()
+                                (pkg.contains("deskclock") || pkg.contains("uhr") || pkg.contains("clock")) && 
                                 pm.getLaunchIntentForPackage(it.packageName) != null
                             }
-                            clockApp?.let {
+                            foundApp?.let {
                                 clockIntent = pm.getLaunchIntentForPackage(it.packageName)
                             }
                         } catch (e: Exception) {}
                     }
 
                     if (clockIntent != null) {
+                        // Wichtige Flags für Launcher-Starts
+                        clockIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                        
                         val pkg = clockIntent?.`package` ?: clockIntent?.component?.packageName ?: "clock"
                         onAppLaunchForReturn(pkg, clockBounds.value)
                         onLaunchRequest(HomeLaunchRequest(pkg, clockBounds.value, clockIntent))
@@ -923,11 +929,11 @@ fun ClockHeader(
                 ) {
                     var calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                     }
                     if (context.packageManager.resolveActivity(calendarIntent, 0) == null) {
                         calendarIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                         }
                     }
                     

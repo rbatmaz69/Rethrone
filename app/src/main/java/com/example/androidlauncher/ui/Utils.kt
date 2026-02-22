@@ -5,6 +5,7 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -84,17 +85,22 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
 }
 
 fun launchAppNoTransition(context: Context, intent: Intent) {
-    // Aggressive Unterdrückung der System-Animation
-    intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    
     val activity = context.findActivity()
-    activity?.overridePendingTransition(0, 0)
-    
-    val options = ActivityOptions.makeCustomAnimation(context, 0, 0)
-    context.startActivity(intent, options.toBundle())
-    
-    activity?.overridePendingTransition(0, 0)
+    try {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val options = ActivityOptions.makeCustomAnimation(context, 0, 0)
+        context.startActivity(intent, options.toBundle())
+        activity?.overridePendingTransition(0, 0)
+    } catch (e: Exception) {
+        try {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            activity?.overridePendingTransition(0, 0)
+        } catch (e2: Exception) {
+            Toast.makeText(context, "Start fehlgeschlagen", Toast.LENGTH_SHORT).show()
+        }
+    }
 }
 
 @Composable
