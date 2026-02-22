@@ -90,7 +90,7 @@ fun AppDrawer(
     val fontSize = LocalFontSize.current
     val iconSize = LocalIconSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
@@ -110,12 +110,10 @@ fun AppDrawer(
 
     var activeFolderId by remember { mutableStateOf<String?>(null) }
     
-    // Stabilisierung des Ordner-Zustands für die Schließanimation
     val activeFolder = remember(activeFolderId, folders) {
         if (activeFolderId != null) folders.find { it.id == activeFolderId } else null
     }
     
-    // lastValidFolder sorgt dafür, dass der Inhalt während des Ausblendens sichtbar bleibt
     var lastValidFolder by remember { mutableStateOf<FolderInfo?>(null) }
     LaunchedEffect(activeFolder) {
         if (activeFolder != null) {
@@ -128,7 +126,6 @@ fun AppDrawer(
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
     
-    // Zurück-Taste / Geste: Erst Bearbeitungsmodus beenden, dann Ordner schließen
     BackHandler(enabled = activeFolderId != null) {
         if (isEditMode) {
             isEditMode = false
@@ -137,7 +134,6 @@ fun AppDrawer(
         }
     }
 
-    // Globale Drag-States
     var draggingItemPkg by remember { mutableStateOf<String?>(null) }
     var touchPosition by remember { mutableStateOf(Offset.Zero) }
     var initialTouchOffsetInItem by remember { mutableStateOf(Offset.Zero) }
@@ -277,7 +273,6 @@ fun AppDrawer(
             }
         }
 
-        // Folder Popup Overlay with symmetric animation
         val pivotOrigin = remember(folderPosition, drawerSize) {
             if (drawerSize.width > 0 && drawerSize.height > 0) {
                 TransformOrigin(
@@ -300,7 +295,6 @@ fun AppDrawer(
                 animationSpec = tween(400, easing = FastOutSlowInEasing)
             )
         ) {
-            // Nutze lastValidFolder, damit der Inhalt während der gesamten Schließanimation bleibt
             lastValidFolder?.let { currentActiveFolder ->
                 Box(
                     modifier = Modifier
@@ -402,7 +396,6 @@ fun AppDrawer(
                                 label = "WiggleAngle"
                             )
 
-                            // Auto-Paging Logik
                             LaunchedEffect(draggingItemPkg, touchPosition) {
                                 if (draggingItemPkg != null) {
                                     val threshold = with(density) { 45.dp.toPx() }
@@ -426,7 +419,6 @@ fun AppDrawer(
                                 val currentFolderState by rememberUpdatedState(currentActiveFolder)
                                 val currentFoldersState by rememberUpdatedState(folders)
 
-                                // Hilfsfunktion für den Positionswechsel
                                 fun performReorder(currentTouch: Offset, currentPage: Int) {
                                     val pkg = draggingItemPkg ?: return
                                     val fromIdx = currentFolderState.appPackageNames.indexOf(pkg)
@@ -450,7 +442,6 @@ fun AppDrawer(
                                     }
                                 }
 
-                                // Reaktive Reorder-Logik bei Seitenwechsel
                                 LaunchedEffect(pagerState.currentPage) {
                                     if (draggingItemPkg != null) {
                                         performReorder(touchPosition, pagerState.currentPage)
@@ -540,7 +531,6 @@ fun AppDrawer(
                                         }
                                     }
                                     
-                                    // Ghost-Icon das am Finger klebt
                                     if (draggingItemPkg != null) {
                                         val draggedApp = folderApps.find { it.packageName == draggingItemPkg }
                                         if (draggedApp != null) {
@@ -612,7 +602,7 @@ fun FolderItem(
     val fontSize = LocalFontSize.current
     val iconSizeValue = LocalIconSize.current.size
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     val intSrc = remember { MutableInteractionSource() }
     var itemOffset by remember { mutableStateOf(Offset.Zero) }
@@ -661,7 +651,9 @@ fun AppItem(
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val mainTextColor = if (isDarkTextEnabled) Color.Black else Color.White
+    
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val dropdownTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     var showActions by remember { mutableStateOf(false) }
     var showFolderSelection by remember { mutableStateOf(false) }
@@ -683,35 +675,65 @@ fun AppItem(
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
-        DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
-            DropdownMenuItem(text = { Text(if (isFavorite) "Vom Home entfernen" else "Als Favorit setzen", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { onToggleFavorite(app.packageName); showActions = false })
+        
+        DropdownMenu(
+            expanded = showActions, 
+            onDismissRequest = { showActions = false }, 
+            modifier = Modifier.background(Color(0xFF1A1F2B))
+        ) {
+            DropdownMenuItem(
+                text = { Text(if (isFavorite) "Vom Home entfernen" else "Als Favorit setzen", color = dropdownTextColor, fontSize = 14.sp * fontSize.scale) }, 
+                onClick = { onToggleFavorite(app.packageName); showActions = false }
+            )
 
             if (isInFolder && currentFolderId != null) {
-                DropdownMenuItem(text = { Text("Aus Ordner entfernen", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = {
-                    onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, currentFolderId, app.packageName))
-                    showActions = false
-                })
+                DropdownMenuItem(
+                    text = { Text("Aus Ordner entfernen", color = dropdownTextColor, fontSize = 14.sp * fontSize.scale) }, 
+                    onClick = {
+                        onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, currentFolderId, app.packageName))
+                        showActions = false
+                    }
+                )
             } else {
-                DropdownMenuItem(text = { Text("In Ordner verschieben", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = {
-                    showFolderSelection = true
-                    showActions = false
-                })
+                DropdownMenuItem(
+                    text = { Text("In Ordner verschieben", color = dropdownTextColor, fontSize = 14.sp * fontSize.scale) }, 
+                    onClick = {
+                        showFolderSelection = true
+                        showActions = false
+                    }
+                )
             }
 
-            DropdownMenuItem(text = { Text("App-Info", color = Color.White, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
-            DropdownMenuItem(text = { Text("Deinstallieren", color = Color.Red, fontSize = 14.sp * fontSize.scale) }, onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false })
+            DropdownMenuItem(
+                text = { Text("App-Info", color = dropdownTextColor, fontSize = 14.sp * fontSize.scale) }, 
+                onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false }
+            )
+            DropdownMenuItem(
+                text = { Text("Deinstallieren", color = Color.Red, fontSize = 14.sp * fontSize.scale) }, 
+                onClick = { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) }); showActions = false }
+            )
         }
 
         if (showFolderSelection) {
-            DropdownMenu(expanded = showFolderSelection, onDismissRequest = { showFolderSelection = false }, modifier = Modifier.background(Color(0xFF1A1F2B))) {
+            DropdownMenu(
+                expanded = showFolderSelection, 
+                onDismissRequest = { showFolderSelection = false }, 
+                modifier = Modifier.background(Color(0xFF1A1F2B))
+            ) {
                 if (folders.isEmpty()) {
-                    DropdownMenuItem(text = { Text("Keine Ordner vorhanden", color = Color.White.copy(alpha = 0.5f)) }, onClick = { showFolderSelection = false })
+                    DropdownMenuItem(
+                        text = { Text("Keine Ordner vorhanden", color = dropdownTextColor.copy(alpha = 0.5f)) }, 
+                        onClick = { showFolderSelection = false }
+                    )
                 }
                 folders.forEach { folder ->
-                    DropdownMenuItem(text = { Text(folder.name, color = Color.White) }, onClick = {
-                        onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, app.packageName))
-                        showFolderSelection = false
-                    })
+                    DropdownMenuItem(
+                        text = { Text(folder.name, color = dropdownTextColor) }, 
+                        onClick = {
+                            onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, app.packageName))
+                            showFolderSelection = false
+                        }
+                    )
                 }
             }
         }
