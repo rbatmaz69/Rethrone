@@ -10,8 +10,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
-import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
@@ -34,8 +32,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -47,22 +43,25 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
-import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
@@ -77,15 +76,23 @@ import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.AppIconView
 import com.example.androidlauncher.ui.bounceClick
 import com.example.androidlauncher.ui.FolderConfigMenu
+import com.example.androidlauncher.ui.launchAppNoTransition
+import com.example.androidlauncher.ui.ReturnAnimationOverlay
+import com.example.androidlauncher.LaunchSource
+import com.example.androidlauncher.ReturnAnimation
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.max
 
 class MainActivity : ComponentActivity() {
     private lateinit var backCallback: OnBackPressedCallback
@@ -122,16 +129,50 @@ class MainActivity : ComponentActivity() {
                 iconSize = currentIconSize,
                 darkTextEnabled = isDarkTextEnabled
             ) {
+                val lifecycleOwner = LocalLifecycleOwner.current
+                var rootSize by remember { mutableStateOf(IntSize.Zero) }
+                var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
+                var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
+                var returnIconPackage by remember { mutableStateOf<String?>(null) }
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
-                
+
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            pendingReturnAnimation?.let {
+                                isDrawerOpen = it.source == LaunchSource.DRAWER
+                                if (!isDrawerOpen) {
+                                    isSettingsOpen = false
+                                    isFavoritesConfigOpen = false
+                                    isColorConfigOpen = false
+                                    isSizeConfigOpen = false
+                                    selectedFolderForConfig = null
+                                }
+                                activeReturnAnimation = it
+                                returnIconPackage = it.packageName
+                                pendingReturnAnimation = null
+                            }
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+
+                LaunchedEffect(returnIconPackage) {
+                    if (returnIconPackage != null) {
+                        delay(300)
+                        returnIconPackage = null
+                    }
+                }
+
                 val allApps = remember { mutableStateListOf<AppInfo>() }
                 var favoritePackages by remember { mutableStateOf(getSavedFavorites(context)) }
-                
+
                 val favorites = remember(allApps.toList(), favoritePackages) {
                     LauncherLogic.getFavoriteApps(allApps.toList(), favoritePackages)
                 }
@@ -185,43 +226,48 @@ class MainActivity : ComponentActivity() {
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
                 }
 
-                val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .onGloballyPositioned { rootSize = it.size }
+                ) {
                     SystemWallpaperView()
 
                     AnimatedContent(
-                        targetState = isDrawerOpen,
-                        transitionSpec = {
-                            if (targetState) {
-                                (slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)))
-                                    .togetherWith(fadeOut(animationSpec = tween(200)))
-                            } else {
-                                fadeIn(animationSpec = tween(200))
-                                    .togetherWith(slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200)))
-                            }
-                        },
-                        label = "DrawerTransition"
-                    ) { targetIsDrawerOpen ->
-                        if (targetIsDrawerOpen) {
-                            AppDrawer(
-                                apps = allApps,
-                                folders = folders,
-                                onToggleFavorite = { pkg ->
-                                    val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
-                                    if (newFavs != favoritePackages) {
-                                        saveFavorites(context, newFavs)
-                                        favoritePackages = newFavs
-                                    }
-                                },
-                                isFavorite = { pkg -> pkg in favoritePackages },
-                                onUpdateFolders = { newFolders ->
-                                    scope.launch { folderManager.saveFolders(newFolders) }
-                                },
-                                onOpenFolderConfig = { folder ->
-                                    selectedFolderForConfig = folder
-                                },
-                                onClose = { isDrawerOpen = false }
+                         targetState = isDrawerOpen,
+                         transitionSpec = {
+                             if (targetState) {
+                                 (slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(animationSpec = tween(200)))
+                                     .togetherWith(fadeOut(animationSpec = tween(200)))
+                             } else {
+                                 fadeIn(animationSpec = tween(200))
+                                     .togetherWith(slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut(animationSpec = tween(200)))
+                             }
+                         },
+                         label = "DrawerTransition"
+                     ) { targetIsDrawerOpen ->
+                         if (targetIsDrawerOpen) {
+                             AppDrawer(
+                                 apps = allApps,
+                                 folders = folders,
+                                 onToggleFavorite = { pkg ->
+                                     val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
+                                     if (newFavs != favoritePackages) {
+                                         saveFavorites(context, newFavs)
+                                         favoritePackages = newFavs
+                                     }
+                                 },
+                                 isFavorite = { pkg -> pkg in favoritePackages },
+                                 onUpdateFolders = { newFolders ->
+                                     scope.launch { folderManager.saveFolders(newFolders) }
+                                 },
+                                 onOpenFolderConfig = { folder ->
+                                     selectedFolderForConfig = folder
+                                 },
+                                 onClose = { isDrawerOpen = false },
+                                 onAppLaunchForReturn = { pkg, bounds ->
+                                    pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.DRAWER, pkg)
+                                 },
+                                 returnIconPackage = returnIconPackage
                             )
                         } else {
                             HomeScreen(
@@ -231,94 +277,108 @@ class MainActivity : ComponentActivity() {
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
-                                onOpenSizeConfig = { isSizeConfigOpen = true }
+                                onOpenSizeConfig = { isSizeConfigOpen = true },
+                                onAppLaunchForReturn = { pkg, bounds ->
+                                    pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.HOME, pkg)
+                                },
+                                returnIconPackage = returnIconPackage
                             )
                         }
-                    }
+                     }
 
                     AnimatedVisibility(
-                        visible = isFavoritesConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                            FavoritesConfigMenu(
-                                apps = allApps,
-                                initialFavoritePackages = favoritePackages,
-                                onConfirm = { newFavs ->
-                                    saveFavorites(context, newFavs)
-                                    favoritePackages = newFavs
-                                    isFavoritesConfigOpen = false
-                                },
-                                onClose = { isFavoritesConfigOpen = false }
-                            )
-                        }
-                    }
+                         visible = isFavoritesConfigOpen,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                             FavoritesConfigMenu(
+                                 apps = allApps,
+                                 initialFavoritePackages = favoritePackages,
+                                 onConfirm = { newFavs ->
+                                     saveFavorites(context, newFavs)
+                                     favoritePackages = newFavs
+                                     isFavoritesConfigOpen = false
+                                 },
+                                 onClose = { isFavoritesConfigOpen = false }
+                             )
+                         }
+                     }
 
                     AnimatedVisibility(
-                        visible = selectedFolderForConfig != null,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                    ) {
-                        selectedFolderForConfig?.let { folder ->
-                            Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                                FolderConfigMenu(
-                                    folder = folder,
-                                    allApps = allApps,
-                                    onConfirm = { updatedFolder ->
-                                        val newFolders = folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
-                                        scope.launch { folderManager.saveFolders(newFolders) }
-                                        selectedFolderForConfig = null
-                                    },
-                                    onDelete = { folderId ->
-                                        val newFolders = folders.filter { it.id != folderId }
-                                        scope.launch { folderManager.saveFolders(newFolders) }
-                                        selectedFolderForConfig = null
-                                    },
-                                    onClose = { selectedFolderForConfig = null }
-                                )
-                            }
-                        }
-                    }
+                         visible = selectedFolderForConfig != null,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         selectedFolderForConfig?.let { folder ->
+                             Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                                 FolderConfigMenu(
+                                     folder = folder,
+                                     allApps = allApps,
+                                     onConfirm = { updatedFolder ->
+                                         val newFolders = folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                         scope.launch { folderManager.saveFolders(newFolders) }
+                                         selectedFolderForConfig = null
+                                     },
+                                     onDelete = { folderId ->
+                                         val newFolders = folders.filter { it.id != folderId }
+                                         scope.launch { folderManager.saveFolders(newFolders) }
+                                         selectedFolderForConfig = null
+                                     },
+                                     onClose = { selectedFolderForConfig = null }
+                                 )
+                             }
+                         }
+                     }
 
                     AnimatedVisibility(
-                        visible = isColorConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                            ColorConfigMenu(
-                                selectedTheme = currentTheme,
-                                onThemeSelected = { theme ->
-                                    scope.launch { themeManager.setTheme(theme) }
-                                },
-                                isDarkTextEnabled = isDarkTextEnabled,
-                                onDarkTextToggled = { enabled ->
-                                    scope.launch { themeManager.setDarkTextEnabled(enabled) }
-                                },
-                                onClose = { isColorConfigOpen = false }
-                            )
-                        }
-                    }
+                         visible = isColorConfigOpen,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                             ColorConfigMenu(
+                                 selectedTheme = currentTheme,
+                                 onThemeSelected = { theme ->
+                                     scope.launch { themeManager.setTheme(theme) }
+                                 },
+                                 isDarkTextEnabled = isDarkTextEnabled,
+                                 onDarkTextToggled = { enabled ->
+                                     scope.launch { themeManager.setDarkTextEnabled(enabled) }
+                                 },
+                                 onClose = { isColorConfigOpen = false }
+                             )
+                         }
+                     }
 
                     AnimatedVisibility(
-                        visible = isSizeConfigOpen,
-                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
-                            SizeConfigMenu(
-                                currentFontSize = currentFontSize,
-                                onFontSizeSelected = { size ->
-                                    scope.launch { themeManager.setFontSize(size) }
-                                },
-                                currentIconSize = currentIconSize,
-                                onIconSizeSelected = { size ->
-                                    scope.launch { themeManager.setIconSize(size) }
-                                },
-                                onClose = { isSizeConfigOpen = false }
-                            )
-                        }
+                         visible = isSizeConfigOpen,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                             SizeConfigMenu(
+                                 currentFontSize = currentFontSize,
+                                 onFontSizeSelected = { size ->
+                                     scope.launch { themeManager.setFontSize(size) }
+                                 },
+                                 currentIconSize = currentIconSize,
+                                 onIconSizeSelected = { size ->
+                                     scope.launch { themeManager.setIconSize(size) }
+                                 },
+                                 onClose = { isSizeConfigOpen = false }
+                             )
+                         }
+                     }
+
+                    activeReturnAnimation?.let { animation ->
+                        ReturnAnimationOverlay(
+                            bounds = animation.bounds,
+                            rootSize = rootSize,
+                            background = currentTheme.drawerBackground,
+                            onFinished = { activeReturnAnimation = null },
+                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.65f else 0.7f
+                        )
                     }
                 }
             }
@@ -383,116 +443,229 @@ fun SystemWallpaperView() {
 
 @Composable
 fun HomeScreen(
-    favorites: List<AppInfo>, 
+    favorites: List<AppInfo>,
     isSettingsOpen: Boolean,
-    onOpenDrawer: () -> Unit, 
+    onOpenDrawer: () -> Unit,
     onToggleSettings: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
-    onOpenSizeConfig: () -> Unit
+    onOpenSizeConfig: () -> Unit,
+    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    returnIconPackage: String?
 ) {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-
+    var rootSize by remember { mutableStateOf(IntSize.Zero) }
+    var launchRequest by remember { mutableStateOf<HomeLaunchRequest?>(null) }
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
         animationSpec = tween(300, easing = EaseInOutCubic)
     )
-    
-    val settingsButtonSize by animateFloatAsState(
-        targetValue = if (isSettingsOpen) 72f else 56f,
+
+    val settingsButtonSize by animateDpAsState(
+        targetValue = if (isSettingsOpen) 72.dp else 56.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
     )
+
+    LaunchedEffect(launchRequest) {
+        val request = launchRequest ?: return@LaunchedEffect
+        delay(280)
+        request.intent?.let {
+            launchAppNoTransition(context, it)
+        }
+        launchRequest = null
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .testTag("home_screen")
+            .onGloballyPositioned { rootSize = it.size }
             .pointerInput(Unit) {
                 detectVerticalDragGestures { _, dragAmount ->
                     if (dragAmount < -50) onOpenDrawer()
                     else if (dragAmount > 50) expandNotifications(context)
                 }
             }
-            .padding(24.dp)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Spacer(modifier = Modifier.height(64.dp))
-            ClockHeader()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Spacer(modifier = Modifier.height(64.dp))
+                ClockHeader(onAppLaunchForReturn = onAppLaunchForReturn, onLaunchRequest = { launchRequest = it }, returnIconPackage = returnIconPackage)
 
-            Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f))
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(start = 12.dp)
-            ) {
-                if (favorites.isEmpty()) {
-                    val intSrc = remember { MutableInteractionSource() }
-                    Surface(
-                        color = mainTextColor.copy(alpha = 0.1f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
-                            interactionSource = intSrc,
-                            indication = null
-                        ) { onOpenFavoritesConfig() }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor) }
-                    }
-                } else {
-                    favorites.forEach { app ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(start = 12.dp)
+                ) {
+                    if (favorites.isEmpty()) {
                         val intSrc = remember { MutableInteractionSource() }
                         Surface(
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.bounceClick(intSrc).clickable(
+                            color = mainTextColor.copy(alpha = 0.1f),
+                            shape = CircleShape,
+                            modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
                                 interactionSource = intSrc,
                                 indication = null
-                            ) {
-                                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
-                            }
+                            ) { onOpenFavoritesConfig() }
                         ) {
-                            Box(modifier = Modifier.padding(6.dp)) { AppIconView(app) }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
+                            }
+                        }
+                    } else {
+                        favorites.forEach { app ->
+                            val intSrc = remember { MutableInteractionSource() }
+                            val bounceScale by animateFloatAsState(
+                                targetValue = if (returnIconPackage == app.packageName) 1.12f else 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                ),
+                                label = "HomeReturnBounce"
+                            )
+                            val itemBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
+                            Surface(
+                                color = Color.Transparent,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .onGloballyPositioned { coordinates ->
+                                        itemBounds.value = coordinates.boundsInRoot()
+                                    }
+                                    .bounceClick(intSrc)
+                                    .clickable(
+                                        interactionSource = intSrc,
+                                        indication = null
+                                    ) {
+                                        if (launchRequest == null) {
+                                            onAppLaunchForReturn(app.packageName, itemBounds.value)
+                                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                            launchRequest = HomeLaunchRequest(app.packageName, itemBounds.value, intent)
+                                        }
+                                    }
+                            ) {
+                                Box(modifier = Modifier.padding(6.dp).graphicsLayer {
+                                    scaleX = bounceScale
+                                    scaleY = bounceScale
+                                }) {
+                                    AppIconView(app)
+                                }
+                            }
                         }
                     }
                 }
+                Spacer(modifier = Modifier.weight(1f))
             }
-            Spacer(modifier = Modifier.weight(1f))
+
+            SettingsPaletteMenu(
+                isSettingsOpen = isSettingsOpen,
+                onToggleSettings = onToggleSettings,
+                onOpenFavoritesConfig = onOpenFavoritesConfig,
+                onOpenColorConfig = onOpenColorConfig,
+                onOpenSizeConfig = onOpenSizeConfig,
+                onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
+                onOpenInfo = { /* Action */ }
+            )
+
+            Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
+                val intSrc = remember { MutableInteractionSource() }
+                Surface(
+                    modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).bounceClick(intSrc).clickable(
+                        interactionSource = intSrc,
+                        indication = null
+                    ) { onToggleSettings() },
+                    color = mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f),
+                    shape = CircleShape,
+                    border = if (isSettingsOpen) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)) else null
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
+                        Icon(
+                            imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
+                            contentDescription = null,
+                            tint = mainTextColor,
+                            modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
+                        )
+                    }
+                }
+            }
         }
 
-        SettingsPaletteMenu(
-            isSettingsOpen = isSettingsOpen,
-            onToggleSettings = onToggleSettings,
-            onOpenFavoritesConfig = onOpenFavoritesConfig,
-            onOpenColorConfig = onOpenColorConfig,
-            onOpenSizeConfig = onOpenSizeConfig,
-            onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
-            onOpenInfo = { /* Action */ }
-        )
+        val launchTransition = updateTransition(targetState = launchRequest != null, label = "HomeLaunchTransition")
+        val launchProgress by launchTransition.animateFloat(
+            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium) },
+            label = "HomeLaunchProgress"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val launchOverlayAlpha by launchTransition.animateFloat(
+            transitionSpec = { tween(durationMillis = 220, easing = LinearEasing) },
+            label = "HomeLaunchOverlayAlpha"
+        ) { isVisible ->
+            if (isVisible) 1f else 0f
+        }
+        val launchBounds = launchRequest?.bounds
+        val launchTranslation = remember(launchBounds, rootSize) {
+            if (launchBounds != null && rootSize.width > 0 && rootSize.height > 0) {
+                val centerX = rootSize.width / 2f
+                val centerY = rootSize.height / 2f
+                Offset(launchBounds.center.x - centerX, launchBounds.center.y - centerY)
+            } else {
+                Offset.Zero
+            }
+        }
+        val launchStartScale = remember(launchBounds, rootSize) {
+            if (launchBounds != null && rootSize.width > 0 && rootSize.height > 0) {
+                val wScale = launchBounds.width / rootSize.width.toFloat()
+                val hScale = launchBounds.height / rootSize.height.toFloat()
+                max(wScale, hScale).coerceIn(0.06f, 0.35f)
+            } else {
+                0.08f
+            }
+        }
 
-        Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
-            val intSrc = remember { MutableInteractionSource() }
-            Surface(
-                modifier = Modifier.padding(8.dp).size(settingsButtonSize.dp).clip(CircleShape).bounceClick(intSrc).clickable(
-                    interactionSource = intSrc,
-                    indication = null
-                ) { onToggleSettings() }, 
-                color = mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), 
-                shape = CircleShape,
-                border = if (isSettingsOpen) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)) else null
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
-                    Icon(
-                        imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings, 
-                        contentDescription = null, 
-                        tint = mainTextColor, 
-                        modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
+        if (launchProgress > 0f) {
+            val scale = launchStartScale + (1f - launchStartScale) * launchProgress
+            val translationX = launchTranslation.x * (1f - launchProgress)
+            val translationY = launchTranslation.y * (1f - launchProgress)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(2000f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
                     )
-                }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            this.scaleX = scale
+                            this.scaleY = scale
+                            this.translationX = translationX
+                            this.translationY = translationY
+                            this.transformOrigin = TransformOrigin.Center
+                            this.alpha = launchOverlayAlpha
+                        }
+                        .background(colorTheme.drawerBackground)
+                )
             }
         }
     }
 }
+
+data class HomeLaunchRequest(
+    val packageName: String,
+    val bounds: Rect?,
+    val intent: Intent?
+)
 
 @Composable
 fun FavoritesConfigMenu(
@@ -627,7 +800,11 @@ fun FavoritesConfigMenu(
 }
 
 @Composable
-fun ClockHeader() {
+fun ClockHeader(
+    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    onLaunchRequest: (HomeLaunchRequest) -> Unit,
+    returnIconPackage: String?
+) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
@@ -644,6 +821,23 @@ fun ClockHeader() {
     val dateFormat = SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault())
     val intSrcTime = remember { MutableInteractionSource() }
     val intSrcDate = remember { MutableInteractionSource() }
+    val clockBounds = remember { mutableStateOf<Rect?>(null) }
+    val calendarBounds = remember { mutableStateOf<Rect?>(null) }
+
+    // Identifizieren der Pakete für die Return-Animation
+    var clockPackage by remember { mutableStateOf<String?>(null) }
+    var calendarPackage by remember { mutableStateOf<String?>(null) }
+
+    val bounceScaleTime by animateFloatAsState(
+        targetValue = if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "ClockReturnBounce"
+    )
+    val bounceScaleDate by animateFloatAsState(
+        targetValue = if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "CalendarReturnBounce"
+    )
     
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -655,73 +849,87 @@ fun ClockHeader() {
             letterSpacing = (-2).sp,
             color = mainTextColor,
             modifier = Modifier
+                .onGloballyPositioned { clockBounds.value = it.boundsInRoot() }
+                .graphicsLayer {
+                    scaleX = bounceScaleTime
+                    scaleY = bounceScaleTime
+                }
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcTime)
                 .clickable(
                     interactionSource = intSrcTime,
                     indication = null
                 ) {
-                    var started = false
-                    try {
-                        val intent = Intent(Intent.ACTION_MAIN).apply {
-                            addCategory("android.intent.category.APP_CLOCK")
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                        started = true
-                    } catch (e: Exception) {}
-
-                    if (!started) {
+                    val pm = context.packageManager
+                    var foundPkg: String? = null
+                    
+                    // 1. nubia & bekannte Pakete direkt probieren
+                    val packages = listOf(
+                        "cn.nubia.deskclock.preset", 
+                        "cn.nubia.deskclock",
+                        "cn.nubia.clock",
+                        "com.android.deskclock",
+                        "com.google.android.deskclock",
+                        "com.sec.android.app.clockpackage",
+                        "com.huawei.android.clock",
+                        "com.miui.clock",
+                        "com.zte.deskclock",
+                        "com.android.clock"
+                    )
+                    
+                    for (pkg in packages) {
                         try {
-                            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            if (pm.getLaunchIntentForPackage(pkg) != null) {
+                                foundPkg = pkg
+                                break
                             }
-                            context.startActivity(intent)
-                            started = true
                         } catch (e: Exception) {}
                     }
 
-                    if (!started) {
-                        val packages = listOf(
-                            "com.google.android.deskclock",
-                            "com.android.deskclock",
-                            "com.sec.android.app.clockpackage",
-                            "com.huawei.android.clock",
-                            "com.miui.clock",
-                            "cn.nubia.deskclock.preset", 
-                            "cn.nubia.deskclock",
-                            "com.zte.deskclock"
-                        )
-                        for (pkg in packages) {
-                            try {
-                                val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg)
-                                if (launchIntent != null) {
-                                    context.startActivity(launchIntent)
-                                    started = true
-                                    break
-                                }
-                            } catch (e: Exception) {}
-                        }
+                    // 2. Weg: Suche über Standard-Clock-Kategorie
+                    if (foundPkg == null) {
+                        try {
+                            val stdIntent = Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_CLOCK")
+                            val res = pm.resolveActivity(stdIntent, 0)
+                            if (res != null) {
+                                foundPkg = res.activityInfo.packageName
+                            }
+                        } catch (e: Exception) {}
                     }
 
-                    if (!started) {
+                    // 3. Weg: Suche über Alarm-Aktion
+                    if (foundPkg == null) {
                         try {
-                            val pm = context.packageManager
+                            val alarmIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                            val res = pm.resolveActivity(alarmIntent, 0)
+                            if (res != null) {
+                                foundPkg = res.activityInfo.packageName
+                            }
+                        } catch (e: Exception) {}
+                    }
+
+                    // 4. Weg: Scan
+                    if (foundPkg == null) {
+                        try {
                             val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                            val clockApp = apps.find { 
-                                val label = it.loadLabel(pm).toString().lowercase()
+                            val foundApp = apps.find { 
                                 val pkg = it.packageName.lowercase()
-                                (pkg.contains("clock") || pkg.contains("deskclock") || label.contains("uhr") || label.contains("clock")) && 
+                                (pkg.contains("deskclock") || pkg.contains("uhr") || (pkg.contains("clock") && !pkg.contains("widget"))) && 
                                 pm.getLaunchIntentForPackage(it.packageName) != null
                             }
-                            clockApp?.let {
-                                context.startActivity(pm.getLaunchIntentForPackage(it.packageName))
-                                started = true
-                            }
+                            foundPkg = foundApp?.packageName
                         } catch (e: Exception) {}
                     }
 
-                    if (!started) {
+                    if (foundPkg != null) {
+                        clockPackage = foundPkg
+                        val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
+                        if (launchIntent != null) {
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                            onAppLaunchForReturn(foundPkg, clockBounds.value)
+                            onLaunchRequest(HomeLaunchRequest(foundPkg, clockBounds.value, launchIntent))
+                        }
+                    } else {
                         Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -732,25 +940,40 @@ fun ClockHeader() {
             fontWeight = FontWeight.Normal,
             color = mainTextColor.copy(alpha = 0.7f),
             modifier = Modifier
+                .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
+                .graphicsLayer {
+                    scaleX = bounceScaleDate
+                    scaleY = bounceScaleDate
+                }
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcDate)
                 .clickable(
                     interactionSource = intSrcDate,
                     indication = null
                 ) {
-                    val calendarIntent = Intent(Intent.ACTION_VIEW).apply {
+                    val pm = context.packageManager
+                    var calendarIntent = Intent(Intent.ACTION_VIEW).apply {
                         data = CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
-                    try {
-                        context.startActivity(calendarIntent)
-                    } catch (e: Exception) {
-                        val selectorIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    
+                    val res = pm.resolveActivity(calendarIntent, 0)
+                    if (res == null) {
+                        calendarIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
+                    }
+                    
+                    val foundPkg = pm.resolveActivity(calendarIntent, 0)?.activityInfo?.packageName
+                    if (foundPkg != null) {
+                        calendarPackage = foundPkg
+                        val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
+                        if (launchIntent != null) {
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                            onAppLaunchForReturn(foundPkg, calendarBounds.value)
+                            onLaunchRequest(HomeLaunchRequest(foundPkg, calendarBounds.value, launchIntent))
+                        } else {
+                            calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                            onAppLaunchForReturn(foundPkg, calendarBounds.value)
+                            onLaunchRequest(HomeLaunchRequest(foundPkg, calendarBounds.value, calendarIntent))
                         }
-                        try {
-                            context.startActivity(selectorIntent)
-                        } catch (e2: Exception) {}
                     }
                 }
                 .padding(horizontal = 4.dp, vertical = 2.dp)
