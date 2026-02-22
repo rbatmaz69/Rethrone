@@ -35,15 +35,17 @@ fun ColorConfigMenu(
     onDarkTextToggled: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
+    // Farbe für den dunklen Modus (Vermeidung von Pure Black HW-Artefakten)
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
         SystemWallpaperView()
-        // Nutzt nun die Farbe des aktuell ausgewählten Themes statt des statischen Blaus
         Box(modifier = Modifier.fillMaxSize().background(selectedTheme.drawerBackground.copy(alpha = 0.95f)))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Farben", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+                Text("Farben", fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -53,22 +55,30 @@ fun ColorConfigMenu(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
                 Switch(
                     checked = isDarkTextEnabled,
                     onCheckedChange = onDarkTextToggled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color.Black.copy(alpha = 0.3f),
+                        uncheckedThumbColor = Color.White.copy(alpha = 0.8f),
+                        uncheckedTrackColor = Color.White.copy(alpha = 0.2f)
+                    ),
                     thumbContent = {
                         if (isDarkTextEnabled) {
                             Icon(
                                 imageVector = Lucide.Moon,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
+                                tint = Color.Black
                             )
                         } else {
                             Icon(
                                 imageVector = Lucide.Sun,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
+                                tint = Color(0xFFFFB300)
                             )
                         }
                     }
@@ -79,26 +89,24 @@ fun ColorConfigMenu(
 
             // Preview Area
             Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Home Screen Preview
                 PreviewCard(
                     title = "Startseite", 
                     colorTheme = selectedTheme, 
                     isHome = true, 
-                    isDarkTextEnabled = isDarkTextEnabled,
+                    mainTextColor = mainTextColor,
                     modifier = Modifier.weight(1f)
                 )
-                // App Drawer Preview
                 PreviewCard(
                     title = "App Drawer", 
                     colorTheme = selectedTheme, 
                     isHome = false, 
-                    isDarkTextEnabled = isDarkTextEnabled,
+                    mainTextColor = mainTextColor,
                     modifier = Modifier.weight(1f)
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-            Text("Themen", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+            Text("Themen", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
 
             LazyColumn(
@@ -110,6 +118,7 @@ fun ColorConfigMenu(
                     ThemeOptionItem(
                         theme = theme,
                         isSelected = theme == selectedTheme,
+                        mainTextColor = mainTextColor,
                         onClick = { onThemeSelected(theme) }
                     )
                 }
@@ -123,18 +132,16 @@ fun PreviewCard(
     title: String, 
     colorTheme: ColorTheme, 
     isHome: Boolean, 
-    isDarkTextEnabled: Boolean,
+    mainTextColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val textColor = if (isDarkTextEnabled) Color.Black else Color.White
-
     Surface(
-        color = Color.White.copy(alpha = 0.05f),
+        color = mainTextColor.copy(alpha = 0.05f),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(title, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
@@ -149,29 +156,27 @@ fun PreviewCard(
                     )
             ) {
                 if (isHome) {
-                    // Simpler Home Screen content
                     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = Modifier.width(40.dp).height(8.dp).background(textColor.copy(alpha = 0.8f), CircleShape))
-                        Box(modifier = Modifier.width(30.dp).height(4.dp).background(textColor.copy(alpha = 0.4f), CircleShape))
+                        Box(modifier = Modifier.width(40.dp).height(8.dp).background(mainTextColor.copy(alpha = 0.8f), CircleShape))
+                        Box(modifier = Modifier.width(30.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.4f), CircleShape))
                         Spacer(modifier = Modifier.height(12.dp))
                         repeat(3) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(12.dp).border(1.dp, textColor.copy(alpha = 0.5f), CircleShape))
+                                Box(modifier = Modifier.size(12.dp).border(1.dp, mainTextColor.copy(alpha = 0.5f), CircleShape))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Box(modifier = Modifier.width(40.dp).height(4.dp).background(textColor.copy(alpha = 0.2f), CircleShape))
+                                Box(modifier = Modifier.width(40.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.2f), CircleShape))
                             }
                         }
                     }
                 } else {
-                    // Simpler App Drawer content
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.padding(8.dp)) {
-                            Box(modifier = Modifier.fillMaxWidth().height(16.dp).background(textColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
+                            Box(modifier = Modifier.fillMaxWidth().height(16.dp).background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
                             Spacer(modifier = Modifier.height(12.dp))
                             repeat(3) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     repeat(4) {
-                                        Box(modifier = Modifier.size(10.dp).border(1.dp, textColor.copy(alpha = 0.7f), CircleShape))
+                                        Box(modifier = Modifier.size(10.dp).border(1.dp, mainTextColor.copy(alpha = 0.7f), CircleShape))
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -185,29 +190,28 @@ fun PreviewCard(
 }
 
 @Composable
-fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, onClick: () -> Unit) {
+fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color, onClick: () -> Unit) {
     Surface(
-        color = if (isSelected) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
+        color = if (isSelected) mainTextColor.copy(alpha = 0.15f) else mainTextColor.copy(alpha = 0.05f),
         shape = RoundedCornerShape(16.dp),
-        border = if (isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else null,
+        border = if (isSelected) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.3f)) else null,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Color indicator
             Row(modifier = Modifier.width(60.dp), horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                Box(modifier = Modifier.size(24.dp).background(theme.primary, CircleShape).border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape))
-                Box(modifier = Modifier.size(24.dp).background(theme.secondary, CircleShape).border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape))
+                Box(modifier = Modifier.size(24.dp).background(theme.primary, CircleShape).border(2.dp, mainTextColor.copy(alpha = 0.2f), CircleShape))
+                Box(modifier = Modifier.size(24.dp).background(theme.secondary, CircleShape).border(2.dp, mainTextColor.copy(alpha = 0.2f), CircleShape))
             }
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            Text(theme.themeName, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Text(theme.themeName, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
             
             if (isSelected) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                Icon(Icons.Default.Check, contentDescription = null, tint = mainTextColor)
             }
         }
     }
