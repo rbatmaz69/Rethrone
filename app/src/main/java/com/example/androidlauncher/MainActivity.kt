@@ -10,8 +10,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
-import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
@@ -34,8 +32,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -44,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -65,7 +62,7 @@ import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
-import com.example.androidlauncher.ui.theme.LocalIconSize
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
@@ -92,26 +89,19 @@ import java.io.FileOutputStream
 import kotlin.math.max
 
 class MainActivity : ComponentActivity() {
-    // OnBackPressedCallback als Instanzvariable um ihn später zu steuern
     private lateinit var backCallback: OnBackPressedCallback
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Versuche das Exclude-Flag auch auf dem Start-Intent zu setzen
         intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
 
-        // OnBackPressedCallback um Back-Gesten auf dem Homescreen zu ignorieren
         backCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // Absichtlich leer: Back-Geste wird ignoriert
-                // Dies ist das typische Verhalten eines System-Launchers
-            }
+            override fun handleOnBackPressed() {}
         }
         onBackPressedDispatcher.addCallback(this, backCallback)
 
-        // Erzwinge zur Sicherheit das Ausblenden aus dem Recents-Screen
         enforceExcludeFromRecents()
 
         setContent {
@@ -122,6 +112,7 @@ class MainActivity : ComponentActivity() {
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
+            val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
 
             val scope = rememberCoroutineScope()
@@ -129,7 +120,8 @@ class MainActivity : ComponentActivity() {
             AndroidLauncherTheme(
                 colorTheme = currentTheme,
                 fontSize = currentFontSize,
-                iconSize = currentIconSize
+                iconSize = currentIconSize,
+                darkTextEnabled = isDarkTextEnabled
             ) {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
@@ -181,14 +173,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Steuere den OnBackPressedCallback basierend auf Modal-State
-                // Wenn Menüs offen sind, deaktiviere den Callback, damit BackHandler funktioniert
                 LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, selectedFolderForConfig) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                // BackHandler für das Schließen von offenen Menüs
                 BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isDrawerOpen) isDrawerOpen = false
@@ -200,7 +189,6 @@ class MainActivity : ComponentActivity() {
                 Box(modifier = Modifier.fillMaxSize()) {
                     SystemWallpaperView()
 
-                    // Haupt-Inhalt
                     AnimatedContent(
                         targetState = isDrawerOpen,
                         transitionSpec = {
@@ -247,7 +235,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Overlay Menüs
                     AnimatedVisibility(
                         visible = isFavoritesConfigOpen,
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
@@ -303,6 +290,10 @@ class MainActivity : ComponentActivity() {
                                 selectedTheme = currentTheme,
                                 onThemeSelected = { theme ->
                                     scope.launch { themeManager.setTheme(theme) }
+                                },
+                                isDarkTextEnabled = isDarkTextEnabled,
+                                onDarkTextToggled = { enabled ->
+                                    scope.launch { themeManager.setDarkTextEnabled(enabled) }
                                 },
                                 onClose = { isColorConfigOpen = false }
                             )
@@ -401,6 +392,8 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     var launchRequest by remember { mutableStateOf<HomeLaunchRequest?>(null) }
     val rotation by animateFloatAsState(
@@ -452,14 +445,16 @@ fun HomeScreen(
                     if (favorites.isEmpty()) {
                         val intSrc = remember { MutableInteractionSource() }
                         Surface(
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = mainTextColor.copy(alpha = 0.1f),
                             shape = CircleShape,
                             modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
                                 interactionSource = intSrc,
                                 indication = null
                             ) { onOpenFavoritesConfig() }
                         ) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White) }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
+                            }
                         }
                     } else {
                         favorites.forEach { app ->
@@ -507,15 +502,15 @@ fun HomeScreen(
                         interactionSource = intSrc,
                         indication = null
                     ) { onToggleSettings() },
-                    color = Color.White.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f),
+                    color = mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f),
                     shape = CircleShape,
-                    border = if (isSettingsOpen) BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
+                    border = if (isSettingsOpen) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)) else null
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                         Icon(
                             imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = mainTextColor,
                             modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
                         )
                     }
@@ -601,6 +596,11 @@ fun FavoritesConfigMenu(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    // Der von dir gewünschte Grauton (basierend auf dem Counter-Text)
+    val grayTone = Color.White.copy(alpha = 0.6f)
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
     val filteredApps = remember(apps, searchQuery) { LauncherLogic.filterApps(apps, searchQuery) }
@@ -609,10 +609,10 @@ fun FavoritesConfigMenu(
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color.White)
-                Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
+                Text("Favoriten", fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
+                Text("${selectedPackages.size} von 8 ausgewählt", fontSize = 14.sp, color = grayTone)
             }
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White) }
+            IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
         }
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -622,38 +622,40 @@ fun FavoritesConfigMenu(
             indication = null
         ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Search, contentDescription = null, tint = grayTone, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 BasicTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
-                    cursorBrush = SolidColor(Color.White),
+                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
+                    cursorBrush = SolidColor(mainTextColor),
                     singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp); it() }
+                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps suchen...", color = grayTone, fontSize = 15.sp); it() }
                 )
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
             if (selectedPackages.isNotEmpty()) {
-                item { Text("Reihenfolge", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+                item { Text("Reihenfolge", color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(selectedPackages) { index, pkg ->
                     apps.find { it.packageName == pkg }?.let { app ->
-                        Surface(color = Color.White.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("${index + 1}.", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, modifier = Modifier.width(24.dp))
+                                Text("${index + 1}.", color = mainTextColor, fontSize = 14.sp, modifier = Modifier.width(24.dp))
                                 AppIconView(app)
                                 Spacer(modifier = Modifier.width(16.dp))
-                                Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                                Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
                                 IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index) }, enabled = index > 0) { 
-                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) Color.White else Color.White.copy(alpha = 0.2f)) 
+                                    // Inaktiv (unmöglich) -> Solid Schwarz | Aktiv (möglich) -> Wunsch-Grauton
+                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) grayTone else mainTextColor) 
                                 }
                                 IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index) }, enabled = index < selectedPackages.size - 1) { 
-                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) Color.White else Color.White.copy(alpha = 0.2f)) 
+                                    // Inaktiv (unmöglich) -> Solid Schwarz | Aktiv (möglich) -> Wunsch-Grauton
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) grayTone else mainTextColor) 
                                 }
                             }
                         }
@@ -661,7 +663,7 @@ fun FavoritesConfigMenu(
                 }
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
-            item { Text("Alle Apps", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+            item { Text("Alle Apps", color = grayTone, fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
@@ -675,8 +677,16 @@ fun FavoritesConfigMenu(
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(app.label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Checkbox(checked = isFav, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = Color.White, uncheckedColor = Color.White.copy(alpha = 0.4f), checkmarkColor = Color(0xFF0F172A)))
+                        Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Checkbox(
+                            checked = isFav, 
+                            onCheckedChange = null, 
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = mainTextColor, 
+                                uncheckedColor = Color.White.copy(alpha = 0.4f), 
+                                checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+                            )
+                        )
                     }
                 }
             }
@@ -685,14 +695,27 @@ fun FavoritesConfigMenu(
 
     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
         val intSrc = remember { MutableInteractionSource() }
-        FloatingActionButton(
-            onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, "Keine Auswahl", Toast.LENGTH_SHORT).show() }, 
-            containerColor = Color.White, 
-            contentColor = Color(0xFF0F172A), 
-            shape = CircleShape, 
-            modifier = Modifier.bounceClick(intSrc)
+        val checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+        
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .graphicsLayer(alpha = 0.99f)
+                .drawBehind {
+                    drawCircle(
+                        color = mainTextColor,
+                        radius = (size.minDimension / 2.0f) - 2.0f,
+                        center = center
+                    )
+                }
+                .clickable(
+                    interactionSource = intSrc,
+                    indication = null,
+                    onClick = { if (selectedPackages.isNotEmpty()) onConfirm(selectedPackages) else Toast.makeText(context, "Keine Auswahl", Toast.LENGTH_SHORT).show() }
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Check, contentDescription = null)
+            Icon(Icons.Default.Check, contentDescription = null, tint = checkmarkColor, modifier = Modifier.size(28.dp))
         }
     }
 }
@@ -701,6 +724,9 @@ fun FavoritesConfigMenu(
 fun ClockHeader() {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -721,7 +747,7 @@ fun ClockHeader() {
             fontSize = 72.sp * fontSize.scale,
             fontWeight = FontWeight.Normal,
             letterSpacing = (-2).sp,
-            color = Color.White,
+            color = mainTextColor,
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcTime)
@@ -798,7 +824,7 @@ fun ClockHeader() {
             text = dateFormat.format(currentTime),
             fontSize = 18.sp * fontSize.scale,
             fontWeight = FontWeight.Normal,
-            color = Color.White.copy(alpha = 0.7f),
+            color = mainTextColor.copy(alpha = 0.7f),
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcDate)

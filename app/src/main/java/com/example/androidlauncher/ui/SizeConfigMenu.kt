@@ -25,6 +25,7 @@ import com.example.androidlauncher.SystemWallpaperView
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 
 @Composable
 fun SizeConfigMenu(
@@ -35,6 +36,10 @@ fun SizeConfigMenu(
     onClose: () -> Unit
 ) {
     val colorTheme = LocalColorTheme.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    // Nur für primäre Schriften und Symbole
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
     Box(modifier = Modifier.fillMaxSize()) {
         SystemWallpaperView()
         Box(modifier = Modifier.fillMaxSize().background(colorTheme.drawerBackground.copy(alpha = 0.95f)))
@@ -55,20 +60,21 @@ fun SizeConfigMenu(
                         text = "Größe & Skalierung",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Light,
-                        color = Color.White
+                        color = mainTextColor
                     )
                 }
                 IconButton(onClick = onClose) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Schließen",
-                        tint = Color.White
+                        tint = mainTextColor
                     )
                 }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // Bleibt grau
             Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
             
@@ -79,6 +85,7 @@ fun SizeConfigMenu(
                     fontSize = currentFontSize, 
                     iconSize = currentIconSize,
                     isHome = true, 
+                    mainTextColor = mainTextColor,
                     modifier = Modifier.weight(1f)
                 )
                 SizePreviewCard(
@@ -86,12 +93,14 @@ fun SizeConfigMenu(
                     fontSize = currentFontSize, 
                     iconSize = currentIconSize,
                     isHome = false, 
+                    mainTextColor = mainTextColor,
                     modifier = Modifier.weight(1f)
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
             
+            // Bleibt grau
             Text(
                 text = "Schriftgröße",
                 color = Color.White.copy(alpha = 0.5f),
@@ -111,8 +120,9 @@ fun SizeConfigMenu(
                             .weight(1f)
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.1f),
-                        contentColor = if (isSelected) Color(0xFF0F172A) else Color.White,
+                        // Inaktive Buttons bleiben grau
+                        color = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f),
+                        contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor,
                         border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -128,6 +138,7 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Bleibt grau
             Text(
                 text = "Icon-Größe",
                 color = Color.White.copy(alpha = 0.5f),
@@ -147,8 +158,9 @@ fun SizeConfigMenu(
                             .weight(1f)
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.1f),
-                        contentColor = if (isSelected) Color(0xFF0F172A) else Color.White,
+                        // Inaktive Buttons bleiben grau
+                        color = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f),
+                        contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor,
                         border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -175,13 +187,15 @@ fun SizeConfigMenu(
                     onFontSizeSelected(FontSize.STANDARD)
                     onIconSizeSelected(IconSize.STANDARD)
                 },
+                // Bleibt grau
                 colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.6f))
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.White.copy(alpha = 0.6f)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Auf Standardwerte zurücksetzen", fontSize = 14.sp)
@@ -192,14 +206,16 @@ fun SizeConfigMenu(
 }
 
 @Composable
-fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHome: Boolean, modifier: Modifier = Modifier) {
+fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHome: Boolean, mainTextColor: Color, modifier: Modifier = Modifier) {
     val colorTheme = LocalColorTheme.current
     Surface(
+        // Hintergrund der Karte bleibt grau
         color = Color.White.copy(alpha = 0.05f),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
+            // Karten-Titel bleibt grau
             Text(title, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
@@ -215,26 +231,23 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHom
                     )
             ) {
                 if (isHome) {
-                    // Simpler Home Screen content with size scaling
                     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = Modifier.width(40.dp * fontSize.scale).height(8.dp * fontSize.scale).background(Color.White.copy(alpha = 0.8f), CircleShape))
-                        Box(modifier = Modifier.width(30.dp * fontSize.scale).height(4.dp * fontSize.scale).background(Color.White.copy(alpha = 0.4f), CircleShape))
+                        Box(modifier = Modifier.width(40.dp * fontSize.scale).height(8.dp * fontSize.scale).background(mainTextColor.copy(alpha = 0.8f), CircleShape))
+                        Box(modifier = Modifier.width(30.dp * fontSize.scale).height(4.dp * fontSize.scale).background(mainTextColor.copy(alpha = 0.4f), CircleShape))
                         Spacer(modifier = Modifier.height(12.dp))
                         repeat(3) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Scale preview dot based on icon size
                                 val dotSize = 12.dp * (iconSize.size / 48.dp)
-                                Box(modifier = Modifier.size(dotSize).border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape))
+                                Box(modifier = Modifier.size(dotSize).border(1.dp, mainTextColor.copy(alpha = 0.5f), CircleShape))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Box(modifier = Modifier.width(40.dp * fontSize.scale).height(4.dp * fontSize.scale).background(Color.White.copy(alpha = 0.2f), CircleShape))
+                                Box(modifier = Modifier.width(40.dp * fontSize.scale).height(4.dp * fontSize.scale).background(mainTextColor.copy(alpha = 0.2f), CircleShape))
                             }
                         }
                     }
                 } else {
-                    // Simpler App Drawer content with size scaling
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.padding(8.dp)) {
-                            Box(modifier = Modifier.fillMaxWidth().height(16.dp * fontSize.scale).background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
+                            Box(modifier = Modifier.fillMaxWidth().height(16.dp * fontSize.scale).background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
                             Spacer(modifier = Modifier.height(12.dp))
                             
                             val columns = when (iconSize) {
@@ -247,7 +260,7 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHom
                             repeat(3) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     repeat(columns) {
-                                        Box(modifier = Modifier.size(dotSize).border(1.dp, Color.White.copy(alpha = 0.7f), CircleShape))
+                                        Box(modifier = Modifier.size(dotSize).border(1.dp, mainTextColor.copy(alpha = 0.7f), CircleShape))
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))

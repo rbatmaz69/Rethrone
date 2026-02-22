@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
 
 // Verbesserter bounceClick Modifier
@@ -43,11 +44,14 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
 @Composable
 fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     val iconSize = LocalIconSize.current.size
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val tintColor = if (isDarkTextEnabled) Color.Black else Color.White
+
     when {
-        app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = modifier.size(iconSize), tint = Color.White)
-        app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = modifier.size(iconSize), tint = Color.White)
-        app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = modifier.size(iconSize), colorFilter = ColorFilter.tint(Color.White))
-        else -> Box(modifier = modifier.size(iconSize).background(Color.White.copy(alpha = 0.05f), CircleShape))
+        app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
+        app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
+        app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
+        else -> Box(modifier = modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
     }
 }
 
