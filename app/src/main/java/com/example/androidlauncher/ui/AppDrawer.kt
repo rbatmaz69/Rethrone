@@ -677,6 +677,7 @@ fun AppDrawer(
                                                         isInFolder = true,
                                                         currentFolderId = currentActiveFolder.id,
                                                         isEditMode = isEditMode,
+                                                        bouncePackage = returnIconPackage,
                                                         onAppLaunchRequested = { requestedApp, bounds ->
                                                             if (launchRequest == null) {
                                                                 onAppLaunchForReturn(requestedApp.packageName, bounds)
