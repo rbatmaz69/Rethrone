@@ -163,6 +163,12 @@ fun AppDrawer(
         launchRequest = null
     }
 
+    // App Menu State
+    var menuApp by remember { mutableStateOf<AppInfo?>(null) }
+    var menuAppBounds by remember { mutableStateOf<Rect?>(null) }
+    var showFolderSelection by remember { mutableStateOf(false) }
+    var folderSelectionApp by remember { mutableStateOf<AppInfo?>(null) }
+
     Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { drawerSize = it.size }) {
         Box(
             modifier = Modifier
@@ -327,6 +333,11 @@ fun AppDrawer(
                             folders = folders,
                             onUpdateFolders = onUpdateFolders,
                             bouncePackage = returnIconPackage,
+                            onLongPress = { appInfo, bounds ->
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                menuApp = appInfo
+                                menuAppBounds = bounds
+                            },
                             onAppLaunchRequested = { requestedApp, bounds ->
                                 if (launchRequest == null) {
                                     onAppLaunchForReturn(requestedApp.packageName, bounds)
@@ -675,6 +686,11 @@ fun AppDrawer(
                                                         currentFolderId = currentActiveFolder.id,
                                                         isEditMode = isEditMode,
                                                         bouncePackage = returnIconPackage,
+                                                        onLongPress = { appInfo, bounds ->
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            menuApp = appInfo
+                                                            menuAppBounds = bounds
+                                                        },
                                                         onAppLaunchRequested = { requestedApp, bounds ->
                                                             if (launchRequest == null) {
                                                                 onAppLaunchForReturn(requestedApp.packageName, bounds)
@@ -713,6 +729,7 @@ fun AppDrawer(
                                                     isInFolder = true,
                                                     currentFolderId = currentActiveFolder.id,
                                                     isEditMode = true,
+                                                    onLongPress = { _, _ -> },
                                                     onAppLaunchRequested = null
                                                 )
                                             }
@@ -741,6 +758,79 @@ fun AppDrawer(
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Global App Context Menu
+        val currentMenuApp = menuApp
+        if (currentMenuApp != null) {
+            AppContextMenu(
+                isFavorite = isFavorite(currentMenuApp.packageName),
+                targetBounds = menuAppBounds,
+                onDismiss = { menuApp = null },
+                onToggleFavorite = { onToggleFavorite(currentMenuApp.packageName) },
+                onAppInfo = {
+                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null) })
+                },
+                onUninstall = {
+                    context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null) })
+                },
+                onMoveToFolder = if (folders.isNotEmpty()) { { 
+                    folderSelectionApp = currentMenuApp
+                    showFolderSelection = true 
+                } } else null,
+                onRemoveFromFolder = folders.find { it.appPackageNames.contains(currentMenuApp.packageName) }?.let { folder ->
+                    { onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, folder.id, currentMenuApp.packageName)) }
+                }
+            )
+        }
+
+        if (showFolderSelection && folderSelectionApp != null) {
+            Dialog(onDismissRequest = { showFolderSelection = false }) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            "In Ordner verschieben",
+                            fontSize = 18.sp * fontSize.scale,
+                            fontWeight = FontWeight.SemiBold,
+                            color = mainTextColor,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        folders.forEach { folder ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, folderSelectionApp!!.packageName))
+                                        showFolderSelection = false
+                                        menuApp = null
+                                    }
+                                    .padding(vertical = 14.dp, horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Lucide.Folder, contentDescription = null, modifier = Modifier.size(20.dp), tint = mainTextColor)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(folder.name, fontSize = 16.sp * fontSize.scale, color = mainTextColor)
+                            }
+                        }
+                        
+                        TextButton(
+                            onClick = { showFolderSelection = false },
+                            modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
+                        ) {
+                            Text("Abbrechen")
                         }
                     }
                 }
@@ -804,6 +894,7 @@ fun AppItem(
     isInFolder: Boolean = false,
     currentFolderId: String? = null,
     isEditMode: Boolean = false,
+    onLongPress: (AppInfo, Rect) -> Unit,
     onAppLaunchRequested: ((AppInfo, Rect?) -> Unit)? = null,
     bouncePackage: String? = null
 ) {
@@ -813,8 +904,6 @@ fun AppItem(
     
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
-    var showActions by remember { mutableStateOf(false) }
-    var showFolderSelection by remember { mutableStateOf(false) }
     val intSrc = remember { MutableInteractionSource() }
     var itemBounds by remember { mutableStateOf<Rect?>(null) }
     val bounceScale by animateFloatAsState(
@@ -850,83 +939,13 @@ fun AppItem(
                         }
                     },
                     onLongClick = {
-                        showActions = true
+                        itemBounds?.let { onLongPress(app, it) }
                     }
                 )
         ) {
             AppIconView(app)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        }
-        
-        if (showActions) {
-            AppContextMenu(
-                isFavorite = isFavorite,
-                onDismiss = { showActions = false },
-                onToggleFavorite = { onToggleFavorite(app.packageName) },
-                onAppInfo = {
-                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) })
-                },
-                onUninstall = {
-                    context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", app.packageName, null) })
-                },
-                onMoveToFolder = if (!isInFolder) { { showFolderSelection = true } } else null,
-                onRemoveFromFolder = if (isInFolder && currentFolderId != null) {
-                    { onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, currentFolderId, app.packageName)) }
-                } else null
-            )
-        }
-
-        if (showFolderSelection) {
-            Dialog(onDismissRequest = { showFolderSelection = false }) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth(0.8f)
-                        .wrapContentHeight(),
-                    shape = RoundedCornerShape(28.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 6.dp
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            "In Ordner verschieben",
-                            fontSize = 18.sp * fontSize.scale,
-                            fontWeight = FontWeight.SemiBold,
-                            color = mainTextColor,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        
-                        if (folders.isEmpty()) {
-                            Text("Keine Ordner vorhanden", color = mainTextColor.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 12.dp))
-                        }
-                        
-                        folders.forEach { folder ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, app.packageName))
-                                        showFolderSelection = false
-                                    }
-                                    .padding(vertical = 14.dp, horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Lucide.Folder, contentDescription = null, modifier = Modifier.size(20.dp), tint = mainTextColor)
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Text(folder.name, fontSize = 16.sp * fontSize.scale, color = mainTextColor)
-                            }
-                        }
-                        
-                        TextButton(
-                            onClick = { showFolderSelection = false },
-                            modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
-                        ) {
-                            Text("Abbrechen")
-                        }
-                    }
-                }
-            }
         }
     }
 }
