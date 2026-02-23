@@ -225,7 +225,7 @@ fun AppDrawer(
                                     }) { Text("Erstellen") }
                                 },
                                 dismissButton = {
-                                    TextButton(onClick = { isCreateFolderDialogOpen = false }) { Text("Abbrechen") }
+                                    TextButton(onClick = { isCreateFolderDialogOpen = false }) { Text("Abbrechen", color = Color.Gray) }
                                 }
                             )
                         }
@@ -804,7 +804,7 @@ fun AppDrawer(
                     }) { Text("Löschen", color = Color.Red) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showUninstallConfirm = false }) { Text("Abbrechen") }
+                    TextButton(onClick = { showUninstallConfirm = false }) { Text("Abbrechen", color = Color.Gray) }
                 }
             )
         }
@@ -852,7 +852,7 @@ fun AppDrawer(
                             onClick = { showFolderSelection = false },
                             modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
                         ) {
-                            Text("Abbrechen", color = mainTextColor.copy(alpha = 0.6f))
+                            Text("Abbrechen", color = Color.Gray)
                         }
                     }
                 }

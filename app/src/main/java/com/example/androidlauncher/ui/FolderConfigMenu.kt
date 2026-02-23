@@ -167,7 +167,7 @@ fun FolderConfigMenu(
                 }) { Text("Löschen", color = Color.Red) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Abbrechen") }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Abbrechen", color = Color.Gray) }
             }
         )
     }
