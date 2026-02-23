@@ -168,6 +168,8 @@ fun AppDrawer(
     var menuAppBounds by remember { mutableStateOf<Rect?>(null) }
     var showFolderSelection by remember { mutableStateOf(false) }
     var folderSelectionApp by remember { mutableStateOf<AppInfo?>(null) }
+    var showUninstallConfirm by remember { mutableStateOf(false) }
+    var appToUninstall by remember { mutableStateOf<AppInfo?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { drawerSize = it.size }) {
         Box(
@@ -776,7 +778,8 @@ fun AppDrawer(
                     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null) })
                 },
                 onUninstall = {
-                    context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null) })
+                    appToUninstall = currentMenuApp
+                    showUninstallConfirm = true
                 },
                 onMoveToFolder = if (folders.isNotEmpty()) { { 
                     folderSelectionApp = currentMenuApp
@@ -788,6 +791,24 @@ fun AppDrawer(
             )
         }
 
+        if (showUninstallConfirm && appToUninstall != null) {
+            AlertDialog(
+                onDismissRequest = { showUninstallConfirm = false },
+                title = { Text("App deinstallieren?") },
+                text = { Text("Möchtest du ${appToUninstall?.label} wirklich deinstallieren? Dabei werden alle zugehörigen Daten gelöscht.") },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", appToUninstall!!.packageName, null) })
+                        showUninstallConfirm = false
+                        menuApp = null
+                    }) { Text("Löschen", color = Color.Red) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showUninstallConfirm = false }) { Text("Abbrechen") }
+                }
+            )
+        }
+
         if (showFolderSelection && folderSelectionApp != null) {
             Dialog(onDismissRequest = { showFolderSelection = false }) {
                 Surface(
@@ -795,8 +816,9 @@ fun AppDrawer(
                         .fillMaxWidth(0.8f)
                         .wrapContentHeight(),
                     shape = RoundedCornerShape(28.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 6.dp
+                    color = colorTheme.drawerBackground.copy(alpha = 0.98f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)),
+                    shadowElevation = 16.dp
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
@@ -830,7 +852,7 @@ fun AppDrawer(
                             onClick = { showFolderSelection = false },
                             modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
                         ) {
-                            Text("Abbrechen")
+                            Text("Abbrechen", color = mainTextColor.copy(alpha = 0.6f))
                         }
                     }
                 }
