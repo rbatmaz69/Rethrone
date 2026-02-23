@@ -32,7 +32,6 @@ fun AppContextMenu(
     app: AppInfo,
     isFavorite: Boolean,
     onDismiss: () -> Unit,
-    onOpen: () -> Unit,
     onToggleFavorite: () -> Unit,
     onAppInfo: () -> Unit,
     onUninstall: () -> Unit,
@@ -88,15 +87,6 @@ fun AppContextMenu(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Actions
-                    ContextMenuItem(
-                        icon = Lucide.ExternalLink,
-                        text = "Öffnen",
-                        color = mainTextColor,
-                        onClick = { onOpen(); onDismiss() }
-                    )
-                    
-                    Divider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.05f))
-
                     ContextMenuItem(
                         icon = Lucide.Info,
                         text = "App-Info",

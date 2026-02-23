@@ -864,13 +864,6 @@ fun AppItem(
                 app = app,
                 isFavorite = isFavorite,
                 onDismiss = { showActions = false },
-                onOpen = {
-                    onAppLaunchRequested?.let { it(app, itemBounds) } ?: run {
-                        context.packageManager.getLaunchIntentForPackage(app.packageName)?.let {
-                            context.startActivity(it)
-                        }
-                    }
-                },
                 onToggleFavorite = { onToggleFavorite(app.packageName) },
                 onAppInfo = {
                     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", app.packageName, null) })
