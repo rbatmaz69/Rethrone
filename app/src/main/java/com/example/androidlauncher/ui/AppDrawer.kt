@@ -799,7 +799,11 @@ fun AppDrawer(
                 text = { Text("Möchtest du ${appToUninstall?.label} wirklich deinstallieren? Dabei werden alle zugehörigen Daten gelöscht.", color = mainTextColor.copy(alpha = 0.8f)) },
                 confirmButton = {
                     TextButton(onClick = { 
-                        context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", appToUninstall!!.packageName, null) })
+                        val uninstallIntent = Intent(Intent.ACTION_DELETE).apply {
+                            data = Uri.parse("package:${appToUninstall!!.packageName}")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(uninstallIntent)
                         showUninstallConfirm = false
                         menuApp = null
                     }) { Text("Löschen", color = Color.Red) }
