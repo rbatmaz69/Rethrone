@@ -207,7 +207,7 @@ fun AppDrawer(
                         if (isCreateFolderDialogOpen) {
                             AlertDialog(
                                 onDismissRequest = { isCreateFolderDialogOpen = false },
-                                title = { Text("Neuer Ordner") },
+                                title = { Text("Neuer Ordner", color = mainTextColor) },
                                 text = {
                                     TextField(
                                         value = folderNameInput,
@@ -222,11 +222,12 @@ fun AppDrawer(
                                             folderNameInput = ""
                                             isCreateFolderDialogOpen = false
                                         }
-                                    }) { Text("Erstellen") }
+                                    }) { Text("Erstellen", color = mainTextColor) }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { isCreateFolderDialogOpen = false }) { Text("Abbrechen", color = Color.Gray) }
-                                }
+                                },
+                                containerColor = colorTheme.drawerBackground
                             )
                         }
                     }
@@ -794,8 +795,8 @@ fun AppDrawer(
         if (showUninstallConfirm && appToUninstall != null) {
             AlertDialog(
                 onDismissRequest = { showUninstallConfirm = false },
-                title = { Text("App deinstallieren?") },
-                text = { Text("Möchtest du ${appToUninstall?.label} wirklich deinstallieren? Dabei werden alle zugehörigen Daten gelöscht.") },
+                title = { Text("App deinstallieren?", color = mainTextColor) },
+                text = { Text("Möchtest du ${appToUninstall?.label} wirklich deinstallieren? Dabei werden alle zugehörigen Daten gelöscht.", color = mainTextColor.copy(alpha = 0.8f)) },
                 confirmButton = {
                     TextButton(onClick = { 
                         context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", appToUninstall!!.packageName, null) })
@@ -805,7 +806,8 @@ fun AppDrawer(
                 },
                 dismissButton = {
                     TextButton(onClick = { showUninstallConfirm = false }) { Text("Abbrechen", color = Color.Gray) }
-                }
+                },
+                containerColor = colorTheme.drawerBackground
             )
         }
 
