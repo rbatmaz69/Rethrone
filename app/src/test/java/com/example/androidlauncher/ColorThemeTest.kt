@@ -17,8 +17,8 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `total number of color themes is 17`() {
-        assertEquals(17, ColorTheme.entries.size)
+    fun `total number of color themes is 29`() {
+        assertEquals(29, ColorTheme.entries.size)
     }
 
     @Test
@@ -29,8 +29,8 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `LAUNCHER is the first theme`() {
-        assertEquals(ColorTheme.LAUNCHER, ColorTheme.entries.first())
+    fun `SIGNATURE is the first theme`() {
+        assertEquals(ColorTheme.SIGNATURE, ColorTheme.entries.first())
     }
 
     @Test
@@ -39,12 +39,6 @@ class ColorThemeTest {
         assertEquals(names.size, names.toSet().size)
     }
 
-    @Test
-    fun `LAUNCHER has expected default colors`() {
-        val launcher = ColorTheme.LAUNCHER
-        assertEquals("Launcher", launcher.themeName)
-        assertEquals(0xFF000000.toInt(), launcher.primary.hashCode())
-    }
 
     @Test
     fun `SUNSET tertiary is Black`() {
@@ -112,7 +106,7 @@ class ColorThemeTest {
     @Test
     fun `expected theme names exist`() {
         val expectedNames = listOf(
-            "LAUNCHER", "SIGNATURE", "OCEAN", "FOREST", "SUNSET",
+            "SIGNATURE", "OCEAN", "FOREST", "SUNSET",
             "LAVENDER", "SAKURA", "NIGHTSKY", "MINT", "SUNSHINE",
             "SKY", "PEACH", "CANDY", "LEMONADE", "BUBBLEGUM",
             "TROPICAL", "SPRING"
