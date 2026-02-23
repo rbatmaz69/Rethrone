@@ -76,10 +76,12 @@ fun AppContextMenu(
         label = "Alpha"
     ) { if (it) 1f else 0f }
 
+    // Logic to handle dismissal animation
     val dismissAndAnimate = {
         isVisible = false
     }
 
+    // Effect to actually call onDismiss after animation finishes
     LaunchedEffect(isVisible) {
         if (!isVisible) {
             kotlinx.coroutines.delay(250)
@@ -107,22 +109,15 @@ fun AppContextMenu(
                     (items * 48 + 16).dp.toPx() 
                 }
 
-                val isLeftHalf = bounds.center.x < screenWidthPx / 2
-                
-                var offsetX = if (isLeftHalf) {
-                    bounds.right + with(density) { 12.dp.toPx() }
-                } else {
-                    bounds.left - menuWidthPx - with(density) { 12.dp.toPx() }
-                }
+                var offsetX = bounds.center.x - (menuWidthPx / 2)
+                var offsetY = bounds.bottom + with(density) { 8.dp.toPx() }
 
-                // Horizontal boundary checks
                 offsetX = offsetX.coerceIn(with(density) { 16.dp.toPx() }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
                 
-                // Vertical positioning: center the menu vertically relative to the icon
-                var offsetY = bounds.center.y - (estimatedMenuHeightPx / 2)
-                
-                // Vertical boundary checks
-                offsetY = offsetY.coerceIn(with(density) { 16.dp.toPx() }, screenHeightPx - estimatedMenuHeightPx - with(density) { 16.dp.toPx() })
+                val isBelow = offsetY + estimatedMenuHeightPx < screenHeightPx
+                if (!isBelow) {
+                    offsetY = bounds.top - estimatedMenuHeightPx - with(density) { 8.dp.toPx() }
+                }
 
                 Surface(
                     modifier = Modifier
@@ -132,8 +127,7 @@ fun AppContextMenu(
                             this.scaleX = scale
                             this.scaleY = scale
                             this.alpha = alpha
-                            // Fließen aus dem Icon: TransformOrigin ist an der dem Icon zugewandten Seite
-                            this.transformOrigin = TransformOrigin(if (isLeftHalf) 0f else 1f, 0.5f)
+                            this.transformOrigin = TransformOrigin(0.5f, if (isBelow) 0f else 1f)
                         }
                         .clickable(enabled = false) {},
                     color = colorTheme.drawerBackground.copy(alpha = 0.98f),
