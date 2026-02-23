@@ -134,6 +134,8 @@ class MainActivity : ComponentActivity() {
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
 
+            val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
+
             val scope = rememberCoroutineScope()
 
             AndroidLauncherTheme(
@@ -305,7 +307,7 @@ class MainActivity : ComponentActivity() {
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                        Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                             FavoritesConfigMenu(
                                 apps = allApps,
                                 initialFavoritePackages = favoritePackages,
@@ -329,7 +331,7 @@ class MainActivity : ComponentActivity() {
                          exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                      ) {
                          selectedFolderForConfig?.let { folder ->
-                             Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                             Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                                  FolderConfigMenu(
                                      folder = folder,
                                      allApps = allApps,
@@ -354,7 +356,7 @@ class MainActivity : ComponentActivity() {
                          enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                          exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                      ) {
-                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                         Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                              ColorConfigMenu(
                                  selectedTheme = currentTheme,
                                  onThemeSelected = { theme ->
@@ -374,7 +376,7 @@ class MainActivity : ComponentActivity() {
                          enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                          exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                      ) {
-                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                         Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                              SizeConfigMenu(
                                  currentFontSize = currentFontSize,
                                  onFontSizeSelected = { size ->
@@ -393,7 +395,7 @@ class MainActivity : ComponentActivity() {
                         ReturnAnimationOverlay(
                             bounds = animation.bounds,
                             rootSize = rootSize,
-                            background = currentTheme.drawerBackground,
+                            background = menuBackgroundColor,
                             onFinished = { activeReturnAnimation = null },
                             targetScale = if (animation.source == LaunchSource.DRAWER) 0.65f else 0.7f
                         )

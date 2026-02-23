@@ -40,9 +40,10 @@ fun SizeConfigMenu(
     // Nur für primäre Schriften und Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
+    val backgroundColor = if (isDarkTextEnabled) colorTheme.lightBackground else colorTheme.drawerBackground
     Box(modifier = Modifier.fillMaxSize()) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(colorTheme.drawerBackground.copy(alpha = 0.95f)))
+        Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
 
         Column(
             modifier = Modifier
@@ -226,7 +227,11 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHom
                         if (isHome) {
                             Brush.verticalGradient(listOf(colorTheme.primary.copy(alpha = 0.6f), colorTheme.secondary.copy(alpha = 0.6f)))
                         } else {
-                            SolidColor(colorTheme.drawerBackground)
+                            if (mainTextColor == Color(0xFF010101)) {
+                                SolidColor(colorTheme.lightBackground)
+                            } else {
+                                SolidColor(colorTheme.drawerBackground)
+                            }
                         }
                     )
             ) {

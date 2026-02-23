@@ -38,9 +38,10 @@ fun ColorConfigMenu(
     // Nur für die primären Schriften und Symbole verwenden
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
+    val backgroundColor = if (isDarkTextEnabled) selectedTheme.lightBackground else selectedTheme.drawerBackground
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(selectedTheme.drawerBackground.copy(alpha = 0.95f)))
+        Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -157,7 +158,12 @@ fun PreviewCard(
                         if (isHome) {
                             Brush.verticalGradient(listOf(colorTheme.primary.copy(alpha = 0.6f), colorTheme.secondary.copy(alpha = 0.6f)))
                         } else {
-                            SolidColor(colorTheme.drawerBackground)
+                            // Wenn schwarze Schrift aktiv ist, zeigen wir den hellen Hintergrund
+                            if (mainTextColor == Color(0xFF010101)) {
+                                SolidColor(colorTheme.lightBackground)
+                            } else {
+                                SolidColor(colorTheme.drawerBackground)
+                            }
                         }
                     )
             ) {

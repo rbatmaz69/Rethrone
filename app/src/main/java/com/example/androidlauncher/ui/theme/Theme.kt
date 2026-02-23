@@ -39,12 +39,14 @@ fun AndroidLauncherTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         else -> {
+            val backgroundColor = if (darkTextEnabled) colorTheme.lightBackground else colorTheme.drawerBackground
+
             darkColorScheme(
                 primary = colorTheme.primary,
                 secondary = colorTheme.secondary,
                 tertiary = colorTheme.tertiary,
-                background = colorTheme.drawerBackground,
-                surface = colorTheme.drawerBackground.copy(alpha = 0.8f)
+                background = backgroundColor,
+                surface = backgroundColor.copy(alpha = 0.8f)
             )
         }
     }

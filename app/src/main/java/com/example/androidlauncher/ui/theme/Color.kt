@@ -135,5 +135,15 @@ enum class ColorTheme(
         Color(0xFFDCE775),
         Color.Black,
         Color(0xFF0E1A01)
-    )
+    );
+
+    // Berechnet einen hellen Hintergrund basierend auf der Primärfarbe des Themes
+    val lightBackground: Color
+        get() {
+            // Intensiviere die Farbe: Mische 85% Primärfarbe mit 15% Weiß
+            val red = (primary.red * 0.85f + 0.15f)
+            val green = (primary.green * 0.85f + 0.15f)
+            val blue = (primary.blue * 0.85f + 0.15f)
+            return Color(red, green, blue, 1f)
+        }
 }

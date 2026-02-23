@@ -170,7 +170,7 @@ fun AppDrawer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(SolidColor(colorTheme.drawerBackground.copy(alpha = 0.85f)))
+                .background(SolidColor(MaterialTheme.colorScheme.background.copy(alpha = 0.85f)))
         )
         
         Column(
@@ -400,7 +400,7 @@ fun AppDrawer(
                             this.transformOrigin = TransformOrigin.Center
                             this.alpha = launchOverlayAlpha
                         }
-                        .background(colorTheme.drawerBackground)
+                        .background(MaterialTheme.colorScheme.background)
                 )
             }
         }
@@ -466,7 +466,7 @@ fun AppDrawer(
                                 this.transformOrigin = TransformOrigin.Center
                             }
                             .clickable(enabled = false) {},
-                        color = colorTheme.drawerBackground.copy(alpha = 0.98f),
+                        color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
                         shape = RoundedCornerShape(32.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f)),
                         shadowElevation = 24.dp
