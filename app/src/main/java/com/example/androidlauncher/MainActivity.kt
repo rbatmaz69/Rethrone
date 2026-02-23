@@ -54,8 +54,6 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -65,9 +63,6 @@ import androidx.core.content.edit
 import androidx.core.graphics.applyCanvas
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
-import com.composables.icons.lucide.ALargeSmall
-import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Type
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -89,8 +84,6 @@ import com.example.androidlauncher.ui.bounceClick
 import com.example.androidlauncher.ui.FolderConfigMenu
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
-import com.example.androidlauncher.LaunchSource
-import com.example.androidlauncher.ReturnAnimation
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import java.text.SimpleDateFormat

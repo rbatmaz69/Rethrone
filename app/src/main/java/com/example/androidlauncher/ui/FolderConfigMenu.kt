@@ -33,6 +33,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
+import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 
 @Composable
@@ -44,6 +45,7 @@ fun FolderConfigMenu(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     
     // Nur primäre Schriften & Symbole
@@ -158,8 +160,8 @@ fun FolderConfigMenu(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Ordner löschen?") },
-            text = { Text("Möchtest du diesen Ordner wirklich entfernen? Die Apps bleiben weiterhin im AppDrawer verfügbar.") },
+            title = { Text("Ordner löschen?", color = mainTextColor) },
+            text = { Text("Möchtest du diesen Ordner wirklich entfernen? Die Apps bleiben weiterhin im AppDrawer verfügbar.", color = mainTextColor.copy(alpha = 0.8f)) },
             confirmButton = {
                 TextButton(onClick = { 
                     onDelete(folder.id)
@@ -167,8 +169,9 @@ fun FolderConfigMenu(
                 }) { Text("Löschen", color = Color.Red) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Abbrechen") }
-            }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Abbrechen", color = Color.Gray) }
+            },
+            containerColor = colorTheme.drawerBackground
         )
     }
 
