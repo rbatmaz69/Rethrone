@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.AdaptiveIconDrawable
-import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -46,7 +45,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
@@ -127,7 +125,7 @@ class MainActivity : ComponentActivity() {
             val themeManager = remember { ThemeManager(context) }
             val folderManager = remember { FolderManager(context) }
 
-            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
+            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SIGNATURE)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)

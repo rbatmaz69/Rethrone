@@ -2,14 +2,6 @@ package com.example.androidlauncher.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
-
 enum class ColorTheme(
     val themeName: String,
     val primary: Color,
@@ -17,13 +9,6 @@ enum class ColorTheme(
     val tertiary: Color,
     val drawerBackground: Color
 ) {
-    LAUNCHER(
-        "Launcher",
-        Color.Black,
-        Color(0xFF9E1A1A),
-        Color.White,
-        Color(0xFF1A0505)
-    ),
     SIGNATURE(
         "Signature",
         Color(0xFF1A0B2E),
@@ -140,10 +125,10 @@ enum class ColorTheme(
     // Berechnet einen hellen Hintergrund basierend auf der Primärfarbe des Themes
     val lightBackground: Color
         get() {
-            // Intensiviere die Farbe: Mische 85% Primärfarbe mit 15% Weiß
-            val red = (primary.red * 0.85f + 0.15f)
-            val green = (primary.green * 0.85f + 0.15f)
-            val blue = (primary.blue * 0.85f + 0.15f)
+            // Intensiviere die Farbe: Mische 95% Primärfarbe mit 5% Weiß
+            val red = (primary.red * 0.95f + 0.05f)
+            val green = (primary.green * 0.95f + 0.05f)
+            val blue = (primary.blue * 0.95f + 0.05f)
             return Color(red, green, blue, 1f)
         }
 }
