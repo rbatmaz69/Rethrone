@@ -861,7 +861,6 @@ fun AppItem(
         
         if (showActions) {
             AppContextMenu(
-                app = app,
                 isFavorite = isFavorite,
                 onDismiss = { showActions = false },
                 onToggleFavorite = { onToggleFavorite(app.packageName) },

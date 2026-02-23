@@ -29,7 +29,6 @@ import com.composables.icons.lucide.*
 
 @Composable
 fun AppContextMenu(
-    app: AppInfo,
     isFavorite: Boolean,
     onDismiss: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -63,29 +62,6 @@ fun AppContextMenu(
                 shadowElevation = 16.dp
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    // Header
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(20.dp))
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier.size(40.dp)) {
-                            AppIconView(app)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = app.label,
-                            color = mainTextColor,
-                            fontSize = 18.sp * fontSize.scale,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     // Actions
                     ContextMenuItem(
                         icon = Lucide.Info,
