@@ -28,6 +28,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.composables.icons.lucide.*
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 @Composable
@@ -52,39 +53,35 @@ fun AppContextMenu(
     val screenHeightPx = with(density) { config.screenHeightDp.dp.toPx() }
 
     var isVisible by remember { mutableStateOf(false) }
+    var isDismissing by remember { mutableStateOf(false) }
+
     LaunchedEffect(targetBounds) {
         if (targetBounds != null) {
             isVisible = true
+            isDismissing = false
         }
     }
 
     val transition = updateTransition(targetState = isVisible && targetBounds != null, label = "MenuTransition")
-    
-    val scale by transition.animateFloat(
-        transitionSpec = {
-            if (targetState) {
-                spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)
-            } else {
-                tween(durationMillis = 250, easing = FastOutSlowInEasing)
-            }
-        },
-        label = "Scale"
-    ) { if (it) 1f else 0.4f }
 
-    val alpha by transition.animateFloat(
-        transitionSpec = { tween(durationMillis = 200) },
-        label = "Alpha"
+    // Wir nutzen für beide Richtungen eine symmetrische Kurve für den "Fluss"-Effekt
+    val progress by transition.animateFloat(
+        transitionSpec = {
+            tween(durationMillis = 350, easing = FastOutSlowInEasing)
+        },
+        label = "Progress"
     ) { if (it) 1f else 0f }
 
-    // Logic to handle dismissal animation
-    val dismissAndAnimate = {
-        isVisible = false
+    val dismissWithAnimation = {
+        if (!isDismissing) {
+            isDismissing = true
+            isVisible = false
+        }
     }
 
-    // Effect to actually call onDismiss after animation finishes
     LaunchedEffect(isVisible) {
-        if (!isVisible) {
-            kotlinx.coroutines.delay(250)
+        if (!isVisible && isDismissing) {
+            delay(350)
             onDismiss()
         }
     }
@@ -97,37 +94,47 @@ fun AppContextMenu(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = dismissAndAnimate
+                    onClick = dismissWithAnimation
                 )
         ) {
             targetBounds?.let { bounds ->
                 val menuWidth = 240.dp
                 val menuWidthPx = with(density) { menuWidth.toPx() }
                 
-                val estimatedMenuHeightPx = with(density) { 
-                    val items = 3 + (if (onMoveToFolder != null) 1 else 0) + (if (onRemoveFromFolder != null) 1 else 0)
-                    (items * 48 + 16).dp.toPx() 
-                }
+                val itemsCount = 3 + (if (onMoveToFolder != null) 1 else 0) + (if (onRemoveFromFolder != null) 1 else 0)
+                val estimatedMenuHeightPx = with(density) { (itemsCount * 48 + itemsCount + 16).dp.toPx() }
 
-                var offsetX = bounds.center.x - (menuWidthPx / 2)
-                var offsetY = bounds.bottom + with(density) { 8.dp.toPx() }
+                // Finale Zielposition (unter oder über dem Icon)
+                var finalOffsetX = bounds.center.x - (menuWidthPx / 2)
+                var finalOffsetY = bounds.bottom + with(density) { 8.dp.toPx() }
 
-                offsetX = offsetX.coerceIn(with(density) { 16.dp.toPx() }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
+                finalOffsetX = finalOffsetX.coerceIn(with(density) { 16.dp.toPx() }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
                 
-                val isBelow = offsetY + estimatedMenuHeightPx < screenHeightPx
+                val isBelow = finalOffsetY + estimatedMenuHeightPx < screenHeightPx - with(density) { 16.dp.toPx() }
                 if (!isBelow) {
-                    offsetY = bounds.top - estimatedMenuHeightPx - with(density) { 8.dp.toPx() }
+                    finalOffsetY = bounds.top - estimatedMenuHeightPx - with(density) { 8.dp.toPx() }
                 }
+
+                // Exakte Startposition (Zentrum des Icons)
+                val startOffsetX = bounds.center.x - (menuWidthPx / 2)
+                val startOffsetY = bounds.center.y - (estimatedMenuHeightPx / 2)
+
+                // Butterweiche Interpolation der Position
+                val currentOffsetX = startOffsetX + (finalOffsetX - startOffsetX) * progress
+                val currentOffsetY = startOffsetY + (finalOffsetY - startOffsetY) * progress
+                
+                // Skalierung von fast 0 auf 1
+                val scale = 0.05f + (0.95f * progress)
 
                 Surface(
                     modifier = Modifier
-                        .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                        .offset { IntOffset(currentOffsetX.roundToInt(), currentOffsetY.roundToInt()) }
                         .width(menuWidth)
                         .graphicsLayer {
                             this.scaleX = scale
                             this.scaleY = scale
-                            this.alpha = alpha
-                            this.transformOrigin = TransformOrigin(0.5f, if (isBelow) 0f else 1f)
+                            this.alpha = progress.coerceIn(0f, 1f)
+                            this.transformOrigin = TransformOrigin.Center
                         }
                         .clickable(enabled = false) {},
                     color = colorTheme.drawerBackground.copy(alpha = 0.98f),
@@ -140,7 +147,7 @@ fun AppContextMenu(
                             icon = Lucide.Info,
                             text = "App-Info",
                             color = mainTextColor,
-                            onClick = { onAppInfo(); dismissAndAnimate() }
+                            onClick = { onAppInfo(); dismissWithAnimation() }
                         )
 
                         Divider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
@@ -149,7 +156,7 @@ fun AppContextMenu(
                             icon = if (isFavorite) Lucide.StarOff else Lucide.Star,
                             text = if (isFavorite) "Vom Home entfernen" else "Zu Favoriten hinzufügen",
                             color = if (isFavorite) Color(0xFFFFB74D) else mainTextColor,
-                            onClick = { onToggleFavorite(); dismissAndAnimate() }
+                            onClick = { onToggleFavorite(); dismissWithAnimation() }
                         )
 
                         if (onMoveToFolder != null) {
@@ -158,7 +165,7 @@ fun AppContextMenu(
                                 icon = Lucide.FolderInput,
                                 text = "In Ordner verschieben",
                                 color = mainTextColor,
-                                onClick = { onMoveToFolder(); dismissAndAnimate() }
+                                onClick = { onMoveToFolder(); dismissWithAnimation() }
                             )
                         }
 
@@ -168,7 +175,7 @@ fun AppContextMenu(
                                 icon = Lucide.FolderOutput,
                                 text = "Aus Ordner entfernen",
                                 color = mainTextColor,
-                                onClick = { onRemoveFromFolder(); dismissAndAnimate() }
+                                onClick = { onRemoveFromFolder(); dismissWithAnimation() }
                             )
                         }
 
@@ -178,7 +185,7 @@ fun AppContextMenu(
                             icon = Lucide.Trash2,
                             text = "Deinstallieren",
                             color = Color(0xFFEF5350),
-                            onClick = { onUninstall(); dismissAndAnimate() }
+                            onClick = { onUninstall(); dismissWithAnimation() }
                         )
                     }
                 }
