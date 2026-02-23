@@ -17,8 +17,8 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `total number of color themes is 16`() {
-        assertEquals(16, ColorTheme.entries.size)
+    fun `total number of color themes is 29`() {
+        assertEquals(29, ColorTheme.entries.size)
     }
 
     @Test
