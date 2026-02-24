@@ -148,8 +148,8 @@ fun AppContextMenu(
                     val borderBrush = if (isDarkTextEnabled) {
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.8f),
-                                Color.White.copy(alpha = 0.3f)
+                                Color.Black.copy(alpha = 0.8f),
+                                Color.Black.copy(alpha = 0.3f)
                             )
                         )
                     } else {

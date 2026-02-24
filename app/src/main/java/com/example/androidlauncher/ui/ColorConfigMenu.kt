@@ -29,7 +29,7 @@ import com.composables.icons.lucide.Droplets
 import com.composables.icons.lucide.Square
 import com.example.androidlauncher.SystemWallpaperView
 import com.example.androidlauncher.ui.theme.ColorTheme
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+
 
 @Composable
 fun ColorConfigMenu(
@@ -265,8 +265,8 @@ fun PreviewCard(
         val borderBrush = if (isDarkTextEnabled) {
             Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.8f),
-                    Color.White.copy(alpha = 0.3f)
+                    Color.Black.copy(alpha = 0.8f),
+                    Color.Black.copy(alpha = 0.3f)
                 )
             )
         } else {
@@ -377,8 +377,8 @@ fun ThemeOptionItem(
         val borderBrush = if (isDarkTextEnabled) {
             Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.8f),
-                    Color.White.copy(alpha = 0.3f)
+                    Color.Black.copy(alpha = 0.8f),
+                    Color.Black.copy(alpha = 0.3f)
                 )
             )
         } else {

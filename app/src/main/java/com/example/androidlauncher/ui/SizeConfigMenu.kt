@@ -148,8 +148,8 @@ fun SizeConfigMenu(
                         val borderBrush = if (isDarkTextEnabled) {
                             Brush.linearGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.8f),
-                                    Color.White.copy(alpha = 0.3f)
+                                    Color.Black.copy(alpha = 0.8f),
+                                    Color.Black.copy(alpha = 0.3f)
                                 )
                             )
                         } else {
@@ -235,8 +235,8 @@ fun SizeConfigMenu(
                         val borderBrush = if (isDarkTextEnabled) {
                             Brush.linearGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.8f),
-                                    Color.White.copy(alpha = 0.3f)
+                                    Color.Black.copy(alpha = 0.8f),
+                                    Color.Black.copy(alpha = 0.3f)
                                 )
                             )
                         } else {
@@ -339,8 +339,8 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHom
         val borderBrush = if (isDarkTextEnabled) {
             Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.8f),
-                    Color.White.copy(alpha = 0.3f)
+                    Color.Black.copy(alpha = 0.8f),
+                    Color.Black.copy(alpha = 0.3f)
                 )
             )
         } else {
