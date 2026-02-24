@@ -1,6 +1,7 @@
 package com.example.androidlauncher.ui
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.border
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,7 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -27,6 +30,7 @@ import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.composables.icons.lucide.*
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -45,6 +49,7 @@ fun AppContextMenu(
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     // Calculate a light background based on the theme's primary color for the light mode (dark text)
@@ -139,6 +144,28 @@ fun AppContextMenu(
                 // Skalierung von fast 0 auf 1
                 val scale = 0.05f + (0.95f * progress)
 
+                val menuModifier = if (isLiquidGlassEnabled) {
+                    val borderBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.8f),
+                                Color.White.copy(alpha = 0.3f)
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+
+                    Modifier.border(androidx.compose.foundation.BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(24.dp))
+                } else {
+                    Modifier.border(androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
+                }
+
                 Surface(
                     modifier = Modifier
                         .offset { IntOffset(currentOffsetX.roundToInt(), currentOffsetY.roundToInt()) }
@@ -149,10 +176,11 @@ fun AppContextMenu(
                             this.alpha = progress.coerceIn(0f, 1f)
                             this.transformOrigin = TransformOrigin.Center
                         }
-                        .clickable(enabled = false) {},
+                        .clickable(enabled = false) {}
+                        .then(menuModifier), // Apply custom border here
                     color = if (isDarkTextEnabled) themedLightBackground.copy(alpha = 0.98f) else colorTheme.drawerBackground.copy(alpha = 0.98f),
                     shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)),
+                    // Remove explicit border parameter as we apply it via modifier
                     shadowElevation = 24.dp
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
