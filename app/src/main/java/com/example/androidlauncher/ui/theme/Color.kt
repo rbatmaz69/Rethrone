@@ -2,6 +2,17 @@ package com.example.androidlauncher.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+/**
+ * Enum defining the available color themes for the launcher.
+ * Each theme provides a set of colors for different UI elements.
+ *
+ * @property themeName The display name of the theme.
+ * @property primary The primary color (e.g., for headers, active states).
+ * @property secondary A secondary accent color.
+ * @property tertiary Another accent color/contrast color.
+ * @property drawerBackground The background color for the App Drawer and darker surfaces.
+ * @property lightBackground A calculated lighter background color for "Light Mode" (Dark Text Mode).
+ */
 enum class ColorTheme(
     val themeName: String,
     val primary: Color,
@@ -216,10 +227,12 @@ enum class ColorTheme(
     // Berechnet einen hellen Hintergrund basierend auf der Primärfarbe des Themes
     val lightBackground: Color
         get() {
-            // Intensiviere die Farbe: Mische 95% Primärfarbe mit 5% Weiß
-            val red = (primary.red * 0.95f + 0.05f)
-            val green = (primary.green * 0.95f + 0.05f)
-            val blue = (primary.blue * 0.95f + 0.05f)
-            return Color(red, green, blue, 1f)
+            // Mische 98% Weiß mit 2% Primärfarbe
+            return Color(
+                red = primary.red * 0.02f + 0.98f,
+                green = primary.green * 0.02f + 0.98f,
+                blue = primary.blue * 0.02f + 0.98f,
+                alpha = 1f
+            )
         }
 }

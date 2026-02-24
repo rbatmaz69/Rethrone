@@ -40,6 +40,15 @@ data class PaletteMenuItem(
     val action: () -> Unit
 )
 
+/**
+ * A circular settings menu that expands when the settings button is clicked.
+ * Provides quick access to:
+ * - Favorites configuration
+ * - Color theme configuration
+ * - Size configuration
+ * - System Settings
+ * - App Info
+ */
 @Composable
 fun SettingsPaletteMenu(
     isSettingsOpen: Boolean,

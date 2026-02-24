@@ -48,6 +48,11 @@ import com.example.androidlauncher.ui.theme.LocalIconSize
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+
+/**
+ * Extension function to find the Activity context from a Context.
+ * Traverses ContextWrapper to find the base Activity.
+ */
 fun Context.findActivity(): Activity? {
     var context = this
     while (context is ContextWrapper) {
@@ -57,7 +62,10 @@ fun Context.findActivity(): Activity? {
     return null
 }
 
-// Verbesserter bounceClick Modifier
+/**
+ * Modifier that adds a bouncy scale animation when clicked.
+ * Used for interactive elements like app icons.
+ */
 fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: Boolean = true) = composed {
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -71,6 +79,11 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
     this.scale(scale)
 }
 
+/**
+ * Composable that renders an app icon.
+ * Supports Vector icons (Lucide), Resource IDs, and Bitmaps.
+ * Adjusts tint based on dark text mode.
+ */
 @Composable
 fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     val iconSize = LocalIconSize.current.size
@@ -85,6 +98,10 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Launches an app without the default system transition animation.
+ * Used to implement custom return animations.
+ */
 fun launchAppNoTransition(context: Context, intent: Intent) {
     val activity = context.findActivity()
     try {
@@ -111,10 +128,14 @@ fun launchAppNoTransition(context: Context, intent: Intent) {
     }
 }
 
+/**
+ * A sophisticated overlay animation that simulates the app window shrinking back into its icon.
+ * Triggered when returning from an app to the launcher.
+ */
 @Composable
 fun ReturnAnimationOverlay(
-    bounds: Rect?,
-    rootSize: IntSize,
+    bounds: Rect?, // The target bounds (icon position) where the animation ends
+    rootSize: IntSize, // Size of the root container
     background: Color,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,

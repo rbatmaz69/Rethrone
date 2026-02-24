@@ -1,5 +1,6 @@
 package com.example.androidlauncher.ui
 
+import androidx.activity.compose.BackHandler
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -41,6 +42,14 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
+/**
+ * Menu used to configure the contents of a specific folder.
+ * Features:
+ * - Adding new apps to the folder
+ * - Removing apps from the folder
+ * - Renaming the folder
+ * - Deleting the folder
+ */
 @Composable
 fun FolderConfigMenu(
     folder: FolderInfo,

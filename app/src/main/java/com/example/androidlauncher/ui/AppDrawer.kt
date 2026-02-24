@@ -82,18 +82,27 @@ import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+/**
+ * Main application drawer component.
+ * Displays a list of all installed apps and user-created folders.
+ * Features:
+ * - Search bar for filtering apps
+ * - Grid layout for apps and folders
+ * - Drag and drop support for organizing folders
+ * - Long-press context menu for app options (uninstall, info, etc.)
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppDrawer(
-    apps: List<AppInfo>,
-    folders: List<FolderInfo>,
-    onToggleFavorite: (String) -> Unit,
-    isFavorite: (String) -> Boolean,
-    onUpdateFolders: (List<FolderInfo>) -> Unit,
-    onOpenFolderConfig: (FolderInfo) -> Unit,
-    onClose: () -> Unit,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
-    returnIconPackage: String?
+    apps: List<AppInfo>, // List of all installed apps to display
+    folders: List<FolderInfo>, // List of user-created folders
+    onToggleFavorite: (String) -> Unit, // Callback when an app is favorited/unfavorited
+    isFavorite: (String) -> Boolean, // Check if an app is in favorites
+    onUpdateFolders: (List<FolderInfo>) -> Unit, // Callback when folders are modified (add/remove app)
+    onOpenFolderConfig: (FolderInfo) -> Unit, // Callback to open folder configuration
+    onClose: () -> Unit, // Callback to close the drawer
+    onAppLaunchForReturn: (String, Rect?) -> Unit, // Callback when launching an app (for return animation)
+    returnIconPackage: String? // Package name of the app returning from animation (for highlight/positioning)
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current

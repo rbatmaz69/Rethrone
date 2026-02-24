@@ -1,5 +1,7 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +33,13 @@ import com.example.androidlauncher.SystemWallpaperView
 import com.example.androidlauncher.ui.theme.ColorTheme
 
 
+/**
+ * Menu for configuring the visual theme of the launcher.
+ * Allows selecting:
+ * - Color Theme (Yellow, Blue, Red, Green, Purple)
+ * - Dark/Light Text Mode
+ * - Liquid Glass Effect toggle
+ */
 @Composable
 fun ColorConfigMenu(
     selectedTheme: ColorTheme,

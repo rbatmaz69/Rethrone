@@ -98,6 +98,16 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
 
+/**
+ * The main activity of the launcher.
+ * Acts as the entry point and holds the top-level state and navigation logic.
+ *
+ * Responsibilities:
+ * - initializing DataStores (Theme, Folders)
+ * - Handling the main App Drawer and settings mneus
+ * - Managing the "Return Animation" when closing apps
+ * - Handling system back button presses
+ */
 class MainActivity : ComponentActivity() {
     private lateinit var backCallback: OnBackPressedCallback
 
@@ -105,8 +115,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Exclude the launcher itself from the "Recent Apps" list
         intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
 
+        // Handle Back button: Do nothing (default launcher behavior)
         backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
         }
@@ -116,9 +128,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
+            // Initialize data managers
             val themeManager = remember { ThemeManager(context) }
             val folderManager = remember { FolderManager(context) }
 
+            // Observe settings as State
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SIGNATURE)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
@@ -408,14 +422,80 @@ class MainActivity : ComponentActivity() {
         enforceExcludeFromRecents()
     }
 
+    /**
+     * Ensures the activity is excluded from recents programmatically.
+     */
     private fun enforceExcludeFromRecents() {
-        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-        am.appTasks?.forEach { task ->
-            val base = task.taskInfo.baseIntent.component
-            if (base != null && base.className == componentName.className) {
-                task.setExcludeFromRecents(true)
-            }
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val tasks = am.appTasks
+        if (!tasks.isNullOrEmpty()) {
+            tasks[0].setExcludeFromRecents(true)
         }
+    }
+
+    /**
+     * Gets a simple list of installed apps.
+     * Heavy lifting (icon loading) is done asynchronously later.
+     */
+    private suspend fun getAppListBasic(context: Context): List<AppInfo> {
+        val pm = context.packageManager
+        val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+        return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
+            AppInfo(
+                label = resolveInfo.loadLabel(pm).toString(),
+                packageName = resolveInfo.activityInfo.packageName
+            )
+        }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
+    }
+
+    private suspend fun loadSingleIcon(pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
+        val iconFile = File(cacheDir, "$packageName.png")
+        if (iconFile.exists()) {
+            try {
+                val b = BitmapFactory.decodeFile(iconFile.absolutePath)
+                if (b != null) {
+                    val ib = b.asImageBitmap()
+                    ib.prepareToDraw()
+                    return ib
+                }
+            } catch (_: Exception) { }
+        }
+        return withContext(Dispatchers.IO) {
+            try {
+                val info = pm.getApplicationInfo(packageName, 0)
+                val icon = info.loadIcon(pm)
+                val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
+                    icon.foreground ?: icon
+                } else {
+                    icon
+                }
+
+                val b = createBitmap(144, 144)
+                b.applyCanvas {
+                    foregroundDrawable.setBounds(0, 0, 144, 144)
+                    foregroundDrawable.draw(this)
+                }
+
+                val ib = b.asImageBitmap()
+                ib.prepareToDraw()
+
+                FileOutputStream(iconFile).use { out ->
+                    b.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                ib
+            } catch (_: Exception) { null }
+        }
+    }
+
+    private fun getSavedFavorites(context: Context): List<String> {
+        val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
+        val favoritesString = prefs.getString("favorites_list", "") ?: ""
+        return if (favoritesString.isEmpty()) emptyList() else favoritesString.split(",")
+    }
+
+    private fun saveFavorites(context: Context, favorites: List<String>) {
+        val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
+        prefs.edit { putString("favorites_list", favorites.joinToString(",")) }
     }
 }
 
@@ -1316,63 +1396,3 @@ fun ClockHeader(
     }
 }
 
-private fun getAppListBasic(context: Context): List<AppInfo> {
-    val pm = context.packageManager
-    val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
-    return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
-        AppInfo(
-            label = resolveInfo.loadLabel(pm).toString(),
-            packageName = resolveInfo.activityInfo.packageName
-        )
-    }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
-}
-
-private suspend fun loadSingleIcon(pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
-    val iconFile = File(cacheDir, "$packageName.png")
-    if (iconFile.exists()) {
-        try {
-            val b = BitmapFactory.decodeFile(iconFile.absolutePath)
-            if (b != null) {
-                val ib = b.asImageBitmap()
-                ib.prepareToDraw()
-                return ib
-            }
-        } catch (_: Exception) { }
-    }
-    return withContext(Dispatchers.IO) {
-        try {
-            val info = pm.getApplicationInfo(packageName, 0)
-            val icon = info.loadIcon(pm)
-            val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
-                icon.foreground ?: icon
-            } else {
-                icon
-            }
-            
-            val b = createBitmap(144, 144)
-            b.applyCanvas {
-                foregroundDrawable.setBounds(0, 0, 144, 144)
-                foregroundDrawable.draw(this)
-            }
-            
-            val ib = b.asImageBitmap()
-            ib.prepareToDraw()
-
-            FileOutputStream(iconFile).use { out ->
-                b.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            ib
-        } catch (_: Exception) { null }
-    }
-}
-
-private fun getSavedFavorites(context: Context): List<String> {
-    val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    val favoritesString = prefs.getString("favorites_list", "") ?: ""
-    return if (favoritesString.isEmpty()) emptyList() else favoritesString.split(",")
-}
-
-private fun saveFavorites(context: Context, favorites: List<String>) {
-    val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    prefs.edit { putString("favorites_list", favorites.joinToString(",")) }
-}

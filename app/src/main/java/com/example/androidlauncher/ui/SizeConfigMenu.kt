@@ -1,5 +1,6 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,6 +30,10 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
+/**
+ * Menu for configuring the size of icons and text.
+ * Allows the user to select from Small, Standard, and Large sizes.
+ */
 @Composable
 fun SizeConfigMenu(
     currentFontSize: FontSize,

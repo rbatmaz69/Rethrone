@@ -13,12 +13,27 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
 
+/**
+ * CompositionLocals for passing theme configuration down the widget tree.
+ * Avoids prop drilling for commonly used style properties.
+ */
 val LocalColorTheme = staticCompositionLocalOf { ColorTheme.SIGNATURE }
 val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
+/**
+ * CompositionLocal for the "Liquid Glass" visual effect.
+ */
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
+
+private val DarkColorScheme = darkColorScheme(
+    primary = ColorTheme.SIGNATURE.primary,
+    secondary = ColorTheme.SIGNATURE.secondary,
+    tertiary = ColorTheme.SIGNATURE.tertiary,
+    background = ColorTheme.SIGNATURE.lightBackground,
+    surface = ColorTheme.SIGNATURE.lightBackground.copy(alpha = 0.8f)
+)
 
 @Composable
 fun AndroidLauncherTheme(
