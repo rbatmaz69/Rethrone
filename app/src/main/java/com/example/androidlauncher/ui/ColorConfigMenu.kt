@@ -64,17 +64,42 @@ fun ColorConfigMenu(
             ) {
                 // Bleibt grau (weiß mit alpha), da es eine sekundäre Info ist
                 Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
-                Switch(
-                    checked = isDarkTextEnabled,
-                    onCheckedChange = onDarkTextToggled,
-                    colors = SwitchDefaults.colors(
+
+                val darkTextSwitchColors = if (isLiquidGlassEnabled) {
+                    if (isDarkTextEnabled) {
+                        SwitchDefaults.colors(
+                            checkedTrackColor = Color.White.copy(alpha = 0.3f),
+                            uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                            checkedThumbColor = Color.White,
+                            uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
+                            checkedBorderColor = Color.White.copy(alpha = 0.2f),
+                            uncheckedBorderColor = Color.White.copy(alpha = 0.2f)
+                        )
+                    } else {
+                        SwitchDefaults.colors(
+                            checkedTrackColor = Color.White.copy(alpha = 0.25f),
+                            uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                            checkedThumbColor = Color.White,
+                            uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
+                            checkedBorderColor = Color.White.copy(alpha = 0.2f),
+                            uncheckedBorderColor = Color.White.copy(alpha = 0.15f)
+                        )
+                    }
+                } else {
+                    SwitchDefaults.colors(
                         checkedTrackColor = Color.White.copy(alpha = 0.2f),
                         uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                         checkedThumbColor = Color.White,
                         uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
                         checkedBorderColor = Color.White.copy(alpha = 0.1f),
                         uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
-                    ),
+                    )
+                }
+
+                Switch(
+                    checked = isDarkTextEnabled,
+                    onCheckedChange = onDarkTextToggled,
+                    colors = darkTextSwitchColors,
                     thumbContent = {
                         if (isDarkTextEnabled) {
                             Icon(
@@ -129,17 +154,41 @@ fun ColorConfigMenu(
                 // Bleibt grau
                 Text("Themen", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
 
-                Switch(
-                    checked = isLiquidGlassEnabled,
-                    onCheckedChange = onLiquidGlassToggled,
-                    colors = SwitchDefaults.colors(
+                val liquidGlassSwitchColors = if (isLiquidGlassEnabled) {
+                    if (isDarkTextEnabled) {
+                        SwitchDefaults.colors(
+                            checkedTrackColor = Color.White.copy(alpha = 0.3f),
+                            uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                            checkedThumbColor = Color.White,
+                            uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
+                            checkedBorderColor = Color.White.copy(alpha = 0.2f),
+                            uncheckedBorderColor = Color.White.copy(alpha = 0.2f)
+                        )
+                    } else {
+                        SwitchDefaults.colors(
+                            checkedTrackColor = Color.White.copy(alpha = 0.25f),
+                            uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                            checkedThumbColor = Color.White,
+                            uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
+                            checkedBorderColor = Color.White.copy(alpha = 0.2f),
+                            uncheckedBorderColor = Color.White.copy(alpha = 0.15f)
+                        )
+                    }
+                } else {
+                    SwitchDefaults.colors(
                         checkedTrackColor = Color.White.copy(alpha = 0.2f),
                         uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                         checkedThumbColor = Color.White,
                         uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
                         checkedBorderColor = Color.White.copy(alpha = 0.1f),
                         uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
-                    ),
+                    )
+                }
+
+                Switch(
+                    checked = isLiquidGlassEnabled,
+                    onCheckedChange = onLiquidGlassToggled,
+                    colors = liquidGlassSwitchColors,
                     thumbContent = {
                         if (isLiquidGlassEnabled) {
                             Icon(
