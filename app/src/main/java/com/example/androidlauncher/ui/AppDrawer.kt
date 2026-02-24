@@ -1017,13 +1017,34 @@ fun AppDrawer(
 
         if (showFolderSelection && folderSelectionApp != null) {
             Dialog(onDismissRequest = { showFolderSelection = false }) {
+                val dialogBorderModifier = if (isLiquidGlassEnabled) {
+                    val borderBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.8f),
+                                Color.Black.copy(alpha = 0.3f)
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+                    Modifier.border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
+                } else {
+                    Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
+                }
+
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth(0.8f)
-                        .wrapContentHeight(),
+                        .wrapContentHeight()
+                        .then(dialogBorderModifier),
                     shape = RoundedCornerShape(28.dp),
                     color = (if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground).copy(alpha = 0.98f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)),
                     shadowElevation = 16.dp
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
