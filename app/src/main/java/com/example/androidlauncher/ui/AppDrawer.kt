@@ -103,6 +103,18 @@ fun AppDrawer(
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
+    // Calculate a light background based on the theme's primary color for the light mode (dark text)
+    // Same logic as AppContextMenu to ensure consistency
+    val themedLightBackground = remember(colorTheme.primary) {
+        val primary = colorTheme.primary
+        Color(
+            red = primary.red * 0.90f + 0.10f,
+            green = primary.green * 0.90f + 0.10f,
+            blue = primary.blue * 0.90f + 0.10f,
+            alpha = 1f
+        )
+    }
+
     val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
@@ -232,7 +244,7 @@ fun AppDrawer(
                                 dismissButton = {
                                     TextButton(onClick = { isCreateFolderDialogOpen = false }) { Text("Abbrechen", color = Color.Gray) }
                                 },
-                                containerColor = colorTheme.drawerBackground
+                                containerColor = if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground
                             )
                         }
                     }
@@ -888,7 +900,7 @@ fun AppDrawer(
                 dismissButton = {
                     TextButton(onClick = { showUninstallConfirm = false }) { Text("Abbrechen", color = Color.Gray) }
                 },
-                containerColor = colorTheme.drawerBackground
+                containerColor = if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground
             )
         }
 
@@ -899,7 +911,7 @@ fun AppDrawer(
                         .fillMaxWidth(0.8f)
                         .wrapContentHeight(),
                     shape = RoundedCornerShape(28.dp),
-                    color = colorTheme.drawerBackground.copy(alpha = 0.98f),
+                    color = (if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground).copy(alpha = 0.98f),
                     border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)),
                     shadowElevation = 16.dp
                 ) {
