@@ -46,6 +46,19 @@ fun AppContextMenu(
     val fontSize = LocalFontSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
+    // Calculate a light background based on the theme's primary color for the light mode (dark text)
+    // Mixing 90% primary color with 10% white to get a clearly visible pastel tint of the theme
+    val themedLightBackground = remember(colorTheme.primary) {
+        val primary = colorTheme.primary
+        Color(
+            red = primary.red * 0.90f + 0.10f,
+            green = primary.green * 0.90f + 0.10f,
+            blue = primary.blue * 0.90f + 0.10f,
+            alpha = 1f
+        )
+    }
+
     val density = LocalDensity.current
     val config = LocalConfiguration.current
 
@@ -137,7 +150,7 @@ fun AppContextMenu(
                             this.transformOrigin = TransformOrigin.Center
                         }
                         .clickable(enabled = false) {},
-                    color = colorTheme.drawerBackground.copy(alpha = 0.98f),
+                    color = if (isDarkTextEnabled) themedLightBackground.copy(alpha = 0.98f) else colorTheme.drawerBackground.copy(alpha = 0.98f),
                     shape = RoundedCornerShape(24.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)),
                     shadowElevation = 24.dp
