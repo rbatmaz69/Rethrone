@@ -6,6 +6,7 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
@@ -529,7 +530,7 @@ fun AppDrawer(
                             .clickable(enabled = false) {},
                         color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
                         shape = RoundedCornerShape(32.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f)),
+                        border = BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f)),
                         shadowElevation = 24.dp
                     ) {
                         Column(
@@ -927,6 +928,7 @@ fun FolderItem(
     val fontSize = LocalFontSize.current
     val iconSizeValue = LocalIconSize.current.size
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     val intSrc = remember { MutableInteractionSource() }
@@ -951,7 +953,51 @@ fun FolderItem(
             onClick = { onClick(itemOffset) },
             onLongClick = { onOpenFolderConfig(folder) }
         )) {
-            Box(modifier = Modifier.size(iconSizeValue).background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+            val folderBoxModifier = if (isLiquidGlassEnabled) {
+                val glassBrush = if (isDarkTextEnabled) {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.3f),
+                            Color.White.copy(alpha = 0.1f)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.15f),
+                            Color.White.copy(alpha = 0.05f)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    )
+                }
+
+                val borderBrush = if (isDarkTextEnabled) {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.8f),
+                            Color.White.copy(alpha = 0.3f)
+                        )
+                    )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.6f),
+                            Color.White.copy(alpha = 0.1f)
+                        )
+                    )
+                }
+
+                Modifier
+                    .background(glassBrush, RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+            } else {
+                Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            }
+
+            Box(modifier = Modifier.size(iconSizeValue).then(folderBoxModifier), contentAlignment = Alignment.Center) {
                 Icon(Lucide.Folder, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(iconSizeValue * 0.6f))
             }
             Spacer(modifier = Modifier.height(8.dp))
