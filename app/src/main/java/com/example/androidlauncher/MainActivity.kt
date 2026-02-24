@@ -805,17 +805,41 @@ fun FavoritesConfigMenu(
             val thumbColor = if (isDarkTextEnabled) Color.Black else Color.White
             val symbolColor = if (isDarkTextEnabled) Color.White else Color.Black
             
-            Switch(
-                checked = showFavoriteLabels,
-                onCheckedChange = onShowLabelsToggled,
-                colors = SwitchDefaults.colors(
+            val switchColors = if (isLiquidGlassEnabled) {
+                if (isDarkTextEnabled) {
+                    SwitchDefaults.colors(
+                        checkedTrackColor = Color.White.copy(alpha = 0.3f), // Glassy white
+                        uncheckedTrackColor = Color.White.copy(alpha = 0.1f), // Glassy dark
+                        checkedThumbColor = thumbColor,
+                        uncheckedThumbColor = thumbColor,
+                        checkedBorderColor = Color.White.copy(alpha = 0.2f),
+                        uncheckedBorderColor = Color.White.copy(alpha = 0.2f)
+                    )
+                } else {
+                    SwitchDefaults.colors(
+                        checkedTrackColor = Color.White.copy(alpha = 0.25f),
+                        uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                        checkedThumbColor = thumbColor,
+                        uncheckedThumbColor = thumbColor,
+                        checkedBorderColor = Color.White.copy(alpha = 0.2f),
+                        uncheckedBorderColor = Color.White.copy(alpha = 0.15f)
+                    )
+                }
+            } else {
+                SwitchDefaults.colors(
                     checkedTrackColor = Color.White.copy(alpha = 0.2f),
                     uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                     checkedThumbColor = thumbColor,
                     uncheckedThumbColor = thumbColor,
                     checkedBorderColor = Color.White.copy(alpha = 0.1f),
                     uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
-                ),
+                )
+            }
+
+            Switch(
+                checked = showFavoriteLabels,
+                onCheckedChange = onShowLabelsToggled,
+                colors = switchColors,
                 thumbContent = {
                     Box(contentAlignment = Alignment.Center) {
                         if (showFavoriteLabels) {
@@ -914,7 +938,51 @@ fun FavoritesConfigMenu(
                 item { Text(stringResource(R.string.order_label), color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(selectedPackages) { index, pkg ->
                     apps.find { it.packageName == pkg }?.let { app ->
-                        Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+
+                        val itemModifier = if (isLiquidGlassEnabled) {
+                            val glassBrush = if (isDarkTextEnabled) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.3f),
+                                        Color.White.copy(alpha = 0.1f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.15f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
+                            }
+
+                            val borderBrush = if (isDarkTextEnabled) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.8f),
+                                        Color.White.copy(alpha = 0.3f)
+                                    )
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.6f),
+                                        Color.White.copy(alpha = 0.1f)
+                                    )
+                                )
+                            }
+                            Modifier
+                                .background(glassBrush, RoundedCornerShape(12.dp))
+                                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                        } else {
+                            Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                        }
+
+                        Box(modifier = Modifier.fillMaxWidth().then(itemModifier)) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text("${index + 1}.", color = mainTextColor, fontSize = 14.sp, modifier = Modifier.width(24.dp))
                                 AppIconView(app)
