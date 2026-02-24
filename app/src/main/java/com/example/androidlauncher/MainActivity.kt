@@ -1004,7 +1004,53 @@ fun FavoritesConfigMenu(
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
-                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
+
+                val itemModifier = if (isFav && isLiquidGlassEnabled) {
+                    val glassBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.3f),
+                                Color.White.copy(alpha = 0.1f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.15f),
+                                Color.White.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    }
+
+                    val borderBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.8f),
+                                Color.White.copy(alpha = 0.3f)
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+                    Modifier
+                        .background(glassBrush, RoundedCornerShape(12.dp))
+                        .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                } else if (isFav) {
+                    Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                } else {
+                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                }
+
+                Box(modifier = Modifier.fillMaxWidth().then(itemModifier).bounceClick(intSrc).clickable(
                     interactionSource = intSrc,
                     indication = null
                 ) {
