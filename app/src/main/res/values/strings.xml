@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Android Launcher</string>
+    <string name="app_name">Rethrone</string>
     <string name="show_app_titles">App-Titel anzeigen</string>
     <string name="favorites_title">Favoriten</string>
     <string name="favorites_count">%1$d von %2$d ausgewählt</string>
