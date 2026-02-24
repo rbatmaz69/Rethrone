@@ -1,7 +1,9 @@
 package com.example.androidlauncher.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -21,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -35,6 +39,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
 @Composable
 fun FolderConfigMenu(
@@ -47,7 +52,8 @@ fun FolderConfigMenu(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+
     // Nur primäre Schriften & Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
@@ -89,7 +95,51 @@ fun FolderConfigMenu(
         Spacer(modifier = Modifier.height(24.dp))
 
         val searchIntSrc = remember { MutableInteractionSource() }
-        Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
+        val searchBarModifier = if (isLiquidGlassEnabled) {
+            val glassBrush = if (isDarkTextEnabled) {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.3f),
+                        Color.White.copy(alpha = 0.1f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            } else {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.15f),
+                        Color.White.copy(alpha = 0.05f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            }
+
+            val borderBrush = if (isDarkTextEnabled) {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.8f),
+                        Color.White.copy(alpha = 0.3f)
+                    )
+                )
+            } else {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.6f),
+                        Color.White.copy(alpha = 0.1f)
+                    )
+                )
+            }
+
+            Modifier
+                .background(glassBrush, RoundedCornerShape(12.dp))
+                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+        } else {
+            Modifier.background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+        }
+
+        Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
             interactionSource = searchIntSrc,
             indication = null
         ) { focusRequester.requestFocus() }) {
@@ -123,8 +173,54 @@ fun FolderConfigMenu(
             items(filteredApps) { app ->
                 val isSelected = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
-                // Kartenhintergrund bleibt grau
-                Surface(color = if (isSelected) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
+
+                val itemModifier = if (isSelected && isLiquidGlassEnabled) {
+                    val glassBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.3f),
+                                Color.White.copy(alpha = 0.1f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.15f),
+                                Color.White.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    }
+
+                    val borderBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.8f),
+                                Color.White.copy(alpha = 0.3f)
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+
+                    Modifier
+                        .background(glassBrush, RoundedCornerShape(12.dp))
+                        .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                } else if (isSelected) {
+                    Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                } else {
+                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                }
+
+                Box(modifier = Modifier.fillMaxWidth().then(itemModifier).bounceClick(intSrc).clickable(
                     interactionSource = intSrc,
                     indication = null
                 ) {
