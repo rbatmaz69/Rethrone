@@ -70,7 +70,7 @@ fun ColorConfigMenu(
                         SwitchDefaults.colors(
                             checkedTrackColor = Color.White.copy(alpha = 0.3f),
                             uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
-                            checkedThumbColor = Color.White,
+                            checkedThumbColor = Color.Black,
                             uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
                             checkedBorderColor = Color.White.copy(alpha = 0.2f),
                             uncheckedBorderColor = Color.White.copy(alpha = 0.2f)
@@ -89,7 +89,7 @@ fun ColorConfigMenu(
                     SwitchDefaults.colors(
                         checkedTrackColor = Color.White.copy(alpha = 0.2f),
                         uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
-                        checkedThumbColor = Color.White,
+                        checkedThumbColor = if (isDarkTextEnabled) Color.Black else Color.White,
                         uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
                         checkedBorderColor = Color.White.copy(alpha = 0.1f),
                         uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
@@ -106,7 +106,7 @@ fun ColorConfigMenu(
                                 imageVector = Lucide.Moon,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = Color.Black
+                                tint = Color.White
                             )
                         } else {
                             Icon(
@@ -159,7 +159,7 @@ fun ColorConfigMenu(
                         SwitchDefaults.colors(
                             checkedTrackColor = Color.White.copy(alpha = 0.3f),
                             uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
-                            checkedThumbColor = Color.White,
+                            checkedThumbColor = Color.Black,
                             uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
                             checkedBorderColor = Color.White.copy(alpha = 0.2f),
                             uncheckedBorderColor = Color.White.copy(alpha = 0.2f)
@@ -176,12 +176,12 @@ fun ColorConfigMenu(
                     }
                 } else {
                     SwitchDefaults.colors(
-                        checkedTrackColor = Color.White.copy(alpha = 0.2f),
-                        uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
-                        checkedThumbColor = Color.White,
-                        uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
-                        checkedBorderColor = Color.White.copy(alpha = 0.1f),
-                        uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
+                        checkedTrackColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
+                        uncheckedTrackColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
+                        checkedThumbColor = if (isDarkTextEnabled) Color.Black else Color.White,
+                        uncheckedThumbColor = if (isDarkTextEnabled) Color.Black else Color.White.copy(alpha = 0.9f),
+                        checkedBorderColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f),
+                        uncheckedBorderColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f)
                     )
                 }
 
