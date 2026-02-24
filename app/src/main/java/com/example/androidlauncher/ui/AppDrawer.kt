@@ -516,6 +516,32 @@ fun AppDrawer(
                     val scale = 0.05f + (1f - 0.05f) * folderProgress
                     val translationX = folderTranslation.x * (1f - folderProgress)
                     val translationY = folderTranslation.y * (1f - folderProgress)
+
+                    val folderBorder = if (isLiquidGlassEnabled) {
+                        val borderBrush = if (isDarkTextEnabled) {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.8f),
+                                    Color.White.copy(alpha = 0.3f)
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.6f),
+                                    Color.White.copy(alpha = 0.1f)
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            )
+                        }
+                        BorderStroke(1.2.dp, borderBrush)
+                    } else {
+                        BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f))
+                    }
+
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
@@ -530,7 +556,7 @@ fun AppDrawer(
                             .clickable(enabled = false) {},
                         color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
                         shape = RoundedCornerShape(32.dp),
-                        border = BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f)),
+                        border = folderBorder,
                         shadowElevation = 24.dp
                     ) {
                         Column(
