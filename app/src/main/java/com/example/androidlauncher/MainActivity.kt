@@ -1,5 +1,6 @@
 package com.example.androidlauncher
 
+import com.example.androidlauncher.ui.InfoDialog
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.WallpaperManager
@@ -163,6 +164,7 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
+                var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
 
                 DisposableEffect(lifecycleOwner) {
@@ -175,6 +177,7 @@ class MainActivity : ComponentActivity() {
                                     isFavoritesConfigOpen = false
                                     isColorConfigOpen = false
                                     isSizeConfigOpen = false
+                                    isInfoOpen = false
                                     selectedFolderForConfig = null
                                 }
                                 activeReturnAnimation = it
@@ -233,21 +236,23 @@ class MainActivity : ComponentActivity() {
                         isFavoritesConfigOpen = false
                         isColorConfigOpen = false
                         isSizeConfigOpen = false
+                        isInfoOpen = false
                         selectedFolderForConfig = null
                     }
                 }
 
-                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, selectedFolderForConfig) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isInfoOpen, selectedFolderForConfig) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
+                    else if (isInfoOpen) isInfoOpen = false
                 }
 
                 Box(
@@ -302,6 +307,7 @@ class MainActivity : ComponentActivity() {
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
+                                onOpenInfo = { isInfoOpen = true },
                                 onAppLaunchForReturn = { pkg, bounds ->
                                     pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.HOME, pkg)
                                 },
@@ -402,6 +408,18 @@ class MainActivity : ComponentActivity() {
                              )
                          }
                      }
+
+                    AnimatedVisibility(
+                        visible = isInfoOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
+                            InfoDialog(
+                                onClose = { isInfoOpen = false }
+                            )
+                        }
+                    }
 
                     activeReturnAnimation?.let { animation ->
                         ReturnAnimationOverlay(
@@ -545,6 +563,7 @@ fun HomeScreen(
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
     onOpenSizeConfig: () -> Unit,
+    onOpenInfo: () -> Unit,
     onAppLaunchForReturn: (String, Rect?) -> Unit,
     returnIconPackage: String?
 ) {
@@ -685,7 +704,7 @@ fun HomeScreen(
                 onOpenColorConfig = onOpenColorConfig,
                 onOpenSizeConfig = onOpenSizeConfig,
                 onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
-                onOpenInfo = { /* Action */ }
+                onOpenInfo = onOpenInfo
             )
 
             Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
@@ -1395,4 +1414,5 @@ fun ClockHeader(
         )
     }
 }
+
 

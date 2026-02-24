@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Android Launcher</string>
+    <string name="app_name">Rethrone</string>
     <string name="show_app_titles">App-Titel anzeigen</string>
     <string name="favorites_title">Favoriten</string>
     <string name="favorites_count">%1$d von %2$d ausgewählt</string>
@@ -8,4 +8,17 @@
     <string name="all_apps_label">Alle Apps</string>
     <string name="max_favorites_reached">Maximal 8 erlaubt</string>
     <string name="no_selection">Keine Auswahl</string>
+
+    <!-- Info Strings -->
+    <string name="info_title">Informationen</string>
+    <string name="app_version">Version %1$s (Build %2$d)</string>
+    <string name="developer_label">Entwickler</string>
+    <string name="developer_name">Refik Bilal Batmaz &amp; Vinisan Kunasegaran</string>
+    <string name="github_repo">GitHub Repository</string>
+    <string name="license_label">Lizenz</string>
+    <string name="license_text">Custom Non-Commercial License\n\nNutzung frei für private Zwecke. Kommerzielle Nutzung und Weiterverkauf untersagt.</string>
+    <string name="libraries_label">Open Source Libraries</string>
+    <string name="privacy_label">Datenschutz</string>
+    <string name="privacy_text">Diese App sammelt keinerlei Nutzerdaten. Alle Einstellungen werden lokal auf dem Gerät gespeichert.</string>
+    <string name="close">Schließen</string>
 </resources>
