@@ -229,9 +229,9 @@ enum class ColorTheme(
         get() {
             // Mische 98% Weiß mit 2% Primärfarbe
             return Color(
-                red = primary.red * 0.02f + 0.98f,
-                green = primary.green * 0.02f + 0.98f,
-                blue = primary.blue * 0.02f + 0.98f,
+                red = primary.red * 0.94f + 0.06f,
+                green = primary.green * 0.94f + 0.06f,
+                blue = primary.blue * 0.94f + 0.06f,
                 alpha = 1f
             )
         }
