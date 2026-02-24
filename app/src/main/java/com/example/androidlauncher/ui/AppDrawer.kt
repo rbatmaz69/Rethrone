@@ -222,97 +222,141 @@ fun AppDrawer(
                         }
                         
                         if (isCreateFolderDialogOpen) {
-                            AlertDialog(
-                                onDismissRequest = { isCreateFolderDialogOpen = false },
-                                title = { Text("Neuer Ordner", color = mainTextColor) },
-                                text = {
-                                    val inputModifier = if (isLiquidGlassEnabled) {
-                                        val glassBrush = if (isDarkTextEnabled) {
-                                            Brush.linearGradient(
-                                                colors = listOf(
-                                                    Color.Black.copy(alpha = 0.15f),
-                                                    Color.Black.copy(alpha = 0.05f)
-                                                ),
-                                                start = Offset(0f, 0f),
-                                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            Dialog(onDismissRequest = { isCreateFolderDialogOpen = false }) {
+                                val dialogBorderModifier = if (isLiquidGlassEnabled) {
+                                    val borderBrush = if (isDarkTextEnabled) {
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color.Black.copy(alpha = 0.8f),
+                                                Color.Black.copy(alpha = 0.3f)
                                             )
-                                        } else {
-                                            Brush.linearGradient(
-                                                colors = listOf(
-                                                    Color.White.copy(alpha = 0.15f),
-                                                    Color.White.copy(alpha = 0.05f)
-                                                ),
-                                                start = Offset(0f, 0f),
-                                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                                            )
-                                        }
-
-                                        val borderBrush = if (isDarkTextEnabled) {
-                                            Brush.linearGradient(
-                                                colors = listOf(
-                                                    Color.Black.copy(alpha = 0.8f),
-                                                    Color.Black.copy(alpha = 0.3f)
-                                                )
-                                            )
-                                        } else {
-                                            Brush.linearGradient(
-                                                colors = listOf(
-                                                    Color.White.copy(alpha = 0.6f),
-                                                    Color.White.copy(alpha = 0.1f)
-                                                )
-                                            )
-                                        }
-
-                                        Modifier
-                                            .background(glassBrush, RoundedCornerShape(12.dp))
-                                            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                                        )
                                     } else {
-                                        Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                                    }
-
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .then(inputModifier)
-                                            .padding(horizontal = 16.dp, vertical = 14.dp)
-                                    ) {
-                                        BasicTextField(
-                                            value = folderNameInput,
-                                            onValueChange = { folderNameInput = it },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            textStyle = androidx.compose.ui.text.TextStyle(
-                                                color = mainTextColor,
-                                                fontSize = 16.sp
-                                            ),
-                                            cursorBrush = SolidColor(mainTextColor),
-                                            singleLine = true,
-                                            decorationBox = { innerTextField ->
-                                                if (folderNameInput.isEmpty()) {
-                                                    Text(
-                                                        "Name eingeben",
-                                                        color = mainTextColor.copy(alpha = 0.4f),
-                                                        fontSize = 16.sp
-                                                    )
-                                                }
-                                                innerTextField()
-                                            }
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color.White.copy(alpha = 0.6f),
+                                                Color.White.copy(alpha = 0.1f)
+                                            )
                                         )
                                     }
-                                },
-                                confirmButton = {
-                                    TextButton(onClick = {
-                                        if (folderNameInput.isNotBlank()) {
-                                            onUpdateFolders(LauncherLogic.createFolder(folders, folderNameInput))
-                                            folderNameInput = ""
-                                            isCreateFolderDialogOpen = false
+                                    Modifier.border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
+                                } else {
+                                    Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
+                                }
+
+                                Surface(
+                                    modifier = Modifier
+                                        .wrapContentWidth()
+                                        .wrapContentHeight()
+                                        .then(dialogBorderModifier),
+                                    shape = RoundedCornerShape(28.dp),
+                                    color = if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground,
+                                    tonalElevation = 6.dp
+                                ) {
+                                    Column(modifier = Modifier.padding(24.dp)) {
+                                        Text(
+                                            text = "Neuer Ordner",
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            color = mainTextColor
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        // Input Field
+                                        val inputModifier = if (isLiquidGlassEnabled) {
+                                            val glassBrush = if (isDarkTextEnabled) {
+                                                Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color.Black.copy(alpha = 0.15f),
+                                                        Color.Black.copy(alpha = 0.05f)
+                                                    ),
+                                                    start = Offset(0f, 0f),
+                                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                                )
+                                            } else {
+                                                Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color.White.copy(alpha = 0.15f),
+                                                        Color.White.copy(alpha = 0.05f)
+                                                    ),
+                                                    start = Offset(0f, 0f),
+                                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                                )
+                                            }
+
+                                            val borderBrush = if (isDarkTextEnabled) {
+                                                Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color.Black.copy(alpha = 0.8f),
+                                                        Color.Black.copy(alpha = 0.3f)
+                                                    )
+                                                )
+                                            } else {
+                                                Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color.White.copy(alpha = 0.6f),
+                                                        Color.White.copy(alpha = 0.1f)
+                                                    )
+                                                )
+                                            }
+
+                                            Modifier
+                                                .background(glassBrush, RoundedCornerShape(12.dp))
+                                                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                                        } else {
+                                            Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
                                         }
-                                    }) { Text("Erstellen", color = mainTextColor) }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = { isCreateFolderDialogOpen = false }) { Text("Abbrechen", color = Color.Gray) }
-                                },
-                                containerColor = if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground
-                            )
+
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .then(inputModifier)
+                                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                                        ) {
+                                            BasicTextField(
+                                                value = folderNameInput,
+                                                onValueChange = { folderNameInput = it },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                textStyle = androidx.compose.ui.text.TextStyle(
+                                                    color = mainTextColor,
+                                                    fontSize = 16.sp
+                                                ),
+                                                cursorBrush = SolidColor(mainTextColor),
+                                                singleLine = true,
+                                                decorationBox = { innerTextField ->
+                                                    if (folderNameInput.isEmpty()) {
+                                                        Text(
+                                                            "Name eingeben",
+                                                            color = mainTextColor.copy(alpha = 0.4f),
+                                                            fontSize = 16.sp
+                                                        )
+                                                    }
+                                                    innerTextField()
+                                                }
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(24.dp))
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            TextButton(onClick = { isCreateFolderDialogOpen = false }) {
+                                                Text("Abbrechen", color = Color.Gray)
+                                            }
+                                            TextButton(onClick = {
+                                                if (folderNameInput.isNotBlank()) {
+                                                    onUpdateFolders(LauncherLogic.createFolder(folders, folderNameInput))
+                                                    folderNameInput = ""
+                                                    isCreateFolderDialogOpen = false
+                                                }
+                                            }) {
+                                                Text("Erstellen", color = mainTextColor)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     IconButton(onClick = onClose) {
