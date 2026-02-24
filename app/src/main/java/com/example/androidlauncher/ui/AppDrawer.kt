@@ -226,11 +226,78 @@ fun AppDrawer(
                                 onDismissRequest = { isCreateFolderDialogOpen = false },
                                 title = { Text("Neuer Ordner", color = mainTextColor) },
                                 text = {
-                                    TextField(
-                                        value = folderNameInput,
-                                        onValueChange = { folderNameInput = it },
-                                        placeholder = { Text("Name eingeben") }
-                                    )
+                                    val inputModifier = if (isLiquidGlassEnabled) {
+                                        val glassBrush = if (isDarkTextEnabled) {
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    Color.Black.copy(alpha = 0.15f),
+                                                    Color.Black.copy(alpha = 0.05f)
+                                                ),
+                                                start = Offset(0f, 0f),
+                                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                            )
+                                        } else {
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    Color.White.copy(alpha = 0.15f),
+                                                    Color.White.copy(alpha = 0.05f)
+                                                ),
+                                                start = Offset(0f, 0f),
+                                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                            )
+                                        }
+
+                                        val borderBrush = if (isDarkTextEnabled) {
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    Color.Black.copy(alpha = 0.8f),
+                                                    Color.Black.copy(alpha = 0.3f)
+                                                )
+                                            )
+                                        } else {
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    Color.White.copy(alpha = 0.6f),
+                                                    Color.White.copy(alpha = 0.1f)
+                                                )
+                                            )
+                                        }
+
+                                        Modifier
+                                            .background(glassBrush, RoundedCornerShape(12.dp))
+                                            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                                    } else {
+                                        Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .then(inputModifier)
+                                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                                    ) {
+                                        BasicTextField(
+                                            value = folderNameInput,
+                                            onValueChange = { folderNameInput = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textStyle = androidx.compose.ui.text.TextStyle(
+                                                color = mainTextColor,
+                                                fontSize = 16.sp
+                                            ),
+                                            cursorBrush = SolidColor(mainTextColor),
+                                            singleLine = true,
+                                            decorationBox = { innerTextField ->
+                                                if (folderNameInput.isEmpty()) {
+                                                    Text(
+                                                        "Name eingeben",
+                                                        color = mainTextColor.copy(alpha = 0.4f),
+                                                        fontSize = 16.sp
+                                                    )
+                                                }
+                                                innerTextField()
+                                            }
+                                        )
+                                    }
                                 },
                                 confirmButton = {
                                     TextButton(onClick = {
