@@ -9,6 +9,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -38,6 +39,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
@@ -73,6 +75,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalIconSize
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.composables.icons.lucide.*
 import kotlinx.coroutines.delay
 import kotlin.math.max
@@ -96,6 +99,7 @@ fun AppDrawer(
     val fontSize = LocalFontSize.current
     val iconSize = LocalIconSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -239,7 +243,53 @@ fun AppDrawer(
             Spacer(modifier = Modifier.height(16.dp))
 
             val searchIntSrc = remember { MutableInteractionSource() }
-            Box(modifier = Modifier.fillMaxWidth().background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
+            val searchBarModifier = if (isLiquidGlassEnabled) {
+                // Liquid Glass Style for Search Bar
+                val glassBrush = if (isDarkTextEnabled) {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.3f),
+                            Color.White.copy(alpha = 0.1f)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY) // Diagonal
+                    )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.15f),
+                            Color.White.copy(alpha = 0.05f)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY) // Diagonal
+                    )
+                }
+
+                val borderBrush = if (isDarkTextEnabled) {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.8f),
+                            Color.White.copy(alpha = 0.3f)
+                        )
+                    )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.6f),
+                            Color.White.copy(alpha = 0.1f)
+                        )
+                    )
+                }
+
+                Modifier
+                    .background(glassBrush, RoundedCornerShape(12.dp))
+                    .border(androidx.compose.foundation.BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+            } else {
+                // Standard Style
+                Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            }
+
+            Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
                 interactionSource = searchIntSrc,
                 indication = null
             ) { focusRequester.requestFocus() }) {

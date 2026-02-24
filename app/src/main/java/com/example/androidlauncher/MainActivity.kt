@@ -767,7 +767,8 @@ fun FavoritesConfigMenu(
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+
     // Einheitliche Textfarbe für "App-Titel" (Grau wie im White Mode)
     val labelTextColor = Color.White.copy(alpha = 0.6f)
     
@@ -841,7 +842,53 @@ fun FavoritesConfigMenu(
         Spacer(modifier = Modifier.height(24.dp))
         
         val searchIntSrc = remember { MutableInteractionSource() }
-        Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
+        val searchBarModifier = if (isLiquidGlassEnabled) {
+            // Liquid Glass Style for Favorites Search
+            val glassBrush = if (isDarkTextEnabled) {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.3f),
+                        Color.White.copy(alpha = 0.1f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            } else {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.15f),
+                        Color.White.copy(alpha = 0.05f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            }
+
+            val borderBrush = if (isDarkTextEnabled) {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.8f),
+                        Color.White.copy(alpha = 0.3f)
+                    )
+                )
+            } else {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.6f),
+                        Color.White.copy(alpha = 0.1f)
+                    )
+                )
+            }
+
+            Modifier
+                .background(glassBrush, RoundedCornerShape(12.dp))
+                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+        } else {
+            // Standard Style
+            Modifier.background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+        }
+
+        Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
             interactionSource = searchIntSrc,
             indication = null
         ) { focusRequester.requestFocus() }) {
