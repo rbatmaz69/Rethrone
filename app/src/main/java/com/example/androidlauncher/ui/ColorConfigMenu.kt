@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,6 +29,7 @@ import com.composables.icons.lucide.Droplets
 import com.composables.icons.lucide.Square
 import com.example.androidlauncher.SystemWallpaperView
 import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
 @Composable
 fun ColorConfigMenu(
@@ -102,6 +104,8 @@ fun ColorConfigMenu(
                     colorTheme = selectedTheme, 
                     isHome = true, 
                     mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
                     modifier = Modifier.weight(1f)
                 )
                 PreviewCard(
@@ -109,6 +113,8 @@ fun ColorConfigMenu(
                     colorTheme = selectedTheme, 
                     isHome = false, 
                     mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -166,6 +172,8 @@ fun ColorConfigMenu(
                         theme = theme,
                         isSelected = theme == selectedTheme,
                         mainTextColor = mainTextColor,
+                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        isDarkTextEnabled = isDarkTextEnabled,
                         onClick = { onThemeSelected(theme) }
                     )
                 }
@@ -180,13 +188,56 @@ fun PreviewCard(
     colorTheme: ColorTheme, 
     isHome: Boolean, 
     mainTextColor: Color,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        // Hintergrund der Karte bleibt grau
-        color = Color.White.copy(alpha = 0.05f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier
+    val cardModifier = if (isLiquidGlassEnabled) {
+        val glassBrush = if (isDarkTextEnabled) {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.3f),
+                    Color.White.copy(alpha = 0.1f)
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+        } else {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.15f),
+                    Color.White.copy(alpha = 0.05f)
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+        }
+
+        val borderBrush = if (isDarkTextEnabled) {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.8f),
+                    Color.White.copy(alpha = 0.3f)
+                )
+            )
+        } else {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.6f),
+                    Color.White.copy(alpha = 0.1f)
+                )
+            )
+        }
+
+        Modifier
+            .background(glassBrush, RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(16.dp))
+    } else {
+        Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+    }
+
+    Box(
+        modifier = modifier.then(cardModifier)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Karten-Titel bleibt grau
@@ -245,14 +296,81 @@ fun PreviewCard(
 }
 
 @Composable
-fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color, onClick: () -> Unit) {
-    Surface(
-        // Hintergrund der Items bleibt grau (weiß-transparent)
-        color = if (isSelected) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
-        shape = RoundedCornerShape(16.dp),
-        // Rahmen bleibt grau
-        border = if (isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else null,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+fun ThemeOptionItem(
+    theme: ColorTheme,
+    isSelected: Boolean,
+    mainTextColor: Color,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean,
+    onClick: () -> Unit
+) {
+    val itemModifier = if (isLiquidGlassEnabled) {
+        val glassBrush = if (isDarkTextEnabled) {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.3f),
+                    Color.White.copy(alpha = 0.1f)
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+        } else {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.15f),
+                    Color.White.copy(alpha = 0.05f)
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+        }
+
+        val borderBrush = if (isDarkTextEnabled) {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.8f),
+                    Color.White.copy(alpha = 0.3f)
+                )
+            )
+        } else {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.6f),
+                    Color.White.copy(alpha = 0.1f)
+                )
+            )
+        }
+
+        val baseModifier = Modifier
+            .background(glassBrush, RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(16.dp))
+
+        // If selected, we might want to add extra emphasis or keep it glass.
+        // For consistency with other glass items, we keep the glass look.
+        // If selected, maybe a slightly stronger border or background?
+        // But the previous implementation just used a slightly more opaque background.
+        // Let's stick to glass for now, maybe add the selection border if selected.
+
+        if (isSelected) {
+             baseModifier.border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
+        } else {
+             baseModifier
+        }
+    } else {
+        // Standard style
+        val bgColor = if (isSelected) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
+        val border = if (isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else null
+
+        Modifier
+            .background(bgColor, RoundedCornerShape(16.dp))
+            .then(if (border != null) Modifier.border(border, RoundedCornerShape(16.dp)) else Modifier)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(itemModifier)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
