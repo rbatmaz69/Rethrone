@@ -616,8 +616,8 @@ fun HomeScreen(
                     val glassBrush = if (isDarkTextEnabled) {
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.3f),
-                                Color.White.copy(alpha = 0.1f)
+                                Color.Black.copy(alpha = 0.15f),
+                                Color.Black.copy(alpha = 0.05f)
                             ),
                             start = Offset(0f, 0f),
                             end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -797,8 +797,8 @@ fun FavoritesConfigMenu(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("App-Titel", color = labelTextColor, fontSize = 14.sp)
-            
+            Text("App-Titel", color = grayTone, fontSize = 14.sp)
+
             // Toggle Logik: 
             // White Mode: Kreis Schwarz, Symbole Weiß
             // Dark Mode: Kreis Weiß, Symbole Schwarz
@@ -808,12 +808,12 @@ fun FavoritesConfigMenu(
             val switchColors = if (isLiquidGlassEnabled) {
                 if (isDarkTextEnabled) {
                     SwitchDefaults.colors(
-                        checkedTrackColor = Color.White.copy(alpha = 0.3f), // Glassy white
-                        uncheckedTrackColor = Color.White.copy(alpha = 0.1f), // Glassy dark
+                        checkedTrackColor = Color.Black.copy(alpha = 0.15f), // Glassy dark
+                        uncheckedTrackColor = Color.Black.copy(alpha = 0.05f), // Glassy dark
                         checkedThumbColor = thumbColor,
                         uncheckedThumbColor = thumbColor,
-                        checkedBorderColor = Color.White.copy(alpha = 0.2f),
-                        uncheckedBorderColor = Color.White.copy(alpha = 0.2f)
+                        checkedBorderColor = Color.Black.copy(alpha = 0.2f),
+                        uncheckedBorderColor = Color.Black.copy(alpha = 0.2f)
                     )
                 } else {
                     SwitchDefaults.colors(
@@ -871,8 +871,8 @@ fun FavoritesConfigMenu(
             val glassBrush = if (isDarkTextEnabled) {
                 Brush.linearGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.3f),
-                        Color.White.copy(alpha = 0.1f)
+                        Color.Black.copy(alpha = 0.15f),
+                        Color.Black.copy(alpha = 0.05f)
                     ),
                     start = Offset(0f, 0f),
                     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -943,8 +943,8 @@ fun FavoritesConfigMenu(
                             val glassBrush = if (isDarkTextEnabled) {
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        Color.White.copy(alpha = 0.3f),
-                                        Color.White.copy(alpha = 0.1f)
+                                        Color.Black.copy(alpha = 0.15f),
+                                        Color.Black.copy(alpha = 0.05f)
                                     ),
                                     start = Offset(0f, 0f),
                                     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -1009,8 +1009,8 @@ fun FavoritesConfigMenu(
                     val glassBrush = if (isDarkTextEnabled) {
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.3f),
-                                Color.White.copy(alpha = 0.1f)
+                                Color.Black.copy(alpha = 0.15f),
+                                Color.Black.copy(alpha = 0.05f)
                             ),
                             start = Offset(0f, 0f),
                             end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)

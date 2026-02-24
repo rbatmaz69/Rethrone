@@ -99,8 +99,8 @@ fun FolderConfigMenu(
             val glassBrush = if (isDarkTextEnabled) {
                 Brush.linearGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.3f),
-                        Color.White.copy(alpha = 0.1f)
+                        Color.Black.copy(alpha = 0.15f),
+                        Color.Black.copy(alpha = 0.05f)
                     ),
                     start = Offset(0f, 0f),
                     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -178,8 +178,8 @@ fun FolderConfigMenu(
                     val glassBrush = if (isDarkTextEnabled) {
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.3f),
-                                Color.White.copy(alpha = 0.1f)
+                                Color.Black.copy(alpha = 0.15f),
+                                Color.Black.copy(alpha = 0.05f)
                             ),
                             start = Offset(0f, 0f),
                             end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
