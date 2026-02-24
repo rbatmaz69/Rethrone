@@ -2,6 +2,8 @@ package com.example.androidlauncher.ui
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -10,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Palette
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
 import kotlin.math.*
 
@@ -49,6 +51,7 @@ fun SettingsPaletteMenu(
     onOpenInfo: () -> Unit
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     // Verwendung von #010101 gegen HW-Artefakte
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     
@@ -72,9 +75,9 @@ fun SettingsPaletteMenu(
         contentAlignment = Alignment.BottomEnd
     ) {
         val total = settingsItems.size
-        val animStates = List(total) { index -> remember { Animatable(0f) } }
+        val animStates = List(total) { remember { Animatable(0f) } }
 
-        settingsItems.forEachIndexed { index, item ->
+        settingsItems.forEachIndexed { index, _ ->
             LaunchedEffect(isSettingsOpen) {
                 if (isSettingsOpen) {
                     delay(index * 50L)
@@ -106,9 +109,59 @@ fun SettingsPaletteMenu(
                 val targetX = (cos(angleRad) * radius).toFloat()
                 val targetY = (-sin(angleRad) * radius).toFloat()
 
+                // Styles
+                val backgroundModifier = if (isLiquidGlassEnabled) {
+                     // Liquid/Glass Style Definition
+                    val glassBrush = if (isDarkTextEnabled) {
+                        // Light Mode - Kristallklar
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.3f),
+                                Color.White.copy(alpha = 0.1f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    } else {
+                        // Dark Mode - Sehr transparentes Glas
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.15f),
+                                Color.White.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    }
+                    val borderBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.8f),
+                                Color.White.copy(alpha = 0.3f)
+                            )
+                        )
+                    } else {
+                        // Hellerer Rand im Dark Mode für Glas-Kante
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+                    Modifier
+                        .background(glassBrush, CircleShape)
+                        .border(BorderStroke(1.2.dp, borderBrush), CircleShape)
+                } else {
+                    // Standard Ansicht
+                    Modifier
+                        .background(mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), CircleShape)
+                        .border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.25f)), CircleShape)
+                }
+
                 Box(
                     modifier = Modifier
-                        .padding(bottom = 8.dp, end = 8.dp) 
+                        .padding(bottom = 8.dp, end = 8.dp)
                         .size(56.dp)
                         .offset(x = (targetX * progress).dp, y = (targetY * progress).dp)
                         .scale(progress * pressScale)
@@ -147,34 +200,30 @@ fun SettingsPaletteMenu(
                             }
                         }
                 ) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        // Transparenter Hintergrund basierend auf mainTextColor für edle Optik
-                        color = mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f),
-                        shape = CircleShape,
-                        border = BorderStroke(1.dp, mainTextColor.copy(alpha = 0.25f))
+                    // Bubble Content
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(backgroundModifier)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                enabled = isSettingsOpen,
+                                onClick = {
+                                    item.action()
+                                    onToggleSettings()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable(
-                                    interactionSource = interactionSource,
-                                    indication = null,
-                                    enabled = isSettingsOpen,
-                                    onClick = {
-                                        item.action()
-                                        onToggleSettings()
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.label,
-                                tint = mainTextColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        // Kleiner extra Glanzpunkt (Specular Highlight) entfernt
+
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.label,
+                            tint = mainTextColor,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }

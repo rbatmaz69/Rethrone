@@ -18,6 +18,7 @@ class ThemeManager(private val context: Context) {
         private val ICON_SIZE_KEY = stringPreferencesKey("icon_size")
         private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
+        private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
     }
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
@@ -60,6 +61,11 @@ class ThemeManager(private val context: Context) {
             preferences[SHOW_FAVORITE_LABELS_KEY] ?: false
         }
 
+    val isLiquidGlassEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[LIQUID_GLASS_KEY] ?: true // Default to true as it is the current style
+        }
+
     suspend fun setTheme(theme: ColorTheme) {
         context.dataStore.edit { preferences ->
             preferences[THEME_KEY] = theme.name
@@ -87,6 +93,12 @@ class ThemeManager(private val context: Context) {
     suspend fun setShowFavoriteLabels(show: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[SHOW_FAVORITE_LABELS_KEY] = show
+        }
+    }
+
+    suspend fun setLiquidGlassEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[LIQUID_GLASS_KEY] = enabled
         }
     }
 }

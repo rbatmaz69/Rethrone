@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Moon
 import com.composables.icons.lucide.Sun
+import com.composables.icons.lucide.Droplets
+import com.composables.icons.lucide.Square
 import com.example.androidlauncher.SystemWallpaperView
 import com.example.androidlauncher.ui.theme.ColorTheme
 
@@ -33,6 +35,8 @@ fun ColorConfigMenu(
     onThemeSelected: (ColorTheme) -> Unit,
     isDarkTextEnabled: Boolean,
     onDarkTextToggled: (Boolean) -> Unit,
+    isLiquidGlassEnabled: Boolean,
+    onLiquidGlassToggled: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
     // Nur für die primären Schriften und Symbole verwenden
@@ -110,8 +114,46 @@ fun ColorConfigMenu(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-            // Bleibt grau
-            Text("Themen", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Bleibt grau
+                Text("Themen", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+
+                Switch(
+                    checked = isLiquidGlassEnabled,
+                    onCheckedChange = onLiquidGlassToggled,
+                    colors = SwitchDefaults.colors(
+                        checkedTrackColor = Color.White.copy(alpha = 0.2f),
+                        uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
+                        checkedThumbColor = Color.White,
+                        uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
+                        checkedBorderColor = Color.White.copy(alpha = 0.1f),
+                        uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
+                    ),
+                    thumbContent = {
+                        if (isLiquidGlassEnabled) {
+                            Icon(
+                                imageVector = Lucide.Droplets,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = Color(0xFF0EA5E9) // Sky Blue for liquid
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Lucide.Square,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             LazyColumn(

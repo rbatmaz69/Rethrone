@@ -69,6 +69,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalShowFavoriteLabels
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
@@ -123,6 +124,7 @@ class MainActivity : ComponentActivity() {
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
+            val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
 
             val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
@@ -134,7 +136,8 @@ class MainActivity : ComponentActivity() {
                 fontSize = currentFontSize,
                 iconSize = currentIconSize,
                 darkTextEnabled = isDarkTextEnabled,
-                showFavoriteLabels = showFavoriteLabels
+                showFavoriteLabels = showFavoriteLabels,
+                liquidGlassEnabled = isLiquidGlassEnabled
             ) {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
@@ -357,6 +360,10 @@ class MainActivity : ComponentActivity() {
                                  onDarkTextToggled = { enabled ->
                                      scope.launch { themeManager.setDarkTextEnabled(enabled) }
                                  },
+                                 isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                 onLiquidGlassToggled = { enabled ->
+                                    scope.launch { themeManager.setLiquidGlassEnabled(enabled) }
+                                 },
                                  onClose = { isColorConfigOpen = false }
                              )
                          }
@@ -444,7 +451,8 @@ fun SystemWallpaperView() {
         wallpaperBitmap?.let {
             Image(bitmap = it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } ?: Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(colorTheme.primary, colorTheme.secondary))))
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)))
+        // Reduzierte Overlay-Deckkraft (von 0.4f auf 0.1f), damit der Hintergrund klarer erscheint
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.1f)))
     }
 }
 
@@ -465,6 +473,7 @@ fun HomeScreen(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val showLabels = LocalShowFavoriteLabels.current
     val fontSize = LocalFontSize.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     var launchRequest by remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -601,15 +610,69 @@ fun HomeScreen(
 
             Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
                 val intSrc = remember { MutableInteractionSource() }
-                Surface(
-                    modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).bounceClick(intSrc).clickable(
-                        interactionSource = intSrc,
-                        indication = null
-                    ) { onToggleSettings() },
-                    color = mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f),
-                    shape = CircleShape,
-                    border = if (isSettingsOpen) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)) else null
+
+                val buttonModifier = if (isLiquidGlassEnabled) {
+                    // Liquid/Glass Style für den Button
+                    val glassBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.3f),
+                                Color.White.copy(alpha = 0.1f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.15f),
+                                Color.White.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    }
+
+                    val borderBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.8f),
+                                Color.White.copy(alpha = 0.3f)
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+                    Modifier
+                        .background(glassBrush, CircleShape)
+                        .border(BorderStroke(1.2.dp, borderBrush), CircleShape)
+                } else {
+                    // Standard Style (Original)
+                    Modifier
+                        .background(mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), CircleShape)
+                        .then(if (isSettingsOpen) Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)), CircleShape) else Modifier)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(settingsButtonSize)
+                        .then(buttonModifier)
+                        .clip(CircleShape)
+                        .bounceClick(intSrc)
+                        .clickable(
+                            interactionSource = intSrc,
+                            indication = null
+                        ) { onToggleSettings() },
+                    contentAlignment = Alignment.Center
                 ) {
+                    // Specular Highlight entfernt
+
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                         Icon(
                             imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,

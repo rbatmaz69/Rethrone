@@ -18,6 +18,7 @@ val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
+val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
 
 @Composable
 fun AndroidLauncherTheme(
@@ -26,6 +27,7 @@ fun AndroidLauncherTheme(
     iconSize: IconSize = IconSize.STANDARD,
     darkTextEnabled: Boolean = false,
     showFavoriteLabels: Boolean = false,
+    liquidGlassEnabled: Boolean = true,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -53,7 +55,8 @@ fun AndroidLauncherTheme(
         LocalFontSize provides fontSize,
         LocalIconSize provides iconSize,
         LocalDarkTextEnabled provides darkTextEnabled,
-        LocalShowFavoriteLabels provides showFavoriteLabels
+        LocalShowFavoriteLabels provides showFavoriteLabels,
+        LocalLiquidGlassEnabled provides liquidGlassEnabled
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
