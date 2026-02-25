@@ -49,11 +49,13 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
  * - Removing apps from the folder
  * - Renaming the folder
  * - Deleting the folder
+ * - NEW: Prevention of duplicate apps (disabling apps already in other folders)
  */
 @Composable
 fun FolderConfigMenu(
     folder: FolderInfo,
     allApps: List<AppInfo>,
+    allFolders: List<FolderInfo>, // Added to check for apps in other folders
     onConfirm: (FolderInfo) -> Unit,
     onDelete: (String) -> Unit,
     onClose: () -> Unit
@@ -63,7 +65,6 @@ fun FolderConfigMenu(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
 
-    // Nur primäre Schriften & Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     var searchQuery by remember { mutableStateOf("") }
@@ -71,6 +72,14 @@ fun FolderConfigMenu(
     var folderName by remember { mutableStateOf(folder.name) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     
+    // Calculate which apps are already in OTHER folders to disable them
+    val appsInOtherFolders = remember(allFolders, folder.id) {
+        allFolders
+            .filter { it.id != folder.id }
+            .flatMap { it.appPackageNames }
+            .toSet()
+    }
+
     val filteredApps = remember(allApps, searchQuery) { LauncherLogic.filterApps(allApps, searchQuery) }
     val focusRequester = remember { FocusRequester() }
 
@@ -84,13 +93,11 @@ fun FolderConfigMenu(
                     cursorBrush = SolidColor(mainTextColor),
                     decorationBox = { 
                         if (folderName.isEmpty()) {
-                            // Bleibt grau
                             Text("Ordnername", color = Color.White.copy(alpha = 0.4f), fontSize = 24.sp)
                         }
                         it() 
                     }
                 )
-                // Bleibt grau
                 Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
             }
             Row {
@@ -153,7 +160,6 @@ fun FolderConfigMenu(
             indication = null
         ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Bleibt grau
                 Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 BasicTextField(
@@ -165,7 +171,6 @@ fun FolderConfigMenu(
                     singleLine = true,
                     decorationBox = { 
                         if (searchQuery.isEmpty()) {
-                            // Bleibt grau
                             Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp)
                         }
                         it() 
@@ -177,10 +182,11 @@ fun FolderConfigMenu(
         Spacer(modifier = Modifier.height(16.dp))
         
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
-            // Bleibt grau
             item { Text("Apps verwalten", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isSelected = app.packageName in selectedPackages
+                // Requirement 2: Disable app if it's already in another folder
+                val isAlreadyInAnotherFolder = app.packageName in appsInOtherFolders
                 val intSrc = remember { MutableInteractionSource() }
 
                 val itemModifier = if (isSelected && isLiquidGlassEnabled) {
@@ -229,31 +235,50 @@ fun FolderConfigMenu(
                     Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
                 }
 
-                Box(modifier = Modifier.fillMaxWidth().then(itemModifier).bounceClick(intSrc).clickable(
-                    interactionSource = intSrc,
-                    indication = null
-                ) {
-                    selectedPackages = if (isSelected) {
-                        selectedPackages - app.packageName
-                    } else {
-                        selectedPackages + app.packageName
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .then(itemModifier)
+                    .graphicsLayer { 
+                        // Visually disable apps that are already in other folders
+                        alpha = if (isAlreadyInAnotherFolder) 0.35f else 1f 
                     }
-                }) {
+                    .bounceClick(intSrc, enabled = !isAlreadyInAnotherFolder)
+                    .clickable(
+                        interactionSource = intSrc,
+                        indication = null,
+                        enabled = !isAlreadyInAnotherFolder // Disable interaction
+                    ) {
+                        selectedPackages = if (isSelected) {
+                            selectedPackages - app.packageName
+                        } else {
+                            // Logic: App is added only if it was NOT already in the list
+                            // This implicitly prevents duplicates within the local list as isSelected checks presence
+                            selectedPackages + app.packageName
+                        }
+                    }
+                ) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIconView(app)
                         Spacer(modifier = Modifier.width(16.dp))
-                        // App-Label wird schwarz
-                        Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(app.label, color = mainTextColor, fontSize = 16.sp)
+                            if (isAlreadyInAnotherFolder) {
+                                Text(
+                                    "Bereits in einem anderen Ordner", 
+                                    color = mainTextColor.copy(alpha = 0.5f), 
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
                         Checkbox(
                             checked = isSelected, 
                             onCheckedChange = null, 
+                            enabled = !isAlreadyInAnotherFolder,
                             colors = CheckboxDefaults.colors(
-                                // Füllung wird schwarz im Dark Mode
                                 checkedColor = mainTextColor, 
-                                // Rahmen bleibt grau
-                                uncheckedColor = Color.White.copy(alpha = 0.4f), 
-                                // Haken wird weiß im Dark Mode
-                                checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+                                uncheckedColor = mainTextColor.copy(alpha = 0.4f), 
+                                checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
+                                disabledCheckedColor = mainTextColor.copy(alpha = 0.3f)
                             )
                         )
                     }
@@ -280,7 +305,6 @@ fun FolderConfigMenu(
         )
     }
 
-    // DER BUTTON
     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
         val intSrc = remember { MutableInteractionSource() }
         val checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
@@ -301,7 +325,9 @@ fun FolderConfigMenu(
                     indication = null,
                     onClick = { 
                         if (folderName.isNotBlank()) {
-                            onConfirm(folder.copy(name = folderName, appPackageNames = selectedPackages))
+                            // Final safety check: ensure the list of packages is unique
+                            val finalPackages = selectedPackages.distinct()
+                            onConfirm(folder.copy(name = folderName, appPackageNames = finalPackages))
                         } else {
                             Toast.makeText(context, "Bitte Namen eingeben", Toast.LENGTH_SHORT).show()
                         }
