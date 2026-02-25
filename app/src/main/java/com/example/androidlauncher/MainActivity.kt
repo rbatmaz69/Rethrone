@@ -663,17 +663,63 @@ fun HomeScreen(
                 ) {
                     if (favorites.isEmpty()) {
                         val intSrc = remember { MutableInteractionSource() }
-                        Surface(
-                            color = mainTextColor.copy(alpha = 0.1f),
-                            shape = CircleShape,
-                            modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
-                                interactionSource = intSrc,
-                                indication = null
-                            ) { onOpenFavoritesConfig() }
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
+
+                        val addBtnModifier = if (isLiquidGlassEnabled) {
+                            val glassBrush = if (isDarkTextEnabled) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.15f),
+                                        Color.Black.copy(alpha = 0.05f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.15f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
                             }
+
+                            val borderBrush = if (isDarkTextEnabled) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.8f),
+                                        Color.Black.copy(alpha = 0.3f)
+                                    )
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.6f),
+                                        Color.White.copy(alpha = 0.1f)
+                                    )
+                                )
+                            }
+                            Modifier
+                                .background(glassBrush, CircleShape)
+                                .border(BorderStroke(1.2.dp, borderBrush), CircleShape)
+                        } else {
+                            Modifier.background(mainTextColor.copy(alpha = 0.1f), CircleShape)
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .then(addBtnModifier)
+                                .clip(CircleShape)
+                                .bounceClick(intSrc)
+                                .clickable(
+                                    interactionSource = intSrc,
+                                    indication = null
+                                ) { onOpenFavoritesConfig() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
                         }
                     } else {
                         favorites.forEach { app ->
