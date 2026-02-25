@@ -23,6 +23,27 @@ object LauncherLogic {
     }
 
     /**
+     * Filters apps by relevance:
+     * 1. Exact match (case insensitive)
+     * 2. Starts with query (case insensitive)
+     * 3. Contains query (case insensitive)
+     */
+    fun filterAppsByRelevance(apps: List<AppInfo>, query: String): List<AppInfo> {
+        if (query.isBlank()) return emptyList()
+        val lowerQuery = query.lowercase()
+
+        return apps.filter { it.label.contains(lowerQuery, ignoreCase = true) }
+            .sortedWith(compareBy<AppInfo> {
+                val lowerLabel = it.label.lowercase()
+                when {
+                    lowerLabel == lowerQuery -> 0
+                    lowerLabel.startsWith(lowerQuery) -> 1
+                    else -> 2
+                }
+            }.thenBy { it.label })
+    }
+
+    /**
      * Toggles the favorite status of an app.
      * Adds to favorites if not already a favorite and max favorites limit is not reached.
      * Removes from favorites if it is already a favorite.
@@ -62,14 +83,14 @@ object LauncherLogic {
         newList.add(index + 1, item)
         return newList
     }
-    
+
     /**
      * Resolves the list of favorite packages to actual AppInfo objects.
      * Maintains the order of the favorite packages list.
      */
     fun getFavoriteApps(allApps: List<AppInfo>, favoritePackages: List<String>): List<AppInfo> {
-        return favoritePackages.mapNotNull { pkg -> 
-            allApps.find { it.packageName == pkg } 
+        return favoritePackages.mapNotNull { pkg ->
+            allApps.find { it.packageName == pkg }
         }.take(MAX_FAVORITES)
     }
 
