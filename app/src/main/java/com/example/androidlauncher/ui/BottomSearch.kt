@@ -50,55 +50,63 @@ fun BottomSearch(
     onAppLaunch: (AppInfo) -> Unit
 ) {
     val context = LocalContext.current
+    val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontSize = LocalFontSize.current
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
-    // Theme-Konfiguration für die schwebende Leiste (angepasst an Search Button Design)
-    val searchContainerModifier = if (isLiquidGlassEnabled) {
-        val glassBrush = if (isDarkTextEnabled) {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.15f),
-                    Color.Black.copy(alpha = 0.05f)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
-        } else {
-             Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.15f),
-                    Color.White.copy(alpha = 0.05f)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
-        }
+    // Theme-Konfiguration für die schwebende Leiste
+    val searchContainerModifier = if (isDarkTextEnabled) {
+        // "Dark Mode" (Schrift Schwarz): Gleicher Hintergrund wie AppContextMenu (fast undurchsichtig, Pastell/Hell)
+        // Wir nutzen hier themedLightBackground Logik analog zu AppContextMenu, falls verfügbar, oder drawerBackground
+        val primary = colorTheme.primary
+        val themedLightBackground = Color(
+            red = primary.red * 0.90f + 0.10f,
+            green = primary.green * 0.90f + 0.10f,
+            blue = primary.blue * 0.90f + 0.10f,
+            alpha = 1f
+        )
 
-        val borderBrush = if (isDarkTextEnabled) {
-             Brush.linearGradient(
+        val menuBgColor = themedLightBackground.copy(alpha = 0.98f)
+
+        if (isLiquidGlassEnabled) {
+             val borderBrush = Brush.linearGradient(
                 colors = listOf(
                     Color.Black.copy(alpha = 0.8f),
                     Color.Black.copy(alpha = 0.3f)
                 )
             )
+            Modifier
+                .background(menuBgColor, RoundedCornerShape(28.dp))
+                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
         } else {
-             Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.6f),
-                    Color.White.copy(alpha = 0.1f)
-                )
-            )
+            Modifier.background(menuBgColor, RoundedCornerShape(28.dp))
         }
+    } else if (isLiquidGlassEnabled) {
+        // "Light Mode" (Schrift Weiß) & Liquid Glass (Bleibt wie vorher, passend zum Button)
+        val glassBrush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.15f),
+                Color.White.copy(alpha = 0.05f)
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        )
+
+        val borderBrush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.6f),
+                Color.White.copy(alpha = 0.1f)
+            )
+        )
 
         Modifier
             .background(glassBrush, RoundedCornerShape(28.dp))
             .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
     } else {
-        // Standard Style (angepasst an Button Standard)
+        // "Light Mode" (Schrift Weiß) & Standard (Bleibt wie vorher)
         Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
     }
 
@@ -120,10 +128,19 @@ fun BottomSearch(
         focusRequester.requestFocus()
     }
 
+    // Overlay-Hintergrund anpassen
+    val overlayColor = if (isDarkTextEnabled) {
+        // Light Mode (Dunkler Text): Weißes Milchglas-Dimming (statt Schwarz)
+        Color.White.copy(alpha = 0.55f)
+    } else {
+        // Dark Mode (Heller Text): Weißes Milchglas-Dimming
+        Color.White.copy(alpha = 0.15f)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f)) // Dim background
+            .background(overlayColor) // Angepasster Dim-Hintergrund
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                  onClose()
             }
