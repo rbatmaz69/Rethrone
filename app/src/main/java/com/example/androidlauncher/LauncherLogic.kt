@@ -141,14 +141,21 @@ object LauncherLogic {
     }
 
     /**
-     * Creates a new folder with a generated ID.
+     * Creates a new folder info object with a generated ID.
      */
-    fun createFolder(folders: List<FolderInfo>, name: String): List<FolderInfo> {
-        val newFolder = FolderInfo(
+    fun createNewFolder(name: String): FolderInfo {
+        return FolderInfo(
             id = UUID.randomUUID().toString(),
             name = name,
             appPackageNames = emptyList()
         )
+    }
+
+    /**
+     * Creates a new folder with a generated ID and adds it to the list.
+     */
+    fun createFolder(folders: List<FolderInfo>, name: String): List<FolderInfo> {
+        val newFolder = createNewFolder(name)
         return folders + newFolder
     }
 
