@@ -763,7 +763,6 @@ fun AppDrawer(
                             )
 
                             // BUGFIX 3: Decisive and clean Auto-Scroll logic
-                            // This ensures pages snap correctly and don't get stuck in-between.
                             LaunchedEffect(draggingItemPkg) {
                                 if (draggingItemPkg == null) return@LaunchedEffect
                                 
@@ -779,7 +778,7 @@ fun AppDrawer(
                                                 pagerState.currentPage - 1,
                                                 animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
                                             )
-                                            delay(400) // Stability pause
+                                            delay(400)
                                             isScrolling = false
                                         } else if (touchPosition.x > currentWidth - edgeThreshold && pagerState.currentPage < pages - 1) {
                                             isScrolling = true
@@ -787,7 +786,7 @@ fun AppDrawer(
                                                 pagerState.currentPage + 1,
                                                 animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
                                             )
-                                            delay(400) // Stability pause
+                                            delay(400)
                                             isScrolling = false
                                         }
                                     }
@@ -872,8 +871,9 @@ fun AppDrawer(
                                         state = pagerState,
                                         modifier = Modifier.fillMaxSize().clipToBounds(),
                                         pageSpacing = 16.dp,
-                                        userScrollEnabled = !isEditMode && draggingItemPkg == null,
-                                        beyondViewportPageCount = 0 // Key fix for visual page separation during reorder
+                                        // Requirement 4: Disable scroll if there is only 1 page
+                                        userScrollEnabled = !isEditMode && draggingItemPkg == null && pages > 1,
+                                        beyondViewportPageCount = 0
                                     ) { page ->
                                         val startIdx = page * itemsPerPage
                                         val endIdx = (startIdx + itemsPerPage).coerceAtMost(folderApps.size)
@@ -884,6 +884,7 @@ fun AppDrawer(
                                             modifier = Modifier.fillMaxSize(),
                                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                                             verticalArrangement = Arrangement.spacedBy(24.dp),
+                                            // Requirement 4: Content in folder page is never scrollable itself
                                             userScrollEnabled = false
                                         ) {
                                             itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
