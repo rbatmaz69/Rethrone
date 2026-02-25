@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -49,58 +50,56 @@ fun BottomSearch(
     onAppLaunch: (AppInfo) -> Unit
 ) {
     val context = LocalContext.current
-    val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontSize = LocalFontSize.current
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
-    // Theme-Konfiguration für die schwebende Leiste
+    // Theme-Konfiguration für die schwebende Leiste (angepasst an Search Button Design)
     val searchContainerModifier = if (isLiquidGlassEnabled) {
         val glassBrush = if (isDarkTextEnabled) {
             Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.95f),
-                    Color.White.copy(alpha = 0.85f)
-                )
-            )
-        } else {
-             Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFF202020).copy(alpha = 0.95f),
-                    Color(0xFF101010).copy(alpha = 0.95f)
-                )
-            )
-        }
-
-        val borderBrush = if (isDarkTextEnabled) {
-             Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.1f),
+                    Color.Black.copy(alpha = 0.15f),
                     Color.Black.copy(alpha = 0.05f)
-                )
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
             )
         } else {
              Brush.linearGradient(
                 colors = listOf(
                     Color.White.copy(alpha = 0.15f),
                     Color.White.copy(alpha = 0.05f)
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+        }
+
+        val borderBrush = if (isDarkTextEnabled) {
+             Brush.linearGradient(
+                colors = listOf(
+                    Color.Black.copy(alpha = 0.8f),
+                    Color.Black.copy(alpha = 0.3f)
+                )
+            )
+        } else {
+             Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.6f),
+                    Color.White.copy(alpha = 0.1f)
                 )
             )
         }
 
         Modifier
             .background(glassBrush, RoundedCornerShape(28.dp))
-            .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(28.dp))
+            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
     } else {
-        // Flat Theme - clean solid background
-        val flatBg = if (isDarkTextEnabled) {
-            Color.White
-        } else {
-            Color(0xFF1E1E1E)
-        }
-        Modifier.background(flatBg, RoundedCornerShape(28.dp))
+        // Standard Style (angepasst an Button Standard)
+        Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
     }
 
     var query by remember { mutableStateOf("") }
@@ -234,7 +233,7 @@ fun BottomSearch(
                                 fontSize = 18.sp
                             ),
                             singleLine = true,
-                            cursorBrush = SolidColor(if (isLiquidGlassEnabled && !isDarkTextEnabled) Color.White else colorTheme.primary),
+                            cursorBrush = SolidColor(mainTextColor),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(
                                 onSearch = {
@@ -362,5 +361,4 @@ fun WebSearchItem(
         }
     }
 }
-
 
