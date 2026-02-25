@@ -3,6 +3,7 @@ package com.example.androidlauncher.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -350,10 +351,16 @@ fun AppDrawer(
                                             }
                                             TextButton(onClick = {
                                                 if (folderNameInput.isNotBlank()) {
-                                                    val newFolder = LauncherLogic.createNewFolder(folderNameInput)
-                                                    onOpenFolderConfig(newFolder)
-                                                    folderNameInput = ""
-                                                    isCreateFolderDialogOpen = false
+                                                    // CHECK: Prevent duplicate folder names (case-sensitive)
+                                                    val nameExists = folders.any { it.name == folderNameInput }
+                                                    if (nameExists) {
+                                                        Toast.makeText(context, "Ordner mit diesem Namen existiert bereits", Toast.LENGTH_SHORT).show()
+                                                    } else {
+                                                        val newFolder = LauncherLogic.createNewFolder(folderNameInput)
+                                                        onOpenFolderConfig(newFolder)
+                                                        folderNameInput = ""
+                                                        isCreateFolderDialogOpen = false
+                                                    }
                                                 }
                                             }) {
                                                 Text("Erstellen", color = mainTextColor)
