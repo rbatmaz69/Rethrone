@@ -300,6 +300,7 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 favorites = favorites,
                                 isSettingsOpen = isSettingsOpen,
+                                isSearchOpen = isSearchOpen,
                                 onOpenDrawer = { isDrawerOpen = true },
                                 onOpenSearch = { isSearchOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
@@ -593,6 +594,7 @@ fun SystemWallpaperView() {
 fun HomeScreen(
     favorites: List<AppInfo>,
     isSettingsOpen: Boolean,
+    isSearchOpen: Boolean,
     onOpenDrawer: () -> Unit,
     onOpenSearch: () -> Unit,
     onToggleSettings: () -> Unit,
@@ -803,11 +805,34 @@ fun HomeScreen(
                     // Search Button (nur sichtbar wenn Settings zu sind)
                     AnimatedVisibility(
                         visible = !isSettingsOpen,
-                        enter = fadeIn() + slideInVertically { it / 2 },
-                        exit = fadeOut() + slideOutVertically { it / 2 }
+                        enter = scaleIn(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            initialScale = 0.0f
+                        ) + fadeIn(animationSpec = tween(150)),
+                        exit = scaleOut(animationSpec = tween(150)) + fadeOut(animationSpec = tween(150))
                     ) {
+                        // Animation für den Klick auf den Suchbutton (Rotation + Scale bei Aktivierung)
+                        val searchButtonScale by animateFloatAsState(
+                            targetValue = if (isSearchOpen) 0.8f else 1f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "SearchButtonScale"
+                        )
+                        val searchButtonRotation by animateFloatAsState(
+                            targetValue = if (isSearchOpen) 90f else 0f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "SearchButtonRotation"
+                        )
+
                         Box(
                             modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = searchButtonScale
+                                    scaleY = searchButtonScale
+                                    rotationZ = searchButtonRotation
+                                }
                                 .size(56.dp)
                                 .then(buttonModifier)
                                 .clip(CircleShape)
