@@ -120,7 +120,7 @@ object LauncherLogic {
     }
 
     /**
-     * Creates a new folder object with a generated ID, but does not add it to a list yet.
+     * Creates a new folder info object with a generated ID.
      */
     fun createNewFolder(name: String): FolderInfo {
         return FolderInfo(

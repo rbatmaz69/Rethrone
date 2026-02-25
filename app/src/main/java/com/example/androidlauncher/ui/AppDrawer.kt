@@ -907,6 +907,7 @@ fun AppDrawer(
                                             )
                                         }
                                 ) {
+                                    // BUGFIX: Wrapping HorizontalPager in CompositionLocalProvider to disable overscroll movement on first and last pages.
                                     CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
                                         HorizontalPager(
                                             state = pagerState,
@@ -915,7 +916,8 @@ fun AppDrawer(
                                                 .clipToBounds()
                                                 .nestedScroll(folderBoundaryBlocker),
                                             pageSpacing = 16.dp,
-                                            userScrollEnabled = !isEditMode && draggingItemPkg == null && pages > 1,
+                                            // BUGFIX: Allow manual swiping in Edit Mode when no item is being dragged
+                                            userScrollEnabled = draggingItemPkg == null && pages > 1,
                                             beyondViewportPageCount = 0
                                         ) { page ->
                                             val startIdx = page * itemsPerPage
