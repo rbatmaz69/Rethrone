@@ -102,12 +102,6 @@ import kotlin.math.max
 /**
  * The main activity of the launcher.
  * Acts as the entry point and holds the top-level state and navigation logic.
- *
- * Responsibilities:
- * - initializing DataStores (Theme, Folders)
- * - Handling the main App Drawer and settings mneus
- * - Managing the "Return Animation" when closing apps
- * - Handling system back button presses
  */
 class MainActivity : ComponentActivity() {
     private lateinit var backCallback: OnBackPressedCallback
@@ -349,6 +343,7 @@ class MainActivity : ComponentActivity() {
                                  FolderConfigMenu(
                                      folder = folder,
                                      allApps = allApps,
+                                     allFolders = folders, // Pass all folders for duplicate check
                                      onConfirm = { updatedFolder ->
                                          // Check if the folder already exists in our list
                                          val folderExists = folders.any { it.id == updatedFolder.id }
@@ -787,8 +782,6 @@ fun HomeScreen(
                         ) { onToggleSettings() },
                     contentAlignment = Alignment.Center
                 ) {
-                    // Specular Highlight entfernt
-
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                         Icon(
                             imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
@@ -884,9 +877,6 @@ fun FavoritesConfigMenu(
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
-
-    // Einheitliche Textfarbe für "App-Titel" (Grau wie im White Mode)
-    val labelTextColor = Color.White.copy(alpha = 0.6f)
     
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val grayTone = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
@@ -915,17 +905,14 @@ fun FavoritesConfigMenu(
         ) {
             Text("App-Titel", color = grayTone, fontSize = 14.sp)
 
-            // Toggle Logik: 
-            // White Mode: Kreis Schwarz, Symbole Weiß
-            // Dark Mode: Kreis Weiß, Symbole Schwarz
             val thumbColor = if (isDarkTextEnabled) Color.Black else Color.White
             val symbolColor = if (isDarkTextEnabled) Color.White else Color.Black
             
             val switchColors = if (isLiquidGlassEnabled) {
                 if (isDarkTextEnabled) {
                     SwitchDefaults.colors(
-                        checkedTrackColor = Color.Black.copy(alpha = 0.15f), // Glassy dark
-                        uncheckedTrackColor = Color.Black.copy(alpha = 0.05f), // Glassy dark
+                        checkedTrackColor = Color.Black.copy(alpha = 0.15f),
+                        uncheckedTrackColor = Color.Black.copy(alpha = 0.05f),
                         checkedThumbColor = thumbColor,
                         uncheckedThumbColor = thumbColor,
                         checkedBorderColor = Color.Black.copy(alpha = 0.2f),
@@ -959,14 +946,12 @@ fun FavoritesConfigMenu(
                 thumbContent = {
                     Box(contentAlignment = Alignment.Center) {
                         if (showFavoriteLabels) {
-                            // Symbol für AN (I)
                             Box(
                                 modifier = Modifier
                                     .size(width = 1.5.dp, height = 12.dp)
                                     .background(symbolColor, RoundedCornerShape(0.5.dp))
                             )
                         } else {
-                            // Symbol für AUS (0)
                             Surface(
                                 modifier = Modifier.size(width = 8.dp, height = 12.dp),
                                 color = Color.Transparent,
@@ -983,7 +968,6 @@ fun FavoritesConfigMenu(
         
         val searchIntSrc = remember { MutableInteractionSource() }
         val searchBarModifier = if (isLiquidGlassEnabled) {
-            // Liquid Glass Style for Favorites Search
             val glassBrush = if (isDarkTextEnabled) {
                 Brush.linearGradient(
                     colors = listOf(
@@ -1024,7 +1008,6 @@ fun FavoritesConfigMenu(
                 .background(glassBrush, RoundedCornerShape(12.dp))
                 .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
         } else {
-            // Standard Style
             Modifier.background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
         }
 
@@ -1244,7 +1227,6 @@ fun ClockHeader(
     val clockBounds = remember { mutableStateOf<Rect?>(null) }
     val calendarBounds = remember { mutableStateOf<Rect?>(null) }
 
-    // Identifizieren der Pakete für die Return-Animation
     var clockPackage by remember { mutableStateOf<String?>(null) }
     var calendarPackage by remember { mutableStateOf<String?>(null) }
 
@@ -1386,7 +1368,7 @@ fun ClockHeader(
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcDate)
                 .clickable(
-                    interactionSource = intSrcDate,
+                    interactionSource = intSrcTime,
                     indication = null
                 ) {
                     val pm = context.packageManager
@@ -1431,5 +1413,3 @@ fun ClockHeader(
         )
     }
 }
-
-
