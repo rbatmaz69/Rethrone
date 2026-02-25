@@ -159,43 +159,23 @@ fun BottomSearch(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp) // Floating effect (Abstand zum Rand/Tastatur)
-                    .then(searchContainerModifier)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* Consume clicks on bar */ }
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(16.dp), // Abstand zum Rand/Tastatur
+                verticalArrangement = Arrangement.spacedBy(16.dp) // Abstand zwischen Ergebnis-Blase und Suchfeld-Blase
             ) {
-                // Search Results List (only if query is not empty)
+                // Search Results Bubble (only if query is not empty)
                 if (query.isNotEmpty()) {
-                    LazyColumn(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 240.dp), // Limit height
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        reverseLayout = true, // Show best matches at the bottom
-                        contentPadding = PaddingValues(bottom = 8.dp)
+                            .then(searchContainerModifier) // Gleiches Design wie Suchfeld
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        // Web Search Option
-                        item {
-                             WebSearchItem(
-                                 query = query,
-                                 mainTextColor = mainTextColor,
-                                 isLiquidGlass = isLiquidGlassEnabled,
-                                 isDarkText = isDarkTextEnabled,
-                                 onClick = {
-                                     val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-                                         putExtra(SearchManager.QUERY, query)
-                                     }
-                                     if (intent.resolveActivity(context.packageManager) != null) {
-                                         context.startActivity(intent)
-                                         onClose()
-                                     }
-                                 }
-                             )
-                        }
+                        // App Results (Max 3, no scroll)
+                        // Reverse Layout simulieren: Liste umdrehen, damit Top-Treffer unten ist (näher am Finger)
+                        val reversedApps = filteredApps.reversed()
 
-                        // App Results
-                        items(filteredApps) { app ->
+                        reversedApps.forEach { app ->
                             AppSearchItem(
                                 app = app,
                                 mainTextColor = mainTextColor,
@@ -203,23 +183,47 @@ fun BottomSearch(
                                 onClick = { onAppLaunch(app) }
                             )
                         }
-                    }
 
-                    // Divider
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(
-                                color = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f)
-                            )
-                    )
+                        // Divider (nur wenn Apps da sind)
+                        if (reversedApps.isNotEmpty()) {
+                             Box(
+                                 modifier = Modifier
+                                     .fillMaxWidth()
+                                     .padding(vertical = 4.dp)
+                                     .height(1.dp)
+                                     .background(
+                                         color = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f)
+                                     )
+                             )
+                        }
+
+                        // Web Search Option (ganz unten in der Ergebnis-Liste)
+                         WebSearchItem(
+                             query = query,
+                             mainTextColor = mainTextColor,
+                             isLiquidGlass = isLiquidGlassEnabled,
+                             isDarkText = isDarkTextEnabled,
+                             onClick = {
+                                 val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+                                     putExtra(SearchManager.QUERY, query)
+                                 }
+                                 if (intent.resolveActivity(context.packageManager) != null) {
+                                     context.startActivity(intent)
+                                     onClose()
+                                 }
+                             }
+                         )
+                    }
                 }
 
-                // Search Input Field Row
+                // Search Input Bubble
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(searchContainerModifier) // Gleiches Design wie oben
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* Consume clicks */ }
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
