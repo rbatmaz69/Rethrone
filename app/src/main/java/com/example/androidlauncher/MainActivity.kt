@@ -1,6 +1,7 @@
 package com.example.androidlauncher
 
 import com.example.androidlauncher.ui.InfoDialog
+import com.example.androidlauncher.ui.BottomSearch
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.WallpaperManager
@@ -161,6 +162,7 @@ class MainActivity : ComponentActivity() {
                 var returnIconPackage by remember { mutableStateOf<String?>(null) }
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
+                var isSearchOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
@@ -233,6 +235,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(isDrawerOpen) {
                     if (isDrawerOpen) {
                         isSettingsOpen = false
+                        isSearchOpen = false
                         isFavoritesConfigOpen = false
                         isColorConfigOpen = false
                         isSizeConfigOpen = false
@@ -241,13 +244,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isInfoOpen, selectedFolderForConfig) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null) {
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
+                    else if (isSearchOpen) isSearchOpen = false
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
@@ -303,6 +307,7 @@ class MainActivity : ComponentActivity() {
                                 favorites = favorites,
                                 isSettingsOpen = isSettingsOpen,
                                 onOpenDrawer = { isDrawerOpen = true },
+                                onOpenSearch = { isSearchOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
@@ -419,6 +424,24 @@ class MainActivity : ComponentActivity() {
                                 onClose = { isInfoOpen = false }
                             )
                         }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isSearchOpen,
+                        enter = fadeIn(animationSpec = tween(200)),
+                        exit = fadeOut(animationSpec = tween(200))
+                    ) {
+                        BottomSearch(
+                            apps = allApps,
+                            onClose = { isSearchOpen = false },
+                            onAppLaunch = { app ->
+                                isSearchOpen = false
+                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                if (intent != null) {
+                                    launchAppNoTransition(context, intent)
+                                }
+                            }
+                        )
                     }
 
                     activeReturnAnimation?.let { animation ->
@@ -559,6 +582,7 @@ fun HomeScreen(
     favorites: List<AppInfo>,
     isSettingsOpen: Boolean,
     onOpenDrawer: () -> Unit,
+    onOpenSearch: () -> Unit,
     onToggleSettings: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
@@ -709,6 +733,7 @@ fun HomeScreen(
 
             Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
                 val intSrc = remember { MutableInteractionSource() }
+                val searchIntSrc = remember { MutableInteractionSource() }
 
                 val buttonModifier = if (isLiquidGlassEnabled) {
                     // Liquid/Glass Style für den Button
@@ -757,28 +782,62 @@ fun HomeScreen(
                         .then(if (isSettingsOpen) Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)), CircleShape) else Modifier)
                 }
 
-                Box(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .size(settingsButtonSize)
-                        .then(buttonModifier)
-                        .clip(CircleShape)
-                        .bounceClick(intSrc)
-                        .clickable(
-                            interactionSource = intSrc,
-                            indication = null
-                        ) { onToggleSettings() },
-                    contentAlignment = Alignment.Center
+                // Spalte für Buttons (Search oben, Settings unten)
+                Column(
+                    modifier = Modifier.padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Specular Highlight entfernt
+                    // Search Button (nur sichtbar wenn Settings zu sind)
+                    AnimatedVisibility(
+                        visible = !isSettingsOpen,
+                        enter = fadeIn() + slideInVertically { it / 2 },
+                        exit = fadeOut() + slideOutVertically { it / 2 }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .then(buttonModifier)
+                                .clip(CircleShape)
+                                .bounceClick(searchIntSrc)
+                                .clickable(
+                                    interactionSource = searchIntSrc,
+                                    indication = null
+                                ) { onOpenSearch() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = mainTextColor,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
 
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
-                        Icon(
-                            imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
-                            contentDescription = null,
-                            tint = mainTextColor,
-                            modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
-                        )
+                    // Settings Button
+                    Box(
+                        modifier = Modifier
+                            .size(settingsButtonSize)
+                            .then(buttonModifier)
+                            .clip(CircleShape)
+                            .bounceClick(intSrc)
+                            .clickable(
+                                interactionSource = intSrc,
+                                indication = null
+                            ) { onToggleSettings() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Specular Highlight entfernt
+
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
+                            Icon(
+                                imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
+                                contentDescription = null,
+                                tint = mainTextColor,
+                                modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
+                            )
+                        }
                     }
                 }
             }
