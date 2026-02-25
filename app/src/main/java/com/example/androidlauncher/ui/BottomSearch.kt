@@ -115,7 +115,7 @@ fun BottomSearch(
 
     // Filter apps based on query
     val filteredApps = remember(query, apps) {
-        LauncherLogic.filterAppsByRelevance(apps, query)
+        LauncherLogic.filterAppsByRelevance(apps, query).take(3)
     }
 
     // Handle back press
