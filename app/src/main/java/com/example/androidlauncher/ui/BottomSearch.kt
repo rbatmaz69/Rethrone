@@ -2,10 +2,12 @@ package com.example.androidlauncher.ui
 
 import android.content.Intent
 import android.app.SearchManager
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -180,8 +182,8 @@ fun BottomSearch(
                             key(app.packageName) { // Key ist wichtig damit Compose weiß was animiert werden soll
                                 AnimatedVisibility(
                                     visible = true,
-                                    enter = expandVertically() + fadeIn(),
-                                    exit = shrinkVertically() + fadeOut()
+                                    enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(animationSpec = tween(300)),
+                                    exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut(animationSpec = tween(300))
                                 ) {
                                     AppSearchItem(
                                         app = app,
@@ -218,12 +220,25 @@ fun BottomSearch(
                              isLiquidGlass = isLiquidGlassEnabled,
                              isDarkText = isDarkTextEnabled,
                              onClick = {
-                                 val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-                                     putExtra(SearchManager.QUERY, query)
+                                 val finalUrl = if (query.startsWith("http") || query.contains(".")) {
+                                     if (!query.startsWith("http")) "https://$query" else query
+                                 } else {
+                                     "https://www.google.com/search?q=$query"
                                  }
-                                 if (intent.resolveActivity(context.packageManager) != null) {
+
+                                 try {
+                                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+                                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                      context.startActivity(intent)
                                      onClose()
+                                 } catch (_: Exception) {
+                                     val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+                                         putExtra(SearchManager.QUERY, query)
+                                     }
+                                     if (intent.resolveActivity(context.packageManager) != null) {
+                                         context.startActivity(intent)
+                                         onClose()
+                                     }
                                  }
                              }
                          )
@@ -274,12 +289,26 @@ fun BottomSearch(
                                 onSearch = {
                                     // Immer Websuche bei Enter/Suche auf der Tastatur
                                     if (query.isNotEmpty()) {
-                                         val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-                                             putExtra(SearchManager.QUERY, query)
+                                         val finalUrl = if (query.startsWith("http") || query.contains(".")) {
+                                             if (!query.startsWith("http")) "https://$query" else query
+                                         } else {
+                                             "https://www.google.com/search?q=$query"
                                          }
-                                         if (intent.resolveActivity(context.packageManager) != null) {
+
+                                         try {
+                                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+                                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                              context.startActivity(intent)
                                              onClose()
+} catch (_: Exception) {
+                                             // Fallback to normal search if something goes wrong
+                                             val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+                                                 putExtra(SearchManager.QUERY, query)
+                                             }
+                                             if (intent.resolveActivity(context.packageManager) != null) {
+                                                 context.startActivity(intent)
+                                                 onClose()
+                                             }
                                          }
                                     }
                                 }
