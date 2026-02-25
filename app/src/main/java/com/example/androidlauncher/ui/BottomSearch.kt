@@ -4,14 +4,14 @@ import android.content.Intent
 import android.app.SearchManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -168,6 +168,7 @@ fun BottomSearch(
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(searchContainerModifier) // Gleiches Design wie Suchfeld
+                            .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) // Smoothe Größenänderung des Containers
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -176,16 +177,29 @@ fun BottomSearch(
                         val reversedApps = filteredApps.reversed()
 
                         reversedApps.forEach { app ->
-                            AppSearchItem(
-                                app = app,
-                                mainTextColor = mainTextColor,
-                                fontSizeScale = fontSize.scale,
-                                onClick = { onAppLaunch(app) }
-                            )
+                            key(app.packageName) { // Key ist wichtig damit Compose weiß was animiert werden soll
+                                AnimatedVisibility(
+                                    visible = true,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    AppSearchItem(
+                                        app = app,
+                                        mainTextColor = mainTextColor,
+                                        fontSizeScale = fontSize.scale,
+                                        onClick = { onAppLaunch(app) }
+                                    )
+                                }
+                            }
                         }
 
                         // Divider (nur wenn Apps da sind)
-                        if (reversedApps.isNotEmpty()) {
+                        // Auch diesen animieren wir rein/raus
+                        AnimatedVisibility(
+                            visible = reversedApps.isNotEmpty(),
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
                              Box(
                                  modifier = Modifier
                                      .fillMaxWidth()
