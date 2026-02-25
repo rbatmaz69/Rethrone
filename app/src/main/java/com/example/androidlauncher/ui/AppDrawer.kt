@@ -355,7 +355,8 @@ fun AppDrawer(
                                             }
                                             TextButton(onClick = {
                                                 if (folderNameInput.isNotBlank()) {
-                                                    onUpdateFolders(LauncherLogic.createFolder(folders, folderNameInput))
+                                                    val newFolder = LauncherLogic.createNewFolder(folderNameInput)
+                                                    onOpenFolderConfig(newFolder)
                                                     folderNameInput = ""
                                                     isCreateFolderDialogOpen = false
                                                 }

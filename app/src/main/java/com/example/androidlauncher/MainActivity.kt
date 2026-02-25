@@ -350,8 +350,25 @@ class MainActivity : ComponentActivity() {
                                      folder = folder,
                                      allApps = allApps,
                                      onConfirm = { updatedFolder ->
-                                         val newFolders = folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                         // Check if the folder already exists in our list
+                                         val folderExists = folders.any { it.id == updatedFolder.id }
+                                         
+                                         // Determine the new folder list based on whether it's an update or a new folder
+                                         val newFolders = if (folderExists) {
+                                             // Update existing folder
+                                             folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                         } else if (updatedFolder.appPackageNames.isNotEmpty()) {
+                                             // Create new folder only if at least one app is selected
+                                             folders + updatedFolder
+                                         } else {
+                                             // If it's a new folder but empty, don't add it (Minimalist approach)
+                                             folders
+                                         }
+                                         
+                                         // Save the updated folder list to persistent storage
                                          scope.launch { folderManager.saveFolders(newFolders) }
+                                         
+                                         // Close the configuration menu
                                          selectedFolderForConfig = null
                                      },
                                      onDelete = { folderId ->
