@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -32,6 +33,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -45,6 +47,7 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BottomSearch(
     apps: List<AppInfo>,
@@ -61,8 +64,6 @@ fun BottomSearch(
 
     // Theme-Konfiguration für die schwebende Leiste
     val searchContainerModifier = if (isDarkTextEnabled) {
-        // "Dark Mode" (Schrift Schwarz): Gleicher Hintergrund wie AppContextMenu (fast undurchsichtig, Pastell/Hell)
-        // Wir nutzen hier themedLightBackground Logik analog zu AppContextMenu, falls verfügbar, oder drawerBackground
         val primary = colorTheme.primary
         val themedLightBackground = Color(
             red = primary.red * 0.90f + 0.10f,
@@ -87,7 +88,6 @@ fun BottomSearch(
             Modifier.background(menuBgColor, RoundedCornerShape(28.dp))
         }
     } else if (isLiquidGlassEnabled) {
-        // "Light Mode" (Schrift Weiß) & Liquid Glass (Bleibt wie vorher, passend zum Button)
         val glassBrush = Brush.linearGradient(
             colors = listOf(
                 Color.White.copy(alpha = 0.15f),
@@ -108,49 +108,40 @@ fun BottomSearch(
             .background(glassBrush, RoundedCornerShape(28.dp))
             .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
     } else {
-        // "Light Mode" (Schrift Weiß) & Standard (Bleibt wie vorher)
         Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
     }
 
     var query by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 
-    // Filter apps based on query
     val filteredApps = remember(query, apps) {
         LauncherLogic.filterAppsByRelevance(apps, query).take(3)
     }
 
-    // Handle back press
+    // Standard BackHandler
     BackHandler {
         onClose()
     }
 
-    // Auto-focus the search field
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
 
-    // Overlay-Hintergrund anpassen
     val overlayColor = if (isDarkTextEnabled) {
-        // "Dark Mode" (Schrift Schwarz): Weißes Milchglas-Dimming
         Color.White.copy(alpha = 0.55f)
     } else {
-        // "Light Mode" (Schrift Weiß): Stärkeres Abdunkeln des Hintergrunds, damit weiße Schrift lesbar bleibt
         Color.Black.copy(alpha = 0.65f)
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(overlayColor) // Angepasster Dim-Hintergrund
+            .background(overlayColor)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                  onClose()
             }
             .windowInsetsPadding(WindowInsets.statusBars)
     ) {
-        // Floating Container logic
-        // Wir nutzen eine Box am unteren Bildschirmrand, die durch IME nach oben geschoben wird.
-        // Darin befindet sich unsere "Floating Search Bar" mit etwas Padding.
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -161,25 +152,22 @@ fun BottomSearch(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp), // Abstand zum Rand/Tastatur
-                verticalArrangement = Arrangement.spacedBy(16.dp) // Abstand zwischen Ergebnis-Blase und Suchfeld-Blase
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Search Results Bubble (only if query is not empty)
                 if (query.isNotEmpty()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(searchContainerModifier) // Gleiches Design wie Suchfeld
-                            .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) // Smoothe Größenänderung des Containers
+                            .then(searchContainerModifier)
+                            .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        // App Results (Max 3, no scroll)
-                        // Reverse Layout simulieren: Liste umdrehen, damit Top-Treffer unten ist (näher am Finger)
                         val reversedApps = filteredApps.reversed()
 
                         reversedApps.forEach { app ->
-                            key(app.packageName) { // Key ist wichtig damit Compose weiß was animiert werden soll
+                            key(app.packageName) {
                                 AnimatedVisibility(
                                     visible = true,
                                     enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(animationSpec = tween(300)),
@@ -195,8 +183,6 @@ fun BottomSearch(
                             }
                         }
 
-                        // Divider (nur wenn Apps da sind)
-                        // Auch diesen animieren wir rein/raus
                         AnimatedVisibility(
                             visible = reversedApps.isNotEmpty(),
                             enter = expandVertically() + fadeIn(),
@@ -213,7 +199,6 @@ fun BottomSearch(
                              )
                         }
 
-                        // Web Search Option (ganz unten in der Ergebnis-Liste)
                          WebSearchItem(
                              query = query,
                              mainTextColor = mainTextColor,
@@ -250,7 +235,7 @@ fun BottomSearch(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .then(searchContainerModifier) // Gleiches Design wie oben
+                        .then(searchContainerModifier)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* Consume clicks */ }
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
@@ -277,7 +262,17 @@ fun BottomSearch(
                             onValueChange = { query = it },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .focusRequester(focusRequester),
+                                .focusRequester(focusRequester)
+                                // Abfangen des Zurück-Events, BEVOR die Tastatur es konsumiert.
+                                // Dadurch schließt ein einziger Swipe/Klick das gesamte Menü.
+                                .onPreInterceptKeyBeforeSoftKeyboard { event ->
+                                    if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
+                                        onClose()
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
                             textStyle = LocalTextStyle.current.copy(
                                 color = mainTextColor,
                                 fontSize = 18.sp
@@ -287,7 +282,6 @@ fun BottomSearch(
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(
                                 onSearch = {
-                                    // Immer Websuche bei Enter/Suche auf der Tastatur
                                     if (query.isNotEmpty()) {
                                          val finalUrl = if (query.startsWith("http") || query.contains(".")) {
                                              if (!query.startsWith("http")) "https://$query" else query
@@ -300,8 +294,7 @@ fun BottomSearch(
                                              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                              context.startActivity(intent)
                                              onClose()
-} catch (_: Exception) {
-                                             // Fallback to normal search if something goes wrong
+                                         } catch (_: Exception) {
                                              val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
                                                  putExtra(SearchManager.QUERY, query)
                                              }
@@ -424,4 +417,3 @@ fun WebSearchItem(
         }
     }
 }
-
