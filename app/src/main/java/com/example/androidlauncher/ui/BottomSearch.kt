@@ -258,9 +258,8 @@ fun BottomSearch(
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(
                                 onSearch = {
-                                    if (filteredApps.isNotEmpty()) {
-                                        onAppLaunch(filteredApps.first())
-                                    } else if (query.isNotEmpty()) {
+                                    // Immer Websuche bei Enter/Suche auf der Tastatur
+                                    if (query.isNotEmpty()) {
                                          val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
                                              putExtra(SearchManager.QUERY, query)
                                          }
