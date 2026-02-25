@@ -4,8 +4,9 @@ import android.content.Intent
 import android.app.SearchManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -18,12 +19,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +40,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
 @Composable
 fun BottomSearch(
@@ -47,14 +51,56 @@ fun BottomSearch(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontSize = LocalFontSize.current
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    // Slightly transparent background for the search sheet
-    val backgroundColor = if (isDarkTextEnabled) {
-        Color.White.copy(alpha = 0.95f)
+
+    // Theme-Konfiguration für die schwebende Leiste
+    val searchContainerModifier = if (isLiquidGlassEnabled) {
+        val glassBrush = if (isDarkTextEnabled) {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.95f),
+                    Color.White.copy(alpha = 0.85f)
+                )
+            )
+        } else {
+             Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFF202020).copy(alpha = 0.95f),
+                    Color(0xFF101010).copy(alpha = 0.95f)
+                )
+            )
+        }
+
+        val borderBrush = if (isDarkTextEnabled) {
+             Brush.linearGradient(
+                colors = listOf(
+                    Color.Black.copy(alpha = 0.1f),
+                    Color.Black.copy(alpha = 0.05f)
+                )
+            )
+        } else {
+             Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.15f),
+                    Color.White.copy(alpha = 0.05f)
+                )
+            )
+        }
+
+        Modifier
+            .background(glassBrush, RoundedCornerShape(28.dp))
+            .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(28.dp))
     } else {
-        Color(0xFF121212).copy(alpha = 0.95f)
+        // Flat Theme - clean solid background
+        val flatBg = if (isDarkTextEnabled) {
+            Color.White
+        } else {
+            Color(0xFF1E1E1E)
+        }
+        Modifier.background(flatBg, RoundedCornerShape(28.dp))
     }
 
     var query by remember { mutableStateOf("") }
@@ -78,115 +124,150 @@ fun BottomSearch(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)) // Dim background
+            .background(Color.Black.copy(alpha = 0.4f)) // Dim background
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                  onClose()
             }
+            .windowInsetsPadding(WindowInsets.statusBars)
     ) {
-        // Content container that aligns to bottom and handles IME padding
-        Column(
+        // Floating Container logic
+        // Wir nutzen eine Box am unteren Bildschirmrand, die durch IME nach oben geschoben wird.
+        // Darin befindet sich unsere "Floating Search Bar" mit etwas Padding.
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.ime) // Move up with keyboard
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* Consume clicks */ }
-                .background(
-                    color = backgroundColor,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                )
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .windowInsetsPadding(WindowInsets.ime)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* Consume clicks outside */ }
         ) {
-            // Search Results List (only if query is not empty)
-            if (query.isNotEmpty()) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 240.dp), // Limit height
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    reverseLayout = true // Show best matches at the bottom, closer to the thumb
-                ) {
-                    // Web Search Option (Always visible when querying)
-                    item {
-                         WebSearchItem(
-                             query = query,
-                             mainTextColor = mainTextColor,
-                             onClick = {
-                                 val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-                                     putExtra(SearchManager.QUERY, query)
-                                 }
-                                 if (intent.resolveActivity(context.packageManager) != null) {
-                                     context.startActivity(intent)
-                                     onClose()
-                                 }
-                             }
-                         )
-                    }
-
-                    // App Results
-                    items(filteredApps) { app ->
-                        AppSearchItem(
-                            app = app,
-                            mainTextColor = mainTextColor,
-                            fontSizeScale = fontSize.scale,
-                            onClick = { onAppLaunch(app) }
-                        )
-                    }
-                }
-            }
-
-            // Search Input Field
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .background(
-                        color = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.1f),
-                        shape = CircleShape
-                    )
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart
+                    .padding(16.dp) // Floating effect (Abstand zum Rand/Tastatur)
+                    .then(searchContainerModifier)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* Consume clicks on bar */ }
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (query.isEmpty()) {
-                    Text(
-                        text = "Search apps and web...",
-                        color = mainTextColor.copy(alpha = 0.5f),
-                        fontSize = 16.sp
+                // Search Results List (only if query is not empty)
+                if (query.isNotEmpty()) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 240.dp), // Limit height
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        reverseLayout = true, // Show best matches at the bottom
+                        contentPadding = PaddingValues(bottom = 8.dp)
+                    ) {
+                        // Web Search Option
+                        item {
+                             WebSearchItem(
+                                 query = query,
+                                 mainTextColor = mainTextColor,
+                                 isLiquidGlass = isLiquidGlassEnabled,
+                                 isDarkText = isDarkTextEnabled,
+                                 onClick = {
+                                     val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+                                         putExtra(SearchManager.QUERY, query)
+                                     }
+                                     if (intent.resolveActivity(context.packageManager) != null) {
+                                         context.startActivity(intent)
+                                         onClose()
+                                     }
+                                 }
+                             )
+                        }
+
+                        // App Results
+                        items(filteredApps) { app ->
+                            AppSearchItem(
+                                app = app,
+                                mainTextColor = mainTextColor,
+                                fontSizeScale = fontSize.scale,
+                                onClick = { onAppLaunch(app) }
+                            )
+                        }
+                    }
+
+                    // Divider
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(
+                                color = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f)
+                            )
                     )
                 }
 
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester),
-                    textStyle = LocalTextStyle.current.copy(
-                        color = mainTextColor,
-                        fontSize = 18.sp
-                    ),
-                    singleLine = true,
-                    cursorBrush = SolidColor(colorTheme.primary),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = {
-                            if (filteredApps.isNotEmpty()) {
-                                onAppLaunch(filteredApps.first())
-                            } else if (query.isNotEmpty()) {
-                                 val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-                                     putExtra(SearchManager.QUERY, query)
-                                 }
-                                 if (intent.resolveActivity(context.packageManager) != null) {
-                                     context.startActivity(intent)
-                                     onClose()
-                                 }
-                            }
-                        }
+                // Search Input Field Row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = mainTextColor.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp)
                     )
-                )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (query.isEmpty()) {
+                            Text(
+                                text = "Search...",
+                                color = mainTextColor.copy(alpha = 0.4f),
+                                fontSize = 18.sp
+                            )
+                        }
+
+                        BasicTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                            textStyle = LocalTextStyle.current.copy(
+                                color = mainTextColor,
+                                fontSize = 18.sp
+                            ),
+                            singleLine = true,
+                            cursorBrush = SolidColor(if (isLiquidGlassEnabled && !isDarkTextEnabled) Color.White else colorTheme.primary),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(
+                                onSearch = {
+                                    if (filteredApps.isNotEmpty()) {
+                                        onAppLaunch(filteredApps.first())
+                                    } else if (query.isNotEmpty()) {
+                                         val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+                                             putExtra(SearchManager.QUERY, query)
+                                         }
+                                         if (intent.resolveActivity(context.packageManager) != null) {
+                                             context.startActivity(intent)
+                                             onClose()
+                                         }
+                                    }
+                                }
+                            )
+                        )
+                    }
+
+                    if (query.isNotEmpty()) {
+                        IconButton(
+                            onClick = { query = "" },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                tint = mainTextColor.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
             }
-            // Add a little bottom spacer for visual balance
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -201,11 +282,14 @@ fun AppSearchItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onClick() }
+            .padding(vertical = 10.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(40.dp)) {
+        Box(modifier = Modifier.size(36.dp)) {
             AppIconView(app = app)
         }
         Spacer(modifier = Modifier.width(16.dp))
@@ -223,32 +307,55 @@ fun AppSearchItem(
 fun WebSearchItem(
     query: String,
     mainTextColor: Color,
+    isLiquidGlass: Boolean,
+    isDarkText: Boolean,
     onClick: () -> Unit
 ) {
+    val backgroundModifier = if (isLiquidGlass) {
+        Modifier.background(
+            color = if (isDarkText) Color.Black.copy(alpha = 0.03f) else Color.White.copy(alpha = 0.05f),
+            shape = RoundedCornerShape(12.dp)
+        )
+    } else {
+        Modifier
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .then(backgroundModifier)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onClick() }
+            .padding(vertical = 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = null,
-            tint = mainTextColor.copy(alpha = 0.7f),
-            modifier = Modifier.size(24.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(mainTextColor.copy(alpha = 0.1f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = mainTextColor.copy(alpha = 0.8f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(
                 text = "Search Web",
-                color = mainTextColor.copy(alpha = 0.7f),
-                fontSize = 12.sp
+                color = mainTextColor.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
             )
             Text(
                 text = query,
                 color = mainTextColor,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
