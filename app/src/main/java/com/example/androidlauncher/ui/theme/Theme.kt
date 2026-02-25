@@ -1,34 +1,48 @@
 package com.example.androidlauncher.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
 
-val LocalColorTheme = staticCompositionLocalOf { ColorTheme.LAUNCHER }
+/**
+ * CompositionLocals for passing theme configuration down the widget tree.
+ * Avoids prop drilling for commonly used style properties.
+ */
+val LocalColorTheme = staticCompositionLocalOf { ColorTheme.SIGNATURE }
 val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
+/**
+ * CompositionLocal for the "Liquid Glass" visual effect.
+ */
+val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
+
+private val DarkColorScheme = darkColorScheme(
+    primary = ColorTheme.SIGNATURE.primary,
+    secondary = ColorTheme.SIGNATURE.secondary,
+    tertiary = ColorTheme.SIGNATURE.tertiary,
+    background = ColorTheme.SIGNATURE.lightBackground,
+    surface = ColorTheme.SIGNATURE.lightBackground.copy(alpha = 0.8f)
+)
 
 @Composable
 fun AndroidLauncherTheme(
-    colorTheme: ColorTheme = ColorTheme.LAUNCHER,
+    colorTheme: ColorTheme = ColorTheme.SIGNATURE,
     fontSize: FontSize = FontSize.STANDARD,
     iconSize: IconSize = IconSize.STANDARD,
     darkTextEnabled: Boolean = false,
     showFavoriteLabels: Boolean = false,
+    liquidGlassEnabled: Boolean = true,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -39,12 +53,14 @@ fun AndroidLauncherTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         else -> {
+            val backgroundColor = if (darkTextEnabled) colorTheme.lightBackground else colorTheme.drawerBackground
+
             darkColorScheme(
                 primary = colorTheme.primary,
                 secondary = colorTheme.secondary,
                 tertiary = colorTheme.tertiary,
-                background = colorTheme.drawerBackground,
-                surface = colorTheme.drawerBackground.copy(alpha = 0.8f)
+                background = backgroundColor,
+                surface = backgroundColor.copy(alpha = 0.8f)
             )
         }
     }
@@ -54,7 +70,8 @@ fun AndroidLauncherTheme(
         LocalFontSize provides fontSize,
         LocalIconSize provides iconSize,
         LocalDarkTextEnabled provides darkTextEnabled,
-        LocalShowFavoriteLabels provides showFavoriteLabels
+        LocalShowFavoriteLabels provides showFavoriteLabels,
+        LocalLiquidGlassEnabled provides liquidGlassEnabled
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

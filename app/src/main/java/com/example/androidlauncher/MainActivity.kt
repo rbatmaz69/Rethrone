@@ -1,5 +1,7 @@
 package com.example.androidlauncher
 
+import com.example.androidlauncher.ui.InfoDialog
+import com.example.androidlauncher.ui.BottomSearch
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.WallpaperManager
@@ -9,7 +11,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.AdaptiveIconDrawable
-import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -46,7 +47,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
@@ -56,8 +56,6 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -67,15 +65,13 @@ import androidx.core.content.edit
 import androidx.core.graphics.applyCanvas
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
-import com.composables.icons.lucide.ALargeSmall
-import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Type
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalShowFavoriteLabels
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
@@ -91,8 +87,6 @@ import com.example.androidlauncher.ui.bounceClick
 import com.example.androidlauncher.ui.FolderConfigMenu
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
-import com.example.androidlauncher.LaunchSource
-import com.example.androidlauncher.ReturnAnimation
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import java.text.SimpleDateFormat
@@ -106,6 +100,10 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
 
+/**
+ * The main activity of the launcher.
+ * Acts as the entry point and holds the top-level state and navigation logic.
+ */
 class MainActivity : ComponentActivity() {
     private lateinit var backCallback: OnBackPressedCallback
 
@@ -113,8 +111,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Exclude the launcher itself from the "Recent Apps" list
         intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
 
+        // Handle Back button: Do nothing (default launcher behavior)
         backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
         }
@@ -124,15 +124,20 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
+            // Initialize data managers
             val themeManager = remember { ThemeManager(context) }
             val folderManager = remember { FolderManager(context) }
 
-            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.LAUNCHER)
+            // Observe settings as State
+            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SIGNATURE)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
+            val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
+
+            val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
 
             val scope = rememberCoroutineScope()
 
@@ -141,7 +146,8 @@ class MainActivity : ComponentActivity() {
                 fontSize = currentFontSize,
                 iconSize = currentIconSize,
                 darkTextEnabled = isDarkTextEnabled,
-                showFavoriteLabels = showFavoriteLabels
+                showFavoriteLabels = showFavoriteLabels,
+                liquidGlassEnabled = isLiquidGlassEnabled
             ) {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
@@ -150,9 +156,11 @@ class MainActivity : ComponentActivity() {
                 var returnIconPackage by remember { mutableStateOf<String?>(null) }
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
+                var isSearchOpen by remember { mutableStateOf(false) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
+                var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
 
                 DisposableEffect(lifecycleOwner) {
@@ -165,6 +173,7 @@ class MainActivity : ComponentActivity() {
                                     isFavoritesConfigOpen = false
                                     isColorConfigOpen = false
                                     isSizeConfigOpen = false
+                                    isInfoOpen = false
                                     selectedFolderForConfig = null
                                 }
                                 activeReturnAnimation = it
@@ -220,24 +229,28 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(isDrawerOpen) {
                     if (isDrawerOpen) {
                         isSettingsOpen = false
+                        isSearchOpen = false
                         isFavoritesConfigOpen = false
                         isColorConfigOpen = false
                         isSizeConfigOpen = false
+                        isInfoOpen = false
                         selectedFolderForConfig = null
                     }
                 }
 
-                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, selectedFolderForConfig) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || selectedFolderForConfig != null) {
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
+                    else if (isSearchOpen) isSearchOpen = false
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
+                    else if (isInfoOpen) isInfoOpen = false
                 }
 
                 Box(
@@ -287,11 +300,14 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 favorites = favorites,
                                 isSettingsOpen = isSettingsOpen,
+                                isSearchOpen = isSearchOpen,
                                 onOpenDrawer = { isDrawerOpen = true },
+                                onOpenSearch = { isSearchOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
+                                onOpenInfo = { isInfoOpen = true },
                                 onAppLaunchForReturn = { pkg, bounds ->
                                     pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.HOME, pkg)
                                 },
@@ -305,7 +321,7 @@ class MainActivity : ComponentActivity() {
                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                        Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                             FavoritesConfigMenu(
                                 apps = allApps,
                                 initialFavoritePackages = favoritePackages,
@@ -329,13 +345,31 @@ class MainActivity : ComponentActivity() {
                          exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                      ) {
                          selectedFolderForConfig?.let { folder ->
-                             Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                             Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                                  FolderConfigMenu(
                                      folder = folder,
                                      allApps = allApps,
+                                     allFolders = folders, // Pass all folders for duplicate check
                                      onConfirm = { updatedFolder ->
-                                         val newFolders = folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                         // Check if the folder already exists in our list
+                                         val folderExists = folders.any { it.id == updatedFolder.id }
+                                         
+                                         // Determine the new folder list based on whether it's an update or a new folder
+                                         val newFolders = if (folderExists) {
+                                             // Update existing folder
+                                             folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                         } else if (updatedFolder.appPackageNames.isNotEmpty()) {
+                                             // Create new folder only if at least one app is selected
+                                             folders + updatedFolder
+                                         } else {
+                                             // If it's a new folder but empty, don't add it (Minimalist approach)
+                                             folders
+                                         }
+                                         
+                                         // Save the updated folder list to persistent storage
                                          scope.launch { folderManager.saveFolders(newFolders) }
+                                         
+                                         // Close the configuration menu
                                          selectedFolderForConfig = null
                                      },
                                      onDelete = { folderId ->
@@ -354,7 +388,7 @@ class MainActivity : ComponentActivity() {
                          enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                          exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                      ) {
-                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                         Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                              ColorConfigMenu(
                                  selectedTheme = currentTheme,
                                  onThemeSelected = { theme ->
@@ -363,6 +397,10 @@ class MainActivity : ComponentActivity() {
                                  isDarkTextEnabled = isDarkTextEnabled,
                                  onDarkTextToggled = { enabled ->
                                      scope.launch { themeManager.setDarkTextEnabled(enabled) }
+                                 },
+                                 isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                 onLiquidGlassToggled = { enabled ->
+                                    scope.launch { themeManager.setLiquidGlassEnabled(enabled) }
                                  },
                                  onClose = { isColorConfigOpen = false }
                              )
@@ -374,7 +412,7 @@ class MainActivity : ComponentActivity() {
                          enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
                          exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
                      ) {
-                         Box(modifier = Modifier.fillMaxSize().background(currentTheme.drawerBackground)) {
+                         Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                              SizeConfigMenu(
                                  currentFontSize = currentFontSize,
                                  onFontSizeSelected = { size ->
@@ -389,11 +427,41 @@ class MainActivity : ComponentActivity() {
                          }
                      }
 
+                    AnimatedVisibility(
+                        visible = isInfoOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
+                            InfoDialog(
+                                onClose = { isInfoOpen = false }
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isSearchOpen,
+                        enter = fadeIn(animationSpec = tween(200)),
+                        exit = fadeOut(animationSpec = tween(200))
+                    ) {
+                        BottomSearch(
+                            apps = allApps,
+                            onClose = { isSearchOpen = false },
+                            onAppLaunch = { app ->
+                                isSearchOpen = false
+                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                if (intent != null) {
+                                    launchAppNoTransition(context, intent)
+                                }
+                            }
+                        )
+                    }
+
                     activeReturnAnimation?.let { animation ->
                         ReturnAnimationOverlay(
                             bounds = animation.bounds,
                             rootSize = rootSize,
-                            background = currentTheme.drawerBackground,
+                            background = menuBackgroundColor,
                             onFinished = { activeReturnAnimation = null },
                             targetScale = if (animation.source == LaunchSource.DRAWER) 0.65f else 0.7f
                         )
@@ -408,14 +476,80 @@ class MainActivity : ComponentActivity() {
         enforceExcludeFromRecents()
     }
 
+    /**
+     * Ensures the activity is excluded from recents programmatically.
+     */
     private fun enforceExcludeFromRecents() {
-        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-        am.appTasks?.forEach { task ->
-            val base = task.taskInfo.baseIntent.component
-            if (base != null && base.className == componentName.className) {
-                task.setExcludeFromRecents(true)
-            }
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val tasks = am.appTasks
+        if (!tasks.isNullOrEmpty()) {
+            tasks[0].setExcludeFromRecents(true)
         }
+    }
+
+    /**
+     * Gets a simple list of installed apps.
+     * Heavy lifting (icon loading) is done asynchronously later.
+     */
+    private suspend fun getAppListBasic(context: Context): List<AppInfo> {
+        val pm = context.packageManager
+        val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+        return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
+            AppInfo(
+                label = resolveInfo.loadLabel(pm).toString(),
+                packageName = resolveInfo.activityInfo.packageName
+            )
+        }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
+    }
+
+    private suspend fun loadSingleIcon(pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
+        val iconFile = File(cacheDir, "$packageName.png")
+        if (iconFile.exists()) {
+            try {
+                val b = BitmapFactory.decodeFile(iconFile.absolutePath)
+                if (b != null) {
+                    val ib = b.asImageBitmap()
+                    ib.prepareToDraw()
+                    return ib
+                }
+            } catch (_: Exception) { }
+        }
+        return withContext(Dispatchers.IO) {
+            try {
+                val info = pm.getApplicationInfo(packageName, 0)
+                val icon = info.loadIcon(pm)
+                val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
+                    icon.foreground ?: icon
+                } else {
+                    icon
+                }
+
+                val b = createBitmap(144, 144)
+                b.applyCanvas {
+                    foregroundDrawable.setBounds(0, 0, 144, 144)
+                    foregroundDrawable.draw(this)
+                }
+
+                val ib = b.asImageBitmap()
+                ib.prepareToDraw()
+
+                FileOutputStream(iconFile).use { out ->
+                    b.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                ib
+            } catch (_: Exception) { null }
+        }
+    }
+
+    private fun getSavedFavorites(context: Context): List<String> {
+        val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
+        val favoritesString = prefs.getString("favorites_list", "") ?: ""
+        return if (favoritesString.isEmpty()) emptyList() else favoritesString.split(",")
+    }
+
+    private fun saveFavorites(context: Context, favorites: List<String>) {
+        val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
+        prefs.edit { putString("favorites_list", favorites.joinToString(",")) }
     }
 }
 
@@ -451,7 +585,8 @@ fun SystemWallpaperView() {
         wallpaperBitmap?.let {
             Image(bitmap = it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } ?: Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(colorTheme.primary, colorTheme.secondary))))
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)))
+        // Reduzierte Overlay-Deckkraft (von 0.4f auf 0.1f), damit der Hintergrund klarer erscheint
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.1f)))
     }
 }
 
@@ -459,11 +594,14 @@ fun SystemWallpaperView() {
 fun HomeScreen(
     favorites: List<AppInfo>,
     isSettingsOpen: Boolean,
+    isSearchOpen: Boolean,
     onOpenDrawer: () -> Unit,
+    onOpenSearch: () -> Unit,
     onToggleSettings: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
     onOpenSizeConfig: () -> Unit,
+    onOpenInfo: () -> Unit,
     onAppLaunchForReturn: (String, Rect?) -> Unit,
     returnIconPackage: String?
 ) {
@@ -472,6 +610,7 @@ fun HomeScreen(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val showLabels = LocalShowFavoriteLabels.current
     val fontSize = LocalFontSize.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     var launchRequest by remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -524,17 +663,63 @@ fun HomeScreen(
                 ) {
                     if (favorites.isEmpty()) {
                         val intSrc = remember { MutableInteractionSource() }
-                        Surface(
-                            color = mainTextColor.copy(alpha = 0.1f),
-                            shape = CircleShape,
-                            modifier = Modifier.size(56.dp).bounceClick(intSrc).clickable(
-                                interactionSource = intSrc,
-                                indication = null
-                            ) { onOpenFavoritesConfig() }
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
+
+                        val addBtnModifier = if (isLiquidGlassEnabled) {
+                            val glassBrush = if (isDarkTextEnabled) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.15f),
+                                        Color.Black.copy(alpha = 0.05f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.15f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
                             }
+
+                            val borderBrush = if (isDarkTextEnabled) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.8f),
+                                        Color.Black.copy(alpha = 0.3f)
+                                    )
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.6f),
+                                        Color.White.copy(alpha = 0.1f)
+                                    )
+                                )
+                            }
+                            Modifier
+                                .background(glassBrush, CircleShape)
+                                .border(BorderStroke(1.2.dp, borderBrush), CircleShape)
+                        } else {
+                            Modifier.background(mainTextColor.copy(alpha = 0.1f), CircleShape)
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .then(addBtnModifier)
+                                .clip(CircleShape)
+                                .bounceClick(intSrc)
+                                .clickable(
+                                    interactionSource = intSrc,
+                                    indication = null
+                                ) { onOpenFavoritesConfig() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
                         }
                     } else {
                         favorites.forEach { app ->
@@ -603,27 +788,139 @@ fun HomeScreen(
                 onOpenColorConfig = onOpenColorConfig,
                 onOpenSizeConfig = onOpenSizeConfig,
                 onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
-                onOpenInfo = { /* Action */ }
+                onOpenInfo = onOpenInfo
             )
 
             Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
                 val intSrc = remember { MutableInteractionSource() }
-                Surface(
-                    modifier = Modifier.padding(8.dp).size(settingsButtonSize).clip(CircleShape).bounceClick(intSrc).clickable(
-                        interactionSource = intSrc,
-                        indication = null
-                    ) { onToggleSettings() },
-                    color = mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f),
-                    shape = CircleShape,
-                    border = if (isSettingsOpen) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)) else null
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
-                        Icon(
-                            imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
-                            contentDescription = null,
-                            tint = mainTextColor,
-                            modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
+                val searchIntSrc = remember { MutableInteractionSource() }
+
+                val buttonModifier = if (isLiquidGlassEnabled) {
+                    // Liquid/Glass Style für den Button
+                    val glassBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.15f),
+                                Color.Black.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                         )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.15f),
+                                Color.White.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    }
+
+                    val borderBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.8f),
+                                Color.Black.copy(alpha = 0.3f)
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+                    Modifier
+                        .background(glassBrush, CircleShape)
+                        .border(BorderStroke(1.2.dp, borderBrush), CircleShape)
+                } else {
+                    // Standard Style (Original)
+                    Modifier
+                        .background(mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), CircleShape)
+                        .then(if (isSettingsOpen) Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)), CircleShape) else Modifier)
+                }
+
+                // Spalte für Buttons (Search oben, Settings unten)
+                Column(
+                    modifier = Modifier.padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Search Button (nur sichtbar wenn Settings zu sind)
+                    AnimatedVisibility(
+                        visible = !isSettingsOpen,
+                        enter = scaleIn(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            initialScale = 0.0f
+                        ) + fadeIn(animationSpec = tween(150)),
+                        exit = scaleOut(animationSpec = tween(150)) + fadeOut(animationSpec = tween(150))
+                    ) {
+                        // Animation für den Klick auf den Suchbutton (Rotation + Scale bei Aktivierung)
+                        val searchButtonScale by animateFloatAsState(
+                            targetValue = if (isSearchOpen) 0.8f else 1f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "SearchButtonScale"
+                        )
+                        val searchButtonRotation by animateFloatAsState(
+                            targetValue = if (isSearchOpen) 90f else 0f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "SearchButtonRotation"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = searchButtonScale
+                                    scaleY = searchButtonScale
+                                    rotationZ = searchButtonRotation
+                                }
+                                .size(56.dp)
+                                .then(buttonModifier)
+                                .clip(CircleShape)
+                                .bounceClick(searchIntSrc)
+                                .clickable(
+                                    interactionSource = searchIntSrc,
+                                    indication = null
+                                ) { onOpenSearch() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = mainTextColor,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+
+                    // Settings Button
+                    Box(
+                        modifier = Modifier
+                            .size(settingsButtonSize)
+                            .then(buttonModifier)
+                            .clip(CircleShape)
+                            .bounceClick(intSrc)
+                            .clickable(
+                                interactionSource = intSrc,
+                                indication = null
+                            ) { onToggleSettings() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Specular Highlight entfernt
+
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
+                            Icon(
+                                imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
+                                contentDescription = null,
+                                tint = mainTextColor,
+                                modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -711,9 +1008,7 @@ fun FavoritesConfigMenu(
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    
-    // Einheitliche Textfarbe für "App-Titel" (Grau wie im White Mode)
-    val labelTextColor = Color.White.copy(alpha = 0.6f)
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val grayTone = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
@@ -740,36 +1035,55 @@ fun FavoritesConfigMenu(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("App-Titel", color = labelTextColor, fontSize = 14.sp)
-            
-            // Toggle Logik: 
-            // White Mode: Kreis Schwarz, Symbole Weiß
-            // Dark Mode: Kreis Weiß, Symbole Schwarz
+            Text("App-Titel", color = grayTone, fontSize = 14.sp)
+
             val thumbColor = if (isDarkTextEnabled) Color.Black else Color.White
             val symbolColor = if (isDarkTextEnabled) Color.White else Color.Black
             
-            Switch(
-                checked = showFavoriteLabels,
-                onCheckedChange = onShowLabelsToggled,
-                colors = SwitchDefaults.colors(
+            val switchColors = if (isLiquidGlassEnabled) {
+                if (isDarkTextEnabled) {
+                    SwitchDefaults.colors(
+                        checkedTrackColor = Color.Black.copy(alpha = 0.15f),
+                        uncheckedTrackColor = Color.Black.copy(alpha = 0.05f),
+                        checkedThumbColor = thumbColor,
+                        uncheckedThumbColor = thumbColor,
+                        checkedBorderColor = Color.Black.copy(alpha = 0.2f),
+                        uncheckedBorderColor = Color.Black.copy(alpha = 0.2f)
+                    )
+                } else {
+                    SwitchDefaults.colors(
+                        checkedTrackColor = Color.White.copy(alpha = 0.25f),
+                        uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                        checkedThumbColor = thumbColor,
+                        uncheckedThumbColor = thumbColor,
+                        checkedBorderColor = Color.White.copy(alpha = 0.2f),
+                        uncheckedBorderColor = Color.White.copy(alpha = 0.15f)
+                    )
+                }
+            } else {
+                SwitchDefaults.colors(
                     checkedTrackColor = Color.White.copy(alpha = 0.2f),
                     uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                     checkedThumbColor = thumbColor,
                     uncheckedThumbColor = thumbColor,
                     checkedBorderColor = Color.White.copy(alpha = 0.1f),
                     uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
-                ),
+                )
+            }
+
+            Switch(
+                checked = showFavoriteLabels,
+                onCheckedChange = onShowLabelsToggled,
+                colors = switchColors,
                 thumbContent = {
                     Box(contentAlignment = Alignment.Center) {
                         if (showFavoriteLabels) {
-                            // Symbol für AN (I)
                             Box(
                                 modifier = Modifier
                                     .size(width = 1.5.dp, height = 12.dp)
                                     .background(symbolColor, RoundedCornerShape(0.5.dp))
                             )
                         } else {
-                            // Symbol für AUS (0)
                             Surface(
                                 modifier = Modifier.size(width = 8.dp, height = 12.dp),
                                 color = Color.Transparent,
@@ -785,7 +1099,51 @@ fun FavoritesConfigMenu(
         Spacer(modifier = Modifier.height(24.dp))
         
         val searchIntSrc = remember { MutableInteractionSource() }
-        Box(modifier = Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
+        val searchBarModifier = if (isLiquidGlassEnabled) {
+            val glassBrush = if (isDarkTextEnabled) {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.15f),
+                        Color.Black.copy(alpha = 0.05f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            } else {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.15f),
+                        Color.White.copy(alpha = 0.05f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            }
+
+            val borderBrush = if (isDarkTextEnabled) {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.8f),
+                        Color.Black.copy(alpha = 0.3f)
+                    )
+                )
+            } else {
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.6f),
+                        Color.White.copy(alpha = 0.1f)
+                    )
+                )
+            }
+
+            Modifier
+                .background(glassBrush, RoundedCornerShape(12.dp))
+                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+        } else {
+            Modifier.background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+        }
+
+        Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
             interactionSource = searchIntSrc,
             indication = null
         ) { focusRequester.requestFocus() }) {
@@ -811,7 +1169,51 @@ fun FavoritesConfigMenu(
                 item { Text(stringResource(R.string.order_label), color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(selectedPackages) { index, pkg ->
                     apps.find { it.packageName == pkg }?.let { app ->
-                        Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+
+                        val itemModifier = if (isLiquidGlassEnabled) {
+                            val glassBrush = if (isDarkTextEnabled) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.15f),
+                                        Color.Black.copy(alpha = 0.05f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.15f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                )
+                            }
+
+                            val borderBrush = if (isDarkTextEnabled) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.8f),
+                                        Color.Black.copy(alpha = 0.3f)
+                                    )
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.6f),
+                                        Color.White.copy(alpha = 0.1f)
+                                    )
+                                )
+                            }
+                            Modifier
+                                .background(glassBrush, RoundedCornerShape(12.dp))
+                                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                        } else {
+                            Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                        }
+
+                        Box(modifier = Modifier.fillMaxWidth().then(itemModifier)) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text("${index + 1}.", color = mainTextColor, fontSize = 14.sp, modifier = Modifier.width(24.dp))
                                 AppIconView(app)
@@ -833,7 +1235,53 @@ fun FavoritesConfigMenu(
             items(filteredApps) { app ->
                 val isFav = app.packageName in selectedPackages
                 val intSrc = remember { MutableInteractionSource() }
-                Surface(color = if (isFav) Color.White.copy(alpha = 0.05f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().bounceClick(intSrc).clickable(
+
+                val itemModifier = if (isFav && isLiquidGlassEnabled) {
+                    val glassBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.15f),
+                                Color.Black.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.15f),
+                                Color.White.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    }
+
+                    val borderBrush = if (isDarkTextEnabled) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.8f),
+                                Color.Black.copy(alpha = 0.3f)
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        )
+                    }
+                    Modifier
+                        .background(glassBrush, RoundedCornerShape(12.dp))
+                        .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                } else if (isFav) {
+                    Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                } else {
+                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                }
+
+                Box(modifier = Modifier.fillMaxWidth().then(itemModifier).bounceClick(intSrc).clickable(
                     interactionSource = intSrc,
                     indication = null
                 ) {
@@ -911,7 +1359,6 @@ fun ClockHeader(
     val clockBounds = remember { mutableStateOf<Rect?>(null) }
     val calendarBounds = remember { mutableStateOf<Rect?>(null) }
 
-    // Identifizieren der Pakete für die Return-Animation
     var clockPackage by remember { mutableStateOf<String?>(null) }
     var calendarPackage by remember { mutableStateOf<String?>(null) }
 
@@ -1053,7 +1500,7 @@ fun ClockHeader(
                 .clip(RoundedCornerShape(8.dp))
                 .bounceClick(intSrcDate)
                 .clickable(
-                    interactionSource = intSrcDate,
+                    interactionSource = intSrcTime,
                     indication = null
                 ) {
                     val pm = context.packageManager
@@ -1097,65 +1544,4 @@ fun ClockHeader(
                 .padding(horizontal = 4.dp, vertical = 2.dp)
         )
     }
-}
-
-private fun getAppListBasic(context: Context): List<AppInfo> {
-    val pm = context.packageManager
-    val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
-    return pm.queryIntentActivities(intent, 0).map { resolveInfo ->
-        AppInfo(
-            label = resolveInfo.loadLabel(pm).toString(),
-            packageName = resolveInfo.activityInfo.packageName
-        )
-    }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
-}
-
-private suspend fun loadSingleIcon(pm: PackageManager, cacheDir: File, packageName: String): ImageBitmap? {
-    val iconFile = File(cacheDir, "$packageName.png")
-    if (iconFile.exists()) {
-        try {
-            val b = BitmapFactory.decodeFile(iconFile.absolutePath)
-            if (b != null) {
-                val ib = b.asImageBitmap()
-                ib.prepareToDraw()
-                return ib
-            }
-        } catch (_: Exception) { }
-    }
-    return withContext(Dispatchers.IO) {
-        try {
-            val info = pm.getApplicationInfo(packageName, 0)
-            val icon = info.loadIcon(pm)
-            val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
-                icon.foreground ?: icon
-            } else {
-                icon
-            }
-            
-            val b = createBitmap(144, 144)
-            b.applyCanvas {
-                foregroundDrawable.setBounds(0, 0, 144, 144)
-                foregroundDrawable.draw(this)
-            }
-            
-            val ib = b.asImageBitmap()
-            ib.prepareToDraw()
-
-            FileOutputStream(iconFile).use { out ->
-                b.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            ib
-        } catch (_: Exception) { null }
-    }
-}
-
-private fun getSavedFavorites(context: Context): List<String> {
-    val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    val favoritesString = prefs.getString("favorites_list", "") ?: ""
-    return if (favoritesString.isEmpty()) emptyList() else favoritesString.split(",")
-}
-
-private fun saveFavorites(context: Context, favorites: List<String>) {
-    val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-    prefs.edit { putString("favorites_list", favorites.joinToString(",")) }
 }

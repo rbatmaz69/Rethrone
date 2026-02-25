@@ -1,5 +1,6 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -26,7 +28,12 @@ import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
+/**
+ * Menu for configuring the size of icons and text.
+ * Allows the user to select from Small, Standard, and Large sizes.
+ */
 @Composable
 fun SizeConfigMenu(
     currentFontSize: FontSize,
@@ -37,12 +44,14 @@ fun SizeConfigMenu(
 ) {
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     // Nur für primäre Schriften und Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
+    val backgroundColor = if (isDarkTextEnabled) colorTheme.lightBackground else colorTheme.drawerBackground
     Box(modifier = Modifier.fillMaxSize()) {
         SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(colorTheme.drawerBackground.copy(alpha = 0.95f)))
+        Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
 
         Column(
             modifier = Modifier
@@ -86,6 +95,8 @@ fun SizeConfigMenu(
                     iconSize = currentIconSize,
                     isHome = true, 
                     mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
                     modifier = Modifier.weight(1f)
                 )
                 SizePreviewCard(
@@ -94,6 +105,8 @@ fun SizeConfigMenu(
                     iconSize = currentIconSize,
                     isHome = false, 
                     mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -114,24 +127,73 @@ fun SizeConfigMenu(
             ) {
                 FontSize.entries.forEach { size ->
                     val isSelected = size == currentFontSize
-                    Surface(
-                        onClick = { onFontSizeSelected(size) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        // Inaktive Buttons bleiben grau
-                        color = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f),
-                        contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor,
-                        border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = size.label,
-                                fontSize = 14.sp,
-                                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+
+                    val buttonModifier = if (isLiquidGlassEnabled && !isSelected) {
+                        // Liquid Glass Style for inactive buttons
+                        val glassBrush = if (isDarkTextEnabled) {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.15f),
+                                    Color.Black.copy(alpha = 0.05f)
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.White.copy(alpha = 0.05f)
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                             )
                         }
+
+                        val borderBrush = if (isDarkTextEnabled) {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.8f),
+                                    Color.Black.copy(alpha = 0.3f)
+                                )
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.6f),
+                                    Color.White.copy(alpha = 0.1f)
+                                )
+                            )
+                        }
+
+                        Modifier
+                            .background(glassBrush, RoundedCornerShape(12.dp))
+                            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                    } else {
+                        // Standard Style or Selected Button (which is solid)
+                        val bgColor = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f)
+                        val border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        Modifier
+                            .background(bgColor, RoundedCornerShape(12.dp))
+                            .then(if (border != null) Modifier.border(border, RoundedCornerShape(12.dp)) else Modifier)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .then(buttonModifier)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onFontSizeSelected(size) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor
+                        Text(
+                            text = size.label,
+                            fontSize = 14.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = contentColor
+                        )
                     }
                 }
             }
@@ -152,24 +214,73 @@ fun SizeConfigMenu(
             ) {
                 IconSize.entries.forEach { size ->
                     val isSelected = size == currentIconSize
-                    Surface(
-                        onClick = { onIconSizeSelected(size) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        // Inaktive Buttons bleiben grau
-                        color = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f),
-                        contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor,
-                        border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = size.label,
-                                fontSize = 14.sp,
-                                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+
+                    val buttonModifier = if (isLiquidGlassEnabled && !isSelected) {
+                        // Liquid Glass Style for inactive buttons
+                        val glassBrush = if (isDarkTextEnabled) {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.15f),
+                                    Color.Black.copy(alpha = 0.05f)
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.White.copy(alpha = 0.05f)
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                             )
                         }
+
+                        val borderBrush = if (isDarkTextEnabled) {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.8f),
+                                    Color.Black.copy(alpha = 0.3f)
+                                )
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.6f),
+                                    Color.White.copy(alpha = 0.1f)
+                                )
+                            )
+                        }
+
+                        Modifier
+                            .background(glassBrush, RoundedCornerShape(12.dp))
+                            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                    } else {
+                        // Standard Style or Selected Button (which is solid)
+                        val bgColor = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f)
+                        val border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        Modifier
+                            .background(bgColor, RoundedCornerShape(12.dp))
+                            .then(if (border != null) Modifier.border(border, RoundedCornerShape(12.dp)) else Modifier)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .then(buttonModifier)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onIconSizeSelected(size) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor
+                        Text(
+                            text = size.label,
+                            fontSize = 14.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = contentColor
+                        )
                     }
                 }
             }
@@ -206,13 +317,55 @@ fun SizeConfigMenu(
 }
 
 @Composable
-fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHome: Boolean, mainTextColor: Color, modifier: Modifier = Modifier) {
+fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHome: Boolean, mainTextColor: Color, isLiquidGlassEnabled: Boolean, isDarkTextEnabled: Boolean, modifier: Modifier = Modifier) {
     val colorTheme = LocalColorTheme.current
-    Surface(
-        // Hintergrund der Karte bleibt grau
-        color = Color.White.copy(alpha = 0.05f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier
+
+    val cardModifier = if (isLiquidGlassEnabled) {
+        val glassBrush = if (isDarkTextEnabled) {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.Black.copy(alpha = 0.15f),
+                    Color.Black.copy(alpha = 0.05f)
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+        } else {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.15f),
+                    Color.White.copy(alpha = 0.05f)
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+        }
+
+        val borderBrush = if (isDarkTextEnabled) {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.Black.copy(alpha = 0.8f),
+                    Color.Black.copy(alpha = 0.3f)
+                )
+            )
+        } else {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.6f),
+                    Color.White.copy(alpha = 0.1f)
+                )
+            )
+        }
+
+        Modifier
+            .background(glassBrush, RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(16.dp))
+    } else {
+        Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+    }
+
+    Box(
+        modifier = modifier.then(cardModifier)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Karten-Titel bleibt grau
@@ -226,7 +379,11 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHom
                         if (isHome) {
                             Brush.verticalGradient(listOf(colorTheme.primary.copy(alpha = 0.6f), colorTheme.secondary.copy(alpha = 0.6f)))
                         } else {
-                            SolidColor(colorTheme.drawerBackground)
+                            if (mainTextColor == Color(0xFF010101)) {
+                                SolidColor(colorTheme.lightBackground)
+                            } else {
+                                SolidColor(colorTheme.drawerBackground)
+                            }
                         }
                     )
             ) {
