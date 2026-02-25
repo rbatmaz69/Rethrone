@@ -839,6 +839,39 @@ fun AppDrawer(
                                     }
                                 }
 
+                                // BUGFIX: High-precision boundary blocker connection
+                                // Consumes horizontal delta AND fling velocity when at boundaries to ensure zero jitter.
+                                val folderBoundaryBlocker = remember(pagerState, pages) {
+                                    object : NestedScrollConnection {
+                                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                            if (pages <= 1) return Offset(x = available.x, y = 0f)
+                                            
+                                            // Check if we are precisely at the start or end page
+                                            val isAtStart = pagerState.currentPage == 0 && pagerState.currentPageOffsetFraction <= 0.001f
+                                            val isAtEnd = pagerState.currentPage == pages - 1 && pagerState.currentPageOffsetFraction >= -0.001f
+                                            
+                                            // Swipe right at start (delta > 0) or left at end (delta < 0) -> consume completely
+                                            if ((isAtStart && available.x > 0f) || (isAtEnd && available.x < 0f)) {
+                                                return Offset(x = available.x, y = 0f) 
+                                            }
+                                            return Offset.Zero
+                                        }
+
+                                        override suspend fun onPreFling(available: Velocity): Velocity {
+                                            if (pages <= 1) return available
+                                            
+                                            val isAtStart = pagerState.currentPage == 0
+                                            val isAtEnd = pagerState.currentPage == pages - 1
+                                            
+                                            // Block kinetic energy (fling) at boundaries to prevent bouncy jitter
+                                            if ((isAtStart && available.x > 0f) || (isAtEnd && available.x < 0f)) {
+                                                return available
+                                            }
+                                            return Velocity.Zero
+                                        }
+                                    }
+                                }
+
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -874,64 +907,67 @@ fun AppDrawer(
                                             )
                                         }
                                 ) {
-                                    HorizontalPager(
-                                        state = pagerState,
-                                        modifier = Modifier.fillMaxSize().clipToBounds(),
-                                        pageSpacing = 16.dp,
-                                        // Requirement 4: Disable scroll if there is only 1 page
-                                        userScrollEnabled = !isEditMode && draggingItemPkg == null && pages > 1,
-                                        beyondViewportPageCount = 0
-                                    ) { page ->
-                                        val startIdx = page * itemsPerPage
-                                        val endIdx = (startIdx + itemsPerPage).coerceAtMost(folderApps.size)
-                                        val pageApps = folderApps.subList(startIdx, endIdx)
-                                        
-                                        LazyVerticalGrid(
-                                            columns = GridCells.Fixed(3),
-                                            modifier = Modifier.fillMaxSize(),
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                            verticalArrangement = Arrangement.spacedBy(24.dp),
-                                            // Requirement 4: Content in folder page is never scrollable itself
-                                            userScrollEnabled = false
-                                        ) {
-                                            itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
-                                                val globalIndex = startIdx + indexInPage
-                                                val isDragging = draggingItemPkg == app.packageName
-                                                
-                                                Box(
-                                                    modifier = Modifier
-                                                        .let { if (isDragging) it else it.animateItem() }
-                                                        .zIndex(if (isDragging) 0f else 1f)
-                                                        .graphicsLayer { 
-                                                            rotationZ = if (isEditMode && !isDragging) {
-                                                                if (globalIndex % 2 == 0) wiggleAngle else -wiggleAngle
-                                                            } else 0f
-                                                            alpha = if (isDragging) 0f else 1f
-                                                        }
-                                                ) {
-                                                    AppItem(
-                                                        app = app,
-                                                        adaptiveColumns = 3,
-                                                        isFavorite = isFavorite(app.packageName),
-                                                        onToggleFavorite = onToggleFavorite,
-                                                        folders = folders,
-                                                        onUpdateFolders = onUpdateFolders,
-                                                        isInFolder = true,
-                                                        currentFolderId = currentActiveFolder.id,
-                                                        isEditMode = isEditMode,
-                                                        bouncePackage = returnIconPackage,
-                                                        onLongPress = { appInfo, bounds ->
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            menuApp = appInfo
-                                                            menuAppBounds = bounds
-                                                        },
-                                                        onAppLaunchRequested = { requestedApp, bounds ->
-                                                            if (launchRequest == null) {
-                                                                onAppLaunchForReturn(requestedApp.packageName, bounds)
-                                                                launchRequest = LaunchRequest(requestedApp, bounds)
+                                    CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
+                                        HorizontalPager(
+                                            state = pagerState,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clipToBounds()
+                                                .nestedScroll(folderBoundaryBlocker),
+                                            pageSpacing = 16.dp,
+                                            userScrollEnabled = !isEditMode && draggingItemPkg == null && pages > 1,
+                                            beyondViewportPageCount = 0
+                                        ) { page ->
+                                            val startIdx = page * itemsPerPage
+                                            val endIdx = (startIdx + itemsPerPage).coerceAtMost(folderApps.size)
+                                            val pageApps = folderApps.subList(startIdx, endIdx)
+                                            
+                                            LazyVerticalGrid(
+                                                columns = GridCells.Fixed(3),
+                                                modifier = Modifier.fillMaxSize(),
+                                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(24.dp),
+                                                userScrollEnabled = false
+                                            ) {
+                                                itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
+                                                    val globalIndex = startIdx + indexInPage
+                                                    val isDragging = draggingItemPkg == app.packageName
+                                                    
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .let { if (isDragging) it else it.animateItem() }
+                                                            .zIndex(if (isDragging) 0f else 1f)
+                                                            .graphicsLayer { 
+                                                                rotationZ = if (isEditMode && !isDragging) {
+                                                                    if (globalIndex % 2 == 0) wiggleAngle else -wiggleAngle
+                                                                } else 0f
+                                                                alpha = if (isDragging) 0f else 1f
                                                             }
-                                                        }
-                                                    )
+                                                    ) {
+                                                        AppItem(
+                                                            app = app,
+                                                            adaptiveColumns = 3,
+                                                            isFavorite = isFavorite(app.packageName),
+                                                            onToggleFavorite = onToggleFavorite,
+                                                            folders = folders,
+                                                            onUpdateFolders = onUpdateFolders,
+                                                            isInFolder = true,
+                                                            currentFolderId = currentActiveFolder.id,
+                                                            isEditMode = isEditMode,
+                                                            bouncePackage = returnIconPackage,
+                                                            onLongPress = { appInfo, bounds ->
+                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                menuApp = appInfo
+                                                                menuAppBounds = bounds
+                                                            },
+                                                            onAppLaunchRequested = { requestedApp, bounds ->
+                                                                if (launchRequest == null) {
+                                                                    onAppLaunchForReturn(requestedApp.packageName, bounds)
+                                                                    launchRequest = LaunchRequest(requestedApp, bounds)
+                                                                }
+                                                            }
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
