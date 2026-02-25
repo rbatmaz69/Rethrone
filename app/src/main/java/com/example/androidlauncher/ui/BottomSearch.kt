@@ -130,11 +130,11 @@ fun BottomSearch(
 
     // Overlay-Hintergrund anpassen
     val overlayColor = if (isDarkTextEnabled) {
-        // Light Mode (Dunkler Text): Weißes Milchglas-Dimming (statt Schwarz)
+        // "Dark Mode" (Schrift Schwarz): Weißes Milchglas-Dimming
         Color.White.copy(alpha = 0.55f)
     } else {
-        // Dark Mode (Heller Text): Weißes Milchglas-Dimming
-        Color.White.copy(alpha = 0.15f)
+        // "Light Mode" (Schrift Weiß): Stärkeres Abdunkeln des Hintergrunds, damit weiße Schrift lesbar bleibt
+        Color.Black.copy(alpha = 0.65f)
     }
 
     Box(
