@@ -38,20 +38,65 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
-import kotlin.math.max
-import kotlin.math.roundToInt
 
+/**
+ * Default system-side mapping for app icons to Lucide icons.
+ * packageName -> lucideIconName
+ */
+val DEFAULT_ICON_MAPPINGS: Map<String, String> = mapOf(
+    "com.android.chrome" to "Chrome",
+    "com.android.vending" to "Play",
+    "com.google.android.youtube" to "Youtube",
+    "com.google.android.apps.youtube.music" to "Music",
+    "com.google.android.calendar" to "Calendar",
+    "com.android.calendar" to "Calendar",
+    
+    // Camera
+    "com.android.camera" to "Camera",
+    "com.google.android.GoogleCamera" to "Camera",
+    "com.sec.android.app.camera" to "Camera",
+    "com.huawei.camera" to "Camera",
+    "com.oppo.camera" to "Camera",
+    "com.oneplus.camera" to "Camera",
+    "com.sonyericsson.android.camera" to "Camera",
+    "com.motorola.cameraone" to "Camera",
+    
+    // Calculator
+    "com.google.android.calculator" to "Calculator",
+    "com.android.calculator2" to "Calculator",
+    "com.sec.android.app.popupcalculator" to "Calculator",
+    "com.miui.calculator" to "Calculator",
+    "com.huawei.calculator" to "Calculator",
+    
+    // Voice Search
+    "com.google.android.googlequicksearchbox" to "Mic",
+    "com.google.android.voicesearch" to "Mic",
+    
+    // Files / File Manager
+    "com.google.android.apps.nbu.files" to "FolderOpen",
+    "com.google.android.files" to "FolderOpen",
+    "com.android.documentsui" to "FolderOpen",
+    "com.sec.android.app.myfiles" to "FolderOpen",
+    "com.mi.android.globalFileexplorer" to "FolderOpen",
+    "com.android.fileexplorer" to "FolderOpen",
+    "com.android.filemanager" to "FolderOpen",
+    "com.huawei.hidisk" to "FolderOpen",
+    
+    // Rethrone / Launcher
+    "com.example.androidlauncher" to "Crown"
+)
 
 /**
  * Extension function to find the Activity context from a Context.
@@ -85,7 +130,7 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
 
 /**
  * Composable that renders an app icon.
- * Supports Vector icons (Lucide), Resource IDs, and Bitmaps.
+ * Supports Vector icons (Lucide) and Bitmaps.
  * Adjusts tint based on dark text mode.
  */
 @Composable
@@ -98,31 +143,63 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val tintColor = if (isDarkTextEnabled) Color.Black else Color.White
 
-    val customIconName = customIcons[app.packageName]
-    val customLucideIcon = if (customIconName != null) getLucideIconByName(customIconName) else null
+    // Priority: 1. User choice, 2. System default mapping, 3. App's own lucideIcon (if any)
+    val customIconName = customIcons[app.packageName] ?: DEFAULT_ICON_MAPPINGS[app.packageName]
+    val lucideIcon = if (customIconName != null) getLucideIconByName(customIconName) else app.lucideIcon
 
     Box(
         modifier = modifier.size(iconSize),
         contentAlignment = Alignment.Center
     ) {
         when {
-            customLucideIcon != null -> {
-                // Skalierung der Lucide Icons auf ca. 60% der Originalgröße.
+            lucideIcon != null -> {
+                // Skalierung der Lucide Icons auf ca. 55% der Originalgröße.
                 // Wir halten den Container (Box) auf iconSize und zentrieren das Icon darin,
                 // damit die Positionierung symmetrisch zu den anderen Icons bleibt.
                 Icon(
-                    imageVector = customLucideIcon,
+                    imageVector = lucideIcon,
                     contentDescription = null,
                     modifier = Modifier.size(iconSize * 0.55f),
                     tint = tintColor
                 )
             }
-            app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = tintColor)
-            app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = tintColor)
             app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
             else -> Box(modifier = Modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
         }
     }
+}
+
+/**
+ * Retrieves a Lucide icon by name.
+ * Handles both direct members and extension properties (which are compiled to <Name>Kt classes).
+ */
+fun getLucideIconByName(name: String): ImageVector? {
+    val lucideClass = Lucide::class.java
+    
+    // 1. Try as a direct static member (Field or Method)
+    try {
+        val field = lucideClass.getField(name)
+        return field.get(null) as? ImageVector
+    } catch (_: Exception) {}
+    
+    try {
+        val methodName = if (name.startsWith("get")) name else "get$name"
+        val method = lucideClass.getMethod(methodName)
+        return method.invoke(null) as? ImageVector
+    } catch (_: Exception) {}
+
+    // 2. Try as a Kotlin extension property (compiled to com.composables.icons.lucide.<Name>Kt)
+    try {
+        // The naming convention for extension properties is usually IconNameKt
+        val className = "com.composables.icons.lucide.${name}Kt"
+        val clazz = Class.forName(className)
+        // Extension property "val Lucide.IconName" becomes "public static final ImageVector getIconName(Lucide receiver)"
+        val getterName = "get$name"
+        val method = clazz.getMethod(getterName, Lucide::class.java)
+        return method.invoke(null, Lucide) as? ImageVector
+    } catch (_: Exception) {}
+
+    return null
 }
 
 /**
@@ -142,14 +219,15 @@ fun launchAppNoTransition(context: Context, intent: Intent) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
             } else {
+                @Suppress("DEPRECATION")
                 activity.overridePendingTransition(0, 0)
             }
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         try {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        } catch (e2: Exception) {
+        } catch (_: Exception) {
             Toast.makeText(context, "App konnte nicht gestartet werden", Toast.LENGTH_SHORT).show()
         }
     }

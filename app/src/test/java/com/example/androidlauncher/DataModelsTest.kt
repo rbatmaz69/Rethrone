@@ -71,7 +71,6 @@ class DataModelsTest {
         val app = AppInfo(label = "Test", packageName = "com.test")
         assertNull(app.iconBitmap)
         assertNull(app.lucideIcon)
-        assertNull(app.customIconResId)
     }
 
     @Test

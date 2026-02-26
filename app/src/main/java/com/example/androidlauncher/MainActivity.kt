@@ -206,7 +206,7 @@ class MainActivity : ComponentActivity() {
                 fun refreshAppList(scope: CoroutineScope, context: Context, allApps: MutableList<AppInfo>, favoritePackages: List<String>) {
                     scope.launch {
                         val basicList = withContext(Dispatchers.IO) { getAppListBasic(context) }
-                        
+
                         // We update the list carefully to avoid unnecessary UI jumps if possible,
                         // but a clear and addAll is simplest for now.
                         allApps.clear()
@@ -398,7 +398,7 @@ class MainActivity : ComponentActivity() {
                                      onConfirm = { updatedFolder ->
                                          // Check if the folder already exists in our list
                                          val folderExists = folders.any { it.id == updatedFolder.id }
-                                         
+
                                          // Determine the new folder list based on whether it's an update or a new folder
                                          val newFolders = if (folderExists) {
                                              // Update existing folder
@@ -410,10 +410,10 @@ class MainActivity : ComponentActivity() {
                                              // If it's a new folder but empty, don't add it (Minimalist approach)
                                              folders
                                          }
-                                         
+
                                          // Save the updated folder list to persistent storage
                                          scope.launch { folderManager.saveFolders(newFolders) }
-                                         
+
                                          // Close the configuration menu
                                          selectedFolderForConfig = null
                                      },
@@ -1093,7 +1093,7 @@ fun FavoritesConfigMenu(
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
-    
+
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val grayTone = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
 
@@ -1110,7 +1110,7 @@ fun FavoritesConfigMenu(
             }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
 
         // Option Toggle
@@ -1123,7 +1123,7 @@ fun FavoritesConfigMenu(
 
             val thumbColor = if (isDarkTextEnabled) Color.Black else Color.White
             val symbolColor = if (isDarkTextEnabled) Color.White else Color.Black
-            
+
             val switchColors = if (isLiquidGlassEnabled) {
                 if (isDarkTextEnabled) {
                     SwitchDefaults.colors(
@@ -1181,7 +1181,7 @@ fun FavoritesConfigMenu(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         val searchIntSrc = remember { MutableInteractionSource() }
         val searchBarModifier = if (isLiquidGlassEnabled) {
             val glassBrush = if (isDarkTextEnabled) {
@@ -1245,9 +1245,9 @@ fun FavoritesConfigMenu(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
             if (selectedPackages.isNotEmpty()) {
                 item { Text(stringResource(R.string.order_label), color = grayTone, fontSize = 12.sp) }
@@ -1303,11 +1303,11 @@ fun FavoritesConfigMenu(
                                 AppIconView(app)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                                IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index) }, enabled = index > 0) { 
-                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) grayTone else mainTextColor) 
+                                IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index) }, enabled = index > 0) {
+                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = if (index > 0) grayTone else mainTextColor)
                                 }
-                                IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index) }, enabled = index < selectedPackages.size - 1) { 
-                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) grayTone else mainTextColor) 
+                                IconButton(onClick = { selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index) }, enabled = index < selectedPackages.size - 1) {
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = if (index < selectedPackages.size - 1) grayTone else mainTextColor)
                                 }
                             }
                         }
@@ -1377,11 +1377,11 @@ fun FavoritesConfigMenu(
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
                         Checkbox(
-                            checked = isFav, 
-                            onCheckedChange = null, 
+                            checked = isFav,
+                            onCheckedChange = null,
                             colors = CheckboxDefaults.colors(
-                                checkedColor = mainTextColor, 
-                                uncheckedColor = mainTextColor.copy(alpha = 0.4f), 
+                                checkedColor = mainTextColor,
+                                uncheckedColor = mainTextColor.copy(alpha = 0.4f),
                                 checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
                             )
                         )
@@ -1394,7 +1394,7 @@ fun FavoritesConfigMenu(
     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
         val intSrc = remember { MutableInteractionSource() }
         val checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
-        
+
         Box(
             modifier = Modifier
                 .size(56.dp)
