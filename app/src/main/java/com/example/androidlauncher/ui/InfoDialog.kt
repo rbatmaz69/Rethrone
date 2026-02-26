@@ -45,6 +45,7 @@ fun InfoDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Row(
@@ -166,6 +167,3 @@ fun InfoSection(
         HorizontalDivider(color = secondaryTextColor.copy(alpha = 0.2f), thickness = 0.5.dp)
     }
 }
-
-
-
