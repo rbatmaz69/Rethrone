@@ -101,7 +101,15 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     val customLucideIcon = if (customIconName != null) getLucideIconByName(customIconName) else null
 
     when {
-        customLucideIcon != null -> Icon(imageVector = customLucideIcon, contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
+        customLucideIcon != null -> {
+            // Skalierung der Lucide Icons auf ca. 85% der Originalgröße für ein harmonischeres Bild
+            Icon(
+                imageVector = customLucideIcon, 
+                contentDescription = null, 
+                modifier = modifier.size(iconSize * 0.85f), 
+                tint = tintColor
+            )
+        }
         app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
         app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
         app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
