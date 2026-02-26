@@ -58,7 +58,44 @@ import com.example.androidlauncher.ui.theme.LocalIconSize
 val DEFAULT_ICON_MAPPINGS: Map<String, String> = mapOf(
     "com.android.chrome" to "Chrome",
     "com.android.vending" to "Play",
-    "com.google.android.apps.youtube.music" to "Music"
+    "com.google.android.youtube" to "Youtube",
+    "com.google.android.apps.youtube.music" to "Music",
+    "com.google.android.calendar" to "Calendar",
+    "com.android.calendar" to "Calendar",
+    
+    // Camera
+    "com.android.camera" to "Camera",
+    "com.google.android.GoogleCamera" to "Camera",
+    "com.sec.android.app.camera" to "Camera",
+    "com.huawei.camera" to "Camera",
+    "com.oppo.camera" to "Camera",
+    "com.oneplus.camera" to "Camera",
+    "com.sonyericsson.android.camera" to "Camera",
+    "com.motorola.cameraone" to "Camera",
+    
+    // Calculator
+    "com.google.android.calculator" to "Calculator",
+    "com.android.calculator2" to "Calculator",
+    "com.sec.android.app.popupcalculator" to "Calculator",
+    "com.miui.calculator" to "Calculator",
+    "com.huawei.calculator" to "Calculator",
+    
+    // Voice Search
+    "com.google.android.googlequicksearchbox" to "Mic",
+    "com.google.android.voicesearch" to "Mic",
+    
+    // Files / File Manager
+    "com.google.android.apps.nbu.files" to "FolderOpen",
+    "com.google.android.files" to "FolderOpen",
+    "com.android.documentsui" to "FolderOpen",
+    "com.sec.android.app.myfiles" to "FolderOpen",
+    "com.mi.android.globalFileexplorer" to "FolderOpen",
+    "com.android.fileexplorer" to "FolderOpen",
+    "com.android.filemanager" to "FolderOpen",
+    "com.huawei.hidisk" to "FolderOpen",
+    
+    // Rethrone / Launcher
+    "com.example.androidlauncher" to "Crown"
 )
 
 /**
