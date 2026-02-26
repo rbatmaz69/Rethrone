@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Palette
+import com.composables.icons.lucide.Pencil
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
@@ -46,7 +47,7 @@ data class PaletteMenuItem(
  * - Favorites configuration
  * - Color theme configuration
  * - Size configuration
- * - System Settings
+ * - System Settings / Editing mode
  * - App Info
  */
 @Composable
@@ -69,7 +70,7 @@ fun SettingsPaletteMenu(
             PaletteMenuItem("themes", Lucide.Palette, "Themes", onOpenColorConfig),
             PaletteMenuItem("size", Lucide.ALargeSmall, "Größe", onOpenSizeConfig),
             PaletteMenuItem("favorites", Icons.Default.Star, "Favorites", onOpenFavoritesConfig),
-            PaletteMenuItem("system", Icons.Default.Settings, "System", onOpenSystemSettings),
+            PaletteMenuItem("edit", Lucide.Pencil, "Bearbeiten", onOpenSystemSettings),
             PaletteMenuItem("info", Icons.Default.Info, "Info", onOpenInfo),
         )
     }
