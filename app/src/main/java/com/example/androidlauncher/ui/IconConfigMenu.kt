@@ -341,36 +341,3 @@ fun LucideIconPicker(
         }
     }
 }
-
-/**
- * Retrieves a Lucide icon by name.
- * Handles both direct members and extension properties (which are compiled to <Name>Kt classes).
- */
-fun getLucideIconByName(name: String): ImageVector? {
-    val lucideClass = Lucide::class.java
-    
-    // 1. Try as a direct static member (Field or Method)
-    try {
-        val field = lucideClass.getField(name)
-        return field.get(null) as? ImageVector
-    } catch (e: Exception) {}
-    
-    try {
-        val methodName = if (name.startsWith("get")) name else "get$name"
-        val method = lucideClass.getMethod(methodName)
-        return method.invoke(null) as? ImageVector
-    } catch (e: Exception) {}
-
-    // 2. Try as a Kotlin extension property (compiled to com.composables.icons.lucide.<Name>Kt)
-    try {
-        // The naming convention for extension properties is usually IconNameKt
-        val className = "com.composables.icons.lucide.${name}Kt"
-        val clazz = Class.forName(className)
-        // Extension property "val Lucide.IconName" becomes "public static final ImageVector getIconName(Lucide receiver)"
-        val getterName = "get$name"
-        val method = clazz.getMethod(getterName, Lucide::class.java)
-        return method.invoke(null, Lucide) as? ImageVector
-    } catch (e: Exception) {}
-
-    return null
-}
