@@ -50,27 +50,15 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
-import kotlin.math.max
-import kotlin.math.roundToInt
 
 /**
  * Default system-side mapping for app icons to Lucide icons.
  * packageName -> lucideIconName
  */
-val DEFAULT_ICON_MAPPINGS = mapOf(
-    "com.android.chrome" to "Globe",
-    "com.google.android.apps.messaging" to "MessageSquare",
-    "com.google.android.gm" to "Mail",
-    "com.google.android.calendar" to "Calendar",
-    "com.google.android.apps.photos" to "Image",
-    "com.android.settings" to "Settings",
-    "com.google.android.calculator" to "Calculator",
-    "com.google.android.apps.maps" to "MapPin",
-    "com.android.vending" to "ShoppingBag", // Play Store
-    "com.google.android.youtube" to "Youtube",
-    "com.whatsapp" to "Phone",
-    "com.instagram.android" to "Instagram",
-    "com.facebook.katana" to "Facebook"
+val DEFAULT_ICON_MAPPINGS: Map<String, String> = mapOf(
+    "com.android.chrome" to "Chrome",
+    "com.android.vending" to "Play",
+    "com.google.android.apps.youtube.music" to "Music"
 )
 
 /**
@@ -155,13 +143,13 @@ fun getLucideIconByName(name: String): ImageVector? {
     try {
         val field = lucideClass.getField(name)
         return field.get(null) as? ImageVector
-    } catch (e: Exception) {}
+    } catch (_: Exception) {}
     
     try {
         val methodName = if (name.startsWith("get")) name else "get$name"
         val method = lucideClass.getMethod(methodName)
         return method.invoke(null) as? ImageVector
-    } catch (e: Exception) {}
+    } catch (_: Exception) {}
 
     // 2. Try as a Kotlin extension property (compiled to com.composables.icons.lucide.<Name>Kt)
     try {
@@ -172,7 +160,7 @@ fun getLucideIconByName(name: String): ImageVector? {
         val getterName = "get$name"
         val method = clazz.getMethod(getterName, Lucide::class.java)
         return method.invoke(null, Lucide) as? ImageVector
-    } catch (e: Exception) {}
+    } catch (_: Exception) {}
 
     return null
 }
@@ -194,14 +182,15 @@ fun launchAppNoTransition(context: Context, intent: Intent) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
             } else {
+                @Suppress("DEPRECATION")
                 activity.overridePendingTransition(0, 0)
             }
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         try {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-        } catch (e2: Exception) {
+        } catch (_: Exception) {
             Toast.makeText(context, "App konnte nicht gestartet werden", Toast.LENGTH_SHORT).show()
         }
     }

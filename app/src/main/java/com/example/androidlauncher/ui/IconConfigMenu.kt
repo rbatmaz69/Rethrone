@@ -132,7 +132,6 @@ fun IconConfigMenu(
         ) {
             items(filteredApps) { app ->
                 val customIconName = customIcons[app.packageName]
-                val customIcon = if (customIconName != null) getLucideIconByName(customIconName) else null
                 
                 val itemBackgroundModifier = if (isLiquidGlassEnabled) {
                     val glassBrush = if (isDarkTextEnabled) {
@@ -172,13 +171,7 @@ fun IconConfigMenu(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (customIcon != null) {
-                            Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                                Icon(customIcon, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(24.dp))
-                            }
-                        } else {
-                            AppIconView(app, modifier = Modifier.size(40.dp))
-                        }
+                        AppIconView(app, modifier = Modifier.size(40.dp))
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(app.label, color = mainTextColor, fontSize = 16.sp, fontWeight = FontWeight.Medium)
