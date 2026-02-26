@@ -25,8 +25,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
@@ -36,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -43,6 +46,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import kotlin.math.max
@@ -86,15 +90,38 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
  */
 @Composable
 fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val iconManager = remember { IconManager(context) }
+    val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
+    
     val iconSize = LocalIconSize.current.size
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val tintColor = if (isDarkTextEnabled) Color.Black else Color.White
 
-    when {
-        app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
-        app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
-        app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
-        else -> Box(modifier = modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
+    val customIconName = customIcons[app.packageName]
+    val customLucideIcon = if (customIconName != null) getLucideIconByName(customIconName) else null
+
+    Box(
+        modifier = modifier.size(iconSize),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            customLucideIcon != null -> {
+                // Skalierung der Lucide Icons auf ca. 60% der Originalgröße.
+                // Wir halten den Container (Box) auf iconSize und zentrieren das Icon darin,
+                // damit die Positionierung symmetrisch zu den anderen Icons bleibt.
+                Icon(
+                    imageVector = customLucideIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(iconSize * 0.55f),
+                    tint = tintColor
+                )
+            }
+            app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = tintColor)
+            app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = tintColor)
+            app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
+            else -> Box(modifier = Modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
+        }
     }
 }
 

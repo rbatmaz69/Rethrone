@@ -80,15 +80,8 @@ import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.ui.ColorConfigMenu
-import com.example.androidlauncher.ui.SettingsPaletteMenu
-import com.example.androidlauncher.ui.SizeConfigMenu
-import com.example.androidlauncher.ui.AppDrawer
-import com.example.androidlauncher.ui.AppIconView
-import com.example.androidlauncher.ui.bounceClick
-import com.example.androidlauncher.ui.FolderConfigMenu
-import com.example.androidlauncher.ui.launchAppNoTransition
-import com.example.androidlauncher.ui.ReturnAnimationOverlay
+import com.example.androidlauncher.data.IconManager
+import com.example.androidlauncher.ui.*
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import java.text.SimpleDateFormat
@@ -130,6 +123,7 @@ class MainActivity : ComponentActivity() {
             // Initialize data managers
             val themeManager = remember { ThemeManager(context) }
             val folderManager = remember { FolderManager(context) }
+            val iconManager = remember { IconManager(context) }
 
             // Observe settings as State
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SIGNATURE)
@@ -139,6 +133,7 @@ class MainActivity : ComponentActivity() {
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
+            val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
 
             val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
 
@@ -163,6 +158,8 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
+                var isEditConfigOpen by remember { mutableStateOf(false) }
+                var isIconConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
 
@@ -176,6 +173,8 @@ class MainActivity : ComponentActivity() {
                                     isFavoritesConfigOpen = false
                                     isColorConfigOpen = false
                                     isSizeConfigOpen = false
+                                    isEditConfigOpen = false
+                                    isIconConfigOpen = false
                                     isInfoOpen = false
                                     selectedFolderForConfig = null
                                 }
@@ -274,23 +273,27 @@ class MainActivity : ComponentActivity() {
                         isFavoritesConfigOpen = false
                         isColorConfigOpen = false
                         isSizeConfigOpen = false
+                        isEditConfigOpen = false
+                        isIconConfigOpen = false
                         isInfoOpen = false
                         selectedFolderForConfig = null
                     }
                 }
 
-                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isEditConfigOpen, isIconConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isSearchOpen) isSearchOpen = false
+                    else if (isIconConfigOpen) isIconConfigOpen = false
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
                     else if (isColorConfigOpen) isColorConfigOpen = false
                     else if (isSizeConfigOpen) isSizeConfigOpen = false
+                    else if (isEditConfigOpen) isEditConfigOpen = false
                     else if (isInfoOpen) isInfoOpen = false
                 }
 
@@ -348,6 +351,7 @@ class MainActivity : ComponentActivity() {
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
+                                onOpenSystemSettings = { isEditConfigOpen = true },
                                 onOpenInfo = { isInfoOpen = true },
                                 onAppLaunchForReturn = { pkg, bounds ->
                                     pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.HOME, pkg)
@@ -464,6 +468,36 @@ class MainActivity : ComponentActivity() {
                                      scope.launch { themeManager.setIconSize(size) }
                                  },
                                  onClose = { isSizeConfigOpen = false }
+                             )
+                         }
+                     }
+
+                    AnimatedVisibility(
+                         visible = isEditConfigOpen,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
+                             EditConfigMenu(
+                                 onOpenIconConfig = { isIconConfigOpen = true },
+                                 onClose = { isEditConfigOpen = false }
+                             )
+                         }
+                     }
+
+                    AnimatedVisibility(
+                         visible = isIconConfigOpen,
+                         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                     ) {
+                         Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
+                             IconConfigMenu(
+                                 apps = allApps,
+                                 customIcons = customIcons,
+                                 onIconSelected = { pkg, iconName ->
+                                     scope.launch { iconManager.setCustomIcon(pkg, iconName) }
+                                 },
+                                 onClose = { isIconConfigOpen = false }
                              )
                          }
                      }
@@ -642,6 +676,7 @@ fun HomeScreen(
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
     onOpenSizeConfig: () -> Unit,
+    onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit,
     onAppLaunchForReturn: (String, Rect?) -> Unit,
     returnIconPackage: String?
@@ -829,7 +864,7 @@ fun HomeScreen(
                     onOpenFavoritesConfig = onOpenFavoritesConfig,
                     onOpenColorConfig = onOpenColorConfig,
                     onOpenSizeConfig = onOpenSizeConfig,
-                    onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
+                    onOpenSystemSettings = onOpenSystemSettings,
                     onOpenInfo = onOpenInfo
                 )
 
