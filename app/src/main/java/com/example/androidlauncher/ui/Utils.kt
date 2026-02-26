@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
@@ -100,20 +101,27 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     val customIconName = customIcons[app.packageName]
     val customLucideIcon = if (customIconName != null) getLucideIconByName(customIconName) else null
 
-    when {
-        customLucideIcon != null -> {
-            // Skalierung der Lucide Icons auf ca. 85% der Originalgröße für ein harmonischeres Bild
-            Icon(
-                imageVector = customLucideIcon, 
-                contentDescription = null, 
-                modifier = modifier.size(iconSize * 0.85f), 
-                tint = tintColor
-            )
+    Box(
+        modifier = modifier.size(iconSize),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            customLucideIcon != null -> {
+                // Skalierung der Lucide Icons auf ca. 60% der Originalgröße.
+                // Wir halten den Container (Box) auf iconSize und zentrieren das Icon darin,
+                // damit die Positionierung symmetrisch zu den anderen Icons bleibt.
+                Icon(
+                    imageVector = customLucideIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(iconSize * 0.55f),
+                    tint = tintColor
+                )
+            }
+            app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = Modifier.size(iconSize), tint = tintColor)
+            app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = tintColor)
+            app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
+            else -> Box(modifier = Modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
         }
-        app.lucideIcon != null -> Icon(imageVector = app.lucideIcon, contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
-        app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = modifier.size(iconSize), tint = tintColor)
-        app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
-        else -> Box(modifier = modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
     }
 }
 
