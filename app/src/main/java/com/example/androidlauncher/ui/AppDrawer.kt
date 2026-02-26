@@ -202,8 +202,6 @@ fun AppDrawer(
     var menuAppBounds by remember { mutableStateOf<Rect?>(null) }
     var showFolderSelection by remember { mutableStateOf(false) }
     var folderSelectionApp by remember { mutableStateOf<AppInfo?>(null) }
-    var showUninstallConfirm by remember { mutableStateOf(false) }
-    var appToUninstall by remember { mutableStateOf<AppInfo?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { drawerSize = it.size }) {
         // Hintergrund-Overlay des App Drawers.
@@ -1082,8 +1080,15 @@ fun AppDrawer(
                     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null) })
                 },
                 onUninstall = {
-                    appToUninstall = currentMenuApp
-                    showUninstallConfirm = true
+                    try {
+                        val uninstallIntent = Intent(Intent.ACTION_DELETE).apply {
+                            data = Uri.fromParts("package", currentMenuApp.packageName, null)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(uninstallIntent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Deinstallation konnte nicht gestartet werden", Toast.LENGTH_SHORT).show()
+                    }
                 },
                 onMoveToFolder = if (folders.isNotEmpty()) { { 
                     folderSelectionApp = currentMenuApp
@@ -1092,30 +1097,6 @@ fun AppDrawer(
                 onRemoveFromFolder = folders.find { it.appPackageNames.contains(currentMenuApp.packageName) }?.let { folder ->
                     { onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, folder.id, currentMenuApp.packageName)) }
                 }
-            )
-        }
-
-        // Bestätigungsdialog für die Deinstallation.
-        if (showUninstallConfirm && appToUninstall != null) {
-            AlertDialog(
-                onDismissRequest = { showUninstallConfirm = false },
-                title = { Text("App deinstallieren?", color = mainTextColor) },
-                text = { Text("Möchtest du ${appToUninstall?.label} wirklich deinstallieren? Dabei werden alle zugehörigen Daten gelöscht.", color = mainTextColor.copy(alpha = 0.8f)) },
-                confirmButton = {
-                    TextButton(onClick = { 
-                        val uninstallIntent = Intent(Intent.ACTION_DELETE).apply {
-                            data = Uri.parse("package:${appToUninstall!!.packageName}")
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(uninstallIntent)
-                        showUninstallConfirm = false
-                        menuApp = null
-                    }) { Text("Löschen", color = Color.Red) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showUninstallConfirm = false }) { Text("Abbrechen", color = Color.Gray) }
-                },
-                containerColor = if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground
             )
         }
 

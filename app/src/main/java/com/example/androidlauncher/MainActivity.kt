@@ -5,8 +5,10 @@ import com.example.androidlauncher.ui.BottomSearch
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.WallpaperManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -92,6 +94,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -200,29 +203,67 @@ class MainActivity : ComponentActivity() {
                     LauncherLogic.getFavoriteApps(allApps.toList(), favoritePackages)
                 }
 
-                LaunchedEffect(Unit) {
-                    val basicList = withContext(Dispatchers.IO) { getAppListBasic(context) }
-                    allApps.clear()
-                    allApps.addAll(basicList)
+                // Helper to load apps and icons
+                fun refreshAppList(scope: CoroutineScope, context: Context, allApps: MutableList<AppInfo>, favoritePackages: List<String>) {
+                    scope.launch {
+                        val basicList = withContext(Dispatchers.IO) { getAppListBasic(context) }
+                        
+                        // We update the list carefully to avoid unnecessary UI jumps if possible,
+                        // but a clear and addAll is simplest for now.
+                        allApps.clear()
+                        allApps.addAll(basicList)
 
-                    withContext(Dispatchers.IO) {
-                        val pm = context.packageManager
-                        val cacheDir = File(context.cacheDir, "app_icons")
-                        if (!cacheDir.exists()) cacheDir.mkdirs()
+                        withContext(Dispatchers.IO) {
+                            val pm = context.packageManager
+                            val cacheDir = File(context.cacheDir, "app_icons")
+                            if (!cacheDir.exists()) cacheDir.mkdirs()
 
-                        val favSet = favoritePackages.toSet()
-                        val sortedIndices = allApps.indices.sortedByDescending { allApps[it].packageName in favSet }
+                            val favSet = favoritePackages.toSet()
+                            val sortedIndices = allApps.indices.sortedByDescending { allApps[it].packageName in favSet }
 
-                        sortedIndices.forEachIndexed { loopIdx, appIdx ->
-                            val app = allApps[appIdx]
-                            val bitmap = loadSingleIcon(pm, cacheDir, app.packageName)
-                            if (bitmap != null) {
-                                withContext(Dispatchers.Main) {
-                                    allApps[appIdx] = app.copy(iconBitmap = bitmap)
+                            sortedIndices.forEachIndexed { loopIdx, appIdx ->
+                                if (appIdx >= allApps.size) return@forEachIndexed
+                                val app = allApps[appIdx]
+                                val bitmap = loadSingleIcon(pm, cacheDir, app.packageName)
+                                if (bitmap != null) {
+                                    withContext(Dispatchers.Main) {
+                                        // Re-check index after context switch
+                                        if (appIdx < allApps.size && allApps[appIdx].packageName == app.packageName) {
+                                            allApps[appIdx] = allApps[appIdx].copy(iconBitmap = bitmap)
+                                        }
+                                    }
                                 }
+                                if (loopIdx % 5 == 0) delay(1)
                             }
-                            if (loopIdx % 5 == 0) delay(1)
                         }
+                    }
+                }
+
+                // Initial load
+                LaunchedEffect(Unit) {
+                    refreshAppList(scope, context, allApps, favoritePackages)
+                }
+
+                // Listen for app installs/uninstalls
+                DisposableEffect(Unit) {
+                    val receiver = object : BroadcastReceiver() {
+                        override fun onReceive(context: Context?, intent: Intent?) {
+                            // Delay slightly to give the system time to finalize the uninstall
+                            scope.launch {
+                                delay(800)
+                                context?.let { refreshAppList(scope, it, allApps, favoritePackages) }
+                            }
+                        }
+                    }
+                    val filter = IntentFilter().apply {
+                        addAction(Intent.ACTION_PACKAGE_ADDED)
+                        addAction(Intent.ACTION_PACKAGE_REMOVED)
+                        addAction(Intent.ACTION_PACKAGE_REPLACED)
+                        addDataScheme("package")
+                    }
+                    context.registerReceiver(receiver, filter)
+                    onDispose {
+                        context.unregisterReceiver(receiver)
                     }
                 }
 
@@ -843,6 +884,12 @@ fun HomeScreen(
                 }
 
                 // Spalte für Buttons (Search oben, Settings unten)
+                val settingsBtnScale by animateFloatAsState(
+                    targetValue = if (isSettingsOpen) 1.2f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                    label = "SettingsBtnScale"
+                )
+
                 Column(
                     modifier = Modifier.padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -901,7 +948,11 @@ fun HomeScreen(
                     // Settings Button
                     Box(
                         modifier = Modifier
-                            .size(settingsButtonSize)
+                            .graphicsLayer {
+                                scaleX = settingsBtnScale
+                                scaleY = settingsBtnScale
+                            }
+                            .size(56.dp)
                             .then(buttonModifier)
                             .clip(CircleShape)
                             .bounceClick(intSrc)
@@ -911,8 +962,6 @@ fun HomeScreen(
                             ) { onToggleSettings() },
                         contentAlignment = Alignment.Center
                     ) {
-                        // Specular Highlight entfernt
-
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                             Icon(
                                 imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
