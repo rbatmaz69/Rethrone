@@ -822,17 +822,17 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.weight(1f))
             }
 
-            SettingsPaletteMenu(
-                isSettingsOpen = isSettingsOpen,
-                onToggleSettings = onToggleSettings,
-                onOpenFavoritesConfig = onOpenFavoritesConfig,
-                onOpenColorConfig = onOpenColorConfig,
-                onOpenSizeConfig = onOpenSizeConfig,
-                onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
-                onOpenInfo = onOpenInfo
-            )
-
             Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
+                SettingsPaletteMenu(
+                    isSettingsOpen = isSettingsOpen,
+                    onToggleSettings = onToggleSettings,
+                    onOpenFavoritesConfig = onOpenFavoritesConfig,
+                    onOpenColorConfig = onOpenColorConfig,
+                    onOpenSizeConfig = onOpenSizeConfig,
+                    onOpenSystemSettings = { context.startActivity(Intent(Settings.ACTION_SETTINGS)) },
+                    onOpenInfo = onOpenInfo
+                )
+
                 val intSrc = remember { MutableInteractionSource() }
                 val searchIntSrc = remember { MutableInteractionSource() }
 
