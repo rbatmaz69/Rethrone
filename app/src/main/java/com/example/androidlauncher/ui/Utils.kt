@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -106,7 +105,7 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
 
 /**
  * Composable that renders an app icon.
- * Supports Vector icons (Lucide), Resource IDs, and Bitmaps.
+ * Supports Vector icons (Lucide) and Bitmaps.
  * Adjusts tint based on dark text mode.
  */
 @Composable
@@ -139,7 +138,6 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
                     tint = tintColor
                 )
             }
-            app.customIconResId != null -> Icon(painter = painterResource(id = app.customIconResId), contentDescription = null, modifier = Modifier.size(iconSize), tint = tintColor)
             app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
             else -> Box(modifier = Modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
         }
