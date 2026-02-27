@@ -734,7 +734,7 @@ fun HomeScreen(
                 .padding(24.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                Spacer(modifier = Modifier.height(64.dp))
+                Spacer(modifier = Modifier.height(60.dp))
                 ClockHeader(onAppLaunchForReturn = onAppLaunchForReturn, onLaunchRequest = { launchRequest = it }, returnIconPackage = returnIconPackage)
 
                 Spacer(modifier = Modifier.weight(1f))
