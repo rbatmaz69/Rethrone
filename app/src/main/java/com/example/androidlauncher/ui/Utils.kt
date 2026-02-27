@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,10 +137,14 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
  * Composable that renders an app icon.
  * Supports Vector icons (Lucide) and Bitmaps.
  * Adjusts tint based on dark text mode.
- * Shows a notification dot if the app has active notifications.
+ * Shows a notification dot if the app has active notifications and showBadge is true.
  */
 @Composable
-fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
+fun AppIconView(
+    app: AppInfo, 
+    modifier: Modifier = Modifier,
+    showBadge: Boolean = false
+) {
     val context = LocalContext.current
     val iconManager = remember { IconManager(context) }
     val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
@@ -148,9 +153,13 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val tintColor = if (isDarkTextEnabled) Color.Black else Color.White
 
-    // Observe notifications
-    val activeNotifications by NotificationService.activeNotificationPackages.collectAsState()
-    val hasNotification = app.packageName in activeNotifications
+    // Observe notifications only if badge display is requested
+    val activeNotifications by if (showBadge) {
+        NotificationService.activeNotificationPackages.collectAsState()
+    } else {
+        remember { mutableStateOf(emptySet<String>()) }
+    }
+    val hasNotification = showBadge && app.packageName in activeNotifications
 
     // Priority: 1. User choice, 2. System default mapping, 3. App's own lucideIcon (if any)
     val customIconName = customIcons[app.packageName] ?: DEFAULT_ICON_MAPPINGS[app.packageName]
