@@ -75,7 +75,7 @@ fun FontSelectionMenu(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Search Bar
         val searchBarModifier = if (isLiquidGlassEnabled) {
@@ -104,7 +104,7 @@ fun FontSelectionMenu(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(searchBarModifier)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
                 .clickable { focusRequester.requestFocus() }
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -125,11 +125,11 @@ fun FontSelectionMenu(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             items(filteredFonts) { font ->
@@ -167,7 +167,7 @@ fun FontSelectionMenu(
                         .then(itemModifier)
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { onAppFontSelected(font) }
-                        .padding(16.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),

@@ -89,10 +89,10 @@ fun SizeConfigMenu(
                 }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
             Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
             // Preview Area
             Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -120,13 +120,13 @@ fun SizeConfigMenu(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             
             Text(
                 text = "Schriftart",
                 color = mainTextColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             // Font Selection Button
@@ -188,13 +188,13 @@ fun SizeConfigMenu(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
             Text(
                 text = "Schriftgröße",
                 color = mainTextColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Row(
@@ -274,13 +274,13 @@ fun SizeConfigMenu(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = "Schriftstärke",
                 color = mainTextColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Row(
@@ -360,13 +360,13 @@ fun SizeConfigMenu(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = "Icon-Größe",
                 color = mainTextColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Row(
