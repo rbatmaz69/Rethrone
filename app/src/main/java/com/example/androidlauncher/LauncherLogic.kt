@@ -11,7 +11,7 @@ import java.util.UUID
  * This object is stateless and operates on immutable lists/objects passed to it.
  */
 object LauncherLogic {
-    const val MAX_FAVORITES = 8
+    const val MAX_FAVORITES = 6
 
     /**
      * Filters the list of apps based on a search query.
