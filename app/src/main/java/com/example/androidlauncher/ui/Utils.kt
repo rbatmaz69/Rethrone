@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -15,11 +16,13 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -46,6 +49,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.composables.icons.lucide.Lucide
+import com.example.androidlauncher.NotificationService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -132,6 +136,7 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
  * Composable that renders an app icon.
  * Supports Vector icons (Lucide) and Bitmaps.
  * Adjusts tint based on dark text mode.
+ * Shows a notification dot if the app has active notifications.
  */
 @Composable
 fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
@@ -143,6 +148,10 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val tintColor = if (isDarkTextEnabled) Color.Black else Color.White
 
+    // Observe notifications
+    val activeNotifications by NotificationService.activeNotificationPackages.collectAsState()
+    val hasNotification = app.packageName in activeNotifications
+
     // Priority: 1. User choice, 2. System default mapping, 3. App's own lucideIcon (if any)
     val customIconName = customIcons[app.packageName] ?: DEFAULT_ICON_MAPPINGS[app.packageName]
     val lucideIcon = if (customIconName != null) getLucideIconByName(customIconName) else app.lucideIcon
@@ -153,9 +162,6 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     ) {
         when {
             lucideIcon != null -> {
-                // Skalierung der Lucide Icons auf ca. 55% der Originalgröße.
-                // Wir halten den Container (Box) auf iconSize und zentrieren das Icon darin,
-                // damit die Positionierung symmetrisch zu den anderen Icons bleibt.
                 Icon(
                     imageVector = lucideIcon,
                     contentDescription = null,
@@ -166,7 +172,37 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
             app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
             else -> Box(modifier = Modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
         }
+
+        // Notification Badge (Small Dot top right)
+        if (hasNotification) {
+            val dotSize = iconSize * 0.2f
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = iconSize * 0.05f, end = iconSize * 0.05f)
+                    .size(dotSize)
+                    .background(tintColor, CircleShape)
+                    .border(1.dp, Color.Black.copy(alpha = 0.1f), CircleShape) // Subtle border for visibility
+            )
+        }
     }
+}
+
+/**
+ * Checks if the notification listener service is enabled for this app.
+ */
+fun isNotificationServiceEnabled(context: Context): Boolean {
+    val pkgName = context.packageName
+    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+    return flat != null && flat.contains(pkgName)
+}
+
+/**
+ * Opens the system settings to enable notification access.
+ */
+fun openNotificationSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+    context.startActivity(intent)
 }
 
 /**
