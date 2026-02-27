@@ -141,7 +141,7 @@ fun AppDrawer(
     // Fokus-Requester für das Suchfeld.
     val focusRequester = remember { FocusRequester() }
 
-    // Zustand für den aktuell geöffneten Ordner.
+    // Zustand für die aktuell geöffneten Ordner.
     var activeFolderId by remember { mutableStateOf<String?>(null) }
     val activeFolder = remember(activeFolderId, folders) {
         if (activeFolderId != null) folders.find { it.id == activeFolderId } else null
@@ -216,6 +216,7 @@ fun AppDrawer(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             // Kopfzeile mit Titel und Schließen-Button.

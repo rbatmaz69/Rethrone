@@ -58,7 +58,13 @@ fun ColorConfigMenu(
         SystemWallpaperView()
         Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
 
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Farben", fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
@@ -72,7 +78,7 @@ fun ColorConfigMenu(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Bleibt grau (weiß mit alpha), da es eine sekundäre Info ist
-                Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
 
                 val darkTextSwitchColors = if (isLiquidGlassEnabled) {
                     if (isDarkTextEnabled) {
@@ -161,7 +167,7 @@ fun ColorConfigMenu(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Bleibt grau
-                Text("Themen", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                Text("Themen", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
 
                 val liquidGlassSwitchColors = if (isLiquidGlassEnabled) {
                     if (isDarkTextEnabled) {
@@ -291,7 +297,7 @@ fun PreviewCard(
             .background(glassBrush, RoundedCornerShape(16.dp))
             .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(16.dp))
     } else {
-        Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
     }
 
     Box(
@@ -299,7 +305,7 @@ fun PreviewCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Karten-Titel bleibt grau
-            Text(title, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
@@ -416,8 +422,8 @@ fun ThemeOptionItem(
         }
     } else {
         // Standard style
-        val bgColor = if (isSelected) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
-        val border = if (isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else null
+        val bgColor = if (isSelected) mainTextColor.copy(alpha = 0.15f) else mainTextColor.copy(alpha = 0.05f)
+        val border = if (isSelected) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.3f)) else null
 
         Modifier
             .background(bgColor, RoundedCornerShape(16.dp))

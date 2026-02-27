@@ -84,7 +84,7 @@ fun SizeConfigMenu(
             Spacer(modifier = Modifier.height(24.dp))
             
             // Bleibt grau
-            Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+            Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
             
             // Preview Area
@@ -116,7 +116,7 @@ fun SizeConfigMenu(
             // Bleibt grau
             Text(
                 text = "Schriftgröße",
-                color = Color.White.copy(alpha = 0.5f),
+                color = mainTextColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -171,8 +171,8 @@ fun SizeConfigMenu(
                             .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
                     } else {
                         // Standard Style or Selected Button (which is solid)
-                        val bgColor = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f)
-                        val border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        val bgColor = if (isSelected) mainTextColor else mainTextColor.copy(alpha = 0.1f)
+                        val border = if (isSelected) null else BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f))
                         Modifier
                             .background(bgColor, RoundedCornerShape(12.dp))
                             .then(if (border != null) Modifier.border(border, RoundedCornerShape(12.dp)) else Modifier)
@@ -203,7 +203,7 @@ fun SizeConfigMenu(
             // Bleibt grau
             Text(
                 text = "Icon-Größe",
-                color = Color.White.copy(alpha = 0.5f),
+                color = mainTextColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -258,8 +258,8 @@ fun SizeConfigMenu(
                             .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
                     } else {
                         // Standard Style or Selected Button (which is solid)
-                        val bgColor = if (isSelected) mainTextColor else Color.White.copy(alpha = 0.1f)
-                        val border = if (isSelected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        val bgColor = if (isSelected) mainTextColor else mainTextColor.copy(alpha = 0.1f)
+                        val border = if (isSelected) null else BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f))
                         Modifier
                             .background(bgColor, RoundedCornerShape(12.dp))
                             .then(if (border != null) Modifier.border(border, RoundedCornerShape(12.dp)) else Modifier)
@@ -290,6 +290,7 @@ fun SizeConfigMenu(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .padding(bottom = 32.dp, end = 24.dp, start = 24.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
@@ -299,14 +300,14 @@ fun SizeConfigMenu(
                     onIconSizeSelected(IconSize.STANDARD)
                 },
                 // Bleibt grau
-                colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.6f))
+                colors = ButtonDefaults.textButtonColors(contentColor = mainTextColor.copy(alpha = 0.6f))
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = Color.White.copy(alpha = 0.6f)
+                        tint = mainTextColor.copy(alpha = 0.6f)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Auf Standardwerte zurücksetzen", fontSize = 14.sp)
@@ -361,7 +362,7 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHom
             .background(glassBrush, RoundedCornerShape(16.dp))
             .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(16.dp))
     } else {
-        Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
     }
 
     Box(
@@ -369,7 +370,7 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHom
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Karten-Titel bleibt grau
-            Text(title, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier

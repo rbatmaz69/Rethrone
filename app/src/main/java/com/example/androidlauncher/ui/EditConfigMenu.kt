@@ -39,6 +39,7 @@ fun EditConfigMenu(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         Row(

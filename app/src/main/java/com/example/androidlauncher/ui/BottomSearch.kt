@@ -140,7 +140,8 @@ fun BottomSearch(
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                  onClose()
             }
-            .windowInsetsPadding(WindowInsets.statusBars)
+            .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         Box(
             modifier = Modifier
@@ -194,7 +195,7 @@ fun BottomSearch(
                                      .padding(vertical = 4.dp)
                                      .height(1.dp)
                                      .background(
-                                         color = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f)
+                                         color = mainTextColor.copy(alpha = 0.1f)
                                      )
                              )
                         }

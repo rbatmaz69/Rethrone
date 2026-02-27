@@ -93,12 +93,12 @@ fun FolderConfigMenu(
                     cursorBrush = SolidColor(mainTextColor),
                     decorationBox = { 
                         if (folderName.isEmpty()) {
-                            Text("Ordnername", color = Color.White.copy(alpha = 0.4f), fontSize = 24.sp)
+                            Text("Ordnername", color = mainTextColor.copy(alpha = 0.4f), fontSize = 24.sp)
                         }
                         it() 
                     }
                 )
-                Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
+                Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = mainTextColor.copy(alpha = 0.6f))
             }
             Row {
                 IconButton(onClick = { showDeleteConfirm = true }) { 
@@ -152,7 +152,7 @@ fun FolderConfigMenu(
                 .background(glassBrush, RoundedCornerShape(12.dp))
                 .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
         } else {
-            Modifier.background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
         }
 
         Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
@@ -160,7 +160,7 @@ fun FolderConfigMenu(
             indication = null
         ) { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 BasicTextField(
                     value = searchQuery,
@@ -171,7 +171,7 @@ fun FolderConfigMenu(
                     singleLine = true,
                     decorationBox = { 
                         if (searchQuery.isEmpty()) {
-                            Text("Apps suchen...", color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp)
+                            Text("Apps suchen...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 15.sp)
                         }
                         it() 
                     }
@@ -181,8 +181,12 @@ fun FolderConfigMenu(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 150.dp)) {
-            item { Text("Apps verwalten", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 120.dp)
+        ) {
+            item { Text("Apps verwalten", color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp) }
             items(filteredApps) { app ->
                 val isSelected = app.packageName in selectedPackages
                 // Requirement 2: Disable app if it's already in another folder
@@ -230,7 +234,7 @@ fun FolderConfigMenu(
                         .background(glassBrush, RoundedCornerShape(12.dp))
                         .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
                 } else if (isSelected) {
-                    Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                    Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
                 } else {
                     Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
                 }
@@ -305,7 +309,7 @@ fun FolderConfigMenu(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
+    Box(modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
         val intSrc = remember { MutableInteractionSource() }
         val checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
         
