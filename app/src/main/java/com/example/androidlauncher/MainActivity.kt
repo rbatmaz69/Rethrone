@@ -725,12 +725,6 @@ fun HomeScreen(
         animationSpec = tween(300, easing = EaseInOutCubic), label = ""
     )
 
-    val settingsButtonSize by animateDpAsState(
-        targetValue = if (isSettingsOpen) 72.dp else 56.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = ""
-    )
-
     LaunchedEffect(launchRequest) {
         val request = launchRequest ?: return@LaunchedEffect
         delay(280)
@@ -868,7 +862,7 @@ fun HomeScreen(
                                         scaleX = bounceScale
                                         scaleY = bounceScale
                                     }) {
-                                        AppIconView(app)
+                                        AppIconView(app, showBadge = true)
                                     }
                                     if (showLabels) {
                                         Text(
