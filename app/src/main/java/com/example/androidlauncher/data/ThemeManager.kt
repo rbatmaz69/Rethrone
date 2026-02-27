@@ -28,6 +28,7 @@ class ThemeManager(private val context: Context) {
         // Keys for DataStore
         private val THEME_KEY = stringPreferencesKey("selected_theme")
         private val FONT_SIZE_KEY = stringPreferencesKey("font_size")
+        private val FONT_WEIGHT_KEY = stringPreferencesKey("font_weight")
         private val ICON_SIZE_KEY = stringPreferencesKey("icon_size")
         private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
@@ -59,6 +60,19 @@ class ThemeManager(private val context: Context) {
                 FontSize.valueOf(fontSizeName)
             } catch (e: IllegalArgumentException) {
                 FontSize.STANDARD
+            }
+        }
+
+    /**
+     * Observable flow for the selected font weight.
+     */
+    val selectedFontWeight: Flow<FontWeightLevel> = context.dataStore.data
+        .map { preferences ->
+            val fontWeightName = preferences[FONT_WEIGHT_KEY] ?: FontWeightLevel.NORMAL.name
+            try {
+                FontWeightLevel.valueOf(fontWeightName)
+            } catch (e: IllegalArgumentException) {
+                FontWeightLevel.NORMAL
             }
         }
 
@@ -127,6 +141,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setFontSize(fontSize: FontSize) {
         context.dataStore.edit { preferences ->
             preferences[FONT_SIZE_KEY] = fontSize.name
+        }
+    }
+
+    /**
+     * Updates the selected font weight.
+     */
+    suspend fun setFontWeight(fontWeight: FontWeightLevel) {
+        context.dataStore.edit { preferences ->
+            preferences[FONT_WEIGHT_KEY] = fontWeight.name
         }
     }
 

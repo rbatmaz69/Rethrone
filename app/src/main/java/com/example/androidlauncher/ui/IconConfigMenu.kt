@@ -34,6 +34,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.composables.icons.lucide.*
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.example.androidlauncher.LauncherLogic
 import java.lang.reflect.Method
@@ -47,6 +48,7 @@ fun IconConfigMenu(
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val fontWeight = LocalFontWeight.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     
     var searchQuery by remember { mutableStateOf("") }
@@ -71,7 +73,7 @@ fun IconConfigMenu(
             Text(
                 "App-Icons anpassen",
                 fontSize = 24.sp,
-                fontWeight = FontWeight.Light,
+                fontWeight = fontWeight.weight,
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
@@ -175,7 +177,7 @@ fun IconConfigMenu(
                         AppIconView(app, modifier = Modifier.size(40.dp))
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(app.label, color = mainTextColor, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Text(app.label, color = mainTextColor, fontSize = 16.sp, fontWeight = fontWeight.weight)
                             if (customIconName != null) {
                                 Text(customIconName, color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp)
                             }
@@ -212,6 +214,12 @@ fun LucideIconPicker(
     isDarkTextEnabled: Boolean
 ) {
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    // The fontWeight here isn't provided via parameters, we need to retrieve it.
+    // However, LucideIconPicker parameters are passed from IconConfigMenu where we have fontWeight.
+    // Let's retrieve it from CompositionLocal since it should be available if passed down or we can add it to params.
+    // LucideIconPicker is inside IconConfigMenu which is inside the theme.
+    val fontWeight = LocalFontWeight.current
+
     var searchQuery by remember { mutableStateOf("") }
     
     // Comprehensive list of Lucide icons
@@ -250,7 +258,7 @@ fun LucideIconPicker(
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
                     }
-                    Text("Icon wählen", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = mainTextColor)
+                    Text("Icon wählen", fontSize = 20.sp, fontWeight = fontWeight.weight, color = mainTextColor)
                     Spacer(modifier = Modifier.width(48.dp)) // Placeholder for balance
                 }
 

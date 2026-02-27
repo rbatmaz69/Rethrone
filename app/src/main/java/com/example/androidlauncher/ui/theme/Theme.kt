@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.FontSize
+import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
 
 /**
@@ -26,6 +27,7 @@ import com.example.androidlauncher.data.IconSize
 val LocalColorTheme = staticCompositionLocalOf { ColorTheme.SIGNATURE }
 val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
+val LocalFontWeight = staticCompositionLocalOf { FontWeightLevel.NORMAL }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
 /**
@@ -47,6 +49,7 @@ fun AndroidLauncherTheme(
     colorTheme: ColorTheme = ColorTheme.SIGNATURE,
     fontSize: FontSize = FontSize.STANDARD,
     iconSize: IconSize = IconSize.STANDARD,
+    fontWeight: FontWeightLevel = FontWeightLevel.NORMAL,
     darkTextEnabled: Boolean = false,
     showFavoriteLabels: Boolean = false,
     liquidGlassEnabled: Boolean = true,
@@ -95,6 +98,7 @@ fun AndroidLauncherTheme(
         LocalColorTheme provides colorTheme,
         LocalFontSize provides fontSize,
         LocalIconSize provides iconSize,
+        LocalFontWeight provides fontWeight,
         LocalDarkTextEnabled provides darkTextEnabled,
         LocalShowFavoriteLabels provides showFavoriteLabels,
         LocalLiquidGlassEnabled provides liquidGlassEnabled,
@@ -102,7 +106,7 @@ fun AndroidLauncherTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = getTypography(appFont.fontFamily),
+            typography = getTypography(appFont.fontFamily, fontWeight),
             content = content
         )
     }

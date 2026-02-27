@@ -31,6 +31,7 @@ import com.composables.icons.lucide.Droplets
 import com.composables.icons.lucide.Square
 import com.example.androidlauncher.SystemWallpaperView
 import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 
 
 /**
@@ -50,7 +51,8 @@ fun ColorConfigMenu(
     onLiquidGlassToggled: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
-    // Nur für die primären Schriften und Symbole verwenden
+    val fontWeight = LocalFontWeight.current
+    // Nur für primäre Schriften und Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     val backgroundColor = if (isDarkTextEnabled) selectedTheme.lightBackground else selectedTheme.drawerBackground
@@ -66,8 +68,14 @@ fun ColorConfigMenu(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Farben", fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
+                Text("Farben", fontSize = 24.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = mainTextColor
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

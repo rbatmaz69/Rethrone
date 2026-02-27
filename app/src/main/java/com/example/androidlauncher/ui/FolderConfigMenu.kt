@@ -40,6 +40,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
 /**
@@ -64,6 +65,7 @@ fun FolderConfigMenu(
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val fontWeight = LocalFontWeight.current
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
@@ -89,7 +91,7 @@ fun FolderConfigMenu(
                 BasicTextField(
                     value = folderName,
                     onValueChange = { folderName = it },
-                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 24.sp, fontWeight = FontWeight.Light),
+                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 24.sp, fontWeight = fontWeight.weight),
                     cursorBrush = SolidColor(mainTextColor),
                     decorationBox = { 
                         if (folderName.isEmpty()) {

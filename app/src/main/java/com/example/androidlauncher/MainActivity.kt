@@ -71,11 +71,13 @@ import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalShowFavoriteLabels
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.FontSize
+import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
@@ -134,6 +136,7 @@ class MainActivity : ComponentActivity() {
             // Observe settings as State
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SIGNATURE)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
+            val currentFontWeight by themeManager.selectedFontWeight.collectAsState(initial = FontWeightLevel.NORMAL)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val currentAppFont by themeManager.selectedAppFont.collectAsState(initial = AppFont.SYSTEM_DEFAULT)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
@@ -149,6 +152,7 @@ class MainActivity : ComponentActivity() {
             AndroidLauncherTheme(
                 colorTheme = currentTheme,
                 fontSize = currentFontSize,
+                fontWeight = currentFontWeight,
                 iconSize = currentIconSize,
                 darkTextEnabled = isDarkTextEnabled,
                 showFavoriteLabels = showFavoriteLabels,
@@ -475,6 +479,10 @@ class MainActivity : ComponentActivity() {
                                  onFontSizeSelected = { size ->
                                      scope.launch { themeManager.setFontSize(size) }
                                  },
+                                 currentFontWeight = currentFontWeight,
+                                 onFontWeightSelected = { weight ->
+                                     scope.launch { themeManager.setFontWeight(weight) }
+                                 },
                                  currentIconSize = currentIconSize,
                                  onIconSizeSelected = { size ->
                                      scope.launch { themeManager.setIconSize(size) }
@@ -716,6 +724,7 @@ fun HomeScreen(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val showLabels = LocalShowFavoriteLabels.current
     val fontSize = LocalFontSize.current
+    val fontWeight = LocalFontWeight.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
@@ -1455,6 +1464,7 @@ fun ClockHeader(
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
+    val appFontWeight = LocalFontWeight.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
@@ -1485,14 +1495,14 @@ fun ClockHeader(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "CalendarReturnBounce"
     )
-    
+
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text = timeFormat.format(currentTime),
             fontSize = 72.sp * fontSize.scale,
-            fontWeight = FontWeight.Normal,
+            fontWeight = appFontWeight.weight,
             letterSpacing = (-2).sp,
             color = mainTextColor,
             modifier = Modifier
@@ -1602,7 +1612,7 @@ fun ClockHeader(
         Text(
             text = dateFormat.format(currentTime),
             fontSize = 18.sp * fontSize.scale,
-            fontWeight = FontWeight.Normal,
+            fontWeight = appFontWeight.weight,
             color = mainTextColor.copy(alpha = 0.7f),
             modifier = Modifier
                 .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
