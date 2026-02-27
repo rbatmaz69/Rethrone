@@ -2,6 +2,7 @@ package com.example.androidlauncher.ui
 
 import android.app.Activity
 import android.app.ActivityOptions
+import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -58,7 +59,7 @@ import com.example.androidlauncher.ui.theme.LocalIconSize
 
 /**
  * Default system-side mapping for app icons to Lucide icons.
- * packageName -> lucideIconName
+ * Maps package names to Lucide icon names.
  */
 val DEFAULT_ICON_MAPPINGS: Map<String, String> = mapOf(
     "com.android.chrome" to "Chrome",
@@ -208,10 +209,21 @@ fun isNotificationServiceEnabled(context: Context): Boolean {
 
 /**
  * Opens the system settings to enable notification access.
+ * On Android 11+ (API 30), it attempts to open the specific detail settings for this app
+ * so the user doesn't have to find the launcher in a list.
  */
 fun openNotificationSettings(context: Context) {
-    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-    context.startActivity(intent)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        // Direct link to this app's notification listener settings (available from Android 11)
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+        val componentName = ComponentName(context, NotificationService::class.java)
+        intent.putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, componentName.flattenToString())
+        context.startActivity(intent)
+    } else {
+        // Fallback to the general list of notification listeners for older Android versions
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        context.startActivity(intent)
+    }
 }
 
 /**
