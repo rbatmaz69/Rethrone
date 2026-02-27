@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
 
@@ -31,6 +32,7 @@ val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
  * CompositionLocal for the "Liquid Glass" visual effect.
  */
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
+val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
 
 private val DarkColorScheme = darkColorScheme(
     primary = ColorTheme.SIGNATURE.primary,
@@ -48,6 +50,7 @@ fun AndroidLauncherTheme(
     darkTextEnabled: Boolean = false,
     showFavoriteLabels: Boolean = false,
     liquidGlassEnabled: Boolean = true,
+    appFont: AppFont = AppFont.SYSTEM_DEFAULT,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -94,11 +97,12 @@ fun AndroidLauncherTheme(
         LocalIconSize provides iconSize,
         LocalDarkTextEnabled provides darkTextEnabled,
         LocalShowFavoriteLabels provides showFavoriteLabels,
-        LocalLiquidGlassEnabled provides liquidGlassEnabled
+        LocalLiquidGlassEnabled provides liquidGlassEnabled,
+        LocalAppFont provides appFont
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
+            typography = getTypography(appFont.fontFamily),
             content = content
         )
     }

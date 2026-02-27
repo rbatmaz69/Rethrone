@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.SystemWallpaperView
+import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -33,6 +35,7 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 /**
  * Menu for configuring the size of icons and text.
  * Allows the user to select from Small, Standard, and Large sizes.
+ * Now also includes a button to open the font selection menu.
  */
 @Composable
 fun SizeConfigMenu(
@@ -40,6 +43,8 @@ fun SizeConfigMenu(
     onFontSizeSelected: (FontSize) -> Unit,
     currentIconSize: IconSize,
     onIconSizeSelected: (IconSize) -> Unit,
+    currentAppFont: AppFont,
+    onOpenFontSelection: () -> Unit,
     onClose: () -> Unit
 ) {
     val colorTheme = LocalColorTheme.current
@@ -66,7 +71,7 @@ fun SizeConfigMenu(
             ) {
                 Column {
                     Text(
-                        text = "Größe & Skalierung",
+                        text = "Design & Schriftart",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Light,
                         color = mainTextColor
@@ -83,7 +88,6 @@ fun SizeConfigMenu(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Bleibt grau
             Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
             
@@ -113,7 +117,74 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Bleibt grau
+            Text(
+                text = "Schriftart",
+                color = mainTextColor.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Font Selection Button
+            val fontButtonModifier = if (isLiquidGlassEnabled) {
+                val glassBrush = if (isDarkTextEnabled) {
+                    Brush.linearGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.05f))
+                    )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.15f), Color.White.copy(alpha = 0.05f))
+                    )
+                }
+                val borderBrush = if (isDarkTextEnabled) {
+                    Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.3f)))
+                } else {
+                    Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.1f)))
+                }
+                Modifier
+                    .background(glassBrush, RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+            } else {
+                Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .then(fontButtonModifier)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onOpenFontSelection() }
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Schriftart wählen",
+                            fontSize = 16.sp,
+                            color = mainTextColor
+                        )
+                        Text(
+                            text = currentAppFont.label,
+                            fontSize = 12.sp,
+                            color = mainTextColor.copy(alpha = 0.6f),
+                            fontFamily = currentAppFont.fontFamily
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = mainTextColor.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
             Text(
                 text = "Schriftgröße",
                 color = mainTextColor.copy(alpha = 0.5f),
@@ -198,9 +269,8 @@ fun SizeConfigMenu(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Bleibt grau
             Text(
                 text = "Icon-Größe",
                 color = mainTextColor.copy(alpha = 0.5f),

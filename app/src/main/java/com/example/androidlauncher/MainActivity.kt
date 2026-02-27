@@ -81,6 +81,7 @@ import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.IconManager
+import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.ui.*
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -134,6 +135,7 @@ class MainActivity : ComponentActivity() {
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SIGNATURE)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
+            val currentAppFont by themeManager.selectedAppFont.collectAsState(initial = AppFont.SYSTEM_DEFAULT)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
@@ -150,7 +152,8 @@ class MainActivity : ComponentActivity() {
                 iconSize = currentIconSize,
                 darkTextEnabled = isDarkTextEnabled,
                 showFavoriteLabels = showFavoriteLabels,
-                liquidGlassEnabled = isLiquidGlassEnabled
+                liquidGlassEnabled = isLiquidGlassEnabled,
+                appFont = currentAppFont
             ) {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
@@ -163,6 +166,7 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
+                var isFontSelectionOpen by remember { mutableStateOf(false) }
                 var isEditConfigOpen by remember { mutableStateOf(false) }
                 var isIconConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
@@ -178,6 +182,7 @@ class MainActivity : ComponentActivity() {
                                     isFavoritesConfigOpen = false
                                     isColorConfigOpen = false
                                     isSizeConfigOpen = false
+                                    isFontSelectionOpen = false
                                     isEditConfigOpen = false
                                     isIconConfigOpen = false
                                     isInfoOpen = false
@@ -278,6 +283,7 @@ class MainActivity : ComponentActivity() {
                         isFavoritesConfigOpen = false
                         isColorConfigOpen = false
                         isSizeConfigOpen = false
+                        isFontSelectionOpen = false
                         isEditConfigOpen = false
                         isIconConfigOpen = false
                         isInfoOpen = false
@@ -285,14 +291,15 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isEditConfigOpen, isIconConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen, isIconConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isSearchOpen) isSearchOpen = false
+                    else if (isFontSelectionOpen) isFontSelectionOpen = false
                     else if (isIconConfigOpen) isIconConfigOpen = false
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
@@ -472,10 +479,28 @@ class MainActivity : ComponentActivity() {
                                  onIconSizeSelected = { size ->
                                      scope.launch { themeManager.setIconSize(size) }
                                  },
+                                 currentAppFont = currentAppFont,
+                                 onOpenFontSelection = { isFontSelectionOpen = true },
                                  onClose = { isSizeConfigOpen = false }
                              )
                          }
                      }
+
+                    AnimatedVisibility(
+                        visible = isFontSelectionOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
+                            FontSelectionMenu(
+                                currentAppFont = currentAppFont,
+                                onAppFontSelected = { font ->
+                                    scope.launch { themeManager.setAppFont(font) }
+                                },
+                                onBack = { isFontSelectionOpen = false }
+                            )
+                        }
+                    }
 
                     AnimatedVisibility(
                          visible = isEditConfigOpen,

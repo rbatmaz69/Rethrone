@@ -21,6 +21,7 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
  * - Dark Text Mode
  * - Favorite Labels Visibility
  * - Liquid Glass Effect
+ * - App Font
  */
 class ThemeManager(private val context: Context) {
     companion object {
@@ -31,6 +32,7 @@ class ThemeManager(private val context: Context) {
         private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
+        private val APP_FONT_KEY = stringPreferencesKey("app_font")
     }
 
     /**
@@ -98,6 +100,19 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
+     * Observable flow for the selected app font.
+     */
+    val selectedAppFont: Flow<AppFont> = context.dataStore.data
+        .map { preferences ->
+            val fontName = preferences[APP_FONT_KEY] ?: AppFont.SYSTEM_DEFAULT.name
+            try {
+                AppFont.valueOf(fontName)
+            } catch (e: IllegalArgumentException) {
+                AppFont.SYSTEM_DEFAULT
+            }
+        }
+
+    /**
      * Updates the selected theme.
      */
     suspend fun setTheme(theme: ColorTheme) {
@@ -148,6 +163,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setLiquidGlassEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[LIQUID_GLASS_KEY] = enabled
+        }
+    }
+
+    /**
+     * Updates the selected app font.
+     */
+    suspend fun setAppFont(font: AppFont) {
+        context.dataStore.edit { preferences ->
+            preferences[APP_FONT_KEY] = font.name
         }
     }
 }
