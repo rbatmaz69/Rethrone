@@ -2,10 +2,12 @@ package com.example.androidlauncher.ui
 
 import android.app.Activity
 import android.app.ActivityOptions
+import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -15,11 +17,13 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -27,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +51,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.composables.icons.lucide.Lucide
+import com.example.androidlauncher.NotificationService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -53,7 +59,7 @@ import com.example.androidlauncher.ui.theme.LocalIconSize
 
 /**
  * Default system-side mapping for app icons to Lucide icons.
- * packageName -> lucideIconName
+ * Maps package names to Lucide icon names.
  */
 val DEFAULT_ICON_MAPPINGS: Map<String, String> = mapOf(
     "com.android.chrome" to "Chrome",
@@ -132,9 +138,14 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
  * Composable that renders an app icon.
  * Supports Vector icons (Lucide) and Bitmaps.
  * Adjusts tint based on dark text mode.
+ * Shows a notification dot if the app has active notifications and showBadge is true.
  */
 @Composable
-fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
+fun AppIconView(
+    app: AppInfo, 
+    modifier: Modifier = Modifier,
+    showBadge: Boolean = false
+) {
     val context = LocalContext.current
     val iconManager = remember { IconManager(context) }
     val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
@@ -142,6 +153,14 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     val iconSize = LocalIconSize.current.size
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val tintColor = if (isDarkTextEnabled) Color.Black else Color.White
+
+    // Observe notifications only if badge display is requested
+    val activeNotifications by if (showBadge) {
+        NotificationService.activeNotificationPackages.collectAsState()
+    } else {
+        remember { mutableStateOf(emptySet<String>()) }
+    }
+    val hasNotification = showBadge && app.packageName in activeNotifications
 
     // Priority: 1. User choice, 2. System default mapping, 3. App's own lucideIcon (if any)
     val customIconName = customIcons[app.packageName] ?: DEFAULT_ICON_MAPPINGS[app.packageName]
@@ -153,9 +172,6 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
     ) {
         when {
             lucideIcon != null -> {
-                // Skalierung der Lucide Icons auf ca. 55% der Originalgröße.
-                // Wir halten den Container (Box) auf iconSize und zentrieren das Icon darin,
-                // damit die Positionierung symmetrisch zu den anderen Icons bleibt.
                 Icon(
                     imageVector = lucideIcon,
                     contentDescription = null,
@@ -166,6 +182,47 @@ fun AppIconView(app: AppInfo, modifier: Modifier = Modifier) {
             app.iconBitmap != null -> Image(bitmap = app.iconBitmap, contentDescription = null, modifier = Modifier.size(iconSize), colorFilter = ColorFilter.tint(tintColor))
             else -> Box(modifier = Modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
         }
+
+        // Notification Badge (Small Dot top right)
+        if (hasNotification) {
+            val dotSize = iconSize * 0.2f
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = iconSize * 0.05f, end = iconSize * 0.05f)
+                    .size(dotSize)
+                    .background(tintColor, CircleShape)
+                    .border(1.dp, Color.Black.copy(alpha = 0.1f), CircleShape) // Subtle border for visibility
+            )
+        }
+    }
+}
+
+/**
+ * Checks if the notification listener service is enabled for this app.
+ */
+fun isNotificationServiceEnabled(context: Context): Boolean {
+    val pkgName = context.packageName
+    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+    return flat != null && flat.contains(pkgName)
+}
+
+/**
+ * Opens the system settings to enable notification access.
+ * On Android 11+ (API 30), it attempts to open the specific detail settings for this app
+ * so the user doesn't have to find the launcher in a list.
+ */
+fun openNotificationSettings(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        // Direct link to this app's notification listener settings (available from Android 11)
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+        val componentName = ComponentName(context, NotificationService::class.java)
+        intent.putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, componentName.flattenToString())
+        context.startActivity(intent)
+    } else {
+        // Fallback to the general list of notification listeners for older Android versions
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        context.startActivity(intent)
     }
 }
 

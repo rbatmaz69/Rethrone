@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,23 +17,35 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
+import com.composables.icons.lucide.Bell
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 
 @Composable
 fun EditConfigMenu(
     onOpenIconConfig: () -> Unit,
     onClose: () -> Unit
 ) {
+    val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+
+    var isNotificationEnabled by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
+
+    // Re-check permission when returning to the app
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        isNotificationEnabled = isNotificationServiceEnabled(context)
+    }
 
     Column(
         modifier = Modifier
@@ -69,6 +81,27 @@ fun EditConfigMenu(
             isLiquidGlassEnabled = isLiquidGlassEnabled,
             isDarkTextEnabled = isDarkTextEnabled
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Menu Point: Notification Dots
+        EditMenuItem(
+            icon = Lucide.Bell,
+            label = "Benachrichtigungs-Punkte",
+            onClick = {
+                if (!isNotificationEnabled) {
+                    openNotificationSettings(context)
+                } else {
+                    // If already enabled, maybe show a toast or just do nothing for now
+                    // as disabling requires system settings too.
+                    openNotificationSettings(context)
+                }
+            },
+            statusLabel = if (isNotificationEnabled) "An" else "Aus",
+            mainTextColor = mainTextColor,
+            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            isDarkTextEnabled = isDarkTextEnabled
+        )
     }
 }
 
@@ -79,7 +112,8 @@ fun EditMenuItem(
     onClick: () -> Unit,
     mainTextColor: Color,
     isLiquidGlassEnabled: Boolean,
-    isDarkTextEnabled: Boolean
+    isDarkTextEnabled: Boolean,
+    statusLabel: String? = null
 ) {
     val backgroundModifier = if (isLiquidGlassEnabled) {
         val glassBrush = if (isDarkTextEnabled) {
@@ -150,6 +184,14 @@ fun EditMenuItem(
                 fontWeight = FontWeight.Normal,
                 modifier = Modifier.weight(1f)
             )
+            if (statusLabel != null) {
+                Text(
+                    text = statusLabel,
+                    color = mainTextColor.copy(alpha = 0.5f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
