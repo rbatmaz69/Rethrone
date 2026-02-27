@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,7 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.SystemWallpaperView
+import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.FontSize
+import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -33,13 +36,18 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 /**
  * Menu for configuring the size of icons and text.
  * Allows the user to select from Small, Standard, and Large sizes.
+ * Now also includes a button to open the font selection menu.
  */
 @Composable
 fun SizeConfigMenu(
     currentFontSize: FontSize,
     onFontSizeSelected: (FontSize) -> Unit,
+    currentFontWeight: FontWeightLevel,
+    onFontWeightSelected: (FontWeightLevel) -> Unit,
     currentIconSize: IconSize,
     onIconSizeSelected: (IconSize) -> Unit,
+    currentAppFont: AppFont,
+    onOpenFontSelection: () -> Unit,
     onClose: () -> Unit
 ) {
     val colorTheme = LocalColorTheme.current
@@ -66,9 +74,9 @@ fun SizeConfigMenu(
             ) {
                 Column {
                     Text(
-                        text = "Größe & Skalierung",
+                        text = "Design & Schriftart",
                         fontSize = 24.sp,
-                        fontWeight = FontWeight.Light,
+                        fontWeight = currentFontWeight.weight,
                         color = mainTextColor
                     )
                 }
@@ -81,11 +89,10 @@ fun SizeConfigMenu(
                 }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
-            // Bleibt grau
             Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
             // Preview Area
             Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -93,7 +100,8 @@ fun SizeConfigMenu(
                     title = "Startseite", 
                     fontSize = currentFontSize, 
                     iconSize = currentIconSize,
-                    isHome = true, 
+                    fontWeight = currentFontWeight.weight,
+                    isHome = true,
                     mainTextColor = mainTextColor,
                     isLiquidGlassEnabled = isLiquidGlassEnabled,
                     isDarkTextEnabled = isDarkTextEnabled,
@@ -103,7 +111,8 @@ fun SizeConfigMenu(
                     title = "App Drawer", 
                     fontSize = currentFontSize, 
                     iconSize = currentIconSize,
-                    isHome = false, 
+                    fontWeight = currentFontWeight.weight,
+                    isHome = false,
                     mainTextColor = mainTextColor,
                     isLiquidGlassEnabled = isLiquidGlassEnabled,
                     isDarkTextEnabled = isDarkTextEnabled,
@@ -111,14 +120,81 @@ fun SizeConfigMenu(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             
-            // Bleibt grau
+            Text(
+                text = "Schriftart",
+                color = mainTextColor.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Font Selection Button
+            val fontButtonModifier = if (isLiquidGlassEnabled) {
+                val glassBrush = if (isDarkTextEnabled) {
+                    Brush.linearGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.05f))
+                    )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.15f), Color.White.copy(alpha = 0.05f))
+                    )
+                }
+                val borderBrush = if (isDarkTextEnabled) {
+                    Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.3f)))
+                } else {
+                    Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.1f)))
+                }
+                Modifier
+                    .background(glassBrush, RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+            } else {
+                Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .then(fontButtonModifier)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onOpenFontSelection() }
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Schriftart wählen",
+                            fontSize = 16.sp,
+                            color = mainTextColor
+                        )
+                        Text(
+                            text = currentAppFont.label,
+                            fontSize = 12.sp,
+                            color = mainTextColor.copy(alpha = 0.6f),
+                            fontFamily = currentAppFont.fontFamily
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = mainTextColor.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            
             Text(
                 text = "Schriftgröße",
                 color = mainTextColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Row(
@@ -198,14 +274,99 @@ fun SizeConfigMenu(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Bleibt grau
+            Text(
+                text = "Schriftstärke",
+                color = mainTextColor.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                FontWeightLevel.entries.forEach { weight ->
+                    val isSelected = weight == currentFontWeight
+
+                    val buttonModifier = if (isLiquidGlassEnabled && !isSelected) {
+                        // Liquid Glass Style for inactive buttons
+                        val glassBrush = if (isDarkTextEnabled) {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.15f),
+                                    Color.Black.copy(alpha = 0.05f)
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.White.copy(alpha = 0.05f)
+                                ),
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            )
+                        }
+
+                        val borderBrush = if (isDarkTextEnabled) {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.8f),
+                                    Color.Black.copy(alpha = 0.3f)
+                                )
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.6f),
+                                    Color.White.copy(alpha = 0.1f)
+                                )
+                            )
+                        }
+
+                        Modifier
+                            .background(glassBrush, RoundedCornerShape(12.dp))
+                            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                    } else {
+                        // Standard Style or Selected Button (which is solid)
+                        val bgColor = if (isSelected) mainTextColor else mainTextColor.copy(alpha = 0.1f)
+                        val border = if (isSelected) null else BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f))
+                        Modifier
+                            .background(bgColor, RoundedCornerShape(12.dp))
+                            .then(if (border != null) Modifier.border(border, RoundedCornerShape(12.dp)) else Modifier)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .then(buttonModifier)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onFontWeightSelected(weight) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val contentColor = if (isSelected) (if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)) else mainTextColor
+                        Text(
+                            text = weight.label,
+                            fontSize = 14.sp,
+                            fontWeight = weight.weight,
+                            color = contentColor
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
                 text = "Icon-Größe",
                 color = mainTextColor.copy(alpha = 0.5f),
                 fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Row(
@@ -297,6 +458,7 @@ fun SizeConfigMenu(
             TextButton(
                 onClick = {
                     onFontSizeSelected(FontSize.STANDARD)
+                    onFontWeightSelected(FontWeightLevel.NORMAL)
                     onIconSizeSelected(IconSize.STANDARD)
                 },
                 // Bleibt grau
@@ -318,7 +480,7 @@ fun SizeConfigMenu(
 }
 
 @Composable
-fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHome: Boolean, mainTextColor: Color, isLiquidGlassEnabled: Boolean, isDarkTextEnabled: Boolean, modifier: Modifier = Modifier) {
+fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, fontWeight: FontWeight, isHome: Boolean, mainTextColor: Color, isLiquidGlassEnabled: Boolean, isDarkTextEnabled: Boolean, modifier: Modifier = Modifier) {
     val colorTheme = LocalColorTheme.current
 
     val cardModifier = if (isLiquidGlassEnabled) {
@@ -370,7 +532,7 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, isHom
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Karten-Titel bleibt grau
-            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = fontWeight)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier

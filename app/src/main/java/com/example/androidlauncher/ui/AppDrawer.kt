@@ -77,6 +77,7 @@ import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.composables.icons.lucide.*
@@ -105,6 +106,7 @@ fun AppDrawer(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
+    val fontWeight = LocalFontWeight.current
     val iconSize = LocalIconSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
@@ -228,7 +230,7 @@ fun AppDrawer(
                 Text(
                     "Apps",
                     fontSize = 24.sp * fontSize.scale,
-                    fontWeight = FontWeight.Light,
+                    fontWeight = fontWeight.weight,
                     color = mainTextColor
                 )
                 Row {
@@ -736,7 +738,7 @@ fun AppDrawer(
                                         textStyle = androidx.compose.ui.text.TextStyle(
                                             color = mainTextColor,
                                             fontSize = 22.sp * fontSize.scale,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = fontWeight.weight,
                                             textAlign = TextAlign.Center
                                         ),
                                         cursorBrush = SolidColor(mainTextColor),
@@ -753,7 +755,7 @@ fun AppDrawer(
                                         currentActiveFolder.name,
                                         color = mainTextColor,
                                         fontSize = 22.sp * fontSize.scale,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = fontWeight.weight,
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp)
                                     )
@@ -1138,7 +1140,7 @@ fun AppDrawer(
                         Text(
                             "In Ordner verschieben",
                             fontSize = 18.sp * fontSize.scale,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = fontWeight.weight,
                             color = mainTextColor,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
@@ -1186,6 +1188,7 @@ fun FolderItem(
 ) {
     val fontSize = LocalFontSize.current
     val iconSizeValue = LocalIconSize.current.size
+    val fontWeight = LocalFontWeight.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
@@ -1261,7 +1264,16 @@ fun FolderItem(
                 Icon(Lucide.Folder, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(iconSizeValue * 0.6f))
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = folder.name, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(
+                text = folder.name,
+                fontSize = 11.sp * fontSize.scale,
+                color = mainTextColor.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+                fontWeight = fontWeight.weight
+            )
         }
     }
 }
@@ -1287,6 +1299,7 @@ fun AppItem(
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
+    val fontWeight = LocalFontWeight.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
@@ -1333,7 +1346,16 @@ fun AppItem(
         ) {
             AppIconView(app)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(
+                text = app.label,
+                fontSize = 11.sp * fontSize.scale,
+                color = mainTextColor.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+                fontWeight = fontWeight.weight
+            )
         }
     }
 }

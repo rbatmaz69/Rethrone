@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.R
 import com.example.androidlauncher.SystemWallpaperView
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 
 @Composable
 fun InfoDialog(
@@ -32,6 +33,7 @@ fun InfoDialog(
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val fontWeight = LocalFontWeight.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val secondaryTextColor = if (isDarkTextEnabled) Color(0xFF555555) else Color.White.copy(alpha = 0.7f)
     val backgroundColor = if (isDarkTextEnabled) Color(0xFFF5F5F5) else Color(0xFF121212)
@@ -56,7 +58,7 @@ fun InfoDialog(
                 Text(
                     text = stringResource(R.string.info_title),
                     fontSize = 24.sp,
-                    fontWeight = FontWeight.Light,
+                    fontWeight = fontWeight.weight,
                     color = mainTextColor
                 )
                 IconButton(onClick = onClose) {

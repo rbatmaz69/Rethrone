@@ -21,16 +21,19 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
  * - Dark Text Mode
  * - Favorite Labels Visibility
  * - Liquid Glass Effect
+ * - App Font
  */
 class ThemeManager(private val context: Context) {
     companion object {
         // Keys for DataStore
         private val THEME_KEY = stringPreferencesKey("selected_theme")
         private val FONT_SIZE_KEY = stringPreferencesKey("font_size")
+        private val FONT_WEIGHT_KEY = stringPreferencesKey("font_weight")
         private val ICON_SIZE_KEY = stringPreferencesKey("icon_size")
         private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
+        private val APP_FONT_KEY = stringPreferencesKey("app_font")
     }
 
     /**
@@ -57,6 +60,19 @@ class ThemeManager(private val context: Context) {
                 FontSize.valueOf(fontSizeName)
             } catch (e: IllegalArgumentException) {
                 FontSize.STANDARD
+            }
+        }
+
+    /**
+     * Observable flow for the selected font weight.
+     */
+    val selectedFontWeight: Flow<FontWeightLevel> = context.dataStore.data
+        .map { preferences ->
+            val fontWeightName = preferences[FONT_WEIGHT_KEY] ?: FontWeightLevel.NORMAL.name
+            try {
+                FontWeightLevel.valueOf(fontWeightName)
+            } catch (e: IllegalArgumentException) {
+                FontWeightLevel.NORMAL
             }
         }
 
@@ -98,6 +114,19 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
+     * Observable flow for the selected app font.
+     */
+    val selectedAppFont: Flow<AppFont> = context.dataStore.data
+        .map { preferences ->
+            val fontName = preferences[APP_FONT_KEY] ?: AppFont.SYSTEM_DEFAULT.name
+            try {
+                AppFont.valueOf(fontName)
+            } catch (e: IllegalArgumentException) {
+                AppFont.SYSTEM_DEFAULT
+            }
+        }
+
+    /**
      * Updates the selected theme.
      */
     suspend fun setTheme(theme: ColorTheme) {
@@ -112,6 +141,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setFontSize(fontSize: FontSize) {
         context.dataStore.edit { preferences ->
             preferences[FONT_SIZE_KEY] = fontSize.name
+        }
+    }
+
+    /**
+     * Updates the selected font weight.
+     */
+    suspend fun setFontWeight(fontWeight: FontWeightLevel) {
+        context.dataStore.edit { preferences ->
+            preferences[FONT_WEIGHT_KEY] = fontWeight.name
         }
     }
 
@@ -148,6 +186,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setLiquidGlassEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[LIQUID_GLASS_KEY] = enabled
+        }
+    }
+
+    /**
+     * Updates the selected app font.
+     */
+    suspend fun setAppFont(font: AppFont) {
+        context.dataStore.edit { preferences ->
+            preferences[APP_FONT_KEY] = font.name
         }
     }
 }

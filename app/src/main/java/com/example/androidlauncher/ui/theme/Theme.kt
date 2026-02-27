@@ -15,7 +15,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.FontSize
+import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
 
 /**
@@ -25,12 +27,14 @@ import com.example.androidlauncher.data.IconSize
 val LocalColorTheme = staticCompositionLocalOf { ColorTheme.SIGNATURE }
 val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
+val LocalFontWeight = staticCompositionLocalOf { FontWeightLevel.NORMAL }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
 /**
  * CompositionLocal for the "Liquid Glass" visual effect.
  */
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
+val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
 
 private val DarkColorScheme = darkColorScheme(
     primary = ColorTheme.SIGNATURE.primary,
@@ -45,9 +49,11 @@ fun AndroidLauncherTheme(
     colorTheme: ColorTheme = ColorTheme.SIGNATURE,
     fontSize: FontSize = FontSize.STANDARD,
     iconSize: IconSize = IconSize.STANDARD,
+    fontWeight: FontWeightLevel = FontWeightLevel.NORMAL,
     darkTextEnabled: Boolean = false,
     showFavoriteLabels: Boolean = false,
     liquidGlassEnabled: Boolean = true,
+    appFont: AppFont = AppFont.SYSTEM_DEFAULT,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -92,13 +98,15 @@ fun AndroidLauncherTheme(
         LocalColorTheme provides colorTheme,
         LocalFontSize provides fontSize,
         LocalIconSize provides iconSize,
+        LocalFontWeight provides fontWeight,
         LocalDarkTextEnabled provides darkTextEnabled,
         LocalShowFavoriteLabels provides showFavoriteLabels,
-        LocalLiquidGlassEnabled provides liquidGlassEnabled
+        LocalLiquidGlassEnabled provides liquidGlassEnabled,
+        LocalAppFont provides appFont
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
+            typography = getTypography(appFont.fontFamily, fontWeight),
             content = content
         )
     }
