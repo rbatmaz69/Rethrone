@@ -44,6 +44,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.drawBehind
@@ -142,11 +143,14 @@ class MainActivity : ComponentActivity() {
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
+            
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
+            val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
+            val wallpaperDim by themeManager.wallpaperDim.collectAsState(initial = 0.1f)
+            val wallpaperZoom by themeManager.wallpaperZoom.collectAsState(initial = 1.0f)
+
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
-
-            val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
 
             val scope = rememberCoroutineScope()
 
@@ -174,6 +178,9 @@ class MainActivity : ComponentActivity() {
                 appFont = currentAppFont
             ) {
                 val lifecycleOwner = LocalLifecycleOwner.current
+                val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+                val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
+
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
                 var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
@@ -187,6 +194,7 @@ class MainActivity : ComponentActivity() {
                 var isFontSelectionOpen by remember { mutableStateOf(false) }
                 var isEditConfigOpen by remember { mutableStateOf(false) }
                 var isIconConfigOpen by remember { mutableStateOf(false) }
+                var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
 
@@ -203,6 +211,7 @@ class MainActivity : ComponentActivity() {
                                     isFontSelectionOpen = false
                                     isEditConfigOpen = false
                                     isIconConfigOpen = false
+                                    isWallpaperConfigOpen = false
                                     isInfoOpen = false
                                     selectedFolderForConfig = null
                                 }
@@ -296,20 +305,22 @@ class MainActivity : ComponentActivity() {
                         isFontSelectionOpen = false
                         isEditConfigOpen = false
                         isIconConfigOpen = false
+                        isWallpaperConfigOpen = false
                         isInfoOpen = false
                         selectedFolderForConfig = null
                     }
                 }
 
-                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen, isIconConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen, isIconConfigOpen, isWallpaperConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isWallpaperConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isWallpaperConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isSearchOpen) isSearchOpen = false
                     else if (isFontSelectionOpen) isFontSelectionOpen = false
+                    else if (isWallpaperConfigOpen) isWallpaperConfigOpen = false
                     else if (isIconConfigOpen) isIconConfigOpen = false
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
@@ -323,7 +334,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                         .onGloballyPositioned { rootSize = it.size }
                 ) {
-                    SystemWallpaperView(customWallpaperUri)
+                    SystemWallpaperView(
+                        customWallpaperUri = customWallpaperUri,
+                        blurLevel = wallpaperBlur,
+                        dimLevel = wallpaperDim,
+                        zoomLevel = wallpaperZoom
+                    )
 
                     AnimatedContent(
                          targetState = isDrawerOpen,
@@ -522,14 +538,38 @@ class MainActivity : ComponentActivity() {
                                      ) 
                                  },
                                  onResetWallpaper = { 
-                                     scope.launch { themeManager.setCustomWallpaperUri(null) }
+                                     scope.launch { 
+                                         themeManager.setCustomWallpaperUri(null)
+                                         themeManager.setWallpaperBlur(0f)
+                                         themeManager.setWallpaperDim(0.1f)
+                                         themeManager.setWallpaperZoom(1.0f)
+                                     }
                                      Toast.makeText(context, "Hintergrund entfernt", Toast.LENGTH_SHORT).show()
                                  },
+                                 onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
                                  isCustomWallpaperSet = customWallpaperUri != null,
                                  onClose = { isEditConfigOpen = false }
                              )
                          }
                      }
+
+                    AnimatedVisibility(
+                        visible = isWallpaperConfigOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
+                            WallpaperConfigMenu(
+                                blurLevel = wallpaperBlur,
+                                onBlurChange = { scope.launch { themeManager.setWallpaperBlur(it) } },
+                                dimLevel = wallpaperDim,
+                                onDimChange = { scope.launch { themeManager.setWallpaperDim(it) } },
+                                zoomLevel = wallpaperZoom,
+                                onZoomChange = { scope.launch { themeManager.setWallpaperZoom(it) } },
+                                onClose = { isWallpaperConfigOpen = false }
+                            )
+                        }
+                    }
 
                     AnimatedVisibility(
                          visible = isIconConfigOpen,
@@ -680,7 +720,12 @@ private fun expandNotifications(context: Context) {
 
 @SuppressLint("MissingPermission")
 @Composable
-fun SystemWallpaperView(customWallpaperUri: String? = null) {
+fun SystemWallpaperView(
+    customWallpaperUri: String? = null,
+    blurLevel: Float = 0f,
+    dimLevel: Float = 0.1f,
+    zoomLevel: Float = 1.0f
+) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
@@ -714,9 +759,21 @@ fun SystemWallpaperView(customWallpaperUri: String? = null) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         wallpaperBitmap?.let {
-            Image(bitmap = it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Image(
+                bitmap = it, 
+                contentDescription = null, 
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = zoomLevel
+                        scaleY = zoomLevel
+                    }
+                    .blur(blurLevel.dp),
+                contentScale = ContentScale.Crop
+            )
         } ?: Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(colorTheme.primary, colorTheme.secondary))))
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.1f)))
+
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = dimLevel)))
     }
 }
 
@@ -1409,10 +1466,7 @@ fun FavoritesConfigMenu(
                     Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
                 }
 
-                Box(modifier = Modifier.fillMaxWidth().then(itemModifier).bounceClick(intSrc).clickable(
-                    interactionSource = intSrc,
-                    indication = null
-                ) {
+                Box(modifier = Modifier.fillMaxWidth().then(itemModifier).bounceClick(intSrc).clickable {
                     val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
                     if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, context.getString(R.string.max_favorites_reached), Toast.LENGTH_SHORT).show()
                 }) {

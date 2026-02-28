@@ -3,6 +3,7 @@ package com.example.androidlauncher.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.androidlauncher.ui.theme.ColorTheme
@@ -23,6 +24,7 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
  * - Liquid Glass Effect
  * - App Font
  * - Custom Wallpaper URI
+ * - Wallpaper Blur and Dim
  */
 class ThemeManager(private val context: Context) {
     companion object {
@@ -36,6 +38,9 @@ class ThemeManager(private val context: Context) {
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
         private val APP_FONT_KEY = stringPreferencesKey("app_font")
         private val CUSTOM_WALLPAPER_KEY = stringPreferencesKey("custom_wallpaper_uri")
+        private val WALLPAPER_BLUR_KEY = floatPreferencesKey("wallpaper_blur")
+        private val WALLPAPER_DIM_KEY = floatPreferencesKey("wallpaper_dim")
+        private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
     }
 
     /**
@@ -137,6 +142,30 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
+     * Observable flow for wallpaper blur (0.0 to 25.0)
+     */
+    val wallpaperBlur: Flow<Float> = context.dataStore.data
+        .map { preferences ->
+            preferences[WALLPAPER_BLUR_KEY] ?: 0f
+        }
+
+    /**
+     * Observable flow for wallpaper dim (0.0 to 1.0)
+     */
+    val wallpaperDim: Flow<Float> = context.dataStore.data
+        .map { preferences ->
+            preferences[WALLPAPER_DIM_KEY] ?: 0.1f
+        }
+
+    /**
+     * Observable flow for wallpaper zoom (1.0 to 2.0)
+     */
+    val wallpaperZoom: Flow<Float> = context.dataStore.data
+        .map { preferences ->
+            preferences[WALLPAPER_ZOOM_KEY] ?: 1.0f
+        }
+
+    /**
      * Updates the selected theme.
      */
     suspend fun setTheme(theme: ColorTheme) {
@@ -218,6 +247,33 @@ class ThemeManager(private val context: Context) {
             } else {
                 preferences[CUSTOM_WALLPAPER_KEY] = uri
             }
+        }
+    }
+
+    /**
+     * Updates the wallpaper blur level.
+     */
+    suspend fun setWallpaperBlur(blur: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[WALLPAPER_BLUR_KEY] = blur
+        }
+    }
+
+    /**
+     * Updates the wallpaper dim level.
+     */
+    suspend fun setWallpaperDim(dim: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[WALLPAPER_DIM_KEY] = dim
+        }
+    }
+
+    /**
+     * Updates the wallpaper zoom level.
+     */
+    suspend fun setWallpaperZoom(zoom: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[WALLPAPER_ZOOM_KEY] = zoom
         }
     }
 }

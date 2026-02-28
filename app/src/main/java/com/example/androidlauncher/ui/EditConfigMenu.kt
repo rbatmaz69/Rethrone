@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +37,7 @@ fun EditConfigMenu(
     onOpenIconConfig: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onResetWallpaper: () -> Unit,
+    onOpenWallpaperAdjust: () -> Unit,
     isCustomWallpaperSet: Boolean,
     onClose: () -> Unit
 ) {
@@ -46,7 +48,6 @@ fun EditConfigMenu(
 
     var isNotificationEnabled by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
 
-    // Re-check permission when returning to the app
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         isNotificationEnabled = isNotificationServiceEnabled(context)
     }
@@ -76,7 +77,6 @@ fun EditConfigMenu(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Menu Point: App Icons anpassen
         EditMenuItem(
             icon = Lucide.Settings2,
             label = "App-Icons anpassen",
@@ -88,7 +88,6 @@ fun EditConfigMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Menu Point: Wallpaper ändern
         EditMenuItem(
             icon = Lucide.Image,
             label = "Wallpaper ändern",
@@ -110,25 +109,31 @@ fun EditConfigMenu(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
-                        tint = mainTextColor.copy(alpha = 0.4f),
-                        modifier = Modifier.padding(end = 16.dp)
+                        tint = mainTextColor.copy(alpha = 0.4f)
                     )
                 }
             }
         )
 
+        if (isCustomWallpaperSet) {
+            Spacer(modifier = Modifier.height(12.dp))
+            EditMenuItem(
+                icon = Lucide.Settings2,
+                label = "Hintergrund anpassen",
+                onClick = onOpenWallpaperAdjust,
+                mainTextColor = mainTextColor,
+                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                isDarkTextEnabled = isDarkTextEnabled
+            )
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Menu Point: Notification Dots
         EditMenuItem(
             icon = Lucide.Bell,
             label = "Benachrichtigungs-Punkte",
             onClick = {
-                if (!isNotificationEnabled) {
-                    openNotificationSettings(context)
-                } else {
-                    openNotificationSettings(context)
-                }
+                openNotificationSettings(context)
             },
             statusLabel = if (isNotificationEnabled) "An" else "Aus",
             mainTextColor = mainTextColor,
@@ -195,56 +200,44 @@ fun EditMenuItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .then(backgroundModifier),
+            .then(backgroundModifier)
+            .clickable { onClick() },
         color = Color.Transparent
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .padding(vertical = 20.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Main clickable area
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onClick() }
-                    .padding(vertical = 20.dp, horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = mainTextColor,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = mainTextColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = label,
+                color = mainTextColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            if (statusLabel != null) {
                 Text(
-                    text = label,
-                    color = mainTextColor,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Normal,
-                    modifier = Modifier.weight(1f)
+                    text = statusLabel,
+                    color = mainTextColor.copy(alpha = 0.5f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
-                if (statusLabel != null) {
-                    Text(
-                        text = statusLabel,
-                        color = mainTextColor.copy(alpha = 0.5f),
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                }
             }
-
-            // Trailing content area (separate from main click)
             if (trailingContent != null) {
-                Box(modifier = Modifier.padding(end = 8.dp)) {
-                    trailingContent()
-                }
+                trailingContent()
             } else {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = mainTextColor.copy(alpha = 0.4f),
-                    modifier = Modifier.padding(end = 16.dp)
+                    tint = mainTextColor.copy(alpha = 0.4f)
                 )
             }
         }
