@@ -16,6 +16,8 @@ import android.graphics.drawable.AdaptiveIconDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import java.io.File
+import com.yalantis.ucrop.UCrop
 import android.provider.AlarmClock
 import android.provider.CalendarContract
 import android.provider.Settings
@@ -102,7 +104,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
 
@@ -155,16 +156,30 @@ class MainActivity : ComponentActivity() {
 
             val scope = rememberCoroutineScope()
 
+            val cropLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                if (result.resultCode == RESULT_OK) {
+                    result.data?.let { intent ->
+                        val resultUri = UCrop.getOutput(intent)
+                        resultUri?.let { uri ->
+                            scope.launch { themeManager.setCustomWallpaperUri(uri.toString()) }
+                        }
+                    }
+                }
+            }
+
             val wallpaperPickerLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.PickVisualMedia()
             ) { uri: Uri? ->
-                uri?.let {
-                    try {
-                        contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        scope.launch { themeManager.setCustomWallpaperUri(it.toString()) }
-                    } catch (e: Exception) {
-                        scope.launch { themeManager.setCustomWallpaperUri(it.toString()) }
-                    }
+                uri?.let { sourceUri ->
+                    val destinationUri = Uri.fromFile(File(context.cacheDir, "cropped_wallpaper_${System.currentTimeMillis()}.jpg"))
+                    val uCrop = UCrop.of(sourceUri, destinationUri)
+                        .withAspectRatio(9f, 16f)
+                        .withMaxResultSize(1080, 1920)
+                        .getIntent(context)
+
+                    cropLauncher.launch(uCrop)
                 }
             }
 
