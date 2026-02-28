@@ -172,17 +172,21 @@ fun HomeScreen(
             .testTag("home_screen")
             .onGloballyPositioned { rootSize = it.size }
             .pointerInput(Unit) {
+                // Bestehende vertikale Gesten (Drawer/Notifications)
                 detectVerticalDragGestures { _, dragAmount ->
                     if (dragAmount < -50) onOpenDrawer()
                     else if (dragAmount > 50) expandNotifications(context)
                 }
             }
             .pointerInput(Unit) {
+                // NEU: Doppelklick-Geste zum Sperren
                 detectTapGestures(
                     onDoubleTap = {
                         if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
+                            // Service ist aktiv -> Befehl senden
                             LauncherAccessibilityService.requestLockScreen(context)
                         } else {
+                            // Service fehlt -> Nutzer informieren und zu Einstellungen leiten
                             Toast.makeText(context, "Bitte aktiviere den Accessibility Service in den Einstellungen", Toast.LENGTH_LONG).show()
                             try {
                                 context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
