@@ -97,7 +97,9 @@ fun EditConfigMenu(
             isLiquidGlassEnabled = isLiquidGlassEnabled,
             isDarkTextEnabled = isDarkTextEnabled,
             trailingContent = {
-                IconButton(onClick = onResetWallpaper) {
+                IconButton(onClick = { 
+                    onResetWallpaper()
+                }) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Reset",
@@ -186,44 +188,56 @@ fun EditMenuItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .then(backgroundModifier)
-            .clickable { onClick() },
+            .then(backgroundModifier),
         color = Color.Transparent
     ) {
         Row(
-            modifier = Modifier
-                .padding(vertical = 20.dp, horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = mainTextColor,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = label,
-                color = mainTextColor,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.weight(1f)
-            )
-            if (statusLabel != null) {
-                Text(
-                    text = statusLabel,
-                    color = mainTextColor.copy(alpha = 0.5f),
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+            // Main clickable area
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onClick() }
+                    .padding(vertical = 20.dp, horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = mainTextColor,
+                    modifier = Modifier.size(24.dp)
                 )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = label,
+                    color = mainTextColor,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.weight(1f)
+                )
+                if (statusLabel != null) {
+                    Text(
+                        text = statusLabel,
+                        color = mainTextColor.copy(alpha = 0.5f),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
             }
+
+            // Trailing content area (separate from main click)
             if (trailingContent != null) {
-                trailingContent()
+                Box(modifier = Modifier.padding(end = 8.dp)) {
+                    trailingContent()
+                }
             } else {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = mainTextColor.copy(alpha = 0.4f)
+                    tint = mainTextColor.copy(alpha = 0.4f),
+                    modifier = Modifier.padding(end = 16.dp)
                 )
             }
         }
