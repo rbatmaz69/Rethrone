@@ -1,6 +1,8 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,94 +62,65 @@ fun WallpaperConfigMenu(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Preview Section
-        Text("Vorschau", color = secondaryTextColor, fontSize = 14.sp)
-        Spacer(modifier = Modifier.height(8.dp))
-        
+        // Large Centered Preview
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.Black.copy(alpha = 0.2f))
+                .weight(1f),
+            contentAlignment = Alignment.Center
         ) {
-            // Mini Wallpaper Preview
-            SystemWallpaperView(
-                customWallpaperUri = customWallpaperUri,
-                blurLevel = blurLevel,
-                dimLevel = dimLevel,
-                zoomLevel = zoomLevel
-            )
-            
-            // UI Overlay Mockup
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    "12:00", 
-                    color = mainTextColor, 
-                    fontSize = 32.sp, 
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-1).sp
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                repeat(3) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                        Box(modifier = Modifier.size(24.dp).background(mainTextColor.copy(alpha = 0.2f), CircleShape))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Box(modifier = Modifier.width(60.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.15f), CircleShape))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight(0.85f)
+                        .aspectRatio(9f / 19f)
+                        .clip(RoundedCornerShape(24.dp))
+                        .border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.2f)), RoundedCornerShape(24.dp))
+                ) {
+                    SystemWallpaperView(
+                        customWallpaperUri = customWallpaperUri,
+                        blurLevel = blurLevel,
+                        dimLevel = dimLevel,
+                        zoomLevel = zoomLevel
+                    )
+                    
+                    // Home Screen Mockup
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            "12:00", 
+                            color = mainTextColor, 
+                            fontSize = 40.sp, 
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-1).sp
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        repeat(4) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 6.dp)) {
+                                Box(modifier = Modifier.size(28.dp).background(mainTextColor.copy(alpha = 0.3f), CircleShape))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Box(modifier = Modifier.width(70.dp).height(5.dp).background(mainTextColor.copy(alpha = 0.15f), CircleShape))
+                            }
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Vorschau Startseite", fontSize = 12.sp, color = secondaryTextColor)
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Blur Control
-        Text("Unschärfe", color = secondaryTextColor, fontSize = 14.sp)
-        Slider(
-            value = blurLevel,
-            onValueChange = onBlurChange,
-            valueRange = 0f..25f,
-            colors = SliderDefaults.colors(
-                thumbColor = mainTextColor,
-                activeTrackColor = mainTextColor,
-                inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
-            )
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Dim Control
-        Text("Abdunkelung", color = secondaryTextColor, fontSize = 14.sp)
-        Slider(
-            value = dimLevel,
-            onValueChange = onDimChange,
-            valueRange = 0f..0.8f,
-            colors = SliderDefaults.colors(
-                thumbColor = mainTextColor,
-                activeTrackColor = mainTextColor,
-                inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
-            )
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Zoom Control
-        Text("Zoom", color = secondaryTextColor, fontSize = 14.sp)
-        Slider(
-            value = zoomLevel,
-            onValueChange = onZoomChange,
-            valueRange = 1.0f..2.0f,
-            colors = SliderDefaults.colors(
-                thumbColor = mainTextColor,
-                activeTrackColor = mainTextColor,
-                inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
-            )
-        )
+        // Controls
+        ControlSlider(label = "Unschärfe", value = blurLevel, onValueChange = onBlurChange, range = 0f..25f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
+        ControlSlider(label = "Abdunkelung", value = dimLevel, onValueChange = onDimChange, range = 0f..0.8f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
+        ControlSlider(label = "Zoom", value = zoomLevel, onValueChange = onZoomChange, range = 1.0f..2.0f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
         
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(16.dp))
         
         Button(
             onClick = {
@@ -159,7 +132,31 @@ fun WallpaperConfigMenu(
             colors = ButtonDefaults.buttonColors(containerColor = mainTextColor.copy(alpha = 0.1f)),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("Zurücksetzen", color = mainTextColor)
+            Text("Effekte zurücksetzen", color = mainTextColor)
         }
+    }
+}
+
+@Composable
+fun ControlSlider(
+    label: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    range: ClosedFloatingPointRange<Float>,
+    mainTextColor: Color,
+    secondaryTextColor: Color
+) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(label, color = secondaryTextColor, fontSize = 12.sp)
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = range,
+            colors = SliderDefaults.colors(
+                thumbColor = mainTextColor,
+                activeTrackColor = mainTextColor,
+                inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
+            )
+        )
     }
 }

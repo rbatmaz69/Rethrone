@@ -14,6 +14,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -566,6 +567,7 @@ class MainActivity : ComponentActivity() {
                                 onDimChange = { scope.launch { themeManager.setWallpaperDim(it) } },
                                 zoomLevel = wallpaperZoom,
                                 onZoomChange = { scope.launch { themeManager.setWallpaperZoom(it) } },
+                                customWallpaperUri = customWallpaperUri,
                                 onClose = { isWallpaperConfigOpen = false }
                             )
                         }
