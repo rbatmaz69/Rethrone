@@ -6,7 +6,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
 import android.os.Build
+import android.os.Process
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
@@ -350,5 +353,49 @@ fun ReturnAnimationOverlay(
                 )
                 .background(background)
         )
+    }
+}
+
+/**
+ * Data class to represent a system app shortcut.
+ */
+data class AppShortcutInfo(
+    val id: String,
+    val shortLabel: String,
+    val icon: ImageVector? = null, // In a real app, you might want to load the actual shortcut icon
+    val packageName: String
+)
+
+/**
+ * Retrieves dynamic and static shortcuts for a given package.
+ * Requires Android 7.1 (API 25) or higher.
+ */
+fun getAppShortcuts(context: Context, packageName: String): List<ShortcutInfo> {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return emptyList()
+
+    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+    val query = LauncherApps.ShortcutQuery().apply {
+        setPackage(packageName)
+        setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED)
+    }
+
+    return try {
+        launcherApps.getShortcuts(query, Process.myUserHandle()) ?: emptyList()
+    } catch (e: SecurityException) {
+        emptyList()
+    }
+}
+
+/**
+ * Launches a specific app shortcut.
+ */
+fun launchShortcut(context: Context, packageName: String, shortcutId: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return
+
+    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+    try {
+        launcherApps.startShortcut(packageName, shortcutId, null, null, Process.myUserHandle())
+    } catch (e: Exception) {
+        Toast.makeText(context, "Shortcut konnte nicht geöffnet werden", Toast.LENGTH_SHORT).show()
     }
 }

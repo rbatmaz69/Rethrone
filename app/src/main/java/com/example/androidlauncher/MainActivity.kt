@@ -100,6 +100,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -836,6 +837,11 @@ fun HomeScreen(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     var launchRequest by remember { mutableStateOf<HomeLaunchRequest?>(null) }
+
+    // Shortcut state
+    var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
+    var shortcutMenuBounds by remember { mutableStateOf<Rect?>(null) }
+
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
         animationSpec = tween(300, easing = EaseInOutCubic), label = ""
@@ -950,12 +956,42 @@ fun HomeScreen(
                                 label = "HomeReturnBounce"
                             )
                             val itemBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
+
+                            // Horizontal swipe state for each item
+                            var horizontalOffset by remember { mutableFloatStateOf(0f) }
+                            val animatedOffset by animateFloatAsState(
+                                targetValue = horizontalOffset,
+                                animationSpec = spring(stiffness = Spring.StiffnessLow),
+                                label = "SwipeOffset"
+                            )
+
                             Surface(
                                 color = Color.Transparent,
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .onGloballyPositioned { coordinates ->
                                         itemBounds.value = coordinates.boundsInRoot()
+                                    }
+                                    .graphicsLayer {
+                                        translationX = animatedOffset
+                                    }
+                                    .pointerInput(app.packageName) {
+                                        detectHorizontalDragGestures(
+                                            onDragEnd = {
+                                                if (horizontalOffset > 150f) {
+                                                    selectedShortcutApp = app
+                                                    shortcutMenuBounds = itemBounds.value
+                                                }
+                                                horizontalOffset = 0f
+                                            },
+                                            onDragCancel = {
+                                                horizontalOffset = 0f
+                                            },
+                                            onHorizontalDrag = { _, dragAmount ->
+                                                // Only allow right swipe (horizontalOffset > 0)
+                                                horizontalOffset = (horizontalOffset + dragAmount).coerceIn(0f, 300f)
+                                            }
+                                        )
                                     }
                                     .bounceClick(intSrc)
                                     .clickable(
@@ -996,6 +1032,21 @@ fun HomeScreen(
                     }
                 }
                 Spacer(modifier = Modifier.weight(1f))
+            }
+
+            // Shortcuts Menu Overlay
+            selectedShortcutApp?.let { app ->
+                AppShortcutsMenu(
+                    packageName = app.packageName,
+                    targetBounds = shortcutMenuBounds,
+                    onDismiss = {
+                        selectedShortcutApp = null
+                        shortcutMenuBounds = null
+                    },
+                    onShortcutClick = { shortcut ->
+                        launchShortcut(context, app.packageName, shortcut.id)
+                    }
+                )
             }
 
             Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.BottomEnd) {
