@@ -40,7 +40,9 @@ fun AppShortcutsMenu(
     onShortcutClick: (ShortcutInfo) -> Unit
 ) {
     val context = LocalContext.current
-    val shortcuts = remember(packageName) { getAppShortcuts(context, packageName) }
+    val shortcuts = remember(packageName) {
+        getAppShortcuts(context, packageName).take(4)
+    }
 
     if (shortcuts.isEmpty()) {
         LaunchedEffect(Unit) { onDismiss() }
