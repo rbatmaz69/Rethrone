@@ -14,15 +14,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -65,10 +69,10 @@ fun AppShortcutsMenu(
     }
 
     val density = LocalDensity.current
-    val config = LocalConfiguration.current
-
-    val screenWidthPx = with(density) { config.screenWidthDp.dp.toPx() }
-    val screenHeightPx = with(density) { config.screenHeightDp.dp.toPx() }
+    
+    // Wir messen die Größe und Position des Menü-Containers selbst
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    var containerPositionInRoot by remember { mutableStateOf(Offset.Zero) }
 
     var isVisible by remember { mutableStateOf(false) }
     var isDismissing by remember { mutableStateOf(false) }
@@ -81,7 +85,6 @@ fun AppShortcutsMenu(
     }
 
     val transition = updateTransition(targetState = isVisible && targetBounds != null, label = "ShortcutMenuTransition")
-
     val progress by transition.animateFloat(
         transitionSpec = { tween(durationMillis = 350, easing = FastOutSlowInEasing) },
         label = "Progress"
@@ -106,6 +109,10 @@ fun AppShortcutsMenu(
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(6000f)
+                .onGloballyPositioned { coords ->
+                    containerSize = coords.size
+                    containerPositionInRoot = coords.positionInRoot()
+                }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -115,29 +122,51 @@ fun AppShortcutsMenu(
             targetBounds?.let { bounds ->
                 val menuWidth = 220.dp
                 val menuWidthPx = with(density) { menuWidth.toPx() }
-
                 val itemsCount = shortcuts.size
                 val estimatedMenuHeightPx = with(density) { (itemsCount * 48 + 16).dp.toPx() }
 
-                // Positionierung rechts vom Icon
-                var finalOffsetX = bounds.right + with(density) { 12.dp.toPx() }
-                var finalOffsetY = bounds.center.y - (estimatedMenuHeightPx / 2)
+                val screenWidthPx = containerSize.width.toFloat()
+                val screenHeightPx = containerSize.height.toFloat()
 
-                // Sicherstellen, dass das Menü nicht rechts aus dem Bildschirm ragt
+                if (screenWidthPx <= 0f || screenHeightPx <= 0f) return@let
+
+                // Horizontale Positionierung
+                var finalOffsetX = bounds.right + with(density) { 12.dp.toPx() }
                 if (finalOffsetX + menuWidthPx > screenWidthPx - with(density) { 16.dp.toPx() }) {
-                    // Falls kein Platz rechts, dann links vom Icon oder zentriert (Fallback)
                     finalOffsetX = bounds.left - menuWidthPx - with(density) { 12.dp.toPx() }
                 }
 
-                // Horizontale und vertikale Begrenzung (Screen-Safety)
+                // Vertikale Positionierung: Wenn das Icon im unteren Bereich ist, Menü nach OBEN schieben
+                val isNearBottom = bounds.bottom > screenHeightPx * 0.75f
+                var finalOffsetY: Float
+                
+                if (isNearBottom) {
+                    // Über dem Icon platzieren
+                    finalOffsetY = bounds.top - estimatedMenuHeightPx - with(density) { 8.dp.toPx() }
+                } else {
+                    // Mittig zum Icon platzieren
+                    finalOffsetY = bounds.center.y - (estimatedMenuHeightPx / 2)
+                }
+
+                // System Bars berücksichtigen (Padding oben/unten)
+                val topInset = with(density) { WindowInsets.systemBars.asPaddingValues().calculateTopPadding().toPx() }
+                val bottomInset = with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
+                
+                val minY = topInset + with(density) { 16.dp.toPx() }
+                val maxY = screenHeightPx - bottomInset - estimatedMenuHeightPx - with(density) { 16.dp.toPx() }
+
                 finalOffsetX = finalOffsetX.coerceIn(with(density) { 16.dp.toPx() }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
-                finalOffsetY = finalOffsetY.coerceIn(with(density) { 16.dp.toPx() }, screenHeightPx - estimatedMenuHeightPx - with(density) { 16.dp.toPx() })
+                finalOffsetY = finalOffsetY.coerceIn(minY, maxY)
 
-                val startOffsetX = bounds.center.x - (menuWidthPx / 2)
-                val startOffsetY = bounds.center.y - (estimatedMenuHeightPx / 2)
+                // Korrektur des Offsets relativ zum Container
+                val relativeX = finalOffsetX - containerPositionInRoot.x
+                val relativeY = finalOffsetY - containerPositionInRoot.y
 
-                val currentOffsetX = startOffsetX + (finalOffsetX - startOffsetX) * progress
-                val currentOffsetY = startOffsetY + (finalOffsetY - startOffsetY) * progress
+                val startOffsetX = bounds.center.x - containerPositionInRoot.x - (menuWidthPx / 2)
+                val startOffsetY = bounds.center.y - containerPositionInRoot.y - (estimatedMenuHeightPx / 2)
+
+                val currentOffsetX = startOffsetX + (relativeX - startOffsetX) * progress
+                val currentOffsetY = startOffsetY + (relativeY - startOffsetY) * progress
                 val scale = 0.05f + (0.95f * progress)
 
                 val menuModifier = if (isLiquidGlassEnabled) {
@@ -208,7 +237,6 @@ fun ShortcutMenuItem(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Here we could add shortcut icons if we load them properly
         Text(
             text = label.toString(),
             color = textColor,
@@ -217,4 +245,3 @@ fun ShortcutMenuItem(
         )
     }
 }
-
