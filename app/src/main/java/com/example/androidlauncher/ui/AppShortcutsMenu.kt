@@ -38,6 +38,18 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
+/**
+ * Schwebendes Shortcuts-Menü für eine App.
+ *
+ * Wird angezeigt wenn der Nutzer auf dem Homescreen nach rechts wischt.
+ * Zeigt bis zu 4 App-Shortcuts (dynamisch + statisch) die das System bereitstellt.
+ * Positioniert sich automatisch relativ zum auslösenden Icon.
+ *
+ * @param packageName Paketname der Ziel-App.
+ * @param targetBounds Bildschirm-Position des auslösenden Icons.
+ * @param onDismiss Callback zum Schließen des Menüs.
+ * @param onShortcutClick Callback beim Klick auf einen Shortcut.
+ */
 @Composable
 fun AppShortcutsMenu(
     packageName: String,

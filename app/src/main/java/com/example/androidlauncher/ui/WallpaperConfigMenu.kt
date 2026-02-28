@@ -17,10 +17,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.SystemWallpaperView
+// SystemWallpaperView ist im selben Paket (ui)
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 
+/**
+ * Konfigurationsmenü für Wallpaper-Einstellungen.
+ *
+ * Ermöglicht die Feinabstimmung des Hintergrundbilds über Slider:
+ * - **Unschärfe** (Blur): 0–25 dp
+ * - **Abdunklung** (Dim): 0–100%
+ * - **Zoom**: 1.0x – 2.0x
+ *
+ * Zeigt eine Live-Vorschau mit den aktuellen Einstellungen.
+ *
+ * @param blurLevel Aktueller Unschärfe-Wert.
+ * @param onBlurChange Callback bei Änderung der Unschärfe.
+ * @param dimLevel Aktueller Abdunklungswert.
+ * @param onDimChange Callback bei Änderung der Abdunklung.
+ * @param zoomLevel Aktueller Zoom-Wert.
+ * @param onZoomChange Callback bei Änderung des Zooms.
+ * @param customWallpaperUri URI des benutzerdefinierten Wallpapers (für Vorschau).
+ * @param onClose Callback zum Schließen des Menüs.
+ */
 @Composable
 fun WallpaperConfigMenu(
     blurLevel: Float,

@@ -39,6 +39,18 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.example.androidlauncher.LauncherLogic
 import java.lang.reflect.Method
 
+/**
+ * Konfigurationsmenü für benutzerdefinierte App-Icons.
+ *
+ * Ermöglicht dem Nutzer, für jede App ein alternatives Lucide-Vektor-Icon
+ * auszuwählen. Enthält eine Suchfunktion für Apps und zeigt für jede App
+ * das aktuelle Icon sowie verfügbare Alternativen an.
+ *
+ * @param apps Alle verfügbaren Apps.
+ * @param customIcons Aktuelle benutzerdefinierte Icon-Zuordnungen (packageName → iconName).
+ * @param onIconSelected Callback wenn ein neues Icon zugewiesen wird.
+ * @param onClose Callback zum Schließen des Menüs.
+ */
 @Composable
 fun IconConfigMenu(
     apps: List<AppInfo>,

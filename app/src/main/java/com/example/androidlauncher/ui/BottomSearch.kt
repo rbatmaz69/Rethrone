@@ -47,6 +47,21 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
+/**
+ * Schwebende Suchleiste am unteren Bildschirmrand.
+ *
+ * Wird als Overlay über dem Homescreen angezeigt und bietet:
+ * - **App-Suche** mit Relevanz-Sortierung (exakt → beginnt mit → enthält)
+ * - **Web-Suche** als Fallback bei keinem App-Treffer
+ * - **Tastatursteuerung** mit IME-Search-Action und Back-Intercept
+ *
+ * Zeigt maximal 3 App-Vorschläge und einen Web-Such-Eintrag.
+ * Das Overlay ist halbtransparent und schließt sich bei Klick außerhalb.
+ *
+ * @param apps Alle verfügbaren Apps zum Durchsuchen.
+ * @param onClose Callback zum Schließen der Suche.
+ * @param onAppLaunch Callback wenn eine App aus den Ergebnissen gestartet wird.
+ */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BottomSearch(

@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.SystemWallpaperView
+// SystemWallpaperView ist im selben Paket (ui)
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
@@ -30,6 +30,27 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
 
+/**
+ * Konfigurationsmenü für Schrift- und Icon-Größen.
+ *
+ * Bietet Slider zur Anpassung von:
+ * - **Schriftgröße** (Klein / Standard / Groß)
+ * - **Schriftstärke** (Dünn / Normal / Fett)
+ * - **Icon-Größe** (Klein / Standard / Groß)
+ *
+ * Enthält eine Live-Vorschau und einen Button zur Schriftart-Auswahl.
+ *
+ * @param currentFontSize Aktuelle Schriftgröße.
+ * @param onFontSizeSelected Callback bei Änderung der Schriftgröße.
+ * @param currentFontWeight Aktuelle Schriftstärke.
+ * @param onFontWeightSelected Callback bei Änderung der Schriftstärke.
+ * @param currentIconSize Aktuelle Icon-Größe.
+ * @param onIconSizeSelected Callback bei Änderung der Icon-Größe.
+ * @param currentAppFont Aktuell ausgewählte Schriftart.
+ * @param onOpenFontSelection Callback zum Öffnen der Schriftart-Auswahl.
+ * @param customWallpaperUri URI des benutzerdefinierten Wallpapers (für Vorschau).
+ * @param onClose Callback zum Schließen des Menüs.
+ */
 @Composable
 fun SizeConfigMenu(
     currentFontSize: FontSize,

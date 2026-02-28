@@ -212,7 +212,7 @@ fun AppContextMenu(
                             onClick = { onAppInfo(); dismissWithAnimation() }
                         )
 
-                        Divider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
 
                         ContextMenuItem(
                             icon = if (isFavorite) Lucide.StarOff else Lucide.Star,
@@ -222,7 +222,7 @@ fun AppContextMenu(
                         )
 
                         if (onMoveToFolder != null) {
-                            Divider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
                             ContextMenuItem(
                                 icon = Lucide.FolderInput,
                                 text = "In Ordner verschieben",
@@ -232,7 +232,7 @@ fun AppContextMenu(
                         }
 
                         if (onRemoveFromFolder != null) {
-                            Divider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
                             ContextMenuItem(
                                 icon = Lucide.FolderOutput,
                                 text = "Aus Ordner entfernen",
@@ -241,7 +241,7 @@ fun AppContextMenu(
                             )
                         }
 
-                        Divider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
 
                         ContextMenuItem(
                             icon = Lucide.Trash2,

@@ -29,7 +29,7 @@ import com.composables.icons.lucide.Moon
 import com.composables.icons.lucide.Sun
 import com.composables.icons.lucide.Droplets
 import com.composables.icons.lucide.Square
-import com.example.androidlauncher.SystemWallpaperView
+// SystemWallpaperView ist im selben Paket (ui)
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 

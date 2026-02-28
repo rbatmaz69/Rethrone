@@ -19,3 +19,22 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# ── Lucide Icons ──────────────────────────────────────────────────
+# Icons werden per Reflection geladen (getLucideIconByName in Utils.kt).
+# Alle Klassen und Methoden im Lucide-Paket müssen erhalten bleiben.
+-keep class com.composables.icons.lucide.** { *; }
+-keepclassmembers class com.composables.icons.lucide.** { *; }
+
+# ── DataStore ─────────────────────────────────────────────────────
+-keepclassmembers class * extends androidx.datastore.preferences.protobuf.GeneratedMessageLite {
+    <fields>;
+}
+
+# ── Compose ───────────────────────────────────────────────────────
+# Stability-Annotations für Compose-Compiler behalten
+-keepattributes RuntimeVisibleAnnotations
+
+# ── uCrop ─────────────────────────────────────────────────────────
+-dontwarn com.yalantis.ucrop**
+-keep class com.yalantis.ucrop.** { *; }

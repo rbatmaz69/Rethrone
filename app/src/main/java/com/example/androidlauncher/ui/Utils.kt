@@ -138,26 +138,45 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
 }
 
 /**
- * Composable that renders an app icon.
- * Supports Vector icons (Lucide) and Bitmaps.
- * Adjusts tint based on dark text mode.
- * Shows a notification dot if the app has active notifications and showBadge is true.
+ * Composable das ein App-Icon rendert.
+ *
+ * Unterstützt drei Icon-Typen mit folgender Priorität:
+ * 1. Benutzerdefiniertes Lucide-Icon (aus [customIcons] oder [DEFAULT_ICON_MAPPINGS])
+ * 2. App-eigenes Bitmap-Icon
+ * 3. Platzhalter-Kreis
+ *
+ * **Energieeffizienz:** Benachrichtigungs-Badges werden nur beobachtet wenn
+ * [showBadge] true ist. Die [customIcons]-Map wird idealerweise vom Parent
+ * einmal gesammelt und durchgereicht, statt pro Icon einen eigenen
+ * DataStore-Listener zu erzeugen.
+ *
+ * @param app Die darzustellende App.
+ * @param modifier Optionaler Modifier.
+ * @param showBadge Ob ein Benachrichtigungs-Punkt angezeigt werden soll.
+ * @param customIcons Optionale Map benutzerdefinierter Icons (packageName → iconName).
+ *   Falls null, wird ein Fallback-IconManager pro Composable erzeugt (vermeiden!).
  */
 @Composable
 fun AppIconView(
     app: AppInfo, 
     modifier: Modifier = Modifier,
-    showBadge: Boolean = false
+    showBadge: Boolean = false,
+    customIcons: Map<String, String>? = null
 ) {
-    val context = LocalContext.current
-    val iconManager = remember { IconManager(context) }
-    val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
-    
+    // Fallback: Nur wenn kein Parent die Icons durchreicht, eigenen Manager erzeugen.
+    // Dies sollte langfristig durch durchgereichte Icons ersetzt werden.
+    val resolvedCustomIcons = customIcons ?: run {
+        val context = LocalContext.current
+        val iconManager = remember { IconManager(context) }
+        val icons by iconManager.customIcons.collectAsState(initial = emptyMap())
+        icons
+    }
+
     val iconSize = LocalIconSize.current.size
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val tintColor = if (isDarkTextEnabled) Color.Black else Color.White
 
-    // Observe notifications only if badge display is requested
+    // Benachrichtigungen nur beobachten wenn Badge-Anzeige gewünscht ist
     val activeNotifications by if (showBadge) {
         NotificationService.activeNotificationPackages.collectAsState()
     } else {
@@ -165,8 +184,8 @@ fun AppIconView(
     }
     val hasNotification = showBadge && app.packageName in activeNotifications
 
-    // Priority: 1. User choice, 2. System default mapping, 3. App's own lucideIcon (if any)
-    val customIconName = customIcons[app.packageName] ?: DEFAULT_ICON_MAPPINGS[app.packageName]
+    // Priorität: 1. User-Wahl, 2. System-Default-Mapping, 3. App-eigenes Icon
+    val customIconName = resolvedCustomIcons[app.packageName] ?: DEFAULT_ICON_MAPPINGS[app.packageName]
     val lucideIcon = if (customIconName != null) getLucideIconByName(customIconName) else app.lucideIcon
 
     Box(
@@ -357,22 +376,10 @@ fun ReturnAnimationOverlay(
 }
 
 /**
- * Data class to represent a system app shortcut.
- */
-data class AppShortcutInfo(
-    val id: String,
-    val shortLabel: String,
-    val icon: ImageVector? = null, // In a real app, you might want to load the actual shortcut icon
-    val packageName: String
-)
-
-/**
- * Retrieves dynamic and static shortcuts for a given package.
- * Requires Android 7.1 (API 25) or higher.
+ * Ruft dynamische und statische Shortcuts für ein Paket ab.
+ * Benötigt Android 7.1 (API 25) oder höher (minSdk 26 erfüllt dies immer).
  */
 fun getAppShortcuts(context: Context, packageName: String): List<ShortcutInfo> {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return emptyList()
-
     val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     val query = LauncherApps.ShortcutQuery().apply {
         setPackage(packageName)
@@ -381,21 +388,19 @@ fun getAppShortcuts(context: Context, packageName: String): List<ShortcutInfo> {
 
     return try {
         launcherApps.getShortcuts(query, Process.myUserHandle()) ?: emptyList()
-    } catch (e: SecurityException) {
+    } catch (_: SecurityException) {
         emptyList()
     }
 }
 
 /**
- * Launches a specific app shortcut.
+ * Startet einen bestimmten App-Shortcut.
  */
 fun launchShortcut(context: Context, packageName: String, shortcutId: String) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return
-
     val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     try {
         launcherApps.startShortcut(packageName, shortcutId, null, null, Process.myUserHandle())
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         Toast.makeText(context, "Shortcut konnte nicht geöffnet werden", Toast.LENGTH_SHORT).show()
     }
 }
