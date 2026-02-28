@@ -76,6 +76,7 @@ import androidx.core.graphics.applyCanvas
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
+import androidx.compose.ui.graphics.toArgb
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -174,9 +175,24 @@ class MainActivity : ComponentActivity() {
             ) { uri: Uri? ->
                 uri?.let { sourceUri ->
                     val destinationUri = Uri.fromFile(File(context.cacheDir, "cropped_wallpaper_${System.currentTimeMillis()}.jpg"))
+
+                    val options = UCrop.Options().apply {
+                        val editorBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground.toArgb() else currentTheme.drawerBackground.toArgb()
+                        val widgetColor = if (isDarkTextEnabled) Color.Black.toArgb() else Color.White.toArgb()
+
+                        setToolbarColor(editorBackgroundColor)
+                        setStatusBarColor(editorBackgroundColor)
+                        setToolbarWidgetColor(widgetColor)
+                        setActiveControlsWidgetColor(currentTheme.primary.toArgb())
+                        setToolbarTitle("Hintergrund zuschneiden")
+                        // Hintergrund des eigentlichen Editors (hinter dem Bild) ebenfalls anpassen
+                        setLogoColor(editorBackgroundColor)
+                    }
+
                     val uCrop = UCrop.of(sourceUri, destinationUri)
                         .withAspectRatio(9f, 16f)
                         .withMaxResultSize(1080, 1920)
+                        .withOptions(options)
                         .getIntent(context)
 
                     cropLauncher.launch(uCrop)
