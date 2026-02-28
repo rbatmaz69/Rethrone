@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.AlarmClock
 import android.provider.CalendarContract
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.core.EaseInOutCubic
 import androidx.compose.animation.core.LinearEasing
@@ -23,6 +24,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -75,6 +77,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -173,6 +176,20 @@ fun HomeScreen(
                     if (dragAmount < -50) onOpenDrawer()
                     else if (dragAmount > 50) expandNotifications(context)
                 }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
+                            LauncherAccessibilityService.requestLockScreen(context)
+                        } else {
+                            Toast.makeText(context, "Bitte aktiviere den Accessibility Service in den Einstellungen", Toast.LENGTH_LONG).show()
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                            } catch (_: Exception) {}
+                        }
+                    }
+                )
             }
     ) {
         Box(
@@ -799,10 +816,3 @@ private fun launchCalendarApp(
         } catch (_: Exception) { }
     }
 }
-
-
-
-
-
-
-
