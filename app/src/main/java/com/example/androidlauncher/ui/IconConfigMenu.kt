@@ -39,6 +39,18 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.example.androidlauncher.LauncherLogic
 import java.lang.reflect.Method
 
+/**
+ * Konfigurationsmenü für benutzerdefinierte App-Icons.
+ *
+ * Ermöglicht dem Nutzer, für jede App ein alternatives Lucide-Vektor-Icon
+ * auszuwählen. Enthält eine Suchfunktion für Apps und zeigt für jede App
+ * das aktuelle Icon sowie verfügbare Alternativen an.
+ *
+ * @param apps Alle verfügbaren Apps.
+ * @param customIcons Aktuelle benutzerdefinierte Icon-Zuordnungen (packageName → iconName).
+ * @param onIconSelected Callback wenn ein neues Icon zugewiesen wird.
+ * @param onClose Callback zum Schließen des Menüs.
+ */
 @Composable
 fun IconConfigMenu(
     apps: List<AppInfo>,
@@ -83,29 +95,11 @@ fun IconConfigMenu(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Search Bar with Liquid Glass Optic
+        // Suchleiste mit Liquid-Glass-Optik
         val searchBarModifier = if (isLiquidGlassEnabled) {
-            val glassBrush = if (isDarkTextEnabled) {
-                Brush.linearGradient(
-                    colors = listOf(Color.Black.copy(alpha = 0.10f), Color.Black.copy(alpha = 0.03f)),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                )
-            } else {
-                Brush.linearGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.04f)),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                )
-            }
-            val borderBrush = if (isDarkTextEnabled) {
-                Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.2f), Color.Black.copy(alpha = 0.05f)))
-            } else {
-                Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.25f), Color.White.copy(alpha = 0.05f)))
-            }
             Modifier
-                .background(glassBrush, RoundedCornerShape(12.dp))
-                .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(12.dp))
+                .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f), RoundedCornerShape(12.dp))
+                .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.2f, endAlpha = 0.05f)), RoundedCornerShape(12.dp))
         } else {
             Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
         }
@@ -137,27 +131,9 @@ fun IconConfigMenu(
                 val customIconName = customIcons[app.packageName]
                 
                 val itemBackgroundModifier = if (isLiquidGlassEnabled) {
-                    val glassBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.06f), Color.Black.copy(alpha = 0.02f)),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.02f)),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    }
-                    val borderBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.03f)))
-                    } else {
-                        Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.18f), Color.White.copy(alpha = 0.03f)))
-                    }
                     Modifier
-                        .background(glassBrush, RoundedCornerShape(16.dp))
-                        .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
+                        .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.06f, endAlpha = 0.02f), RoundedCornerShape(16.dp))
+                        .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.15f, endAlpha = 0.03f)), RoundedCornerShape(16.dp))
                 } else {
                     Modifier.background(mainTextColor.copy(alpha = 0.03f), RoundedCornerShape(16.dp))
                 }
@@ -262,21 +238,11 @@ fun LucideIconPicker(
                     Spacer(modifier = Modifier.width(48.dp)) // Placeholder for balance
                 }
 
-                // Search Bar - FULL WIDTH with Liquid Glass style
+                // Suchleiste im Icon-Picker
                 val searchBarModifier = if (isLiquidGlassEnabled) {
-                    val glassBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.10f), Color.Black.copy(alpha = 0.03f)))
-                    } else {
-                        Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.04f)))
-                    }
-                    val borderBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.2f), Color.Black.copy(alpha = 0.05f)))
-                    } else {
-                        Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.25f), Color.White.copy(alpha = 0.05f)))
-                    }
                     Modifier
-                        .background(glassBrush, RoundedCornerShape(12.dp))
-                        .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(12.dp))
+                        .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f), RoundedCornerShape(12.dp))
+                        .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.2f, endAlpha = 0.05f)), RoundedCornerShape(12.dp))
                 } else {
                     Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
                 }
@@ -311,12 +277,8 @@ fun LucideIconPicker(
                 ) {
                     items(filteredIcons) { (name, icon) ->
                         val iconBoxModifier = if (isLiquidGlassEnabled) {
-                            val glassBrush = if (isDarkTextEnabled) {
-                                Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.08f), Color.Black.copy(alpha = 0.02f)))
-                            } else {
-                                Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.03f)))
-                            }
-                            Modifier.background(glassBrush, RoundedCornerShape(12.dp))
+                            Modifier
+                                .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.08f, endAlpha = 0.02f), RoundedCornerShape(12.dp))
                                 .border(BorderStroke(0.5.dp, mainTextColor.copy(alpha = 0.1f)), RoundedCornerShape(12.dp))
                         } else {
                             Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))

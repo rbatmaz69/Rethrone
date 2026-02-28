@@ -4,6 +4,7 @@ import android.content.pm.ShortcutInfo
 import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +39,18 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
+/**
+ * Schwebendes Shortcuts-Menü für eine App.
+ *
+ * Wird angezeigt wenn der Nutzer auf dem Homescreen nach rechts wischt.
+ * Zeigt bis zu 4 App-Shortcuts (dynamisch + statisch) die das System bereitstellt.
+ * Positioniert sich automatisch relativ zum auslösenden Icon.
+ *
+ * @param packageName Paketname der Ziel-App.
+ * @param targetBounds Bildschirm-Position des auslösenden Icons.
+ * @param onDismiss Callback zum Schließen des Menüs.
+ * @param onShortcutClick Callback beim Klick auf einen Shortcut.
+ */
 @Composable
 fun AppShortcutsMenu(
     packageName: String,
@@ -175,14 +188,9 @@ fun AppShortcutsMenu(
                 val scale = 0.05f + (0.95f * progress)
 
                 val menuModifier = if (isLiquidGlassEnabled) {
-                    val borderBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.3f)))
-                    } else {
-                        Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.1f)))
-                    }
-                    Modifier.border(androidx.compose.foundation.BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(20.dp))
+                    Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(20.dp))
                 } else {
-                    Modifier.border(androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
+                    Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
                 }
 
                 Surface(

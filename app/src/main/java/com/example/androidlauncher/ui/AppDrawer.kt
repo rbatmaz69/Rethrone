@@ -247,22 +247,7 @@ fun AppDrawer(
                         if (isCreateFolderDialogOpen) {
                             Dialog(onDismissRequest = { isCreateFolderDialogOpen = false }) {
                                 val dialogBorderModifier = if (isLiquidGlassEnabled) {
-                                    val borderBrush = if (isDarkTextEnabled) {
-                                        Brush.linearGradient(
-                                            colors = listOf(
-                                                Color.Black.copy(alpha = 0.8f),
-                                                Color.Black.copy(alpha = 0.3f)
-                                            )
-                                        )
-                                    } else {
-                                        Brush.linearGradient(
-                                            colors = listOf(
-                                                Color.White.copy(alpha = 0.6f),
-                                                Color.White.copy(alpha = 0.1f)
-                                            )
-                                        )
-                                    }
-                                    Modifier.border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
+                                    Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
                                 } else {
                                     Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
                                 }
@@ -286,45 +271,9 @@ fun AppDrawer(
 
                                         // Eingabefeld für den Ordnernamen.
                                         val inputModifier = if (isLiquidGlassEnabled) {
-                                            val glassBrush = if (isDarkTextEnabled) {
-                                                Brush.linearGradient(
-                                                    colors = listOf(
-                                                        Color.Black.copy(alpha = 0.15f),
-                                                        Color.Black.copy(alpha = 0.05f)
-                                                    ),
-                                                    start = Offset(0f, 0f),
-                                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                                                )
-                                            } else {
-                                                Brush.linearGradient(
-                                                    colors = listOf(
-                                                        Color.White.copy(alpha = 0.15f),
-                                                        Color.White.copy(alpha = 0.05f)
-                                                    ),
-                                                    start = Offset(0f, 0f),
-                                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                                                )
-                                            }
-
-                                            val borderBrush = if (isDarkTextEnabled) {
-                                                Brush.linearGradient(
-                                                    colors = listOf(
-                                                        Color.Black.copy(alpha = 0.8f),
-                                                        Color.Black.copy(alpha = 0.3f)
-                                                    )
-                                                )
-                                            } else {
-                                                Brush.linearGradient(
-                                                    colors = listOf(
-                                                        Color.White.copy(alpha = 0.6f),
-                                                        Color.White.copy(alpha = 0.1f)
-                                                    )
-                                                )
-                                            }
-
                                             Modifier
-                                                .background(glassBrush, RoundedCornerShape(12.dp))
-                                                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                                                .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
+                                                .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
                                         } else {
                                             Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
                                         }
@@ -400,45 +349,9 @@ fun AppDrawer(
             // Suchleiste mit glasartigem Effekt.
             val searchIntSrc = remember { MutableInteractionSource() }
             val searchBarModifier = if (isLiquidGlassEnabled) {
-                val glassBrush = if (isDarkTextEnabled) {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.15f),
-                            Color.Black.copy(alpha = 0.05f)
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.15f),
-                            Color.White.copy(alpha = 0.05f)
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                    )
-                }
-
-                val borderBrush = if (isDarkTextEnabled) {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.8f),
-                            Color.Black.copy(alpha = 0.3f)
-                        )
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.6f),
-                            Color.White.copy(alpha = 0.1f)
-                        )
-                    )
-                }
-
                 Modifier
-                    .background(glassBrush, RoundedCornerShape(12.dp))
-                    .border(androidx.compose.foundation.BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                    .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
             } else {
                 Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             }
@@ -676,26 +589,7 @@ fun AppDrawer(
                     val translationY = folderTranslation.y * (1f - folderProgress)
 
                     val folderBorder = if (isLiquidGlassEnabled) {
-                        val borderStrokeBrush = if (isDarkTextEnabled) {
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color.Black.copy(alpha = 0.8f),
-                                    Color.Black.copy(alpha = 0.3f)
-                                ),
-                                start = Offset(0f, 0f),
-                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                            )
-                        } else {
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.6f),
-                                    Color.White.copy(alpha = 0.1f)
-                                ),
-                                start = Offset(0f, 0f),
-                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                            )
-                        }
-                        BorderStroke(1.2.dp, borderStrokeBrush)
+                        BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled))
                     } else {
                         BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f))
                     }
@@ -1107,22 +1001,7 @@ fun AppDrawer(
         if (showFolderSelection && folderSelectionApp != null) {
             Dialog(onDismissRequest = { showFolderSelection = false }) {
                 val dialogBorderModifier = if (isLiquidGlassEnabled) {
-                    val borderBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.8f),
-                                Color.Black.copy(alpha = 0.3f)
-                            )
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.6f),
-                                Color.White.copy(alpha = 0.1f)
-                            )
-                        )
-                    }
-                    Modifier.border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
+                    Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
                 } else {
                     Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
                 }
@@ -1217,45 +1096,9 @@ fun FolderItem(
             onLongClick = { onOpenFolderConfig(folder) }
         )) {
             val folderBoxModifier = if (isLiquidGlassEnabled) {
-                val glassBrush = if (isDarkTextEnabled) {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.15f),
-                            Color.Black.copy(alpha = 0.05f)
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.15f),
-                            Color.White.copy(alpha = 0.05f)
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                    )
-                }
-
-                val borderBrush = if (isDarkTextEnabled) {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.8f),
-                            Color.Black.copy(alpha = 0.3f)
-                        )
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.6f),
-                            Color.White.copy(alpha = 0.1f)
-                        )
-                    )
-                }
-
                 Modifier
-                    .background(glassBrush, RoundedCornerShape(12.dp))
-                    .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                    .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
             } else {
                 Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             }

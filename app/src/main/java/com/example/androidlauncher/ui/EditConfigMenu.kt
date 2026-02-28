@@ -8,14 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +29,22 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 
+/**
+ * Konfigurationsmenü für Anpassungen.
+ *
+ * Bietet Zugang zu:
+ * - **App-Icons anpassen** (öffnet [IconConfigMenu])
+ * - **Wallpaper ändern** (öffnet System-Bildauswahl mit UCrop)
+ * - **Hintergrund anpassen** (öffnet [WallpaperConfigMenu])
+ * - **Benachrichtigungs-Punkte** (öffnet System-Einstellungen)
+ *
+ * @param onOpenIconConfig Callback zum Öffnen der Icon-Konfiguration.
+ * @param onChangeWallpaper Callback zum Starten der Wallpaper-Auswahl.
+ * @param onResetWallpaper Callback zum Entfernen des benutzerdefinierten Wallpapers.
+ * @param onOpenWallpaperAdjust Callback zum Öffnen der Wallpaper-Feinabstimmung.
+ * @param isCustomWallpaperSet Ob aktuell ein benutzerdefiniertes Wallpaper gesetzt ist.
+ * @param onClose Callback zum Schließen des Menüs.
+ */
 @Composable
 fun EditConfigMenu(
     onOpenIconConfig: () -> Unit,
@@ -143,6 +156,22 @@ fun EditConfigMenu(
     }
 }
 
+/**
+ * Einzelnes Menü-Element im Bearbeiten-Menü.
+ *
+ * Zeigt ein Icon, Label und optionalen Status oder Trailing-Content.
+ * Unterstützt den Liquid-Glass-Effekt mit abgeschwächten Alpha-Werten
+ * für eine subtilere Darstellung als die Standard-Glass-Elemente.
+ *
+ * @param icon Lucide/Material-Icon links.
+ * @param label Beschriftung des Elements.
+ * @param onClick Callback bei Klick.
+ * @param mainTextColor Primäre Textfarbe.
+ * @param isLiquidGlassEnabled Ob Liquid Glass aktiv ist.
+ * @param isDarkTextEnabled Ob der dunkle Textmodus aktiv ist.
+ * @param statusLabel Optionaler Status-Text (z.B. "An" / "Aus").
+ * @param trailingContent Optionaler benutzerdefinierter Trailing-Inhalt.
+ */
 @Composable
 fun EditMenuItem(
     icon: ImageVector,
@@ -155,40 +184,13 @@ fun EditMenuItem(
     trailingContent: @Composable (() -> Unit)? = null
 ) {
     val backgroundModifier = if (isLiquidGlassEnabled) {
-        val glassBrush = if (isDarkTextEnabled) {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.10f),
-                    Color.Black.copy(alpha = 0.03f)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
-        } else {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.12f),
-                    Color.White.copy(alpha = 0.04f)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
-        }
-        val borderBrush = if (isDarkTextEnabled) {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.2f),
-                    Color.Black.copy(alpha = 0.05f)
-                )
-            )
-        } else {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.25f),
-                    Color.White.copy(alpha = 0.05f)
-                )
-            )
-        }
+        // Subtilere Alpha-Werte als Standard-Glass für Menü-Items
+        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
+        val borderBrush = LiquidGlass.borderBrush(
+            isDarkTextEnabled,
+            startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f,
+            endAlpha = 0.05f
+        )
         Modifier
             .background(glassBrush, RoundedCornerShape(16.dp))
             .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))

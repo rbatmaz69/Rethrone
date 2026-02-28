@@ -80,11 +80,16 @@ fun AndroidLauncherTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            // Deprecated aber nötig für Edge-to-Edge Kompatibilität auf älteren API-Levels
+            @Suppress("DEPRECATION")
             window.statusBarColor = Color.Transparent.toArgb()
+            @Suppress("DEPRECATION")
             window.navigationBarColor = Color.Transparent.toArgb()
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                @Suppress("DEPRECATION")
                 window.isNavigationBarContrastEnforced = false
+                @Suppress("DEPRECATION")
                 window.isStatusBarContrastEnforced = false
             }
 

@@ -47,6 +47,21 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 
+/**
+ * Schwebende Suchleiste am unteren Bildschirmrand.
+ *
+ * Wird als Overlay über dem Homescreen angezeigt und bietet:
+ * - **App-Suche** mit Relevanz-Sortierung (exakt → beginnt mit → enthält)
+ * - **Web-Suche** als Fallback bei keinem App-Treffer
+ * - **Tastatursteuerung** mit IME-Search-Action und Back-Intercept
+ *
+ * Zeigt maximal 3 App-Vorschläge und einen Web-Such-Eintrag.
+ * Das Overlay ist halbtransparent und schließt sich bei Klick außerhalb.
+ *
+ * @param apps Alle verfügbaren Apps zum Durchsuchen.
+ * @param onClose Callback zum Schließen der Suche.
+ * @param onAppLaunch Callback wenn eine App aus den Ergebnissen gestartet wird.
+ */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BottomSearch(
@@ -75,38 +90,16 @@ fun BottomSearch(
         val menuBgColor = themedLightBackground.copy(alpha = 0.98f)
 
         if (isLiquidGlassEnabled) {
-             val borderBrush = Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.8f),
-                    Color.Black.copy(alpha = 0.3f)
-                )
-            )
             Modifier
                 .background(menuBgColor, RoundedCornerShape(28.dp))
-                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
+                .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
         } else {
             Modifier.background(menuBgColor, RoundedCornerShape(28.dp))
         }
     } else if (isLiquidGlassEnabled) {
-        val glassBrush = Brush.linearGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.15f),
-                Color.White.copy(alpha = 0.05f)
-            ),
-            start = Offset(0f, 0f),
-            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-
-        val borderBrush = Brush.linearGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.6f),
-                Color.White.copy(alpha = 0.1f)
-            )
-        )
-
         Modifier
-            .background(glassBrush, RoundedCornerShape(28.dp))
-            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
+            .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(28.dp))
+            .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
     } else {
         Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
     }

@@ -21,4 +21,5 @@
     <string name="privacy_label">Datenschutz</string>
     <string name="privacy_text">Diese App sammelt keinerlei Nutzerdaten. Alle Einstellungen werden lokal auf dem Gerät gespeichert.</string>
     <string name="close">Schließen</string>
+    <string name="accessibility_description">Ermöglicht Gesten wie Doppelklick zum Sperren des Bildschirms.</string>
 </resources>

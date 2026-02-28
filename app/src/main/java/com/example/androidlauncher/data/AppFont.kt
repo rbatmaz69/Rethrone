@@ -3,38 +3,45 @@ package com.example.androidlauncher.data
 import androidx.compose.ui.text.font.FontFamily
 
 /**
- * Enum representing available font families.
- * @property label Display name of the font option.
- * @property fontFamily The Compose FontFamily associated with the selection.
+ * Verfügbare Schriftarten für den Launcher.
+ *
+ * Jeder Eintrag repräsentiert eine **tatsächlich visuell unterscheidbare** Schriftart.
+ * Zuvor enthielt dieses Enum 28 Einträge, die auf nur 5 System-FontFamilies gemappt
+ * waren — viele sahen dadurch identisch aus und verwirrten Nutzer.
+ *
+ * Die Einträge sind nach typografischer Kategorie gruppiert:
+ * - **Sans-Serif**: Moderne, klare Schriften ohne Serifen
+ * - **Serif**: Klassische Schriften mit Serifen
+ * - **Monospace**: Schriften mit fester Zeichenbreite
+ * - **Cursive**: Handschriftliche / dekorative Schriften
+ *
+ * @property label Anzeigename in der Schriftart-Auswahl.
+ * @property fontFamily Die Compose [FontFamily] für die Darstellung.
+ * @property category Typografische Kategorie für Gruppierung in der UI.
  */
-enum class AppFont(val label: String, val fontFamily: FontFamily) {
-    SYSTEM_DEFAULT("System Default", FontFamily.Default),
-    SANS_SERIF("Sans Serif", FontFamily.SansSerif),
-    SERIF("Serif", FontFamily.Serif),
-    MONOSPACE("Monospace", FontFamily.Monospace),
-    CURSIVE("Cursive", FontFamily.Cursive),
-    ROBOTO("Roboto", FontFamily.SansSerif),
-    SLAB_SERIF("Slab Serif", FontFamily.Serif),
-    DYNAMIC_SANS("Dynamic Sans", FontFamily.SansSerif),
-    MODERN_TYPE("Modern Type", FontFamily.Monospace),
-    CLASSIC_BOOK("Classic Book", FontFamily.Serif),
-    ELEGANT_SCRIPT("Elegant Script", FontFamily.Cursive),
-    CLEAN_SANS("Clean Sans", FontFamily.SansSerif),
-    BOLD_MONO("Bold Mono", FontFamily.Monospace),
-    SOFT_SERIF("Soft Serif", FontFamily.Serif),
-    QUICK_SANS("Quick Sans", FontFamily.SansSerif),
-    STURDY_TYPE("Sturdy Type", FontFamily.SansSerif),
-    LITE_SERIF("Lite Serif", FontFamily.Serif),
-    FUTURISTIC("Futuristic", FontFamily.SansSerif),
-    RETRO_MONO("Retro Mono", FontFamily.Monospace),
-    FANCY_CURSIVE("Fancy Cursive", FontFamily.Cursive),
-    GEOMETRIC("Geometric", FontFamily.SansSerif),
-    HUMANIST("Humanist", FontFamily.SansSerif),
-    OLD_STYLE("Old Style", FontFamily.Serif),
-    TRANSITIONAL("Transitional", FontFamily.Serif),
-    NEO_GROTESQUE("Neo-Grotesque", FontFamily.SansSerif),
-    EGYPTIAN("Egyptian", FontFamily.Serif),
-    STENCIL("Stencil", FontFamily.Monospace),
-    DECORATIVE("Decorative", FontFamily.Cursive),
-    HANDWRITTEN("Handwritten", FontFamily.Cursive)
+enum class AppFont(
+    val label: String,
+    val fontFamily: FontFamily,
+    val category: String
+) {
+    // ── Standard ─────────────────────────────────────────────────
+    SYSTEM_DEFAULT("System Standard", FontFamily.Default, "Standard"),
+
+    // ── Sans-Serif ───────────────────────────────────────────────
+    SANS_SERIF("Sans Serif", FontFamily.SansSerif, "Sans-Serif"),
+
+    // ── Serif ────────────────────────────────────────────────────
+    SERIF("Serif", FontFamily.Serif, "Serif"),
+
+    // ── Monospace ────────────────────────────────────────────────
+    MONOSPACE("Monospace", FontFamily.Monospace, "Monospace"),
+
+    // ── Handschrift / Dekorativ ──────────────────────────────────
+    CURSIVE("Handschrift", FontFamily.Cursive, "Dekorativ");
+
+    companion object {
+        /** Alle verfügbaren Kategorien in Anzeigereihenfolge. */
+        val categories: List<String>
+            get() = entries.map { it.category }.distinct()
+    }
 }
