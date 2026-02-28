@@ -121,49 +121,10 @@ fun SettingsPaletteMenu(
 
                 // Styles
                 val backgroundModifier = if (isLiquidGlassEnabled) {
-                     // Liquid/Glass Style Definition
-                    val glassBrush = if (isDarkTextEnabled) {
-                        // Light Mode - Kristallklar
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.15f),
-                                Color.Black.copy(alpha = 0.05f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    } else {
-                        // Dark Mode - Sehr transparentes Glas
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.15f),
-                                Color.White.copy(alpha = 0.05f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    }
-                    val borderBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.8f),
-                                Color.Black.copy(alpha = 0.3f)
-                            )
-                        )
-                    } else {
-                        // Hellerer Rand im Dark Mode für Glas-Kante
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.6f),
-                                Color.White.copy(alpha = 0.1f)
-                            )
-                        )
-                    }
                     Modifier
-                        .background(glassBrush, CircleShape)
-                        .border(BorderStroke(1.2.dp, borderBrush), CircleShape)
+                        .background(LiquidGlass.glassBrush(isDarkTextEnabled), CircleShape)
+                        .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), CircleShape)
                 } else {
-                    // Standard Ansicht
                     Modifier
                         .background(mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), CircleShape)
                         .border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.25f)), CircleShape)

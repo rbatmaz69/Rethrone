@@ -1,6 +1,7 @@
 package com.example.androidlauncher.ui
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -168,24 +169,9 @@ fun AppContextMenu(
                 val scale = 0.05f + (0.95f * progress)
 
                 val menuModifier = if (isLiquidGlassEnabled) {
-                    val borderBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.8f),
-                                Color.Black.copy(alpha = 0.3f)
-                            )
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.6f),
-                                Color.White.copy(alpha = 0.1f)
-                            )
-                        )
-                    }
-                    Modifier.border(androidx.compose.foundation.BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(24.dp))
+                    Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(24.dp))
                 } else {
-                    Modifier.border(androidx.compose.foundation.BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
+                    Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
                 }
 
                 Surface(

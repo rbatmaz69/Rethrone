@@ -90,38 +90,16 @@ fun BottomSearch(
         val menuBgColor = themedLightBackground.copy(alpha = 0.98f)
 
         if (isLiquidGlassEnabled) {
-             val borderBrush = Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.8f),
-                    Color.Black.copy(alpha = 0.3f)
-                )
-            )
             Modifier
                 .background(menuBgColor, RoundedCornerShape(28.dp))
-                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
+                .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
         } else {
             Modifier.background(menuBgColor, RoundedCornerShape(28.dp))
         }
     } else if (isLiquidGlassEnabled) {
-        val glassBrush = Brush.linearGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.15f),
-                Color.White.copy(alpha = 0.05f)
-            ),
-            start = Offset(0f, 0f),
-            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-
-        val borderBrush = Brush.linearGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.6f),
-                Color.White.copy(alpha = 0.1f)
-            )
-        )
-
         Modifier
-            .background(glassBrush, RoundedCornerShape(28.dp))
-            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(28.dp))
+            .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(28.dp))
+            .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
     } else {
         Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
     }

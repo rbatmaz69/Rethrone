@@ -27,8 +27,6 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.geometry.Offset
 
 /**
  * Konfigurationsmenü für Schrift- und Icon-Größen.
@@ -159,23 +157,9 @@ fun SizeConfigMenu(
             )
 
             val fontButtonModifier = if (isLiquidGlassEnabled) {
-                val glassBrush = if (isDarkTextEnabled) {
-                    Brush.linearGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.05f))
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.15f), Color.White.copy(alpha = 0.05f))
-                    )
-                }
-                val borderBrush = if (isDarkTextEnabled) {
-                    Brush.linearGradient(colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.3f)))
-                } else {
-                    Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.1f)))
-                }
                 Modifier
-                    .background(glassBrush, RoundedCornerShape(12.dp))
-                    .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                    .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
             } else {
                 Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             }

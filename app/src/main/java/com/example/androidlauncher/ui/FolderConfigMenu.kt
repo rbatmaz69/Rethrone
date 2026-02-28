@@ -114,45 +114,9 @@ fun FolderConfigMenu(
 
         val searchIntSrc = remember { MutableInteractionSource() }
         val searchBarModifier = if (isLiquidGlassEnabled) {
-            val glassBrush = if (isDarkTextEnabled) {
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.15f),
-                        Color.Black.copy(alpha = 0.05f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                )
-            } else {
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.15f),
-                        Color.White.copy(alpha = 0.05f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                )
-            }
-
-            val borderBrush = if (isDarkTextEnabled) {
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.8f),
-                        Color.Black.copy(alpha = 0.3f)
-                    )
-                )
-            } else {
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.6f),
-                        Color.White.copy(alpha = 0.1f)
-                    )
-                )
-            }
-
             Modifier
-                .background(glassBrush, RoundedCornerShape(12.dp))
-                .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
+                .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
         } else {
             Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
         }
@@ -196,45 +160,9 @@ fun FolderConfigMenu(
                 val intSrc = remember { MutableInteractionSource() }
 
                 val itemModifier = if (isSelected && isLiquidGlassEnabled) {
-                    val glassBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.15f),
-                                Color.Black.copy(alpha = 0.05f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.15f),
-                                Color.White.copy(alpha = 0.05f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    }
-
-                    val borderBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.8f),
-                                Color.Black.copy(alpha = 0.3f)
-                            )
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.6f),
-                                Color.White.copy(alpha = 0.1f)
-                            )
-                        )
-                    }
-
                     Modifier
-                        .background(glassBrush, RoundedCornerShape(12.dp))
-                        .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(12.dp))
+                        .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
+                        .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
                 } else if (isSelected) {
                     Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
                 } else {
