@@ -521,7 +521,11 @@ class MainActivity : ComponentActivity() {
                                          PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                      ) 
                                  },
-                                 onResetWallpaper = { scope.launch { themeManager.setCustomWallpaperUri(null) } },
+                                 onResetWallpaper = { 
+                                     scope.launch { themeManager.setCustomWallpaperUri(null) }
+                                     Toast.makeText(context, "Hintergrund entfernt", Toast.LENGTH_SHORT).show()
+                                 },
+                                 isCustomWallpaperSet = customWallpaperUri != null,
                                  onClose = { isEditConfigOpen = false }
                              )
                          }
@@ -680,10 +684,9 @@ fun SystemWallpaperView(customWallpaperUri: String? = null) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
-    var wallpaperBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var wallpaperBitmap by remember(customWallpaperUri) { mutableStateOf<ImageBitmap?>(null) }
 
     LaunchedEffect(customWallpaperUri) {
-        // Explizit auf null setzen, um einen "Flash" des alten Bildes zu vermeiden
         wallpaperBitmap = null
         withContext(Dispatchers.IO) {
             try {

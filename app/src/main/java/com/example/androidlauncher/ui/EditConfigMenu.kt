@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +36,7 @@ fun EditConfigMenu(
     onOpenIconConfig: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onResetWallpaper: () -> Unit,
+    isCustomWallpaperSet: Boolean,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -97,14 +97,21 @@ fun EditConfigMenu(
             isLiquidGlassEnabled = isLiquidGlassEnabled,
             isDarkTextEnabled = isDarkTextEnabled,
             trailingContent = {
-                IconButton(onClick = { 
-                    onResetWallpaper()
-                }) {
+                if (isCustomWallpaperSet) {
+                    IconButton(onClick = onResetWallpaper) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove Wallpaper",
+                            tint = mainTextColor.copy(alpha = 0.6f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else {
                     Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Reset",
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
                         tint = mainTextColor.copy(alpha = 0.4f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.padding(end = 16.dp)
                     )
                 }
             }
