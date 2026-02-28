@@ -119,15 +119,19 @@ fun AppShortcutsMenu(
                 val itemsCount = shortcuts.size
                 val estimatedMenuHeightPx = with(density) { (itemsCount * 48 + 16).dp.toPx() }
 
-                var finalOffsetX = bounds.center.x - (menuWidthPx / 2)
-                var finalOffsetY = bounds.bottom + with(density) { 8.dp.toPx() }
+                // Positionierung rechts vom Icon
+                var finalOffsetX = bounds.right + with(density) { 12.dp.toPx() }
+                var finalOffsetY = bounds.center.y - (estimatedMenuHeightPx / 2)
 
-                finalOffsetX = finalOffsetX.coerceIn(with(density) { 16.dp.toPx() }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
-
-                val isBelow = finalOffsetY + estimatedMenuHeightPx < screenHeightPx - with(density) { 16.dp.toPx() }
-                if (!isBelow) {
-                    finalOffsetY = bounds.top - estimatedMenuHeightPx - with(density) { 8.dp.toPx() }
+                // Sicherstellen, dass das Menü nicht rechts aus dem Bildschirm ragt
+                if (finalOffsetX + menuWidthPx > screenWidthPx - with(density) { 16.dp.toPx() }) {
+                    // Falls kein Platz rechts, dann links vom Icon oder zentriert (Fallback)
+                    finalOffsetX = bounds.left - menuWidthPx - with(density) { 12.dp.toPx() }
                 }
+
+                // Horizontale und vertikale Begrenzung (Screen-Safety)
+                finalOffsetX = finalOffsetX.coerceIn(with(density) { 16.dp.toPx() }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
+                finalOffsetY = finalOffsetY.coerceIn(with(density) { 16.dp.toPx() }, screenHeightPx - estimatedMenuHeightPx - with(density) { 16.dp.toPx() })
 
                 val startOffsetX = bounds.center.x - (menuWidthPx / 2)
                 val startOffsetY = bounds.center.y - (estimatedMenuHeightPx / 2)
