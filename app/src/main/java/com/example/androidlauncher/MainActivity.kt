@@ -25,6 +25,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -155,7 +156,7 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
 
             val wallpaperPickerLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.OpenDocument()
+                contract = ActivityResultContracts.PickVisualMedia()
             ) { uri: Uri? ->
                 uri?.let {
                     try {
@@ -482,6 +483,7 @@ class MainActivity : ComponentActivity() {
                                  onLiquidGlassToggled = { enabled ->
                                     scope.launch { themeManager.setLiquidGlassEnabled(enabled) }
                                  },
+                                 customWallpaperUri = customWallpaperUri,
                                  onClose = { isColorConfigOpen = false }
                              )
                          }
@@ -508,6 +510,7 @@ class MainActivity : ComponentActivity() {
                                  },
                                  currentAppFont = currentAppFont,
                                  onOpenFontSelection = { isFontSelectionOpen = true },
+                                 customWallpaperUri = customWallpaperUri,
                                  onClose = { isSizeConfigOpen = false }
                              )
                          }
@@ -537,7 +540,11 @@ class MainActivity : ComponentActivity() {
                          Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                              EditConfigMenu(
                                  onOpenIconConfig = { isIconConfigOpen = true },
-                                 onChangeWallpaper = { wallpaperPickerLauncher.launch(arrayOf("image/*")) },
+                                 onChangeWallpaper = { 
+                                     wallpaperPickerLauncher.launch(
+                                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                     ) 
+                                 },
                                  onResetWallpaper = { scope.launch { themeManager.setCustomWallpaperUri(null) } },
                                  onClose = { isEditConfigOpen = false }
                              )
@@ -568,6 +575,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                             InfoDialog(
+                                customWallpaperUri = customWallpaperUri,
                                 onClose = { isInfoOpen = false }
                             )
                         }
