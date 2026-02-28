@@ -13,7 +13,11 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.AdaptiveIconDrawable
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import java.io.File
+import com.yalantis.ucrop.UCrop
 import android.provider.AlarmClock
 import android.provider.CalendarContract
 import android.provider.Settings
@@ -21,8 +25,11 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -40,6 +47,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.drawBehind
@@ -67,6 +75,8 @@ import androidx.core.content.edit
 import androidx.core.graphics.applyCanvas
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
+import androidx.compose.ui.graphics.toArgb
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -95,7 +105,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
 
@@ -109,16 +118,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Full Edge-to-Edge with transparent bars even in button navigation mode
         enableEdgeToEdge(
             statusBarStyle = androidx.activity.SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
             navigationBarStyle = androidx.activity.SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
         )
 
-        // Exclude the launcher itself from the "Recent Apps" list
         intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
 
-        // Handle Back button: Do nothing (default launcher behavior)
         backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
         }
@@ -128,12 +134,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
-            // Initialize data managers
             val themeManager = remember { ThemeManager(context) }
             val folderManager = remember { FolderManager(context) }
             val iconManager = remember { IconManager(context) }
 
-            // Observe settings as State
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SIGNATURE)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentFontWeight by themeManager.selectedFontWeight.collectAsState(initial = FontWeightLevel.NORMAL)
@@ -142,12 +146,58 @@ class MainActivity : ComponentActivity() {
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
+            
+            val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
+            val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
+            val wallpaperDim by themeManager.wallpaperDim.collectAsState(initial = 0.1f)
+            val wallpaperZoom by themeManager.wallpaperZoom.collectAsState(initial = 1.0f)
+
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
 
-            val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
-
             val scope = rememberCoroutineScope()
+
+            val cropLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                if (result.resultCode == RESULT_OK) {
+                    result.data?.let { intent ->
+                        val resultUri = UCrop.getOutput(intent)
+                        resultUri?.let { uri ->
+                            scope.launch { themeManager.setCustomWallpaperUri(uri.toString()) }
+                        }
+                    }
+                }
+            }
+
+            val wallpaperPickerLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.PickVisualMedia()
+            ) { uri: Uri? ->
+                uri?.let { sourceUri ->
+                    val destinationUri = Uri.fromFile(File(context.cacheDir, "cropped_wallpaper_${System.currentTimeMillis()}.jpg"))
+
+                    val options = UCrop.Options().apply {
+                        val editorBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground.toArgb() else currentTheme.drawerBackground.toArgb()
+                        val widgetColor = if (isDarkTextEnabled) Color.Black.toArgb() else Color.White.toArgb()
+
+                        setToolbarColor(editorBackgroundColor)
+                        setStatusBarColor(editorBackgroundColor)
+                        setToolbarWidgetColor(widgetColor)
+                        setActiveControlsWidgetColor(currentTheme.primary.toArgb())
+                        setToolbarTitle("Hintergrund zuschneiden")
+                        // Hintergrund des eigentlichen Editors (hinter dem Bild) ebenfalls anpassen
+                        setLogoColor(editorBackgroundColor)
+                    }
+
+                    val uCrop = UCrop.of(sourceUri, destinationUri)
+                        .withAspectRatio(9f, 16f)
+                        .withMaxResultSize(1080, 1920)
+                        .withOptions(options)
+                        .getIntent(context)
+
+                    cropLauncher.launch(uCrop)
+                }
+            }
 
             AndroidLauncherTheme(
                 colorTheme = currentTheme,
@@ -160,6 +210,9 @@ class MainActivity : ComponentActivity() {
                 appFont = currentAppFont
             ) {
                 val lifecycleOwner = LocalLifecycleOwner.current
+                val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+                val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
+
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
                 var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
@@ -173,6 +226,7 @@ class MainActivity : ComponentActivity() {
                 var isFontSelectionOpen by remember { mutableStateOf(false) }
                 var isEditConfigOpen by remember { mutableStateOf(false) }
                 var isIconConfigOpen by remember { mutableStateOf(false) }
+                var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
 
@@ -189,6 +243,7 @@ class MainActivity : ComponentActivity() {
                                     isFontSelectionOpen = false
                                     isEditConfigOpen = false
                                     isIconConfigOpen = false
+                                    isWallpaperConfigOpen = false
                                     isInfoOpen = false
                                     selectedFolderForConfig = null
                                 }
@@ -216,13 +271,9 @@ class MainActivity : ComponentActivity() {
                     LauncherLogic.getFavoriteApps(allApps.toList(), favoritePackages)
                 }
 
-                // Helper to load apps and icons
                 fun refreshAppList(scope: CoroutineScope, context: Context, allApps: MutableList<AppInfo>, favoritePackages: List<String>) {
                     scope.launch {
                         val basicList = withContext(Dispatchers.IO) { getAppListBasic(context) }
-
-                        // We update the list carefully to avoid unnecessary UI jumps if possible,
-                        // but a clear and addAll is simplest for now.
                         allApps.clear()
                         allApps.addAll(basicList)
 
@@ -240,7 +291,6 @@ class MainActivity : ComponentActivity() {
                                 val bitmap = loadSingleIcon(pm, cacheDir, app.packageName)
                                 if (bitmap != null) {
                                     withContext(Dispatchers.Main) {
-                                        // Re-check index after context switch
                                         if (appIdx < allApps.size && allApps[appIdx].packageName == app.packageName) {
                                             allApps[appIdx] = allApps[appIdx].copy(iconBitmap = bitmap)
                                         }
@@ -252,16 +302,13 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Initial load
                 LaunchedEffect(Unit) {
                     refreshAppList(scope, context, allApps, favoritePackages)
                 }
 
-                // Listen for app installs/uninstalls
                 DisposableEffect(Unit) {
                     val receiver = object : BroadcastReceiver() {
                         override fun onReceive(context: Context?, intent: Intent?) {
-                            // Delay slightly to give the system time to finalize the uninstall
                             scope.launch {
                                 delay(800)
                                 context?.let { refreshAppList(scope, it, allApps, favoritePackages) }
@@ -290,20 +337,22 @@ class MainActivity : ComponentActivity() {
                         isFontSelectionOpen = false
                         isEditConfigOpen = false
                         isIconConfigOpen = false
+                        isWallpaperConfigOpen = false
                         isInfoOpen = false
                         selectedFolderForConfig = null
                     }
                 }
 
-                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen, isIconConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
+                LaunchedEffect(isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen, isIconConfigOpen, isWallpaperConfigOpen, isInfoOpen, selectedFolderForConfig, isSearchOpen) {
+                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isWallpaperConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen
                     backCallback.isEnabled = !anyModalOpen
                 }
 
-                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
+                BackHandler(enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen || isIconConfigOpen || isWallpaperConfigOpen || isInfoOpen || selectedFolderForConfig != null || isSearchOpen) {
                     if (selectedFolderForConfig != null) selectedFolderForConfig = null
                     else if (isSearchOpen) isSearchOpen = false
                     else if (isFontSelectionOpen) isFontSelectionOpen = false
+                    else if (isWallpaperConfigOpen) isWallpaperConfigOpen = false
                     else if (isIconConfigOpen) isIconConfigOpen = false
                     else if (isDrawerOpen) isDrawerOpen = false
                     else if (isFavoritesConfigOpen) isFavoritesConfigOpen = false
@@ -317,7 +366,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                         .onGloballyPositioned { rootSize = it.size }
                 ) {
-                    SystemWallpaperView()
+                    SystemWallpaperView(
+                        customWallpaperUri = customWallpaperUri,
+                        blurLevel = wallpaperBlur,
+                        dimLevel = wallpaperDim,
+                        zoomLevel = wallpaperZoom
+                    )
 
                     AnimatedContent(
                          targetState = isDrawerOpen,
@@ -410,27 +464,17 @@ class MainActivity : ComponentActivity() {
                                  FolderConfigMenu(
                                      folder = folder,
                                      allApps = allApps,
-                                     allFolders = folders, // Pass all folders for duplicate check
+                                     allFolders = folders,
                                      onConfirm = { updatedFolder ->
-                                         // Check if the folder already exists in our list
                                          val folderExists = folders.any { it.id == updatedFolder.id }
-
-                                         // Determine the new folder list based on whether it's an update or a new folder
                                          val newFolders = if (folderExists) {
-                                             // Update existing folder
                                              folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
                                          } else if (updatedFolder.appPackageNames.isNotEmpty()) {
-                                             // Create new folder only if at least one app is selected
                                              folders + updatedFolder
                                          } else {
-                                             // If it's a new folder but empty, don't add it (Minimalist approach)
                                              folders
                                          }
-
-                                         // Save the updated folder list to persistent storage
                                          scope.launch { folderManager.saveFolders(newFolders) }
-
-                                         // Close the configuration menu
                                          selectedFolderForConfig = null
                                      },
                                      onDelete = { folderId ->
@@ -463,6 +507,7 @@ class MainActivity : ComponentActivity() {
                                  onLiquidGlassToggled = { enabled ->
                                     scope.launch { themeManager.setLiquidGlassEnabled(enabled) }
                                  },
+                                 customWallpaperUri = customWallpaperUri,
                                  onClose = { isColorConfigOpen = false }
                              )
                          }
@@ -489,6 +534,7 @@ class MainActivity : ComponentActivity() {
                                  },
                                  currentAppFont = currentAppFont,
                                  onOpenFontSelection = { isFontSelectionOpen = true },
+                                 customWallpaperUri = customWallpaperUri,
                                  onClose = { isSizeConfigOpen = false }
                              )
                          }
@@ -518,10 +564,45 @@ class MainActivity : ComponentActivity() {
                          Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                              EditConfigMenu(
                                  onOpenIconConfig = { isIconConfigOpen = true },
+                                 onChangeWallpaper = { 
+                                     wallpaperPickerLauncher.launch(
+                                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                     ) 
+                                 },
+                                 onResetWallpaper = { 
+                                     scope.launch { 
+                                         themeManager.setCustomWallpaperUri(null)
+                                         themeManager.setWallpaperBlur(0f)
+                                         themeManager.setWallpaperDim(0.1f)
+                                         themeManager.setWallpaperZoom(1.0f)
+                                     }
+                                     Toast.makeText(context, "Hintergrund entfernt", Toast.LENGTH_SHORT).show()
+                                 },
+                                 onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
+                                 isCustomWallpaperSet = customWallpaperUri != null,
                                  onClose = { isEditConfigOpen = false }
                              )
                          }
                      }
+
+                    AnimatedVisibility(
+                        visible = isWallpaperConfigOpen,
+                        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = EaseOutCubic)) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300, easing = EaseInCubic)) + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
+                            WallpaperConfigMenu(
+                                blurLevel = wallpaperBlur,
+                                onBlurChange = { scope.launch { themeManager.setWallpaperBlur(it) } },
+                                dimLevel = wallpaperDim,
+                                onDimChange = { scope.launch { themeManager.setWallpaperDim(it) } },
+                                zoomLevel = wallpaperZoom,
+                                onZoomChange = { scope.launch { themeManager.setWallpaperZoom(it) } },
+                                customWallpaperUri = customWallpaperUri,
+                                onClose = { isWallpaperConfigOpen = false }
+                            )
+                        }
+                    }
 
                     AnimatedVisibility(
                          visible = isIconConfigOpen,
@@ -547,6 +628,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                             InfoDialog(
+                                customWallpaperUri = customWallpaperUri,
                                 onClose = { isInfoOpen = false }
                             )
                         }
@@ -589,9 +671,6 @@ class MainActivity : ComponentActivity() {
         enforceExcludeFromRecents()
     }
 
-    /**
-     * Ensures the activity is excluded from recents programmatically.
-     */
     private fun enforceExcludeFromRecents() {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val tasks = am.appTasks
@@ -600,10 +679,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Gets a simple list of installed apps.
-     * Heavy lifting (icon loading) is done asynchronously later.
-     */
     private suspend fun getAppListBasic(context: Context): List<AppInfo> {
         val pm = context.packageManager
         val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
@@ -678,28 +753,60 @@ private fun expandNotifications(context: Context) {
 
 @SuppressLint("MissingPermission")
 @Composable
-fun SystemWallpaperView() {
+fun SystemWallpaperView(
+    customWallpaperUri: String? = null,
+    blurLevel: Float = 0f,
+    dimLevel: Float = 0.1f,
+    zoomLevel: Float = 1.0f
+) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
-    var wallpaperBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var wallpaperBitmap by remember(customWallpaperUri) { mutableStateOf<ImageBitmap?>(null) }
 
-    LaunchedEffect(Unit) {
-        delay(300)
+    LaunchedEffect(customWallpaperUri) {
+        wallpaperBitmap = null
         withContext(Dispatchers.IO) {
             try {
-                val drawable = wallpaperManager.drawable
-                drawable?.let { wallpaperBitmap = it.toBitmap().asImageBitmap() }
-            } catch (_: Exception) {}
+                if (!customWallpaperUri.isNullOrEmpty()) {
+                    val uri = customWallpaperUri.toUri()
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        val b = BitmapFactory.decodeStream(stream)
+                        val ib = b?.asImageBitmap()
+                        withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                    }
+                } else {
+                    val drawable = wallpaperManager.drawable
+                    val ib = drawable?.toBitmap()?.asImageBitmap()
+                    withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                }
+            } catch (e: Exception) {
+                try {
+                    val drawable = wallpaperManager.drawable
+                    val ib = drawable?.toBitmap()?.asImageBitmap()
+                    withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                } catch (_: Exception) {}
+            }
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         wallpaperBitmap?.let {
-            Image(bitmap = it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Image(
+                bitmap = it, 
+                contentDescription = null, 
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = zoomLevel
+                        scaleY = zoomLevel
+                    }
+                    .blur(blurLevel.dp),
+                contentScale = ContentScale.Crop
+            )
         } ?: Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(colorTheme.primary, colorTheme.secondary))))
-        // Reduzierte Overlay-Deckkraft (von 0.4f auf 0.1f), damit der Hintergrund klarer erscheint
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.1f)))
+
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = dimLevel)))
     }
 }
 
@@ -906,7 +1013,6 @@ fun HomeScreen(
                 val searchIntSrc = remember { MutableInteractionSource() }
 
                 val buttonModifier = if (isLiquidGlassEnabled) {
-                    // Liquid/Glass Style für den Button
                     val glassBrush = if (isDarkTextEnabled) {
                         Brush.linearGradient(
                             colors = listOf(
@@ -946,13 +1052,11 @@ fun HomeScreen(
                         .background(glassBrush, CircleShape)
                         .border(BorderStroke(1.2.dp, borderBrush), CircleShape)
                 } else {
-                    // Standard Style (Original)
                     Modifier
                         .background(mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), CircleShape)
                         .then(if (isSettingsOpen) Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)), CircleShape) else Modifier)
                 }
 
-                // Spalte für Buttons (Search oben, Settings unten)
                 val settingsBtnScale by animateFloatAsState(
                     targetValue = if (isSettingsOpen) 1.2f else 1f,
                     animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
@@ -964,7 +1068,6 @@ fun HomeScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Search Button (nur sichtbar wenn Settings zu sind)
                     AnimatedVisibility(
                         visible = !isSettingsOpen,
                         enter = scaleIn(
@@ -976,7 +1079,6 @@ fun HomeScreen(
                         ) + fadeIn(animationSpec = tween(150)),
                         exit = scaleOut(animationSpec = tween(150)) + fadeOut(animationSpec = tween(150))
                     ) {
-                        // Animation für den Klick auf den Suchbutton (Rotation + Scale bei Aktivierung)
                         val searchButtonScale by animateFloatAsState(
                             targetValue = if (isSearchOpen) 0.8f else 1f,
                             animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
@@ -1014,7 +1116,6 @@ fun HomeScreen(
                         }
                     }
 
-                    // Settings Button
                     Box(
                         modifier = Modifier
                             .graphicsLayer {
@@ -1147,7 +1248,6 @@ fun FavoritesConfigMenu(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Option Toggle
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -1216,7 +1316,6 @@ fun FavoritesConfigMenu(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val searchIntSrc = remember { MutableInteractionSource() }
         val searchBarModifier = if (isLiquidGlassEnabled) {
             val glassBrush = if (isDarkTextEnabled) {
                 Brush.linearGradient(
@@ -1261,10 +1360,7 @@ fun FavoritesConfigMenu(
             Modifier.background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
         }
 
-        Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp).clickable(
-            interactionSource = searchIntSrc,
-            indication = null
-        ) { focusRequester.requestFocus() }) {
+        Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp).clickable { focusRequester.requestFocus() }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, contentDescription = null, tint = grayTone, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(12.dp))
@@ -1403,10 +1499,7 @@ fun FavoritesConfigMenu(
                     Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
                 }
 
-                Box(modifier = Modifier.fillMaxWidth().then(itemModifier).bounceClick(intSrc).clickable(
-                    interactionSource = intSrc,
-                    indication = null
-                ) {
+                Box(modifier = Modifier.fillMaxWidth().then(itemModifier).bounceClick(intSrc).clickable {
                     val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
                     if (newFavs.size <= LauncherLogic.MAX_FAVORITES) selectedPackages = newFavs else Toast.makeText(context, context.getString(R.string.max_favorites_reached), Toast.LENGTH_SHORT).show()
                 }) {

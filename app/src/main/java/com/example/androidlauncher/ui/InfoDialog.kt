@@ -29,6 +29,7 @@ import com.example.androidlauncher.ui.theme.LocalFontWeight
 
 @Composable
 fun InfoDialog(
+    customWallpaperUri: String? = null,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -40,7 +41,7 @@ fun InfoDialog(
     val scrollState = rememberScrollState()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        SystemWallpaperView()
+        SystemWallpaperView(customWallpaperUri)
         Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
 
         Column(
