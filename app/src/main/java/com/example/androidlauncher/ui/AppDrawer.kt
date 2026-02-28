@@ -1093,9 +1093,9 @@ fun AppDrawer(
                         Toast.makeText(context, "Deinstallation konnte nicht gestartet werden", Toast.LENGTH_SHORT).show()
                     }
                 },
-                onMoveToFolder = if (folders.isNotEmpty()) { { 
+                onMoveToFolder = if (folders.isNotEmpty()) { {
                     folderSelectionApp = currentMenuApp
-                    showFolderSelection = true 
+                    showFolderSelection = true
                 } } else null,
                 onRemoveFromFolder = folders.find { it.appPackageNames.contains(currentMenuApp.packageName) }?.let { folder ->
                     { onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, folder.id, currentMenuApp.packageName)) }
