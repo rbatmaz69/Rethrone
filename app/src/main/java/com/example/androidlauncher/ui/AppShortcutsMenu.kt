@@ -20,11 +20,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -44,6 +46,7 @@ fun AppShortcutsMenu(
     onShortcutClick: (ShortcutInfo) -> Unit
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val shortcuts = remember(packageName) {
         getAppShortcuts(context, packageName).take(4)
     }
@@ -81,6 +84,8 @@ fun AppShortcutsMenu(
         if (targetBounds != null) {
             isVisible = true
             isDismissing = false
+            // Vibrationsfeedback beim Öffnen
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 
