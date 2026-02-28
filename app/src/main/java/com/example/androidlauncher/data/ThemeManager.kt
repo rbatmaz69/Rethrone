@@ -22,6 +22,7 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
  * - Favorite Labels Visibility
  * - Liquid Glass Effect
  * - App Font
+ * - Custom Wallpaper URI
  */
 class ThemeManager(private val context: Context) {
     companion object {
@@ -34,6 +35,7 @@ class ThemeManager(private val context: Context) {
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
         private val APP_FONT_KEY = stringPreferencesKey("app_font")
+        private val CUSTOM_WALLPAPER_KEY = stringPreferencesKey("custom_wallpaper_uri")
     }
 
     /**
@@ -127,6 +129,14 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
+     * Observable flow for custom wallpaper URI.
+     */
+    val customWallpaperUri: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[CUSTOM_WALLPAPER_KEY]
+        }
+
+    /**
      * Updates the selected theme.
      */
     suspend fun setTheme(theme: ColorTheme) {
@@ -195,6 +205,19 @@ class ThemeManager(private val context: Context) {
     suspend fun setAppFont(font: AppFont) {
         context.dataStore.edit { preferences ->
             preferences[APP_FONT_KEY] = font.name
+        }
+    }
+
+    /**
+     * Updates the custom wallpaper URI.
+     */
+    suspend fun setCustomWallpaperUri(uri: String?) {
+        context.dataStore.edit { preferences ->
+            if (uri == null) {
+                preferences.remove(CUSTOM_WALLPAPER_KEY)
+            } else {
+                preferences[CUSTOM_WALLPAPER_KEY] = uri
+            }
         }
     }
 }

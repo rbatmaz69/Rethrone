@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Bell
+import com.composables.icons.lucide.Image
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -33,6 +35,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 @Composable
 fun EditConfigMenu(
     onOpenIconConfig: () -> Unit,
+    onChangeWallpaper: () -> Unit,
+    onResetWallpaper: () -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -84,6 +88,28 @@ fun EditConfigMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Menu Point: Wallpaper ändern
+        EditMenuItem(
+            icon = Lucide.Image,
+            label = "Wallpaper ändern",
+            onClick = onChangeWallpaper,
+            mainTextColor = mainTextColor,
+            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            isDarkTextEnabled = isDarkTextEnabled,
+            trailingContent = {
+                IconButton(onClick = onResetWallpaper) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Reset",
+                        tint = mainTextColor.copy(alpha = 0.4f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // Menu Point: Notification Dots
         EditMenuItem(
             icon = Lucide.Bell,
@@ -92,8 +118,6 @@ fun EditConfigMenu(
                 if (!isNotificationEnabled) {
                     openNotificationSettings(context)
                 } else {
-                    // If already enabled, maybe show a toast or just do nothing for now
-                    // as disabling requires system settings too.
                     openNotificationSettings(context)
                 }
             },
@@ -113,7 +137,8 @@ fun EditMenuItem(
     mainTextColor: Color,
     isLiquidGlassEnabled: Boolean,
     isDarkTextEnabled: Boolean,
-    statusLabel: String? = null
+    statusLabel: String? = null,
+    trailingContent: @Composable (() -> Unit)? = null
 ) {
     val backgroundModifier = if (isLiquidGlassEnabled) {
         val glassBrush = if (isDarkTextEnabled) {
@@ -192,11 +217,15 @@ fun EditMenuItem(
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = mainTextColor.copy(alpha = 0.4f)
-            )
+            if (trailingContent != null) {
+                trailingContent()
+            } else {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = mainTextColor.copy(alpha = 0.4f)
+                )
+            }
         }
     }
 }

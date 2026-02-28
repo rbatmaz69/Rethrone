@@ -49,6 +49,7 @@ fun ColorConfigMenu(
     onDarkTextToggled: (Boolean) -> Unit,
     isLiquidGlassEnabled: Boolean,
     onLiquidGlassToggled: (Boolean) -> Unit,
+    customWallpaperUri: String? = null,
     onClose: () -> Unit
 ) {
     val fontWeight = LocalFontWeight.current
@@ -57,7 +58,7 @@ fun ColorConfigMenu(
 
     val backgroundColor = if (isDarkTextEnabled) selectedTheme.lightBackground else selectedTheme.drawerBackground
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
-        SystemWallpaperView()
+        SystemWallpaperView(customWallpaperUri)
         Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
 
         Column(

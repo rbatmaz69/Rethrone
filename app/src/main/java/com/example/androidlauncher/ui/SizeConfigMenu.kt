@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -48,6 +48,7 @@ fun SizeConfigMenu(
     onIconSizeSelected: (IconSize) -> Unit,
     currentAppFont: AppFont,
     onOpenFontSelection: () -> Unit,
+    customWallpaperUri: String? = null,
     onClose: () -> Unit
 ) {
     val colorTheme = LocalColorTheme.current
@@ -58,7 +59,7 @@ fun SizeConfigMenu(
 
     val backgroundColor = if (isDarkTextEnabled) colorTheme.lightBackground else colorTheme.drawerBackground
     Box(modifier = Modifier.fillMaxSize()) {
-        SystemWallpaperView()
+        SystemWallpaperView(customWallpaperUri)
         Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
 
         Column(
@@ -181,7 +182,7 @@ fun SizeConfigMenu(
                         )
                     }
                     Icon(
-                        imageVector = Icons.Default.KeyboardArrowRight,
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
                         tint = mainTextColor.copy(alpha = 0.6f)
                     )
@@ -300,7 +301,7 @@ fun SizeConfigMenu(
                                 ),
                                 start = Offset(0f, 0f),
                                 end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                            )
+                                )
                         } else {
                             Brush.linearGradient(
                                 colors = listOf(
@@ -446,43 +447,21 @@ fun SizeConfigMenu(
                 }
             }
         }
-
-        // Zurücksetzen Button am unteren Rand
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .navigationBarsPadding()
-                .padding(bottom = 32.dp, end = 24.dp, start = 24.dp),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            TextButton(
-                onClick = {
-                    onFontSizeSelected(FontSize.STANDARD)
-                    onFontWeightSelected(FontWeightLevel.NORMAL)
-                    onIconSizeSelected(IconSize.STANDARD)
-                },
-                // Bleibt grau
-                colors = ButtonDefaults.textButtonColors(contentColor = mainTextColor.copy(alpha = 0.6f))
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = mainTextColor.copy(alpha = 0.6f)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Auf Standardwerte zurücksetzen", fontSize = 14.sp)
-                }
-            }
-        }
     }
 }
 
 @Composable
-fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, fontWeight: FontWeight, isHome: Boolean, mainTextColor: Color, isLiquidGlassEnabled: Boolean, isDarkTextEnabled: Boolean, modifier: Modifier = Modifier) {
-    val colorTheme = LocalColorTheme.current
-
+fun SizePreviewCard(
+    title: String, 
+    fontSize: FontSize, 
+    iconSize: IconSize,
+    fontWeight: FontWeight,
+    isHome: Boolean, 
+    mainTextColor: Color,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
     val cardModifier = if (isLiquidGlassEnabled) {
         val glassBrush = if (isDarkTextEnabled) {
             Brush.linearGradient(
@@ -531,56 +510,31 @@ fun SizePreviewCard(title: String, fontSize: FontSize, iconSize: IconSize, fontW
         modifier = modifier.then(cardModifier)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Karten-Titel bleibt grau
-            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = fontWeight)
+            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (isHome) {
-                            Brush.verticalGradient(listOf(colorTheme.primary.copy(alpha = 0.6f), colorTheme.secondary.copy(alpha = 0.6f)))
-                        } else {
-                            if (mainTextColor == Color(0xFF010101)) {
-                                SolidColor(colorTheme.lightBackground)
-                            } else {
-                                SolidColor(colorTheme.drawerBackground)
-                            }
-                        }
-                    )
+                    .background(if (isHome) mainTextColor.copy(alpha = 0.05f) else mainTextColor.copy(alpha = 0.1f))
             ) {
                 if (isHome) {
                     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = Modifier.width(40.dp * fontSize.scale).height(8.dp * fontSize.scale).background(mainTextColor.copy(alpha = 0.8f), CircleShape))
-                        Box(modifier = Modifier.width(30.dp * fontSize.scale).height(4.dp * fontSize.scale).background(mainTextColor.copy(alpha = 0.4f), CircleShape))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        repeat(3) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val dotSize = 12.dp * (iconSize.size / 48.dp)
-                                Box(modifier = Modifier.size(dotSize).border(1.dp, mainTextColor.copy(alpha = 0.5f), CircleShape))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(modifier = Modifier.width(40.dp * fontSize.scale).height(4.dp * fontSize.scale).background(mainTextColor.copy(alpha = 0.2f), CircleShape))
-                            }
+                        Text("12:00", fontSize = (24.sp * fontSize.scale), fontWeight = fontWeight, color = mainTextColor)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(16.dp * iconSize.scale).background(mainTextColor.copy(alpha = 0.2f), CircleShape))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(modifier = Modifier.width(40.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.1f), CircleShape))
                         }
                     }
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.padding(8.dp)) {
-                            Box(modifier = Modifier.fillMaxWidth().height(16.dp * fontSize.scale).background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            val columns = when (iconSize) {
-                                IconSize.SMALL -> 5
-                                IconSize.STANDARD -> 4
-                                IconSize.LARGE -> 3
-                            }
-                            val dotSize = 10.dp * (iconSize.size / 48.dp)
-                            
                             repeat(3) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    repeat(columns) {
-                                        Box(modifier = Modifier.size(dotSize).border(1.dp, mainTextColor.copy(alpha = 0.7f), CircleShape))
+                                    repeat(4) {
+                                        Box(modifier = Modifier.size(12.dp * iconSize.scale).background(mainTextColor.copy(alpha = 0.2f), CircleShape))
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))

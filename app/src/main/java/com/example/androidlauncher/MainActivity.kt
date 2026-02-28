@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.AdaptiveIconDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -21,8 +22,10 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -67,6 +70,7 @@ import androidx.core.content.edit
 import androidx.core.graphics.applyCanvas
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -142,12 +146,27 @@ class MainActivity : ComponentActivity() {
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
+            val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
 
             val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground else currentTheme.drawerBackground
 
             val scope = rememberCoroutineScope()
+
+            val wallpaperPickerLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument()
+            ) { uri: Uri? ->
+                uri?.let {
+                    try {
+                        contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        scope.launch { themeManager.setCustomWallpaperUri(it.toString()) }
+                    } catch (e: Exception) {
+                        // Fallback if persistable permission fails
+                        scope.launch { themeManager.setCustomWallpaperUri(it.toString()) }
+                    }
+                }
+            }
 
             AndroidLauncherTheme(
                 colorTheme = currentTheme,
@@ -317,7 +336,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                         .onGloballyPositioned { rootSize = it.size }
                 ) {
-                    SystemWallpaperView()
+                    SystemWallpaperView(customWallpaperUri)
 
                     AnimatedContent(
                          targetState = isDrawerOpen,
@@ -518,6 +537,8 @@ class MainActivity : ComponentActivity() {
                          Box(modifier = Modifier.fillMaxSize().background(menuBackgroundColor)) {
                              EditConfigMenu(
                                  onOpenIconConfig = { isIconConfigOpen = true },
+                                 onChangeWallpaper = { wallpaperPickerLauncher.launch(arrayOf("image/*")) },
+                                 onResetWallpaper = { scope.launch { themeManager.setCustomWallpaperUri(null) } },
                                  onClose = { isEditConfigOpen = false }
                              )
                          }
@@ -678,19 +699,32 @@ private fun expandNotifications(context: Context) {
 
 @SuppressLint("MissingPermission")
 @Composable
-fun SystemWallpaperView() {
+fun SystemWallpaperView(customWallpaperUri: String? = null) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
     var wallpaperBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
 
-    LaunchedEffect(Unit) {
-        delay(300)
+    LaunchedEffect(customWallpaperUri) {
         withContext(Dispatchers.IO) {
             try {
-                val drawable = wallpaperManager.drawable
-                drawable?.let { wallpaperBitmap = it.toBitmap().asImageBitmap() }
-            } catch (_: Exception) {}
+                if (customWallpaperUri != null) {
+                    val uri = customWallpaperUri.toUri()
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        val b = BitmapFactory.decodeStream(stream)
+                        wallpaperBitmap = b?.asImageBitmap()
+                    }
+                } else {
+                    val drawable = wallpaperManager.drawable
+                    drawable?.let { wallpaperBitmap = it.toBitmap().asImageBitmap() }
+                }
+            } catch (e: Exception) {
+                // Fallback to system wallpaper if custom fails
+                try {
+                    val drawable = wallpaperManager.drawable
+                    drawable?.let { wallpaperBitmap = it.toBitmap().asImageBitmap() }
+                } catch (_: Exception) {}
+            }
         }
     }
 
