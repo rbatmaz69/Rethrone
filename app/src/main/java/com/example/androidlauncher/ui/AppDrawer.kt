@@ -3,6 +3,7 @@ package com.example.androidlauncher.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
@@ -76,6 +77,7 @@ import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalIconSize
@@ -108,6 +110,7 @@ fun AppDrawer(
     val fontSize = LocalFontSize.current
     val fontWeight = LocalFontWeight.current
     val iconSize = LocalIconSize.current
+    val appFont = LocalAppFont.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
@@ -653,6 +656,7 @@ fun AppDrawer(
                                             color = mainTextColor,
                                             fontSize = 22.sp * fontSize.scale,
                                             fontWeight = fontWeight.weight,
+                                            fontFamily = appFont.fontFamily,
                                             textAlign = TextAlign.Center
                                         ),
                                         cursorBrush = SolidColor(mainTextColor),
@@ -670,6 +674,7 @@ fun AppDrawer(
                                         color = mainTextColor,
                                         fontSize = 22.sp * fontSize.scale,
                                         fontWeight = fontWeight.weight,
+                                        fontFamily = appFont.fontFamily,
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp)
                                     )
@@ -876,12 +881,22 @@ fun AppDrawer(
                                                 modifier = Modifier.fillMaxSize(),
                                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                                 verticalArrangement = Arrangement.spacedBy(24.dp),
-                                                userScrollEnabled = false
+                                                userScrollEnabled = false,
+                                                // ── CUSTOM: Extra Padding damit Minus-Badges an allen Rändern
+                                                // (oben, links, rechts) nicht am Ordner-Rand abgeschnitten werden.
+                                                contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp)
                                             ) {
                                                 itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
                                                     val globalIndex = startIdx + indexInPage
                                                     val isDragging = draggingItemPkg == app.packageName
-                                                    
+
+                                                    // ── CUSTOM: Badge-Größe relativ zur Icon-Größe ──
+                                                    // Skaliert proportional mit der gewählten Icon-Größe (SMALL/STANDARD/LARGE),
+                                                    // damit das Badge immer klein aber bemerkbar bleibt.
+                                                    val badgeSize = iconSize.size * 0.28f
+                                                    val minusWidth = iconSize.size * 0.14f
+                                                    val minusHeight = 1.5.dp
+
                                                     Box(
                                                         modifier = Modifier
                                                             .let { if (isDragging) it else Modifier.animateItem() }
@@ -916,6 +931,55 @@ fun AppDrawer(
                                                                 }
                                                             }
                                                         )
+
+                                                        // ── CUSTOM: Minus-Badge zum Entfernen im Jiggle-Modus ──
+                                                        // Zeigt ein kleines rundes Badge mit Minus-Strich oben rechts am App-Icon.
+                                                        // Nur sichtbar wenn isEditMode aktiv und das Item nicht gerade gedraggt wird.
+                                                        // Klick entfernt die App sofort aus dem Ordner (nicht deinstallieren!).
+                                                        // animateItem() am Grid sorgt für sanften Reflow der verbleibenden Apps.
+                                                        if (isEditMode && !isDragging) {
+                                                            // View-Referenz für zuverlässiges Haptic Feedback
+                                                            val view = androidx.compose.ui.platform.LocalView.current
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .align(Alignment.TopEnd)
+                                                                    // Positioniert das Badge nah am rechten oberen Icon-Eck.
+                                                                    .offset(x = 0.dp, y = (-2).dp)
+                                                                    .zIndex(10f)
+                                                                    .size(badgeSize)
+                                                                    .background(
+                                                                        mainTextColor.copy(alpha = 0.85f),
+                                                                        CircleShape
+                                                                    )
+                                                                    // ── CUSTOM: clickable mit View.performHapticFeedback ──
+                                                                    // View.performHapticFeedback nutzt direkt das Android
+                                                                    // View-System und funktioniert zuverlässig unabhängig
+                                                                    // von Compose Gesture-Hierarchien.
+                                                                    .clickable(
+                                                                        interactionSource = remember { MutableInteractionSource() },
+                                                                        indication = null
+                                                                    ) {
+                                                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+
+                                                                        // Sofortige Entfernung aus dem Ordner.
+                                                                        // Die App wird NICHT deinstalliert, nur aus der Ordner-Liste entfernt.
+                                                                        onUpdateFolders(folders.map {
+                                                                            if (it.id == currentActiveFolder.id) it.copy(appPackageNames = it.appPackageNames - app.packageName) else it
+                                                                        })
+                                                                    },
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                // Minus-Strich – proportional zur Icon-Größe
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .size(width = minusWidth, height = minusHeight)
+                                                                        .background(
+                                                                            if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
+                                                                            RoundedCornerShape(0.75.dp)
+                                                                        )
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
