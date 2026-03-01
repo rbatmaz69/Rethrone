@@ -28,9 +28,21 @@ import java.io.FileOutputStream
  */
 class AppRepository(private val context: Context) {
 
-    /** Cache-Verzeichnis für App-Icons. */
+    /** Cache-Verzeichnis für App-Icons im permanenten Speicher. */
     private val iconCacheDir: File by lazy {
-        File(context.cacheDir, "app_icons").also { if (!it.exists()) it.mkdirs() }
+        File(context.filesDir, "app_icons").also { if (!it.exists()) it.mkdirs() }
+    }
+
+    /**
+     * Bereinigt veraltete Cache-Verzeichnisse (z.B. aus dem temporary cacheDir).
+     */
+    fun cleanupLegacyCache() {
+        try {
+            val legacyDir = File(context.cacheDir, "app_icons")
+            if (legacyDir.exists()) {
+                legacyDir.deleteRecursively()
+            }
+        } catch (_: Exception) {}
     }
 
     /**

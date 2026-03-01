@@ -285,16 +285,25 @@ class MainActivity : ComponentActivity() {
                 /** Lädt die App-Liste und Icons (priorisiert Favoriten). */
                 fun refreshAppList() {
                     scope.launch {
+                        appRepository.cleanupLegacyCache()
                         val basicList = appRepository.getInstalledApps()
-                        allApps.clear()
-                        allApps.addAll(basicList)
+
+                        // Wenn die Liste sich grundlegend geändert hat (Anzahl oder Namen),
+                        // dann einmalig neu setzen, aber Icons von alten Apps behalten falls möglich.
+                        if (allApps.size != basicList.size || allApps.map { it.packageName } != basicList.map { it.packageName }) {
+                            val currentIcons = allApps.associate { it.packageName to it.iconBitmap }
+                            allApps.clear()
+                            allApps.addAll(basicList.map {
+                                it.copy(iconBitmap = currentIcons[it.packageName])
+                            })
+                        }
 
                         appRepository.loadIconsWithPriority(
-                            apps = basicList,
+                            apps = allApps.toList(),
                             favoritePackages = favoritePackages
                         ) { idx, bitmap ->
                             withContext(Dispatchers.Main) {
-                                if (idx < allApps.size && allApps[idx].packageName == basicList[idx].packageName) {
+                                if (idx < allApps.size) {
                                     allApps[idx] = allApps[idx].copy(iconBitmap = bitmap)
                                 }
                             }
