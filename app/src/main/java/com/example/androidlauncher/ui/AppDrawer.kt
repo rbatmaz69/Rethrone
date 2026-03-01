@@ -578,10 +578,17 @@ fun AppDrawer(
         val folderTransition = updateTransition(targetState = showFolder, label = "FolderTransition")
         val folderProgress by folderTransition.animateFloat(
             transitionSpec = {
-                tween(
-                    durationMillis = if (targetState) 420 else 320,
-                    easing = FastOutSlowInEasing
-                )
+                // CUSTOM: Spezielle Animation für das Löschen (Exit) - schneller und federnd.
+                val isBeingDeleted = activeFolderId != null && folders.none { it.id == activeFolderId }
+                if (targetState) {
+                    tween(durationMillis = 420, easing = FastOutSlowInEasing)
+                } else {
+                    if (isBeingDeleted) {
+                        spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
+                    } else {
+                        tween(durationMillis = 320, easing = FastOutSlowInEasing)
+                    }
+                }
             },
             label = "FolderProgress"
         ) { isVisible ->
@@ -638,6 +645,11 @@ fun AppDrawer(
                                 this.translationX = translationX
                                 this.translationY = translationY
                                 this.transformOrigin = TransformOrigin.Center
+                                // CUSTOM: Zusätzlicher Fade-out Effekt beim Löschen.
+                                val isBeingDeleted = activeFolderId != null && folders.none { it.id == activeFolderId }
+                                if (isBeingDeleted) {
+                                    this.alpha = folderProgress
+                                }
                             }
                             .clickable(enabled = false) {},
                         color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
@@ -985,9 +997,14 @@ fun AppDrawer(
                                                                         indication = null
                                                                     ) {
                                                                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                        onUpdateFolders(folders.map {
-                                                                            if (it.id == currentActiveFolder.id) it.copy(appPackageNames = it.appPackageNames - app.packageName) else it
-                                                                        })
+                                                                        // CUSTOM: Nutzt LauncherLogic um die App zu entfernen und den Ordner ggf. zu löschen.
+                                                                        val updatedFolders = LauncherLogic.removeAppFromFolder(folders, currentActiveFolder.id, app.packageName)
+                                                                        onUpdateFolders(updatedFolders)
+                                                                        
+                                                                        // CUSTOM: Wenn der Ordner gelöscht wurde (da leer), schließe das Popup sofort um die Animation zu starten.
+                                                                        if (updatedFolders.none { it.id == currentActiveFolder.id }) {
+                                                                            activeFolderId = null
+                                                                        }
                                                                     },
                                                                 contentAlignment = Alignment.Center
                                                             ) {
