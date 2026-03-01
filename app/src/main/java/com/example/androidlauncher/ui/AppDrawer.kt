@@ -43,7 +43,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
@@ -60,11 +59,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -75,9 +72,9 @@ import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.IconSize
+import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalIconSize
@@ -85,7 +82,6 @@ import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.composables.icons.lucide.*
 import kotlinx.coroutines.delay
 import kotlin.math.max
-import kotlin.math.roundToInt
 
 /**
  * AppDrawer ist die Hauptkomponente, die die App-Übersicht, Ordner und die Suchfunktion anzeigt.
@@ -166,7 +162,6 @@ fun AppDrawer(
     var launchRequest by remember { mutableStateOf<LaunchRequest?>(null) }
     var isEditMode by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
-    
     // Behandelt den Zurück-Button, um den Ordner oder den Bearbeitungsmodus zu schließen.
     BackHandler(enabled = activeFolderId != null) {
         if (isEditMode) {
@@ -189,6 +184,15 @@ fun AppDrawer(
         } else {
             isEditMode = false
             draggingItemPkg = null
+        }
+    }
+
+    // Sorgt dafür, dass ein Verlassen des Jiggle-Modus alle Drag-Zustände klickfertig zurücksetzt.
+    LaunchedEffect(isEditMode) {
+        if (!isEditMode) {
+            draggingItemPkg = null
+            touchPosition = Offset.Zero
+            initialTouchOffsetInItem = Offset.Zero
         }
     }
 
@@ -662,9 +666,9 @@ fun AppDrawer(
                                         cursorBrush = SolidColor(mainTextColor),
                                         singleLine = true,
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                        keyboardActions = KeyboardActions(onDone = { 
+                                        keyboardActions = KeyboardActions(onDone = {
                                             isEditMode = false
-                                            keyboardController?.hide() 
+                                            keyboardController?.hide()
                                         }),
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp)
                                     )
@@ -681,16 +685,23 @@ fun AppDrawer(
                                 }
                                 
                                 IconButton(
-                                    onClick = { isEditMode = !isEditMode },
+                                    onClick = {
+                                        if (isEditMode) {
+                                            draggingItemPkg = null
+                                            isEditMode = false
+                                        } else {
+                                            isEditMode = true
+                                        }
+                                    },
                                     modifier = Modifier.align(Alignment.CenterEnd).size(32.dp)
-                                ) {
-                                    Icon(
-                                        if (isEditMode) Lucide.Check else Lucide.Pencil, 
-                                        contentDescription = "EditMode", 
-                                        tint = mainTextColor,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                                 ) {
+                                     Icon(
+                                         if (isEditMode) Lucide.Check else Lucide.Pencil,
+                                         contentDescription = "EditMode",
+                                         tint = mainTextColor,
+                                         modifier = Modifier.size(20.dp)
+                                     )
+                                 }
                             }
                             
                             Spacer(modifier = Modifier.height(24.dp))
@@ -938,12 +949,10 @@ fun AppDrawer(
                                                         // Klick entfernt die App sofort aus dem Ordner (nicht deinstallieren!).
                                                         // animateItem() am Grid sorgt für sanften Reflow der verbleibenden Apps.
                                                         if (isEditMode && !isDragging) {
-                                                            // View-Referenz für zuverlässiges Haptic Feedback
                                                             val view = androidx.compose.ui.platform.LocalView.current
                                                             Box(
                                                                 modifier = Modifier
                                                                     .align(Alignment.TopEnd)
-                                                                    // Positioniert das Badge nah am rechten oberen Icon-Eck.
                                                                     .offset(x = 0.dp, y = (-2).dp)
                                                                     .zIndex(10f)
                                                                     .size(badgeSize)
@@ -951,33 +960,24 @@ fun AppDrawer(
                                                                         mainTextColor.copy(alpha = 0.85f),
                                                                         CircleShape
                                                                     )
-                                                                    // ── CUSTOM: clickable mit View.performHapticFeedback ──
-                                                                    // View.performHapticFeedback nutzt direkt das Android
-                                                                    // View-System und funktioniert zuverlässig unabhängig
-                                                                    // von Compose Gesture-Hierarchien.
                                                                     .clickable(
                                                                         interactionSource = remember { MutableInteractionSource() },
                                                                         indication = null
                                                                     ) {
                                                                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-
-                                                                        // Sofortige Entfernung aus dem Ordner.
-                                                                        // Die App wird NICHT deinstalliert, nur aus der Ordner-Liste entfernt.
                                                                         onUpdateFolders(folders.map {
                                                                             if (it.id == currentActiveFolder.id) it.copy(appPackageNames = it.appPackageNames - app.packageName) else it
                                                                         })
                                                                     },
                                                                 contentAlignment = Alignment.Center
                                                             ) {
-                                                                // Minus-Strich – proportional zur Icon-Größe
                                                                 Box(
                                                                     modifier = Modifier
                                                                         .size(width = minusWidth, height = minusHeight)
                                                                         .background(
                                                                             if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
                                                                             RoundedCornerShape(0.75.dp)
-                                                                        )
-                                                                )
+                                                                        ))
                                                             }
                                                         }
                                                     }
