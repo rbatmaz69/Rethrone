@@ -5,9 +5,7 @@ import android.app.SearchManager
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,11 +27,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -51,18 +46,7 @@ import kotlinx.coroutines.delay
 
 /**
  * Schwebende Suchleiste am unteren Bildschirmrand.
- *
- * Wird als Overlay über dem Homescreen angezeigt und bietet:
- * - **App-Suche** mit Relevanz-Sortierung (exakt → beginnt mit → enthält)
- * - **Web-Suche** als Fallback bei keinem App-Treffer
- * - **Tastatursteuerung** mit IME-Search-Action und Back-Intercept
- *
- * Zeigt maximal 3 App-Vorschläge und einen Web-Such-Eintrag.
- * Das Overlay ist halbtransparent und schließt sich bei Klick außerhalb.
- *
- * @param apps Alle verfügbaren Apps zum Durchsuchen.
- * @param onClose Callback zum Schließen der Suche.
- * @param onAppLaunch Callback wenn eine App aus den Ergebnissen gestartet wird.
+ * Optimiert für ein extrem flüssiges, gemeinsames Erscheinen aller Suchergebnisse.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -79,7 +63,7 @@ fun BottomSearch(
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
-    // Theme-Konfiguration für die schwebende Leiste
+    // Theme-Konfiguration
     val searchContainerModifier = if (isDarkTextEnabled) {
         val primary = colorTheme.primary
         val themedLightBackground = Color(
@@ -88,9 +72,7 @@ fun BottomSearch(
             blue = primary.blue * 0.90f + 0.10f,
             alpha = 1f
         )
-
         val menuBgColor = themedLightBackground.copy(alpha = 0.98f)
-
         if (isLiquidGlassEnabled) {
             Modifier
                 .background(menuBgColor, RoundedCornerShape(28.dp))
@@ -113,28 +95,43 @@ fun BottomSearch(
         LauncherLogic.filterAppsByRelevance(apps, query).take(3)
     }
 
-    // Standard BackHandler
-    BackHandler {
-        onClose()
+    // Koordinierte Animation für den Container-Inhalt
+    // Der Stagger wird nur beim ERSTEN Erscheinen der Ergebnisse getriggert
+    var isInitialAppearance by remember { mutableStateOf(true) }
+    var visibleItemCount by remember { mutableIntStateOf(0) }
+    
+    LaunchedEffect(query.isEmpty()) {
+        if (query.isEmpty()) {
+            visibleItemCount = 0
+            isInitialAppearance = true
+        } else if (isInitialAppearance) {
+            // Nur beim ersten Mal (von leer zu Text) animieren wir die Items nacheinander
+            val targetCount = filteredApps.size + 1
+            for (i in 1..targetCount) {
+                visibleItemCount = i
+                delay(35)
+            }
+            isInitialAppearance = false
+        }
+    }
+    
+    // Stellt sicher, dass visibleItemCount aktuell bleibt, wenn sich die Liste beim Tippen vergrößert
+    LaunchedEffect(filteredApps.size) {
+        if (query.isNotEmpty() && !isInitialAppearance) {
+            visibleItemCount = filteredApps.size + 1
+        }
     }
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
+    BackHandler { onClose() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-    val overlayColor = if (isDarkTextEnabled) {
-        Color.White.copy(alpha = 0.55f)
-    } else {
-        Color.Black.copy(alpha = 0.65f)
-    }
+    val overlayColor = if (isDarkTextEnabled) Color.White.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.65f)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(overlayColor)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                 onClose()
-            }
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onClose() }
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -143,100 +140,99 @@ fun BottomSearch(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.ime)
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* Consume clicks outside */ }
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (query.isNotEmpty()) {
+                // Suchergebnis-Block
+                AnimatedVisibility(
+                    visible = query.isNotEmpty(),
+                    enter = fadeIn(tween(250)) + expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                    exit = fadeOut(tween(150)) + shrinkVertically()
+                ) {
+                    val reversedApps = filteredApps.reversed()
+                    
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(searchContainerModifier)
-                            .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium))
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
-                        val reversedApps = filteredApps.reversed()
-
+                        // Apps werden als Gruppe behandelt
                         reversedApps.forEachIndexed { index, app ->
-                            key(app.packageName) {
-                                var isVisible by remember { mutableStateOf(false) }
-                                LaunchedEffect(app.packageName) {
-                                    delay(index * 45L)
-                                    isVisible = true
-                                }
-
-                                AnimatedVisibility(
-                                    visible = isVisible,
-                                    enter = fadeIn(animationSpec = tween(400)) + 
-                                            slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
-                                            scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
-                                    exit = fadeOut(animationSpec = tween(200))
-                                ) {
-                                    AppSearchItem(
-                                        app = app,
-                                        mainTextColor = mainTextColor,
-                                        fontSizeScale = fontSize.scale,
-                                        onClick = { onAppLaunch(app) }
-                                    )
-                                }
+                            val isItemVisible = visibleItemCount > index
+                            
+                            AnimatedVisibility(
+                                visible = isItemVisible,
+                                enter = fadeIn(tween(200)) + slideInVertically(initialOffsetY = { 8 }),
+                                exit = fadeOut(tween(100))
+                            ) {
+                                AppSearchItem(
+                                    app = app,
+                                    mainTextColor = mainTextColor,
+                                    fontSizeScale = fontSize.scale,
+                                    onClick = { onAppLaunch(app) }
+                                )
                             }
                         }
 
+                        // Divider und Websuche erscheinen zusammen
+                        val isWebSectionVisible = visibleItemCount > reversedApps.size
+
                         if (reversedApps.isNotEmpty()) {
-                             Box(
-                                 modifier = Modifier
-                                     .fillMaxWidth()
-                                     .padding(vertical = 4.dp)
-                                     .height(1.dp)
-                                     .background(
-                                         color = mainTextColor.copy(alpha = 0.1f)
-                                     )
-                             )
+                            AnimatedVisibility(
+                                visible = isWebSectionVisible,
+                                enter = fadeIn(tween(200)),
+                                exit = fadeOut(tween(100))
+                            ) {
+                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(mainTextColor.copy(alpha = 0.08f)))
+                            }
                         }
 
-                         WebSearchItem(
-                             query = query,
-                             mainTextColor = mainTextColor,
-                             isLiquidGlass = isLiquidGlassEnabled,
-                             isDarkText = isDarkTextEnabled,
-                             onClick = {
-                                 val finalUrl = if (query.startsWith("http") || query.contains(".")) {
-                                     if (!query.startsWith("http")) "https://$query" else query
-                                 } else {
-                                     "https://www.google.com/search?q=$query"
-                                 }
-
-                                 try {
-                                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
-                                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                     context.startActivity(intent)
-                                     onClose()
-                                 } catch (_: Exception) {
-                                     val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-                                         putExtra(SearchManager.QUERY, query)
-                                     }
-                                     if (intent.resolveActivity(context.packageManager) != null) {
-                                         context.startActivity(intent)
-                                         onClose()
-                                     }
-                                 }
-                             }
-                         )
+                        AnimatedVisibility(
+                            visible = isWebSectionVisible,
+                            enter = fadeIn(tween(200)) + slideInVertically(initialOffsetY = { 8 }),
+                            exit = fadeOut(tween(100))
+                        ) {
+                            WebSearchItem(
+                                query = query,
+                                mainTextColor = mainTextColor,
+                                isLiquidGlass = isLiquidGlassEnabled,
+                                isDarkText = isDarkTextEnabled,
+                                onClick = {
+                                    val finalUrl = if (query.startsWith("http") || query.contains(".")) {
+                                        if (!query.startsWith("http")) "https://$query" else query
+                                    } else "https://www.google.com/search?q=$query"
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                        onClose()
+                                    } catch (_: Exception) {
+                                        val intent = Intent(Intent.ACTION_WEB_SEARCH).apply { putExtra(SearchManager.QUERY, query) }
+                                        if (intent.resolveActivity(context.packageManager) != null) {
+                                            context.startActivity(intent)
+                                            onClose()
+                                        }
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
 
-                // Search Input Bubble
+                // Such-Eingabefeld (Bubble)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(searchContainerModifier)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { /* Consume clicks */ }
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
                     Icon(
@@ -245,38 +241,22 @@ fun BottomSearch(
                         tint = mainTextColor.copy(alpha = 0.5f),
                         modifier = Modifier.size(20.dp)
                     )
-
                     Spacer(modifier = Modifier.width(12.dp))
-
                     Box(modifier = Modifier.weight(1f)) {
                         if (query.isEmpty()) {
-                            Text(
-                                text = "Search...",
-                                color = mainTextColor.copy(alpha = 0.4f),
-                                fontSize = 18.sp
-                            )
+                            Text(text = "Search...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 18.sp)
                         }
-
                         BasicTextField(
                             value = query,
                             onValueChange = { query = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester)
-                                // Abfangen des Zurück-Events, BEVOR die Tastatur es konsumiert.
-                                // Dadurch schließt ein einziger Swipe/Klick das gesamte Menü.
+                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
                                 .onPreInterceptKeyBeforeSoftKeyboard { event ->
                                     if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
                                         onClose()
                                         true
-                                    } else {
-                                        false
-                                    }
+                                    } else false
                                 },
-                            textStyle = LocalTextStyle.current.copy(
-                                color = mainTextColor,
-                                fontSize = 18.sp
-                            ),
+                            textStyle = LocalTextStyle.current.copy(color = mainTextColor, fontSize = 18.sp),
                             singleLine = true,
                             cursorBrush = SolidColor(mainTextColor),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -285,19 +265,14 @@ fun BottomSearch(
                                     if (query.isNotEmpty()) {
                                          val finalUrl = if (query.startsWith("http") || query.contains(".")) {
                                              if (!query.startsWith("http")) "https://$query" else query
-                                         } else {
-                                             "https://www.google.com/search?q=$query"
-                                         }
-
+                                         } else "https://www.google.com/search?q=$query"
                                          try {
                                              val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
                                              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                              context.startActivity(intent)
                                              onClose()
                                          } catch (_: Exception) {
-                                             val intent = Intent(Intent.ACTION_WEB_SEARCH).apply {
-                                                 putExtra(SearchManager.QUERY, query)
-                                             }
+                                             val intent = Intent(Intent.ACTION_WEB_SEARCH).apply { putExtra(SearchManager.QUERY, query) }
                                              if (intent.resolveActivity(context.packageManager) != null) {
                                                  context.startActivity(intent)
                                                  onClose()
@@ -308,17 +283,9 @@ fun BottomSearch(
                             )
                         )
                     }
-
                     if (query.isNotEmpty()) {
-                        IconButton(
-                            onClick = { query = "" },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear",
-                                tint = mainTextColor.copy(alpha = 0.5f)
-                            )
+                        IconButton(onClick = { query = "" }, modifier = Modifier.size(24.dp)) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = mainTextColor.copy(alpha = 0.5f))
                         }
                     }
                 }
@@ -337,24 +304,13 @@ fun AppSearchItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { onClick() }
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onClick() }
             .padding(vertical = 10.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(36.dp)) {
-            AppIconView(app = app)
-        }
+        Box(modifier = Modifier.size(36.dp)) { AppIconView(app = app) }
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = app.label,
-            color = mainTextColor,
-            fontSize = 16.sp * fontSizeScale,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Text(text = app.label, color = mainTextColor, fontSize = 16.sp * fontSizeScale, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -371,18 +327,13 @@ fun WebSearchItem(
             color = if (isDarkText) Color.Black.copy(alpha = 0.03f) else Color.White.copy(alpha = 0.05f),
             shape = RoundedCornerShape(12.dp)
         )
-    } else {
-        Modifier
-    }
+    } else Modifier
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(backgroundModifier)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { onClick() }
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onClick() }
             .padding(vertical = 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -392,28 +343,12 @@ fun WebSearchItem(
                 .background(mainTextColor.copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
-                tint = mainTextColor.copy(alpha = 0.8f),
-                modifier = Modifier.size(18.dp)
-            )
+            Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column {
-            Text(
-                text = "Search Web",
-                color = mainTextColor.copy(alpha = 0.5f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = query,
-                color = mainTextColor,
-                fontSize = 15.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Text(text = "Search Web", color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(text = query, color = mainTextColor, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
