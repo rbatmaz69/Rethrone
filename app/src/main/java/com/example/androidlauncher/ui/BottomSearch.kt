@@ -33,6 +33,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +47,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import kotlinx.coroutines.delay
 
 /**
  * Schwebende Suchleiste am unteren Bildschirmrand.
@@ -160,12 +162,20 @@ fun BottomSearch(
                     ) {
                         val reversedApps = filteredApps.reversed()
 
-                        reversedApps.forEach { app ->
+                        reversedApps.forEachIndexed { index, app ->
                             key(app.packageName) {
+                                var isVisible by remember { mutableStateOf(false) }
+                                LaunchedEffect(app.packageName) {
+                                    delay(index * 45L)
+                                    isVisible = true
+                                }
+
                                 AnimatedVisibility(
-                                    visible = true,
-                                    enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(animationSpec = tween(300)),
-                                    exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut(animationSpec = tween(300))
+                                    visible = isVisible,
+                                    enter = fadeIn(animationSpec = tween(400)) + 
+                                            slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                                            scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
+                                    exit = fadeOut(animationSpec = tween(200))
                                 ) {
                                     AppSearchItem(
                                         app = app,
@@ -177,11 +187,7 @@ fun BottomSearch(
                             }
                         }
 
-                        AnimatedVisibility(
-                            visible = reversedApps.isNotEmpty(),
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
+                        if (reversedApps.isNotEmpty()) {
                              Box(
                                  modifier = Modifier
                                      .fillMaxWidth()

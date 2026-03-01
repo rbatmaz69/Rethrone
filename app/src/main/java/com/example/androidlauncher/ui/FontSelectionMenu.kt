@@ -1,12 +1,16 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -28,6 +32,7 @@ import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import kotlinx.coroutines.delay
 
 /**
  * A dedicated menu for selecting a font from a larger list.
@@ -116,53 +121,71 @@ fun FontSelectionMenu(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            items(filteredFonts) { font ->
+            itemsIndexed(items = filteredFonts, key = { _, font -> font.name }) { index, font ->
                 val isSelected = font == currentAppFont
                 
-                val itemModifier = if (isSelected) {
-                    if (isLiquidGlassEnabled) {
-                        Modifier
-                            .background(
-                                LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.25f, endAlpha = 0.1f),
-                                RoundedCornerShape(12.dp)
-                            )
-                            .border(
-                                BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)),
-                                RoundedCornerShape(12.dp)
-                            )
-                    } else {
-                        Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                val isSearching = searchQuery.isNotBlank()
+                var isVisible by remember(font.name, isSearching) { mutableStateOf(!isSearching) }
+                
+                LaunchedEffect(font.name, isSearching) {
+                    if (isSearching) {
+                        delay((index % 15) * 25L)
+                        isVisible = true
                     }
-                } else {
-                    Modifier
                 }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(itemModifier)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onAppFontSelected(font) }
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(400)) + 
+                            scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                            slideInVertically(initialOffsetY = { 15 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
+                    exit = fadeOut(animationSpec = tween(200))
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    val itemModifier = if (isSelected) {
+                        if (isLiquidGlassEnabled) {
+                            Modifier
+                                .background(
+                                    LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.25f, endAlpha = 0.1f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)),
+                                    RoundedCornerShape(12.dp)
+                                )
+                        } else {
+                            Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                        }
+                    } else {
+                        Modifier
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(itemModifier)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onAppFontSelected(font) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
                     ) {
-                        Text(
-                            text = font.label,
-                            color = mainTextColor,
-                            fontSize = 18.sp,
-                            fontFamily = font.fontFamily,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                        if (isSelected) {
-                            RadioButton(
-                                selected = true,
-                                onClick = null,
-                                colors = RadioButtonDefaults.colors(selectedColor = mainTextColor)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = font.label,
+                                color = mainTextColor,
+                                fontSize = 18.sp,
+                                fontFamily = font.fontFamily,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
+                            if (isSelected) {
+                                RadioButton(
+                                    selected = true,
+                                    onClick = null,
+                                    colors = RadioButtonDefaults.colors(selectedColor = mainTextColor)
+                                )
+                            }
                         }
                     }
                 }

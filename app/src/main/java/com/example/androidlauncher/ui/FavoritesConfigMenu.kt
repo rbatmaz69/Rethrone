@@ -1,6 +1,10 @@
 package com.example.androidlauncher.ui
 
 import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,6 +42,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +66,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import kotlinx.coroutines.delay
 
 /**
  * Konfigurationsmenü für Favoriten.
@@ -206,8 +212,8 @@ fun FavoritesConfigMenu(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
-            // Sortierungs-Bereich für ausgewählte Favoriten
-            if (selectedPackages.isNotEmpty()) {
+            // Sortierungs-Bereich für ausgewählte Favoriten (Nur zeigen wenn nicht gesucht wird)
+            if (searchQuery.isBlank() && selectedPackages.isNotEmpty()) {
                 item { Text(stringResource(R.string.order_label), color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(selectedPackages) { index, pkg ->
                     apps.find { it.packageName == pkg }?.let { app ->
@@ -233,56 +239,75 @@ fun FavoritesConfigMenu(
 
             // Alle Apps
             item { Text(stringResource(R.string.all_apps_label), color = grayTone, fontSize = 12.sp) }
-            items(filteredApps) { app ->
+            itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { index, app ->
                 val isFav = app.packageName in selectedPackages
-                val intSrc = remember { MutableInteractionSource() }
+                
+                val isSearching = searchQuery.isNotBlank()
+                var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
+                
+                LaunchedEffect(app.packageName, isSearching) {
+                    if (isSearching) {
+                        delay((index % 12) * 30L)
+                        isVisible = true
+                    }
+                }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (isFav) {
-                                Modifier.conditionalGlass(
-                                    RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled,
-                                    fallbackAlpha = 0.05f
-                                )
-                            } else {
-                                Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
-                            }
-                        )
-                        .bounceClick(intSrc)
-                        .clickable {
-                            val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
-                            if (newFavs.size <= LauncherLogic.MAX_FAVORITES) {
-                                selectedPackages = newFavs
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.max_favorites_reached),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(400)) + 
+                            scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                            slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
+                    exit = fadeOut(animationSpec = tween(200))
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AppIconView(app)
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            app.label, color = mainTextColor, fontSize = 16.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Checkbox(
-                            checked = isFav,
-                            onCheckedChange = null,
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = mainTextColor,
-                                uncheckedColor = mainTextColor.copy(alpha = 0.4f),
-                                checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+                    val intSrc = remember { MutableInteractionSource() }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (isFav) {
+                                    Modifier.conditionalGlass(
+                                        RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled,
+                                        fallbackAlpha = 0.05f
+                                    )
+                                } else {
+                                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                                }
                             )
-                        )
+                            .bounceClick(intSrc)
+                            .clickable {
+                                val newFavs = LauncherLogic.toggleFavorite(selectedPackages, app.packageName)
+                                if (newFavs.size <= LauncherLogic.MAX_FAVORITES) {
+                                    selectedPackages = newFavs
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.max_favorites_reached),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AppIconView(app)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                app.label, color = mainTextColor, fontSize = 16.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Checkbox(
+                                checked = isFav,
+                                onCheckedChange = null,
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = mainTextColor,
+                                    uncheckedColor = mainTextColor.copy(alpha = 0.4f),
+                                    checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -381,8 +406,3 @@ private fun FavoriteOrderItem(
         }
     }
 }
-
-
-
-
-

@@ -448,28 +448,48 @@ fun AppDrawer(
                         }
                     }
 
-                    // Zeigt die gefilterten Apps an.
-                    itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { _, app ->
-                        AppItem(
-                            app = app,
-                            adaptiveColumns = adaptiveColumns,
-                            isFavorite = isFavorite(app.packageName),
-                            onToggleFavorite = onToggleFavorite,
-                            folders = folders,
-                            onUpdateFolders = onUpdateFolders,
-                            bouncePackage = returnIconPackage,
-                            onLongPress = { appInfo, bounds ->
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                menuApp = appInfo
-                                menuAppBounds = bounds
-                            },
-                            onAppLaunchRequested = { requestedApp, bounds ->
-                                if (launchRequest == null) {
-                                    onAppLaunchForReturn(requestedApp.packageName, bounds)
-                                    launchRequest = LaunchRequest(requestedApp, bounds)
-                                }
+                    // Zeigt die gefilterten Apps an mit Staggered-Animation bei Suche.
+                    itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { index, app ->
+                        val isSearching = searchQuery.isNotBlank()
+                        var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
+                        
+                        LaunchedEffect(app.packageName, isSearching) {
+                            if (isSearching) {
+                                delay((index % 12) * 35L)
+                                isVisible = true
                             }
-                        )
+                        }
+
+                        Box(modifier = Modifier.animateItem()) {
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = isVisible,
+                                enter = fadeIn(animationSpec = tween(400)) + 
+                                        scaleIn(initialScale = 0.85f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) +
+                                        slideInVertically(initialOffsetY = { 30 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
+                                exit = fadeOut(animationSpec = tween(200))
+                            ) {
+                                AppItem(
+                                    app = app,
+                                    adaptiveColumns = adaptiveColumns,
+                                    isFavorite = isFavorite(app.packageName),
+                                    onToggleFavorite = onToggleFavorite,
+                                    folders = folders,
+                                    onUpdateFolders = onUpdateFolders,
+                                    bouncePackage = returnIconPackage,
+                                    onLongPress = { appInfo, bounds ->
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        menuApp = appInfo
+                                        menuAppBounds = bounds
+                                    },
+                                    onAppLaunchRequested = { requestedApp, bounds ->
+                                        if (launchRequest == null) {
+                                            onAppLaunchForReturn(requestedApp.packageName, bounds)
+                                            launchRequest = LaunchRequest(requestedApp, bounds)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -864,7 +884,7 @@ fun AppDrawer(
                                                     
                                                     Box(
                                                         modifier = Modifier
-                                                            .let { if (isDragging) it else it.animateItem() }
+                                                            .let { if (isDragging) it else Modifier.animateItem() }
                                                             .zIndex(if (isDragging) 0f else 1f)
                                                             .graphicsLayer { 
                                                                 rotationZ = if (isEditMode && !isDragging) {
