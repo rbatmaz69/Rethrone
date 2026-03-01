@@ -27,6 +27,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -46,6 +47,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.androidlauncher.data.AppFont
@@ -604,15 +606,24 @@ class MainActivity : ComponentActivity() {
                         enter = fadeIn(animationSpec = tween(200)),
                         exit = fadeOut(animationSpec = tween(200))
                     ) {
-                        BottomSearch(
-                            apps = allApps,
-                            onClose = { isSearchOpen = false },
-                            onAppLaunch = { app ->
-                                isSearchOpen = false
-                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                if (intent != null) launchAppNoTransition(context, intent)
-                            }
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.3f))
+                                .pointerInput(Unit) {
+                                    detectTapGestures { isSearchOpen = false }
+                                }
+                        ) {
+                            BottomSearch(
+                                apps = allApps,
+                                onClose = { isSearchOpen = false },
+                                onAppLaunch = { app ->
+                                    isSearchOpen = false
+                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                    if (intent != null) launchAppNoTransition(context, intent)
+                                }
+                            )
+                        }
                     }
 
                     // Rückkehr-Animation
@@ -639,7 +650,7 @@ class MainActivity : ComponentActivity() {
      * Stellt sicher, dass die Activity nicht in der Übersicht der letzten Apps erscheint.
      */
     private fun enforceExcludeFromRecents() {
-        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
         val tasks = am.appTasks
         if (!tasks.isNullOrEmpty()) {
             tasks[0].setExcludeFromRecents(true)
@@ -675,7 +686,14 @@ private fun MenuOverlay(
             animationSpec = tween(300, easing = EaseInCubic)
         ) + fadeOut()
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(backgroundColor)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures { /* Blockiert Klicks auf den Hintergrund */ }
+                }
+                .background(backgroundColor)
+        ) {
             content()
         }
     }
