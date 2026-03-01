@@ -19,8 +19,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,13 +49,10 @@ import kotlinx.coroutines.delay
 /**
  * Menu used to configure the contents of a specific folder.
  *
- * ── CUSTOM: Kompletter Umbau nach dem Muster des FavoritesConfigMenu ──
- * Vorher: Einfache Checkbox-Liste ohne Sortierung.
- * Jetzt: Zwei getrennte Sektionen wie im FavoritesConfigMenu:
- *   1. Oben: Ausgewählte Apps mit Nummerierung und ↑/↓-Reorder-Buttons
- *   2. Unten: Vollständige App-Liste mit Checkboxen zur Auswahl/Abwahl
- * Nutzt dieselben UI-Patterns (conditionalGlass, LiquidGlass-Farben, bounceClick).
- * develop: AnimatedVisibility Stagger-Einblendung für die App-Liste beim Suchen.
+ * ── CUSTOM: Partitioned list with selected apps at the top (alphabetical) ──
+ * 1. Selected apps are shown at the top, sorted alphabetically for easy deselection.
+ * 2. Unselected apps follow below, also sorted alphabetically.
+ * 3. The actual folder order still follows the selection sequence (logic kept in selectedPackages).
  */
 @Composable
 fun FolderConfigMenu(
@@ -75,17 +70,15 @@ fun FolderConfigMenu(
     val fontWeight = LocalFontWeight.current
     val appFont = LocalAppFont.current
 
-    // ── CUSTOM: Nutzt LiquidGlass-Helper statt manueller Color-Berechnung ──
-    // Einheitlich mit FavoritesConfigMenu für konsistentes Theming.
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     val grayTone = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
 
     var searchQuery by remember { mutableStateOf("") }
+    // CUSTOM: Holds the actual order of apps in the folder (selection sequence).
     var selectedPackages by remember { mutableStateOf(folder.appPackageNames) }
     var folderName by remember { mutableStateOf(folder.name) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    // Apps die bereits in ANDEREN Ordnern sind (deaktiviert anzeigen)
     val appsInOtherFolders = remember(allFolders, folder.id) {
         allFolders
             .filter { it.id != folder.id }
@@ -94,17 +87,24 @@ fun FolderConfigMenu(
     }
 
     val filteredApps = remember(allApps, searchQuery) { LauncherLogic.filterApps(allApps, searchQuery) }
+    
+    // CUSTOM: Split filtered apps into selected and unselected, both sorted alphabetically for display.
+    val displaySelectedApps = remember(filteredApps, selectedPackages) {
+        filteredApps.filter { it.packageName in selectedPackages }.sortedBy { it.label.lowercase() }
+    }
+    val displayUnselectedApps = remember(filteredApps, selectedPackages) {
+        filteredApps.filter { it.packageName !in selectedPackages }.sortedBy { it.label.lowercase() }
+    }
+
     val focusRequester = remember { FocusRequester() }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
-        // Header mit Ordnername und Buttons
+        // Header
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 BasicTextField(
                     value = folderName,
                     onValueChange = { folderName = it },
-                    // ── CUSTOM: fontFamily aus AppFont damit der Ordnername
-                    // die vom Nutzer gewählte Schriftart übernimmt.
                     textStyle = androidx.compose.ui.text.TextStyle(
                         color = mainTextColor,
                         fontSize = 24.sp,
@@ -131,8 +131,7 @@ fun FolderConfigMenu(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ── CUSTOM: Suchfeld mit conditionalGlass statt manueller background/border ──
-        // Einheitlich mit dem Suchfeld im FavoritesConfigMenu.
+        // Search Bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -162,119 +161,70 @@ fun FolderConfigMenu(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // App-Liste (gleiche Struktur wie FavoritesConfigMenu)
+        // Partitioned App List
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
-            // ── CUSTOM: Sortierungs-Bereich für ausgewählte Apps ──
-            // Zeigt die im Ordner enthaltenen Apps als nummerierte Liste mit
-            // Pfeil-Buttons zum Umsortieren (identisch mit FavoritesConfigMenu).
-            // Nutzt LauncherLogic.moveFavoriteUp/Down für die Reihenfolge-Logik.
-            if (selectedPackages.isNotEmpty()) {
-                item { Text("Reihenfolge", color = grayTone, fontSize = 12.sp) }
-                itemsIndexed(selectedPackages) { index, pkg ->
-                    allApps.find { it.packageName == pkg }?.let { app ->
-                        FolderOrderItem(
+            // Selected Apps Header & List
+            if (displaySelectedApps.isNotEmpty()) {
+                item { Text("Ausgewählt", color = grayTone, fontSize = 12.sp) }
+                items(items = displaySelectedApps, key = { it.packageName }) { app ->
+                    AppSelectionItem(
+                        app = app,
+                        isSelected = true,
+                        isAlreadyInAnotherFolder = false, // Cannot be in another if selected here
+                        mainTextColor = mainTextColor,
+                        grayTone = grayTone,
+                        isDarkTextEnabled = isDarkTextEnabled,
+                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        onToggle = {
+                            selectedPackages = selectedPackages - app.packageName
+                        }
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+            }
+
+            // Unselected Apps Header & List
+            if (displayUnselectedApps.isNotEmpty()) {
+                item { Text("Weitere Apps", color = grayTone, fontSize = 12.sp) }
+                itemsIndexed(items = displayUnselectedApps, key = { _, app -> app.packageName }) { index, app ->
+                    val isAlreadyInAnotherFolder = app.packageName in appsInOtherFolders
+                    
+                    val isSearching = searchQuery.isNotBlank()
+                    var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
+
+                    LaunchedEffect(app.packageName, isSearching) {
+                        if (isSearching) {
+                            delay((index % 12) * 30L)
+                            isVisible = true
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isVisible,
+                        enter = fadeIn(animationSpec = tween(400)) +
+                                scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                                slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
+                        exit = fadeOut(animationSpec = tween(200))
+                    ) {
+                        AppSelectionItem(
                             app = app,
-                            index = index,
-                            totalCount = selectedPackages.size,
+                            isSelected = false,
+                            isAlreadyInAnotherFolder = isAlreadyInAnotherFolder,
                             mainTextColor = mainTextColor,
                             grayTone = grayTone,
                             isDarkTextEnabled = isDarkTextEnabled,
                             isLiquidGlassEnabled = isLiquidGlassEnabled,
-                            onMoveUp = {
-                                selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index)
-                            },
-                            onMoveDown = {
-                                selectedPackages = LauncherLogic.moveFavoriteDown(selectedPackages, index)
+                            onToggle = {
+                                if (!isAlreadyInAnotherFolder) {
+                                    // CUSTOM: Add to end of list to preserve selection sequence for folder order.
+                                    selectedPackages = selectedPackages + app.packageName
+                                }
                             }
                         )
-                    }
-                }
-                item { Spacer(modifier = Modifier.height(24.dp)) }
-            }
-
-            // Alle Apps – develop: AnimatedVisibility mit Stagger-Delay beim Suchen
-            item { Text("Alle Apps", color = grayTone, fontSize = 12.sp) }
-            itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { index, app ->
-                val isSelected = app.packageName in selectedPackages
-                val isAlreadyInAnotherFolder = app.packageName in appsInOtherFolders
-
-                val isSearching = searchQuery.isNotBlank()
-                var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
-
-                LaunchedEffect(app.packageName, isSearching) {
-                    if (isSearching) {
-                        delay((index % 12) * 30L)
-                        isVisible = true
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(400)) +
-                            scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
-                            slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
-                    exit = fadeOut(animationSpec = tween(200))
-                ) {
-                    val intSrc = remember { MutableInteractionSource() }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(
-                                if (isSelected) {
-                                    Modifier.conditionalGlass(
-                                        RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled,
-                                        fallbackAlpha = 0.05f
-                                    )
-                                } else {
-                                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
-                                }
-                            )
-                            .graphicsLayer {
-                                alpha = if (isAlreadyInAnotherFolder) 0.35f else 1f
-                            }
-                            .bounceClick(intSrc, enabled = !isAlreadyInAnotherFolder)
-                            .clickable(
-                                interactionSource = intSrc,
-                                indication = null,
-                                enabled = !isAlreadyInAnotherFolder
-                            ) {
-                                selectedPackages = if (isSelected) {
-                                    selectedPackages - app.packageName
-                                } else {
-                                    selectedPackages + app.packageName
-                                }
-                            }
-                    ) {
-                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            AppIconView(app)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(app.label, color = mainTextColor, fontSize = 16.sp)
-                                if (isAlreadyInAnotherFolder) {
-                                    Text(
-                                        "Bereits in einem anderen Ordner",
-                                        color = grayTone,
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = null,
-                                enabled = !isAlreadyInAnotherFolder,
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = mainTextColor,
-                                    uncheckedColor = mainTextColor.copy(alpha = 0.4f),
-                                    checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
-                                    disabledCheckedColor = mainTextColor.copy(alpha = 0.3f)
-                                )
-                            )
-                        }
                     }
                 }
             }
@@ -299,7 +249,7 @@ fun FolderConfigMenu(
         )
     }
 
-    // Bestätigungs-Button
+    // Confirmation Button
     Box(modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
         val intSrc = remember { MutableInteractionSource() }
         val checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
@@ -340,50 +290,70 @@ fun FolderConfigMenu(
 }
 
 /**
- * ── CUSTOM: Einzelnes Reihenfolge-Element für den Ordner ──
- * Spiegelung des FavoriteOrderItem aus FavoritesConfigMenu.
- * Zeigt: Nummer | Icon | App-Name | ↑-Button | ↓-Button
- * Nutzt conditionalGlass für den Hintergrund.
+ * CUSTOM: Reusable item for app selection in the list.
  */
 @Composable
-private fun FolderOrderItem(
+private fun AppSelectionItem(
     app: AppInfo,
-    index: Int,
-    totalCount: Int,
+    isSelected: Boolean,
+    isAlreadyInAnotherFolder: Boolean,
     mainTextColor: Color,
     grayTone: Color,
     isDarkTextEnabled: Boolean,
     isLiquidGlassEnabled: Boolean,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onToggle: () -> Unit
 ) {
+    val intSrc = remember { MutableInteractionSource() }
+    
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .conditionalGlass(RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.05f)
+            .then(
+                if (isSelected) {
+                    Modifier.conditionalGlass(
+                        RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled,
+                        fallbackAlpha = 0.05f
+                    )
+                } else {
+                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                }
+            )
+            .graphicsLayer {
+                alpha = if (isAlreadyInAnotherFolder) 0.35f else 1f
+            }
+            .bounceClick(intSrc, enabled = !isAlreadyInAnotherFolder)
+            .clickable(
+                interactionSource = intSrc,
+                indication = null,
+                enabled = !isAlreadyInAnotherFolder
+            ) {
+                onToggle()
+            }
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("${index + 1}.", color = mainTextColor, fontSize = 14.sp, modifier = Modifier.width(24.dp))
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             AppIconView(app)
             Spacer(modifier = Modifier.width(16.dp))
-            Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
-            IconButton(onClick = onMoveUp, enabled = index > 0) {
-                Icon(
-                    Icons.Default.KeyboardArrowUp,
-                    contentDescription = null,
-                    tint = if (index > 0) grayTone else mainTextColor
-                )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(app.label, color = mainTextColor, fontSize = 16.sp)
+                if (isAlreadyInAnotherFolder) {
+                    Text(
+                        "Bereits in einem anderen Ordner",
+                        color = grayTone,
+                        fontSize = 11.sp
+                    )
+                }
             }
-            IconButton(onClick = onMoveDown, enabled = index < totalCount - 1) {
-                Icon(
-                    Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = if (index < totalCount - 1) grayTone else mainTextColor
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = null,
+                enabled = !isAlreadyInAnotherFolder,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = mainTextColor,
+                    uncheckedColor = mainTextColor.copy(alpha = 0.4f),
+                    checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
+                    disabledCheckedColor = mainTextColor.copy(alpha = 0.3f)
                 )
-            }
+            )
         }
     }
 }
