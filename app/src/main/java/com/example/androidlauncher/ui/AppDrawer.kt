@@ -158,6 +158,14 @@ fun AppDrawer(
             lastValidFolder = activeFolder
         }
     }
+
+    // CUSTOM: Schließt den Ordner automatisch mit Exit-Animation, wenn er gelöscht wurde
+    // (z.B. über das Konfigurationsmenü, wenn alle Apps abgewählt wurden).
+    LaunchedEffect(folders) {
+        if (activeFolderId != null && folders.none { it.id == activeFolderId }) {
+            activeFolderId = null
+        }
+    }
     
     // Zustände für UI-Layout und Animationen.
     var drawerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -576,14 +584,17 @@ fun AppDrawer(
         // Popup-Overlay für den Ordner.
         val showFolder = activeFolderId != null
         val folderTransition = updateTransition(targetState = showFolder, label = "FolderTransition")
+        
+        // CUSTOM: Berechnet, ob der Ordner gerade gelöscht wurde (für die Exit-Animation).
+        val isCurrentFolderDeleted = lastValidFolder != null && folders.none { it.id == lastValidFolder?.id }
+
         val folderProgress by folderTransition.animateFloat(
             transitionSpec = {
                 // CUSTOM: Spezielle Animation für das Löschen (Exit) - schneller und federnd.
-                val isBeingDeleted = activeFolderId != null && folders.none { it.id == activeFolderId }
                 if (targetState) {
                     tween(durationMillis = 420, easing = FastOutSlowInEasing)
                 } else {
-                    if (isBeingDeleted) {
+                    if (isCurrentFolderDeleted) {
                         spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
                     } else {
                         tween(durationMillis = 320, easing = FastOutSlowInEasing)
@@ -646,8 +657,7 @@ fun AppDrawer(
                                 this.translationY = translationY
                                 this.transformOrigin = TransformOrigin.Center
                                 // CUSTOM: Zusätzlicher Fade-out Effekt beim Löschen.
-                                val isBeingDeleted = activeFolderId != null && folders.none { it.id == activeFolderId }
-                                if (isBeingDeleted) {
+                                if (isCurrentFolderDeleted) {
                                     this.alpha = folderProgress
                                 }
                             }

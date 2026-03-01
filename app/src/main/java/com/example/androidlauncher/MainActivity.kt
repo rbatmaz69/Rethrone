@@ -454,12 +454,13 @@ class MainActivity : ComponentActivity() {
                                 allFolders = folders,
                                 onConfirm = { updatedFolder ->
                                     val folderExists = folders.any { it.id == updatedFolder.id }
-                                    val newFolders = if (folderExists) {
+                                    val newFolders = if (updatedFolder.appPackageNames.isEmpty()) {
+                                        // CUSTOM: Delete folder if empty on confirm
+                                        folders.filter { it.id != updatedFolder.id }
+                                    } else if (folderExists) {
                                         folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
-                                    } else if (updatedFolder.appPackageNames.isNotEmpty()) {
-                                        folders + updatedFolder
                                     } else {
-                                        folders
+                                        folders + updatedFolder
                                     }
                                     scope.launch { folderManager.saveFolders(newFolders) }
                                     selectedFolderForConfig = null
@@ -682,4 +683,3 @@ private fun MenuOverlay(
         }
     }
 }
-
