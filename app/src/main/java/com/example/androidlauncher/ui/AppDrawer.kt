@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -57,6 +58,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -124,6 +126,7 @@ fun AppDrawer(
 
     // Controller für Tastatur und UI-Elemente.
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
 
@@ -161,6 +164,8 @@ fun AppDrawer(
     var folderPosition by remember { mutableStateOf(Offset.Zero) }
     var launchRequest by remember { mutableStateOf<LaunchRequest?>(null) }
     var isEditMode by remember { mutableStateOf(false) }
+    // CUSTOM: Verfolgt, ob der Ordnername gerade bearbeitet wird, um das Jigglen zu pausieren.
+    var isFolderNameFocused by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
     // Behandelt den Zurück-Button, um den Ordner oder den Bearbeitungsmodus zu schließen.
     BackHandler(enabled = activeFolderId != null) {
@@ -183,6 +188,7 @@ fun AppDrawer(
             editingFolderName = folders.find { it.id == activeFolderId }?.name ?: ""
         } else {
             isEditMode = false
+            isFolderNameFocused = false
             draggingItemPkg = null
         }
     }
@@ -193,6 +199,7 @@ fun AppDrawer(
             draggingItemPkg = null
             touchPosition = Offset.Zero
             initialTouchOffsetInItem = Offset.Zero
+            isFolderNameFocused = false
         }
     }
 
@@ -642,6 +649,18 @@ fun AppDrawer(
                             modifier = Modifier.padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            // CUSTOM: Gemeinsame Wackel-Animation für Apps und den Ordnernamen im Bearbeitungsmodus.
+                            val infiniteTransition = rememberInfiniteTransition(label = "WiggleTransition")
+                            val wiggleAngle by infiniteTransition.animateFloat(
+                                initialValue = -2.5f,
+                                targetValue = 2.5f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(110, easing = LinearEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "WiggleAngle"
+                            )
+
                             // Kopfzeile des Ordners mit Titel und Bearbeiten-Button.
                             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 if (isEditMode) {
@@ -667,10 +686,22 @@ fun AppDrawer(
                                         singleLine = true,
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                         keyboardActions = KeyboardActions(onDone = {
-                                            isEditMode = false
+                                            // CUSTOM: Bestätigt den Namen und blendet die Tastatur aus, bleibt aber im Jiggle-Modus.
+                                            isFolderNameFocused = false
+                                            focusManager.clearFocus()
                                             keyboardController?.hide()
                                         }),
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp)
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 40.dp)
+                                            .onFocusChanged { 
+                                                // CUSTOM: Aktualisiert den Fokus-Status, um die Animation bei Bedarf zu stoppen.
+                                                isFolderNameFocused = it.isFocused 
+                                            }
+                                            .graphicsLayer {
+                                                // CUSTOM: Lässt den Namen nur jigglen, wenn er nicht aktiv bearbeitet wird.
+                                                rotationZ = if (!isFolderNameFocused) wiggleAngle else 0f
+                                            }
                                     )
                                 } else {
                                     Text(
@@ -689,6 +720,7 @@ fun AppDrawer(
                                         if (isEditMode) {
                                             draggingItemPkg = null
                                             isEditMode = false
+                                            isFolderNameFocused = false
                                         } else {
                                             isEditMode = true
                                         }
@@ -719,18 +751,6 @@ fun AppDrawer(
                             val pages = max(1, (folderApps.size + itemsPerPage - 1) / itemsPerPage)
                             val pagerState = rememberPagerState(pageCount = { pages })
                             
-                            // Wackel-Animation für die Icons im Bearbeitungsmodus.
-                            val infiniteTransition = rememberInfiniteTransition(label = "WiggleTransition")
-                            val wiggleAngle by infiniteTransition.animateFloat(
-                                initialValue = -2.5f,
-                                targetValue = 2.5f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(110, easing = LinearEasing),
-                                    repeatMode = RepeatMode.Reverse
-                                ),
-                                label = "WiggleAngle"
-                            )
-
                             // Logik für das automatische Blättern der Seiten beim Ziehen an den Rand.
                             LaunchedEffect(draggingItemPkg) {
                                 if (draggingItemPkg == null) return@LaunchedEffect
