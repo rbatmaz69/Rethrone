@@ -5,9 +5,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.Toast
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
@@ -100,7 +103,14 @@ import java.io.File
  * um diese Activity schlank und wartbar zu halten.
  */
 class MainActivity : ComponentActivity() {
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     private lateinit var backCallback: OnBackPressedCallback
+    private var lastDefaultLauncherPackage: String? = null
+    private var lastHomeIntentTimestamp: Long = 0
+    private var defaultLauncherWarningShown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,6 +128,7 @@ class MainActivity : ComponentActivity() {
         )
 
         intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+        logHomeIntent(intent)
 
         // Verhindert Standard-Back-Navigation (Launcher soll nicht geschlossen werden)
         backCallback = object : OnBackPressedCallback(true) {
@@ -641,9 +652,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        logHomeIntent(intent)
+    }
+
     override fun onResume() {
         super.onResume()
         enforceExcludeFromRecents()
+        validateDefaultLauncher()
     }
 
     /**
@@ -655,6 +672,42 @@ class MainActivity : ComponentActivity() {
         if (!tasks.isNullOrEmpty()) {
             tasks[0].setExcludeFromRecents(true)
         }
+    }
+
+    private fun validateDefaultLauncher() {
+        val resolveInfo = packageManager.resolveActivity(createHomeIntent(), PackageManager.MATCH_DEFAULT_ONLY)
+        val resolvedPackage = resolveInfo?.activityInfo?.packageName
+        if (resolvedPackage.isNullOrBlank()) {
+            Log.w(TAG, "Default-Launcher konnte nicht ermittelt werden")
+            return
+        }
+
+        if (resolvedPackage != packageName) {
+            Log.w(TAG, "Aktueller Default-Launcher ist $resolvedPackage, erwartet $packageName")
+            if (!defaultLauncherWarningShown || lastDefaultLauncherPackage != resolvedPackage) {
+                Toast.makeText(this, getString(R.string.default_launcher_warning), Toast.LENGTH_LONG).show()
+                defaultLauncherWarningShown = true
+            }
+        } else {
+            defaultLauncherWarningShown = false
+        }
+
+        lastDefaultLauncherPackage = resolvedPackage
+    }
+
+    private fun logHomeIntent(intent: Intent?) {
+        if (!isHomeIntent(intent)) return
+        val now = SystemClock.elapsedRealtime()
+        val delta = if (lastHomeIntentTimestamp == 0L) 0 else now - lastHomeIntentTimestamp
+        Log.d(TAG, "Home-Intent empfangen (Δ=${delta}ms)")
+        lastHomeIntentTimestamp = now
+    }
+
+    private fun isHomeIntent(intent: Intent?) =
+        intent?.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)
+
+    private fun createHomeIntent() = Intent(Intent.ACTION_MAIN).apply {
+        addCategory(Intent.CATEGORY_HOME)
     }
 }
 

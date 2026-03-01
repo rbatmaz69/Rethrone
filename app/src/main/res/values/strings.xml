@@ -22,4 +22,5 @@
     <string name="privacy_text">Diese App sammelt keinerlei Nutzerdaten. Alle Einstellungen werden lokal auf dem Gerät gespeichert.</string>
     <string name="close">Schließen</string>
     <string name="accessibility_description">Ermöglicht Gesten wie Doppelklick zum Sperren des Bildschirms.</string>
+    <string name="default_launcher_warning">Bitte setze Rethrone als Standard-Launcher, damit Home-Intents zuverlässig ankommen.</string>
 </resources>
