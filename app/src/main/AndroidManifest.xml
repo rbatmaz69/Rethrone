@@ -66,6 +66,7 @@
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="false"
             android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.AndroidLauncher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

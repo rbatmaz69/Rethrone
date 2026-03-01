@@ -85,7 +85,7 @@ fun AndroidLauncherTheme(
             window.statusBarColor = Color.Transparent.toArgb()
             @Suppress("DEPRECATION")
             window.navigationBarColor = Color.Transparent.toArgb()
-            
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 @Suppress("DEPRECATION")
                 window.isNavigationBarContrastEnforced = false

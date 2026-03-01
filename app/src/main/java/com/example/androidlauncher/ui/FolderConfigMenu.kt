@@ -2,6 +2,10 @@ package com.example.androidlauncher.ui
 
 import androidx.activity.compose.BackHandler
 import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,7 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -42,6 +46,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import kotlinx.coroutines.delay
 
 /**
  * Menu used to configure the contents of a specific folder.
@@ -153,68 +158,87 @@ fun FolderConfigMenu(
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
             item { Text("Apps verwalten", color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp) }
-            items(filteredApps) { app ->
+            itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { index, app ->
                 val isSelected = app.packageName in selectedPackages
                 // Requirement 2: Disable app if it's already in another folder
                 val isAlreadyInAnotherFolder = app.packageName in appsInOtherFolders
-                val intSrc = remember { MutableInteractionSource() }
-
-                val itemModifier = if (isSelected && isLiquidGlassEnabled) {
-                    Modifier
-                        .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
-                        .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
-                } else if (isSelected) {
-                    Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
-                } else {
-                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                
+                val isSearching = searchQuery.isNotBlank()
+                var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
+                
+                LaunchedEffect(app.packageName, isSearching) {
+                    if (isSearching) {
+                        delay((index % 12) * 30L)
+                        isVisible = true
+                    }
                 }
 
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .then(itemModifier)
-                    .graphicsLayer { 
-                        // Visually disable apps that are already in other folders
-                        alpha = if (isAlreadyInAnotherFolder) 0.35f else 1f 
-                    }
-                    .bounceClick(intSrc, enabled = !isAlreadyInAnotherFolder)
-                    .clickable(
-                        interactionSource = intSrc,
-                        indication = null,
-                        enabled = !isAlreadyInAnotherFolder // Disable interaction
-                    ) {
-                        selectedPackages = if (isSelected) {
-                            selectedPackages - app.packageName
-                        } else {
-                            // Logic: App is added only if it was NOT already in the list
-                            // This implicitly prevents duplicates within the local list as isSelected checks presence
-                            selectedPackages + app.packageName
-                        }
-                    }
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(400)) + 
+                            scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                            slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
+                    exit = fadeOut(animationSpec = tween(200))
                 ) {
-                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        AppIconView(app)
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(app.label, color = mainTextColor, fontSize = 16.sp)
-                            if (isAlreadyInAnotherFolder) {
-                                Text(
-                                    "Bereits in einem anderen Ordner", 
-                                    color = mainTextColor.copy(alpha = 0.5f), 
-                                    fontSize = 11.sp
-                                )
+                    val intSrc = remember { MutableInteractionSource() }
+
+                    val itemModifier = if (isSelected && isLiquidGlassEnabled) {
+                        Modifier
+                            .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
+                            .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
+                    } else if (isSelected) {
+                        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                    } else {
+                        Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                    }
+
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .then(itemModifier)
+                        .graphicsLayer { 
+                            // Visually disable apps that are already in other folders
+                            alpha = if (isAlreadyInAnotherFolder) 0.35f else 1f 
+                        }
+                        .bounceClick(intSrc, enabled = !isAlreadyInAnotherFolder)
+                        .clickable(
+                            interactionSource = intSrc,
+                            indication = null,
+                            enabled = !isAlreadyInAnotherFolder // Disable interaction
+                        ) {
+                            selectedPackages = if (isSelected) {
+                                selectedPackages - app.packageName
+                            } else {
+                                // Logic: App is added only if it was NOT already in the list
+                                // This implicitly prevents duplicates within the local list as isSelected checks presence
+                                selectedPackages + app.packageName
                             }
                         }
-                        Checkbox(
-                            checked = isSelected, 
-                            onCheckedChange = null, 
-                            enabled = !isAlreadyInAnotherFolder,
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = mainTextColor, 
-                                uncheckedColor = mainTextColor.copy(alpha = 0.4f), 
-                                checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
-                                disabledCheckedColor = mainTextColor.copy(alpha = 0.3f)
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            AppIconView(app)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(app.label, color = mainTextColor, fontSize = 16.sp)
+                                if (isAlreadyInAnotherFolder) {
+                                    Text(
+                                        "Bereits in einem anderen Ordner", 
+                                        color = mainTextColor.copy(alpha = 0.5f), 
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                            Checkbox(
+                                checked = isSelected, 
+                                onCheckedChange = null, 
+                                enabled = !isAlreadyInAnotherFolder,
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = mainTextColor, 
+                                    uncheckedColor = mainTextColor.copy(alpha = 0.4f), 
+                                    checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
+                                    disabledCheckedColor = mainTextColor.copy(alpha = 0.3f)
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
