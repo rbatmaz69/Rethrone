@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" tools:ignore="ProtectedPermissions" />
+    <!-- CUSTOM: Vibrationsfeedback beim Entfernen von Apps im Jiggle-Modus -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <queries>
         <intent>

@@ -131,11 +131,13 @@ object LauncherLogic {
 
     /**
      * Removes an app from a specific folder.
+     * CUSTOM: Deletes the folder if it becomes empty.
      */
     fun removeAppFromFolder(folders: List<FolderInfo>, folderId: String, packageName: String): List<FolderInfo> {
-        return folders.map { folder ->
+        return folders.mapNotNull { folder ->
             if (folder.id == folderId) {
-                folder.copy(appPackageNames = folder.appPackageNames - packageName)
+                val newList = folder.appPackageNames - packageName
+                if (newList.isEmpty()) null else folder.copy(appPackageNames = newList)
             } else folder
         }
     }
