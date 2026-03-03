@@ -37,7 +37,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -244,6 +243,7 @@ fun AppDrawer(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             // Kopfzeile mit Titel und Schließen-Button.
+            @Suppress("DEPRECATION")
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -919,7 +919,6 @@ fun AppDrawer(
                                             state = pagerState,
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .clipToBounds()
                                                 .nestedScroll(folderBoundaryBlocker),
                                             pageSpacing = 16.dp,
                                             userScrollEnabled = draggingItemPkg == null && pages > 1,
@@ -933,11 +932,11 @@ fun AppDrawer(
                                                 columns = GridCells.Fixed(3),
                                                 modifier = Modifier.fillMaxSize(),
                                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                                verticalArrangement = Arrangement.spacedBy(24.dp),
+                                                verticalArrangement = Arrangement.spacedBy(16.dp),
                                                 userScrollEnabled = false,
                                                 // ── CUSTOM: Extra Padding damit Minus-Badges an allen Rändern
                                                 // (oben, links, rechts) nicht am Ordner-Rand abgeschnitten werden.
-                                                contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp)
+                                                contentPadding = PaddingValues(top = 20.dp, start = 8.dp, end = 8.dp)
                                             ) {
                                                 itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
                                                     val globalIndex = startIdx + indexInPage
@@ -960,6 +959,8 @@ fun AppDrawer(
                                                                 } else 0f
                                                                 alpha = if (isDragging) 0f else 1f
                                                             }
+                                                            // ── CUSTOM: Padding damit Badge innerhalb der Item-Bounds bleibt und Platz zum Wackeln hat ──
+                                                            .padding(top = 12.dp, start = 2.dp, end = 2.dp)
                                                     ) {
                                                         AppItem(
                                                             app = app,
@@ -987,15 +988,13 @@ fun AppDrawer(
 
                                                         // ── CUSTOM: Minus-Badge zum Entfernen im Jiggle-Modus ──
                                                         // Zeigt ein kleines rundes Badge mit Minus-Strich oben rechts am App-Icon.
-                                                        // Nur sichtbar wenn isEditMode aktiv und das Item nicht gerade gedraggt wird.
-                                                        // Klick entfernt die App sofort aus dem Ordner (nicht deinstallieren!).
-                                                        // animateItem() am Grid sorgt für sanften Reflow der verbleibenden Apps.
                                                         if (isEditMode && !isDragging) {
                                                             val view = androidx.compose.ui.platform.LocalView.current
                                                             Box(
                                                                 modifier = Modifier
-                                                                    .align(Alignment.TopEnd)
-                                                                    .offset(x = 0.dp, y = (-2).dp)
+                                                                    // FIX: Positionierung relativ zur Mitte, damit es am Icon klebt und nicht rechts abgeschnitten wird
+                                                                    .align(Alignment.TopCenter)
+                                                                    .offset(x = (iconSize.size / 2) - (badgeSize / 1.2f), y = (-4).dp)
                                                                     .zIndex(10f)
                                                                     .size(badgeSize)
                                                                     .background(
@@ -1156,6 +1155,7 @@ fun AppDrawer(
                         )
                         
                         folders.forEach { folder ->
+                            @Suppress("DEPRECATION")
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
