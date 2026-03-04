@@ -30,24 +30,6 @@ import androidx.compose.foundation.clickable
 
 /**
  * Konfigurationsmenü für Schrift- und Icon-Größen.
- *
- * Bietet Slider zur Anpassung von:
- * - **Schriftgröße** (Klein / Standard / Groß)
- * - **Schriftstärke** (Dünn / Normal / Fett)
- * - **Icon-Größe** (Klein / Standard / Groß)
- *
- * Enthält eine Live-Vorschau und einen Button zur Schriftart-Auswahl.
- *
- * @param currentFontSize Aktuelle Schriftgröße.
- * @param onFontSizeSelected Callback bei Änderung der Schriftgröße.
- * @param currentFontWeight Aktuelle Schriftstärke.
- * @param onFontWeightSelected Callback bei Änderung der Schriftstärke.
- * @param currentIconSize Aktuelle Icon-Größe.
- * @param onIconSizeSelected Callback bei Änderung der Icon-Größe.
- * @param currentAppFont Aktuell ausgewählte Schriftart.
- * @param onOpenFontSelection Callback zum Öffnen der Schriftart-Auswahl.
- * @param customWallpaperUri URI des benutzerdefinierten Wallpapers (für Vorschau).
- * @param onClose Callback zum Schließen des Menüs.
  */
 @Composable
 fun SizeConfigMenu(
@@ -77,6 +59,7 @@ fun SizeConfigMenu(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding() // WICHTIG: Verhindert Überlappung mit System-Nav
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Row(
@@ -91,118 +74,61 @@ fun SizeConfigMenu(
                     color = mainTextColor
                 )
                 IconButton(onClick = onClose) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Schließen",
-                        tint = mainTextColor
-                    )
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Schließen", tint = mainTextColor)
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            // Proportionale Abstände durch Weights in den Spacern
+            Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
             
             Text("Vorschau", color = secondaryTextColor, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Large Centered Preview (similar to WallpaperConfig)
+            // Vorschau-Box mit flexibler Höhe aber Fokus auf deinen 240dp
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(240.dp)
+                    .heightIn(min = 120.dp, max = 240.dp)
+                    .weight(3f, fill = false) // Nimmt Platz ein, aber nicht mehr als nötig
                     .clip(RoundedCornerShape(24.dp))
                     .border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.2f)), RoundedCornerShape(24.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 SystemWallpaperView(customWallpaperUri)
-                
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    Text(
-                        "12:00", 
-                        color = mainTextColor, 
-                        fontSize = (40.sp * currentFontSize.scale), 
-                        fontWeight = currentFontWeight.weight,
-                        letterSpacing = (-1).sp
-                    )
+                Column(modifier = Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.Start) {
+                    Text("12:00", color = mainTextColor, fontSize = (40.sp * currentFontSize.scale), fontWeight = currentFontWeight.weight, letterSpacing = (-1).sp)
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp * currentIconSize.scale)
-                                .background(mainTextColor.copy(alpha = 0.3f), CircleShape)
-                        )
+                        Box(modifier = Modifier.size(32.dp * currentIconSize.scale).background(mainTextColor.copy(alpha = 0.3f), CircleShape))
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            "Favorit", 
-                            color = mainTextColor, 
-                            fontSize = (16.sp * currentFontSize.scale),
-                            fontWeight = FontWeight.Normal
-                        )
+                        Text("Favorit", color = mainTextColor, fontSize = (16.sp * currentFontSize.scale), fontWeight = FontWeight.Normal)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
             
-            // Font Selection Button
-            Text(
-                text = "Schriftart",
-                color = secondaryTextColor,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
+            Text(text = "Schriftart", color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
             val fontButtonModifier = if (isLiquidGlassEnabled) {
-                Modifier
-                    .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
-                    .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
-            } else {
-                Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-            }
+                Modifier.background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp)).border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
+            } else { Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)) }
 
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .then(fontButtonModifier)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { onOpenFontSelection() }
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp).then(fontButtonModifier).clip(RoundedCornerShape(12.dp)).clickable { onOpenFontSelection() }.padding(horizontal = 16.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text(
-                            text = "Schriftart wählen",
-                            fontSize = 16.sp,
-                            color = mainTextColor
-                        )
-                        Text(
-                            text = currentAppFont.label,
-                            fontSize = 12.sp,
-                            color = mainTextColor.copy(alpha = 0.6f),
-                            fontFamily = currentAppFont.fontFamily
-                        )
+                        Text(text = "Schriftart wählen", fontSize = 16.sp, color = mainTextColor)
+                        Text(text = currentAppFont.label, fontSize = 12.sp, color = mainTextColor.copy(alpha = 0.6f), fontFamily = currentAppFont.fontFamily)
                     }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = mainTextColor.copy(alpha = 0.6f)
-                    )
+                    Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.6f))
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
             
-            // Slider for Font Size
+            // Slider Bereich
             Text("Schriftgröße", color = secondaryTextColor, fontSize = 12.sp)
             val fontSizeOptions = FontSize.entries
             Slider(
@@ -210,16 +136,11 @@ fun SizeConfigMenu(
                 onValueChange = { onFontSizeSelected(fontSizeOptions[it.toInt()]) },
                 valueRange = 0f..(fontSizeOptions.size - 1).toFloat(),
                 steps = fontSizeOptions.size - 2,
-                colors = SliderDefaults.colors(
-                    thumbColor = mainTextColor,
-                    activeTrackColor = mainTextColor,
-                    inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
-                )
+                colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Slider for Font Weight
             Text("Schriftstärke", color = secondaryTextColor, fontSize = 12.sp)
             val fontWeightOptions = FontWeightLevel.entries
             Slider(
@@ -227,16 +148,11 @@ fun SizeConfigMenu(
                 onValueChange = { onFontWeightSelected(fontWeightOptions[it.toInt()]) },
                 valueRange = 0f..(fontWeightOptions.size - 1).toFloat(),
                 steps = fontWeightOptions.size - 2,
-                colors = SliderDefaults.colors(
-                    thumbColor = mainTextColor,
-                    activeTrackColor = mainTextColor,
-                    inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
-                )
+                colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Slider for Icon Size
             Text("Icon-Größe", color = secondaryTextColor, fontSize = 12.sp)
             val iconSizeOptions = IconSize.entries
             Slider(
@@ -244,11 +160,7 @@ fun SizeConfigMenu(
                 onValueChange = { onIconSizeSelected(iconSizeOptions[it.toInt()]) },
                 valueRange = 0f..(iconSizeOptions.size - 1).toFloat(),
                 steps = iconSizeOptions.size - 2,
-                colors = SliderDefaults.colors(
-                    thumbColor = mainTextColor,
-                    activeTrackColor = mainTextColor,
-                    inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
-                )
+                colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
             )
         }
     }
