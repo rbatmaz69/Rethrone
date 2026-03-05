@@ -6,8 +6,10 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -60,6 +62,12 @@ import kotlin.math.roundToInt
 
 private const val MAX_ZOOM = 5f
 
+private enum class CropExitPhase {
+    Idle,
+    ConfirmPulse,
+    FlyOut
+}
+
 /**
  * Ein Bildschirm zum Zuschneiden von Hintergrundbildern.
  *
@@ -82,14 +90,80 @@ fun WallpaperCropScreen(
     var bitmap by remember(sourceUri) { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember(sourceUri) { mutableStateOf(true) }
     var isSaving by remember(sourceUri) { mutableStateOf(false) }
-    var isExiting by remember(sourceUri) { mutableStateOf(false) }
+    var exitPhase by remember(sourceUri) { mutableStateOf(CropExitPhase.Idle) }
     var pendingCroppedUri by remember(sourceUri) { mutableStateOf<Uri?>(null) }
 
-    val exitProgress by animateFloatAsState(
-        targetValue = if (isExiting) 1f else 0f,
-        animationSpec = tween(durationMillis = 260, easing = EaseInOutCubic),
-        label = "cropExitProgress"
-    )
+    val exitTransition = updateTransition(targetState = exitPhase, label = "cropExitTransition")
+    val contentScale by exitTransition.animateFloat(
+        transitionSpec = {
+            when {
+                initialState == CropExitPhase.Idle && targetState == CropExitPhase.ConfirmPulse -> {
+                    keyframes {
+                        durationMillis = 140
+                        1.02f at 90
+                    }
+                }
+                else -> tween(durationMillis = 300)
+            }
+        },
+        label = "cropContentScale"
+    ) { phase ->
+        when (phase) {
+            CropExitPhase.Idle -> 1f
+            CropExitPhase.ConfirmPulse -> 1.02f
+            CropExitPhase.FlyOut -> 0.9f
+        }
+    }
+    val contentAlpha by exitTransition.animateFloat(
+        transitionSpec = { tween(durationMillis = 300) },
+        label = "cropContentAlpha"
+    ) { phase ->
+        when (phase) {
+            CropExitPhase.Idle -> 1f
+            CropExitPhase.ConfirmPulse -> 1f
+            CropExitPhase.FlyOut -> 0f
+        }
+    }
+    val contentTranslationY by exitTransition.animateFloat(
+        transitionSpec = { tween(durationMillis = 300) },
+        label = "cropContentTranslationY"
+    ) { phase ->
+        when (phase) {
+            CropExitPhase.Idle -> 0f
+            CropExitPhase.ConfirmPulse -> -8f
+            CropExitPhase.FlyOut -> 42f
+        }
+    }
+    val overlayAlpha by exitTransition.animateFloat(
+        transitionSpec = { tween(durationMillis = 300) },
+        label = "cropOverlayAlpha"
+    ) { phase ->
+        when (phase) {
+            CropExitPhase.Idle -> 0f
+            CropExitPhase.ConfirmPulse -> 0.05f
+            CropExitPhase.FlyOut -> 0.18f
+        }
+    }
+    val confirmButtonScale by exitTransition.animateFloat(
+        transitionSpec = {
+            if (targetState == CropExitPhase.ConfirmPulse) {
+                keyframes {
+                    durationMillis = 160
+                    1.14f at 80
+                    1f at 160
+                }
+            } else {
+                tween(durationMillis = 180)
+            }
+        },
+        label = "cropConfirmButtonScale"
+    ) { phase ->
+        when (phase) {
+            CropExitPhase.Idle -> 1f
+            CropExitPhase.ConfirmPulse -> 1f
+            CropExitPhase.FlyOut -> 0.94f
+        }
+    }
 
     // Transformations-Zustand
     var scale by remember(sourceUri) { mutableFloatStateOf(1f) }
@@ -168,12 +242,13 @@ fun WallpaperCropScreen(
         }
     }
 
-    LaunchedEffect(isExiting, pendingCroppedUri) {
-        val resultUri = pendingCroppedUri
-        if (isExiting && resultUri != null) {
-            delay(260)
-            onCropFinished(resultUri)
-        }
+    LaunchedEffect(pendingCroppedUri) {
+        val resultUri = pendingCroppedUri ?: return@LaunchedEffect
+        exitPhase = CropExitPhase.ConfirmPulse
+        delay(140)
+        exitPhase = CropExitPhase.FlyOut
+        delay(300)
+        onCropFinished(resultUri)
     }
 
     Box(
@@ -187,11 +262,10 @@ fun WallpaperCropScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    // Beim Speichern leicht auszoomen + ausblenden fuer weichen Uebergang zum Homescreen.
-                    val scaleAnim = 1f - (0.04f * exitProgress)
-                    scaleX = scaleAnim
-                    scaleY = scaleAnim
-                    alpha = 1f - exitProgress
+                    scaleX = contentScale
+                    scaleY = contentScale
+                    alpha = contentAlpha
+                    translationY = contentTranslationY
                 }
         ) {
             if (isLoading || bitmap == null || initializedContainerSize == IntSize.Zero) {
@@ -206,9 +280,9 @@ fun WallpaperCropScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .pointerInput(bmp, containerSize, minScale, isSaving, isExiting) {
+                            .pointerInput(bmp, containerSize, minScale, isSaving, exitPhase) {
                                 detectTransformGestures { centroid, pan, zoom, _ ->
-                                    if (isSaving || isExiting) return@detectTransformGestures
+                                    if (isSaving || exitPhase != CropExitPhase.Idle) return@detectTransformGestures
                                     if (!userHasInteracted && (zoom != 1f || pan.x != 0f || pan.y != 0f)) {
                                         userHasInteracted = true
                                     }
@@ -266,7 +340,7 @@ fun WallpaperCropScreen(
             ) {
                 IconButton(
                     onClick = onCancel,
-                    enabled = !isSaving && !isExiting,
+                    enabled = !isSaving && exitPhase == CropExitPhase.Idle,
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
@@ -280,7 +354,7 @@ fun WallpaperCropScreen(
 
                 IconButton(
                     onClick = {
-                        if (bitmap != null && !isLoading && !isSaving && !isExiting) {
+                        if (bitmap != null && !isLoading && !isSaving && exitPhase == CropExitPhase.Idle) {
                             isSaving = true
                             scope.launch(Dispatchers.IO) {
                                 val resultUri = cropAndSaveImage(
@@ -296,7 +370,6 @@ fun WallpaperCropScreen(
                                     isSaving = false
                                     if (resultUri != null) {
                                         pendingCroppedUri = resultUri
-                                        isExiting = true
                                     } else {
                                         Toast.makeText(context, "Fehler beim Speichern", Toast.LENGTH_SHORT).show()
                                     }
@@ -304,9 +377,13 @@ fun WallpaperCropScreen(
                             }
                         }
                     },
-                    enabled = !isSaving && !isExiting,
+                    enabled = !isSaving && exitPhase == CropExitPhase.Idle,
                     modifier = Modifier
                         .size(56.dp)
+                        .graphicsLayer {
+                            scaleX = confirmButtonScale
+                            scaleY = confirmButtonScale
+                        }
                         .clip(CircleShape)
                         .background(Color.White),
                     colors = IconButtonDefaults.iconButtonColors(contentColor = Color.Black)
@@ -314,6 +391,14 @@ fun WallpaperCropScreen(
                     Icon(Icons.Default.Check, contentDescription = "Speichern")
                 }
             }
+        }
+
+        if (overlayAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = overlayAlpha))
+            )
         }
 
         if (isSaving) {
