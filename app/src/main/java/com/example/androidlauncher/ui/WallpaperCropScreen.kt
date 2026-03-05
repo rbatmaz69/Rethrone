@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.core.EaseInOutCubic
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -38,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -45,6 +49,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -76,6 +81,15 @@ fun WallpaperCropScreen(
     val scope = rememberCoroutineScope()
     var bitmap by remember(sourceUri) { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember(sourceUri) { mutableStateOf(true) }
+    var isSaving by remember(sourceUri) { mutableStateOf(false) }
+    var isExiting by remember(sourceUri) { mutableStateOf(false) }
+    var pendingCroppedUri by remember(sourceUri) { mutableStateOf<Uri?>(null) }
+
+    val exitProgress by animateFloatAsState(
+        targetValue = if (isExiting) 1f else 0f,
+        animationSpec = tween(durationMillis = 260, easing = EaseInOutCubic),
+        label = "cropExitProgress"
+    )
 
     // Transformations-Zustand
     var scale by remember(sourceUri) { mutableFloatStateOf(1f) }
@@ -154,6 +168,14 @@ fun WallpaperCropScreen(
         }
     }
 
+    LaunchedEffect(isExiting, pendingCroppedUri) {
+        val resultUri = pendingCroppedUri
+        if (isExiting && resultUri != null) {
+            delay(260)
+            onCropFinished(resultUri)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -161,123 +183,144 @@ fun WallpaperCropScreen(
             .onSizeChanged { containerSize = it }
             .clipToBounds()
     ) {
-        if (isLoading || bitmap == null || initializedContainerSize == IntSize.Zero) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center),
-                color = Color.White
-            )
-        } else {
-            bitmap?.let { bmp ->
-                val imageBitmap = remember(bmp) { bmp.asImageBitmap() }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    // Beim Speichern leicht auszoomen + ausblenden fuer weichen Uebergang zum Homescreen.
+                    val scaleAnim = 1f - (0.04f * exitProgress)
+                    scaleX = scaleAnim
+                    scaleY = scaleAnim
+                    alpha = 1f - exitProgress
+                }
+        ) {
+            if (isLoading || bitmap == null || initializedContainerSize == IntSize.Zero) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.White
+                )
+            } else {
+                bitmap?.let { bmp ->
+                    val imageBitmap = remember(bmp) { bmp.asImageBitmap() }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(bmp, containerSize, minScale) {
-                            detectTransformGestures { centroid, pan, zoom, _ ->
-                                if (!userHasInteracted && (zoom != 1f || pan.x != 0f || pan.y != 0f)) {
-                                    userHasInteracted = true
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(bmp, containerSize, minScale, isSaving, isExiting) {
+                                detectTransformGestures { centroid, pan, zoom, _ ->
+                                    if (isSaving || isExiting) return@detectTransformGestures
+                                    if (!userHasInteracted && (zoom != 1f || pan.x != 0f || pan.y != 0f)) {
+                                        userHasInteracted = true
+                                    }
+                                    val newScale = (scale * zoom).coerceIn(minScale, MAX_ZOOM)
+
+                                    // Zoom um den Finger-Schwerpunkt + anschließend Pan.
+                                    val zoomFactor = newScale / scale
+                                    val rawOffsetX = centroid.x - (centroid.x - offsetX) * zoomFactor + pan.x
+                                    val rawOffsetY = centroid.y - (centroid.y - offsetY) * zoomFactor + pan.y
+
+                                    scale = newScale
+                                    val boundedOffset = clampOffsetToViewport(
+                                        bitmapWidth = bmp.width,
+                                        bitmapHeight = bmp.height,
+                                        viewportWidth = containerSize.width,
+                                        viewportHeight = containerSize.height,
+                                        scale = newScale,
+                                        offsetX = rawOffsetX,
+                                        offsetY = rawOffsetY
+                                    )
+                                    offsetX = boundedOffset.first
+                                    offsetY = boundedOffset.second
                                 }
-                                val newScale = (scale * zoom).coerceIn(minScale, MAX_ZOOM)
+                            }
+                    ) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val drawWidth = (bmp.width * scale).roundToInt().coerceAtLeast(1)
+                            val drawHeight = (bmp.height * scale).roundToInt().coerceAtLeast(1)
+                            drawImage(
+                                image = imageBitmap,
+                                dstOffset = IntOffset(offsetX.roundToInt(), offsetY.roundToInt()),
+                                dstSize = IntSize(drawWidth, drawHeight)
+                            )
+                        }
+                    }
+                }
+            }
 
-                                // Zoom um den Finger-Schwerpunkt + anschließend Pan.
-                                val zoomFactor = newScale / scale
-                                val rawOffsetX = centroid.x - (centroid.x - offsetX) * zoomFactor + pan.x
-                                val rawOffsetY = centroid.y - (centroid.y - offsetY) * zoomFactor + pan.y
+            // Homescreen Vorschau Overlay
+            // Wir nutzen eine Box, die Klicks durchlässt an das Bild (da HomeScreen isPreview=true hat und keine gestures fängt)
+            // Aber Moment: HomeScreen(isPreview=true) hat interactive Elemente deaktiviert.
+            // Das Bild darunter fängt die Gesten via pointerInput des Containers.
+            Box(modifier = Modifier.fillMaxSize()) {
+                homeScreenPreview()
+            }
 
-                                scale = newScale
-                                val boundedOffset = clampOffsetToViewport(
-                                    bitmapWidth = bmp.width,
-                                    bitmapHeight = bmp.height,
-                                    viewportWidth = containerSize.width,
-                                    viewportHeight = containerSize.height,
-                                    scale = newScale,
-                                    offsetX = rawOffsetX,
-                                    offsetY = rawOffsetY
+            // UI Controls (Buttons)
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(bottom = 32.dp, start = 32.dp, end = 32.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onCancel,
+                    enabled = !isSaving && !isExiting,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.5f)),
+                    colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Abbrechen")
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                IconButton(
+                    onClick = {
+                        if (bitmap != null && !isLoading && !isSaving && !isExiting) {
+                            isSaving = true
+                            scope.launch(Dispatchers.IO) {
+                                val resultUri = cropAndSaveImage(
+                                    context = context,
+                                    sourceBitmap = bitmap!!,
+                                    containerWidth = containerSize.width,
+                                    containerHeight = containerSize.height,
+                                    scale = scale,
+                                    offsetX = offsetX,
+                                    offsetY = offsetY
                                 )
-                                offsetX = boundedOffset.first
-                                offsetY = boundedOffset.second
+                                withContext(Dispatchers.Main) {
+                                    isSaving = false
+                                    if (resultUri != null) {
+                                        pendingCroppedUri = resultUri
+                                        isExiting = true
+                                    } else {
+                                        Toast.makeText(context, "Fehler beim Speichern", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             }
                         }
+                    },
+                    enabled = !isSaving && !isExiting,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(Color.White),
+                    colors = IconButtonDefaults.iconButtonColors(contentColor = Color.Black)
                 ) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val drawWidth = (bmp.width * scale).roundToInt().coerceAtLeast(1)
-                        val drawHeight = (bmp.height * scale).roundToInt().coerceAtLeast(1)
-                        drawImage(
-                            image = imageBitmap,
-                            dstOffset = IntOffset(offsetX.roundToInt(), offsetY.roundToInt()),
-                            dstSize = IntSize(drawWidth, drawHeight)
-                        )
-                    }
+                    Icon(Icons.Default.Check, contentDescription = "Speichern")
                 }
             }
         }
 
-        // Homescreen Vorschau Overlay
-        // Wir nutzen eine Box, die Klicks durchlässt an das Bild (da HomeScreen isPreview=true hat und keine gestures fängt)
-        // Aber Moment: HomeScreen(isPreview=true) hat interactive Elemente deaktiviert.
-        // Das Bild darunter fängt die Gesten via pointerInput des Containers.
-        Box(modifier = Modifier.fillMaxSize()) {
-            homeScreenPreview()
-        }
-
-        // UI Controls (Buttons)
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .navigationBarsPadding() // Wichtig für Transparenz hinter Navbar
-                .padding(bottom = 32.dp, start = 32.dp, end = 32.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Cancel Button
-            IconButton(
-                onClick = onCancel,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.5f)),
-                colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)
-            ) {
-                Icon(Icons.Default.Close, contentDescription = "Abbrechen")
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Save Button
-            IconButton(
-                onClick = {
-                    if (bitmap != null && !isLoading) {
-                        isLoading = true
-                        scope.launch(Dispatchers.IO) {
-                            val resultUri = cropAndSaveImage(
-                                context = context,
-                                sourceBitmap = bitmap!!,
-                                containerWidth = containerSize.width,
-                                containerHeight = containerSize.height,
-                                scale = scale,
-                                offsetX = offsetX,
-                                offsetY = offsetY
-                            )
-                            withContext(Dispatchers.Main) {
-                                isLoading = false
-                                if (resultUri != null) {
-                                    onCropFinished(resultUri)
-                                } else {
-                                    Toast.makeText(context, "Fehler beim Speichern", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(Color.White),
-                colors = IconButtonDefaults.iconButtonColors(contentColor = Color.Black)
-            ) {
-                Icon(Icons.Default.Check, contentDescription = "Speichern")
-            }
+        if (isSaving) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.White
+            )
         }
     }
 }

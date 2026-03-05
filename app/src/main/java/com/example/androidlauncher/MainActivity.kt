@@ -488,10 +488,12 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isEditConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isEditConfigOpen && !isWallpaperCropOpen, backgroundColor = menuBackgroundColor) {
                         EditConfigMenu(
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onChangeWallpaper = {
+                                isEditConfigOpen = false
+                                isWallpaperConfigOpen = false
                                 wallpaperPickerLauncher.launch(
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                 )
@@ -577,38 +579,49 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    if (isWallpaperCropOpen && pendingWallpaperUri != null) {
-                        WallpaperCropScreen(
-                            sourceUri = pendingWallpaperUri!!,
-                            onCropFinished = { uri ->
-                                scope.launch { themeManager.setCustomWallpaperUri(uri.toString()) }
-                                isWallpaperCropOpen = false
-                                pendingWallpaperUri = null
-                                isEditConfigOpen = false // Close edit menu after success
-                            },
-                            onCancel = {
-                                isWallpaperCropOpen = false
-                                pendingWallpaperUri = null
-                            },
-                            homeScreenPreview = {
-                                HomeScreen(
-                                    favorites = favorites,
-                                    isSettingsOpen = false, // Clean state for preview
-                                    isSearchOpen = false,
-                                    onOpenDrawer = {},
-                                    onOpenSearch = {},
-                                    onToggleSettings = {},
-                                    onOpenFavoritesConfig = {},
-                                    onOpenColorConfig = {},
-                                    onOpenSizeConfig = {},
-                                    onOpenSystemSettings = {},
-                                    onOpenInfo = {},
-                                    onAppLaunchForReturn = { _, _ -> },
-                                    returnIconPackage = null,
-                                    isPreview = true
-                                )
-                            }
-                        )
+                    AnimatedVisibility(
+                        visible = isWallpaperCropOpen && pendingWallpaperUri != null,
+                        enter = fadeIn(animationSpec = tween(220)),
+                        exit = fadeOut(animationSpec = tween(280))
+                    ) {
+                        pendingWallpaperUri?.let { selectedUri ->
+                            WallpaperCropScreen(
+                                sourceUri = selectedUri,
+                                onCropFinished = { uri ->
+                                    scope.launch {
+                                        themeManager.setCustomWallpaperUri(uri.toString())
+                                        isWallpaperCropOpen = false
+                                        delay(280) // Exit-Animation sichtbar zu Ende laufen lassen
+                                        pendingWallpaperUri = null
+                                    }
+                                },
+                                onCancel = {
+                                    isWallpaperCropOpen = false
+                                    scope.launch {
+                                        delay(280) // Exit-Animation sichtbar zu Ende laufen lassen
+                                        pendingWallpaperUri = null
+                                    }
+                                },
+                                homeScreenPreview = {
+                                    HomeScreen(
+                                        favorites = favorites,
+                                        isSettingsOpen = false, // Clean state for preview
+                                        isSearchOpen = false,
+                                        onOpenDrawer = {},
+                                        onOpenSearch = {},
+                                        onToggleSettings = {},
+                                        onOpenFavoritesConfig = {},
+                                        onOpenColorConfig = {},
+                                        onOpenSizeConfig = {},
+                                        onOpenSystemSettings = {},
+                                        onOpenInfo = {},
+                                        onAppLaunchForReturn = { _, _ -> },
+                                        returnIconPackage = null,
+                                        isPreview = true
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }

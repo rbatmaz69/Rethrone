@@ -59,11 +59,10 @@ fun SystemWallpaperView(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val wallpaperManager = WallpaperManager.getInstance(context)
-    var wallpaperBitmap by remember(customWallpaperUri) { mutableStateOf<ImageBitmap?>(null) }
+    var wallpaperBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
 
     // Wallpaper asynchron laden – reagiert auf URI-Änderungen
     LaunchedEffect(customWallpaperUri) {
-        wallpaperBitmap = null
         withContext(Dispatchers.IO) {
             try {
                 if (!customWallpaperUri.isNullOrEmpty()) {
@@ -71,21 +70,27 @@ fun SystemWallpaperView(
                     context.contentResolver.openInputStream(uri)?.use { stream ->
                         val b = BitmapFactory.decodeStream(stream)
                         val ib = b?.asImageBitmap()
-                        withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                        if (ib != null) {
+                            withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                        }
                     }
                 } else {
                     val drawable = wallpaperManager.drawable
                     val ib = drawable?.toBitmap()?.asImageBitmap()
-                    withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                    if (ib != null) {
+                        withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                    }
                 }
             } catch (_: Exception) {
                 // Fallback: System-Wallpaper laden bei URI-Fehler
                 try {
                     val drawable = wallpaperManager.drawable
                     val ib = drawable?.toBitmap()?.asImageBitmap()
-                    withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                    if (ib != null) {
+                        withContext(Dispatchers.Main) { wallpaperBitmap = ib }
+                    }
                 } catch (_: Exception) {
-                    // Kein Wallpaper verfügbar – Gradient-Fallback wird angezeigt
+                    // Kein Wallpaper verfügbar – vorhandenes Bild behalten, sonst Gradient-Fallback
                 }
             }
         }
@@ -123,4 +128,3 @@ fun SystemWallpaperView(
         )
     }
 }
-
