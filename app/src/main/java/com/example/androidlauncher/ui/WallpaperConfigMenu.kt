@@ -23,22 +23,6 @@ import com.example.androidlauncher.ui.theme.LocalFontWeight
 
 /**
  * Konfigurationsmenü für Wallpaper-Einstellungen.
- *
- * Ermöglicht die Feinabstimmung des Hintergrundbilds über Slider:
- * - **Unschärfe** (Blur): 0–25 dp
- * - **Abdunklung** (Dim): 0–100%
- * - **Zoom**: 1.0x – 2.0x
- *
- * Zeigt eine Live-Vorschau mit den aktuellen Einstellungen.
- *
- * @param blurLevel Aktueller Unschärfe-Wert.
- * @param onBlurChange Callback bei Änderung der Unschärfe.
- * @param dimLevel Aktueller Abdunklungswert.
- * @param onDimChange Callback bei Änderung der Abdunklung.
- * @param zoomLevel Aktueller Zoom-Wert.
- * @param onZoomChange Callback bei Änderung des Zooms.
- * @param customWallpaperUri URI des benutzerdefinierten Wallpapers (für Vorschau).
- * @param onClose Callback zum Schließen des Menüs.
  */
 @Composable
 fun WallpaperConfigMenu(
@@ -79,13 +63,14 @@ fun WallpaperConfigMenu(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 16.dp))
 
         // Large Centered Preview
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(3f, fill = false)
+                .heightIn(min = 200.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -132,14 +117,14 @@ fun WallpaperConfigMenu(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
 
         // Controls
         ControlSlider(label = "Unschärfe", value = blurLevel, onValueChange = onBlurChange, range = 0f..25f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
         ControlSlider(label = "Abdunkelung", value = dimLevel, onValueChange = onDimChange, range = 0f..0.8f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
         ControlSlider(label = "Zoom", value = zoomLevel, onValueChange = onZoomChange, range = 1.0f..2.0f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.weight(0.2f).heightIn(min = 8.dp, max = 16.dp))
         
         Button(
             onClick = {

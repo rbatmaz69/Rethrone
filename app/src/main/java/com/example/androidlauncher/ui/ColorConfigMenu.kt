@@ -15,7 +15,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,17 +27,12 @@ import com.composables.icons.lucide.Moon
 import com.composables.icons.lucide.Sun
 import com.composables.icons.lucide.Droplets
 import com.composables.icons.lucide.Square
-// SystemWallpaperView ist im selben Paket (ui)
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 
 
 /**
  * Menu for configuring the visual theme of the launcher.
- * Allows selecting:
- * - Color Theme (Yellow, Blue, Red, Green, Purple)
- * - Dark/Light Text Mode
- * - Liquid Glass Effect toggle
  */
 @Composable
 fun ColorConfigMenu(
@@ -71,45 +68,24 @@ fun ColorConfigMenu(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Farben", fontSize = 24.sp, fontWeight = fontWeight.weight, color = mainTextColor)
                 IconButton(onClick = onClose) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        tint = mainTextColor
-                    )
+                    Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = mainTextColor)
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Bleibt grau (weiß mit alpha), da es eine sekundäre Info ist
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
-
                 val darkTextSwitchColors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
-
                 Switch(
                     checked = isDarkTextEnabled,
                     onCheckedChange = onDarkTextToggled,
                     colors = darkTextSwitchColors,
                     thumbContent = {
                         if (isDarkTextEnabled) {
-                            Icon(
-                                imageVector = Lucide.Moon,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = Color.White
-                            )
+                            Icon(imageVector = Lucide.Moon, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                         } else {
-                            Icon(
-                                imageVector = Lucide.Sun,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = Color(0xFFFFB300)
-                            )
+                            Icon(imageVector = Lucide.Sun, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFFFFB300))
                         }
                     }
                 )
@@ -117,59 +93,26 @@ fun ColorConfigMenu(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Preview Area
-            Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                PreviewCard(
-                    title = "Startseite", 
-                    colorTheme = selectedTheme, 
-                    isHome = true, 
-                    mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
-                    isDarkTextEnabled = isDarkTextEnabled,
-                    modifier = Modifier.weight(1f)
-                )
-                PreviewCard(
-                    title = "App Drawer", 
-                    colorTheme = selectedTheme, 
-                    isHome = false, 
-                    mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
-                    isDarkTextEnabled = isDarkTextEnabled,
-                    modifier = Modifier.weight(1f)
-                )
+            // Preview Area mit flexibler Gewichtung
+            Row(modifier = Modifier.fillMaxWidth().weight(2f).heightIn(min = 100.dp, max = 150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                PreviewCard(title = "Startseite", colorTheme = selectedTheme, isHome = true, mainTextColor = mainTextColor, isLiquidGlassEnabled = isLiquidGlassEnabled, isDarkTextEnabled = isDarkTextEnabled, modifier = Modifier.weight(1f))
+                PreviewCard(title = "App Drawer", colorTheme = selectedTheme, isHome = false, mainTextColor = mainTextColor, isLiquidGlassEnabled = isLiquidGlassEnabled, isDarkTextEnabled = isDarkTextEnabled, modifier = Modifier.weight(1f))
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 32.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Bleibt grau
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Themen", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
-
                 val liquidGlassSwitchColors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
-
                 Switch(
                     checked = isLiquidGlassEnabled,
                     onCheckedChange = onLiquidGlassToggled,
                     colors = liquidGlassSwitchColors,
                     thumbContent = {
                         if (isLiquidGlassEnabled) {
-                            Icon(
-                                imageVector = Lucide.Droplets,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = Color(0xFF0EA5E9) // Sky Blue for liquid
-                            )
+                            Icon(imageVector = Lucide.Droplets, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFF0EA5E9))
                         } else {
-                            Icon(
-                                imageVector = Lucide.Square,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = Color.Gray
-                            )
+                            Icon(imageVector = Lucide.Square, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
                         }
                     }
                 )
@@ -177,9 +120,11 @@ fun ColorConfigMenu(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Liste der Themen mit Gewichtung
             LazyColumn(
+                modifier = Modifier.weight(3f),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                contentPadding = PaddingValues(bottom = 8.dp)
             ) {
                 items(orderedThemes, key = { it.name }) { theme ->
                     ThemeOptionItem(
@@ -197,15 +142,7 @@ fun ColorConfigMenu(
 }
 
 @Composable
-fun PreviewCard(
-    title: String, 
-    colorTheme: ColorTheme, 
-    isHome: Boolean, 
-    mainTextColor: Color,
-    isLiquidGlassEnabled: Boolean,
-    isDarkTextEnabled: Boolean,
-    modifier: Modifier = Modifier
-) {
+fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, mainTextColor: Color, isLiquidGlassEnabled: Boolean, isDarkTextEnabled: Boolean, modifier: Modifier = Modifier) {
     val cardModifier = if (isLiquidGlassEnabled) {
         Modifier
             .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(16.dp))
@@ -223,7 +160,6 @@ fun PreviewCard(
         modifier = modifier.then(cardModifier)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Karten-Titel bleibt grau
             Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
@@ -232,33 +168,19 @@ fun PreviewCard(
                     .clip(RoundedCornerShape(8.dp))
                     .background(previewBrush)
             ) {
-                // In der Vorschau spiegeln wir die Schriftfarbe wider
                 if (isHome) {
                     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Box(modifier = Modifier.width(40.dp).height(8.dp).background(mainTextColor.copy(alpha = 0.8f), CircleShape))
                         Box(modifier = Modifier.width(30.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.4f), CircleShape))
                         Spacer(modifier = Modifier.height(12.dp))
-                        repeat(3) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(12.dp).border(1.dp, mainTextColor.copy(alpha = 0.5f), CircleShape))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(modifier = Modifier.width(40.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.2f), CircleShape))
-                            }
-                        }
+                        repeat(3) { Row(verticalAlignment = Alignment.CenterVertically) { Box(modifier = Modifier.size(12.dp).border(1.dp, mainTextColor.copy(alpha = 0.5f), CircleShape)); Spacer(modifier = Modifier.width(8.dp)); Box(modifier = Modifier.width(40.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.2f), CircleShape)) } }
                     }
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             Box(modifier = Modifier.fillMaxWidth().height(16.dp).background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
                             Spacer(modifier = Modifier.height(12.dp))
-                            repeat(3) {
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    repeat(4) {
-                                        Box(modifier = Modifier.size(10.dp).border(1.dp, mainTextColor.copy(alpha = 0.7f), CircleShape))
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
+                            repeat(3) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) { repeat(4) { Box(modifier = Modifier.size(10.dp).border(1.dp, mainTextColor.copy(alpha = 0.7f), CircleShape)) } }; Spacer(modifier = Modifier.height(8.dp)) }
                         }
                     }
                 }
@@ -268,31 +190,14 @@ fun PreviewCard(
 }
 
 @Composable
-fun ThemeOptionItem(
-    theme: ColorTheme,
-    isSelected: Boolean,
-    mainTextColor: Color,
-    isLiquidGlassEnabled: Boolean,
-    isDarkTextEnabled: Boolean,
-    onClick: () -> Unit
-) {
+fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color, isLiquidGlassEnabled: Boolean, isDarkTextEnabled: Boolean, onClick: () -> Unit) {
     val itemModifier = if (isLiquidGlassEnabled) {
-        val baseModifier = Modifier
-            .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(16.dp))
-            .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(16.dp))
-
-        if (isSelected) {
-             baseModifier.border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
-        } else {
-             baseModifier
-        }
+        val baseModifier = Modifier.background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(16.dp)).border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(16.dp))
+        if (isSelected) baseModifier.border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.5f)), RoundedCornerShape(16.dp)) else baseModifier
     } else {
         val bgColor = if (isSelected) mainTextColor.copy(alpha = 0.15f) else mainTextColor.copy(alpha = 0.05f)
         val border = if (isSelected) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.3f)) else null
-
-        Modifier
-            .background(bgColor, RoundedCornerShape(16.dp))
-            .then(if (border != null) Modifier.border(border, RoundedCornerShape(16.dp)) else Modifier)
+        Modifier.background(bgColor, RoundedCornerShape(16.dp)).then(if (border != null) Modifier.border(border, RoundedCornerShape(16.dp)) else Modifier)
     }
 
     val previewBrush = remember(theme, isDarkTextEnabled) {
