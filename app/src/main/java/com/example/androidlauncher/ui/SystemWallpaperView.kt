@@ -63,6 +63,11 @@ fun SystemWallpaperView(
 
     // Wallpaper asynchron laden – reagiert auf URI-Änderungen
     LaunchedEffect(customWallpaperUri) {
+        // Beim expliziten Entfernen sofort leeren, damit kein altes Custom-Wallpaper stehen bleibt.
+        if (customWallpaperUri.isNullOrEmpty()) {
+            wallpaperBitmap = null
+        }
+
         withContext(Dispatchers.IO) {
             try {
                 if (!customWallpaperUri.isNullOrEmpty()) {
@@ -90,7 +95,7 @@ fun SystemWallpaperView(
                         withContext(Dispatchers.Main) { wallpaperBitmap = ib }
                     }
                 } catch (_: Exception) {
-                    // Kein Wallpaper verfügbar – vorhandenes Bild behalten, sonst Gradient-Fallback
+                    // Kein Wallpaper verfügbar – beim Reset bleibt dann korrekt der Gradient-Fallback sichtbar.
                 }
             }
         }
