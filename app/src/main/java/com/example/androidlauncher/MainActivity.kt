@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -927,7 +928,19 @@ class MainActivity : ComponentActivity() {
                             },
                             isHapticFeedbackEnabled = isHapticFeedbackEnabled,
                             onHapticFeedbackToggled = { enabled ->
-                                scope.launch { themeManager.setHapticFeedbackEnabled(enabled) }
+                                scope.launch {
+                                    if (Settings.System.canWrite(context)) {
+                                        themeManager.setHapticFeedbackEnabled(enabled)
+                                    } else {
+                                        // Request permission to write system settings
+                                        val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                                            data = Uri.parse("package:" + context.packageName)
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(intent)
+                                        Toast.makeText(context, "Bitte erlauben Sie dem Launcher, Systemeinstellungen zu ändern", Toast.LENGTH_LONG).show()
+                                    }
+                                }
                             },
                             onClose = { isEditConfigOpen = false }
                         )
