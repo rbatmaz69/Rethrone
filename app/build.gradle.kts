@@ -135,8 +135,6 @@ dependencies {
     // Lucide Icons
     implementation(libs.lucide.icons)
 
-    // uCrop
-    implementation(libs.ucrop)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

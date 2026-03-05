@@ -122,6 +122,7 @@ data class HomeLaunchRequest(
  * @param onOpenInfo Callback zum Öffnen des Info-Dialogs.
  * @param onAppLaunchForReturn Callback für die Rückkehr-Animation.
  * @param returnIconPackage Paketname der App, die gerade zurückkehrt (für Bounce-Animation).
+ * @param isPreview Ob der Screen im Vorschau-Modus (z.B. Crop-Screen) angezeigt wird.
  */
 @Composable
 fun HomeScreen(
@@ -137,7 +138,8 @@ fun HomeScreen(
     onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit,
     onAppLaunchForReturn: (String, Rect?) -> Unit,
-    returnIconPackage: String?
+    returnIconPackage: String?,
+    isPreview: Boolean = false
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
@@ -159,11 +161,13 @@ fun HomeScreen(
     )
 
     // App-Start mit Verzögerung für die Animation
-    LaunchedEffect(launchRequest) {
-        val request = launchRequest ?: return@LaunchedEffect
-        delay(280)
-        request.intent?.let { launchAppNoTransition(context, it) }
-        launchRequest = null
+    if (!isPreview) {
+        LaunchedEffect(launchRequest) {
+            val request = launchRequest ?: return@LaunchedEffect
+            delay(280)
+            request.intent?.let { launchAppNoTransition(context, it) }
+            launchRequest = null
+        }
     }
 
     Box(
@@ -171,30 +175,33 @@ fun HomeScreen(
             .fillMaxSize()
             .testTag("home_screen")
             .onGloballyPositioned { rootSize = it.size }
-            .pointerInput(Unit) {
-                // Bestehende vertikale Gesten (Drawer/Notifications)
-                detectVerticalDragGestures { _, dragAmount ->
-                    if (dragAmount < -50) onOpenDrawer()
-                    else if (dragAmount > 50) expandNotifications(context)
-                }
-            }
-            .pointerInput(Unit) {
-                // NEU: Doppelklick-Geste zum Sperren
-                detectTapGestures(
-                    onDoubleTap = {
-                        if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
-                            // Service ist aktiv -> Befehl senden
-                            LauncherAccessibilityService.requestLockScreen(context)
-                        } else {
-                            // Service fehlt -> Nutzer informieren und zu Einstellungen leiten
-                            Toast.makeText(context, "Bitte aktiviere den Accessibility Service in den Einstellungen", Toast.LENGTH_LONG).show()
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                            } catch (_: Exception) {}
+            .then(if (!isPreview) {
+                Modifier
+                    .pointerInput(Unit) {
+                        // Bestehende vertikale Gesten (Drawer/Notifications)
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount < -50) onOpenDrawer()
+                            else if (dragAmount > 50) expandNotifications(context)
                         }
                     }
-                )
-            }
+                    .pointerInput(Unit) {
+                        // NEU: Doppelklick-Geste zum Sperren
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
+                                    // Service ist aktiv -> Befehl senden
+                                    LauncherAccessibilityService.requestLockScreen(context)
+                                } else {
+                                    // Service fehlt -> Nutzer informieren und zu Einstellungen leiten
+                                    Toast.makeText(context, "Bitte aktiviere den Accessibility Service in den Einstellungen", Toast.LENGTH_LONG).show()
+                                    try {
+                                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        )
+                    }
+            } else Modifier)
     ) {
         Box(
             modifier = Modifier
@@ -207,7 +214,8 @@ fun HomeScreen(
                 ClockHeader(
                     onAppLaunchForReturn = onAppLaunchForReturn,
                     onLaunchRequest = { launchRequest = it },
-                    returnIconPackage = returnIconPackage
+                    returnIconPackage = returnIconPackage,
+                    isPreview = isPreview
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -225,10 +233,9 @@ fun HomeScreen(
                                 .size(56.dp)
                                 .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled)
                                 .clip(CircleShape)
-                                .bounceClick(intSrc)
-                                .clickable(interactionSource = intSrc, indication = null) {
+                                .then(if (!isPreview) Modifier.bounceClick(intSrc).clickable(interactionSource = intSrc, indication = null) {
                                     onOpenFavoritesConfig()
-                                },
+                                } else Modifier),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
@@ -247,7 +254,8 @@ fun HomeScreen(
                                     selectedShortcutApp = shortcutApp
                                     shortcutMenuBounds = bounds
                                 },
-                                launchRequest = launchRequest
+                                launchRequest = launchRequest,
+                                isPreview = isPreview
                             )
                         }
                     }
@@ -334,8 +342,7 @@ fun HomeScreen(
                                 .size(56.dp)
                                 .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.15f)
                                 .clip(CircleShape)
-                                .bounceClick(searchIntSrc)
-                                .clickable(interactionSource = searchIntSrc, indication = null) { onOpenSearch() },
+                                .then(if (!isPreview) Modifier.bounceClick(searchIntSrc).clickable(interactionSource = searchIntSrc, indication = null) { onOpenSearch() } else Modifier),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -360,8 +367,7 @@ fun HomeScreen(
                                 fallbackAlpha = if (isSettingsOpen) 0.1f else 0.15f
                             )
                             .clip(CircleShape)
-                            .bounceClick(intSrc)
-                            .clickable(interactionSource = intSrc, indication = null) { onToggleSettings() },
+                            .then(if (!isPreview) Modifier.bounceClick(intSrc).clickable(interactionSource = intSrc, indication = null) { onToggleSettings() } else Modifier),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
@@ -402,7 +408,8 @@ private fun FavoriteItem(
     onAppLaunchForReturn: (String, Rect?) -> Unit,
     onLaunchRequest: (HomeLaunchRequest) -> Unit,
     onShortcutRequested: (AppInfo, Rect?) -> Unit,
-    launchRequest: HomeLaunchRequest?
+    launchRequest: HomeLaunchRequest?,
+    isPreview: Boolean = false
 ) {
     val context = LocalContext.current
     val intSrc = remember { MutableInteractionSource() }
@@ -432,29 +439,32 @@ private fun FavoriteItem(
                 itemBounds.value = coordinates.boundsInRoot()
             }
             .graphicsLayer { translationX = animatedOffset }
-            .pointerInput(app.packageName) {
-                detectHorizontalDragGestures(
-                    onDragEnd = {
-                        if (horizontalOffset > 150f) {
-                            onShortcutRequested(app, itemBounds.value)
-                        }
-                        horizontalOffset = 0f
-                    },
-                    onDragCancel = { horizontalOffset = 0f },
-                    onHorizontalDrag = { _, dragAmount ->
-                        // Nur Swipe nach rechts erlauben
-                        horizontalOffset = (horizontalOffset + dragAmount).coerceIn(0f, 300f)
+            .then(if (!isPreview) {
+                Modifier
+                    .pointerInput(app.packageName) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                if (horizontalOffset > 150f) {
+                                    onShortcutRequested(app, itemBounds.value)
+                                }
+                                horizontalOffset = 0f
+                            },
+                            onDragCancel = { horizontalOffset = 0f },
+                            onHorizontalDrag = { _, dragAmount ->
+                                // Nur Swipe nach rechts erlauben
+                                horizontalOffset = (horizontalOffset + dragAmount).coerceIn(0f, 300f)
+                            }
+                        )
                     }
-                )
-            }
-            .bounceClick(intSrc)
-            .clickable(interactionSource = intSrc, indication = null) {
-                if (launchRequest == null) {
-                    onAppLaunchForReturn(app.packageName, itemBounds.value)
-                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                    onLaunchRequest(HomeLaunchRequest(app.packageName, itemBounds.value, intent))
-                }
-            }
+                    .bounceClick(intSrc)
+                    .clickable(interactionSource = intSrc, indication = null) {
+                        if (launchRequest == null) {
+                            onAppLaunchForReturn(app.packageName, itemBounds.value)
+                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                            onLaunchRequest(HomeLaunchRequest(app.packageName, itemBounds.value, intent))
+                        }
+                    }
+            } else Modifier)
     ) {
         Row(
             modifier = Modifier.padding(6.dp),
@@ -583,7 +593,8 @@ internal fun expandNotifications(context: Context) {
 fun ClockHeader(
     onAppLaunchForReturn: (String, Rect?) -> Unit,
     onLaunchRequest: (HomeLaunchRequest) -> Unit,
-    returnIconPackage: String?
+    returnIconPackage: String?,
+    isPreview: Boolean = false
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
@@ -638,10 +649,9 @@ fun ClockHeader(
                     scaleY = bounceScaleTime
                 }
                 .clip(RoundedCornerShape(8.dp))
-                .bounceClick(intSrcTime)
-                .clickable(interactionSource = intSrcTime, indication = null) {
+                .then(if (!isPreview) Modifier.bounceClick(intSrcTime).clickable(interactionSource = intSrcTime, indication = null) {
                     launchClockApp(context, clockBounds.value, onAppLaunchForReturn, onLaunchRequest) { clockPackage = it }
-                }
+                } else Modifier)
         )
         // Datum
         Text(
@@ -656,10 +666,11 @@ fun ClockHeader(
                     scaleY = bounceScaleDate
                 }
                 .clip(RoundedCornerShape(8.dp))
-                .bounceClick(intSrcDate)
-                .clickable(interactionSource = intSrcDate, indication = null) {
-                    launchCalendarApp(context, calendarBounds.value, onAppLaunchForReturn, onLaunchRequest) { calendarPackage = it }
-                }
+                .then(if (!isPreview) Modifier
+                    .bounceClick(intSrcDate)
+                    .clickable(interactionSource = intSrcDate, indication = null) {
+                        launchCalendarApp(context, calendarBounds.value, onAppLaunchForReturn, onLaunchRequest) { calendarPackage = it }
+                    } else Modifier)
                 .padding(horizontal = 4.dp, vertical = 2.dp)
         )
     }

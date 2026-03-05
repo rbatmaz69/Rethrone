@@ -9,8 +9,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
-import android.widget.Toast
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
@@ -33,15 +33,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.androidlauncher.data.AppFont
@@ -69,15 +77,14 @@ import com.example.androidlauncher.ui.ReturnAnimationOverlay
 import com.example.androidlauncher.ui.SizeConfigMenu
 import com.example.androidlauncher.ui.SystemWallpaperView
 import com.example.androidlauncher.ui.WallpaperConfigMenu
+import com.example.androidlauncher.ui.WallpaperCropScreen
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
-import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * Haupt-Activity des Launchers.
@@ -148,45 +155,15 @@ class MainActivity : ComponentActivity() {
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
             val favoritePackages by favoritesManager.favorites.collectAsState(initial = emptyList())
 
-            val cropLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.StartActivityForResult()
-            ) { result ->
-                if (result.resultCode == RESULT_OK) {
-                    result.data?.let { data ->
-                        UCrop.getOutput(data)?.let { uri ->
-                            scope.launch { themeManager.setCustomWallpaperUri(uri.toString()) }
-                        }
-                    }
-                }
-            }
+            var isWallpaperCropOpen by remember { mutableStateOf(false) }
+            var pendingWallpaperUri by remember { mutableStateOf<Uri?>(null) }
 
             val wallpaperPickerLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.PickVisualMedia()
             ) { uri: Uri? ->
                 uri?.let { sourceUri ->
-                    val destinationUri = Uri.fromFile(
-                        File(context.cacheDir, "cropped_wallpaper_${System.currentTimeMillis()}.jpg")
-                    )
-                    val bgColor = if (isDarkTextEnabled) currentTheme.lightBackground.toArgb()
-                    else currentTheme.drawerBackground.toArgb()
-                    val widgetColor = if (isDarkTextEnabled) Color.Black.toArgb() else Color.White.toArgb()
-
-                    val options = UCrop.Options().apply {
-                        setToolbarColor(bgColor)
-                        setStatusBarColor(bgColor)
-                        setToolbarWidgetColor(widgetColor)
-                        setActiveControlsWidgetColor(currentTheme.primary.toArgb())
-                        setToolbarTitle("Hintergrund zuschneiden")
-                        setLogoColor(bgColor)
-                    }
-
-                    cropLauncher.launch(
-                        UCrop.of(sourceUri, destinationUri)
-                            .withAspectRatio(9f, 16f)
-                            .withMaxResultSize(1080, 1920)
-                            .withOptions(options)
-                            .getIntent(context)
-                    )
+                    pendingWallpaperUri = sourceUri
+                    isWallpaperCropOpen = true
                 }
             }
 
@@ -597,6 +574,40 @@ class MainActivity : ComponentActivity() {
                             background = Color(0xFF0F0F0F),
                             onFinished = { activeReturnAnimation = null },
                             targetScale = if (animation.source == LaunchSource.DRAWER) 0.65f else 0.7f
+                        )
+                    }
+
+                    if (isWallpaperCropOpen && pendingWallpaperUri != null) {
+                        WallpaperCropScreen(
+                            sourceUri = pendingWallpaperUri!!,
+                            onCropFinished = { uri ->
+                                scope.launch { themeManager.setCustomWallpaperUri(uri.toString()) }
+                                isWallpaperCropOpen = false
+                                pendingWallpaperUri = null
+                                isEditConfigOpen = false // Close edit menu after success
+                            },
+                            onCancel = {
+                                isWallpaperCropOpen = false
+                                pendingWallpaperUri = null
+                            },
+                            homeScreenPreview = {
+                                HomeScreen(
+                                    favorites = favorites,
+                                    isSettingsOpen = false, // Clean state for preview
+                                    isSearchOpen = false,
+                                    onOpenDrawer = {},
+                                    onOpenSearch = {},
+                                    onToggleSettings = {},
+                                    onOpenFavoritesConfig = {},
+                                    onOpenColorConfig = {},
+                                    onOpenSizeConfig = {},
+                                    onOpenSystemSettings = {},
+                                    onOpenInfo = {},
+                                    onAppLaunchForReturn = { _, _ -> },
+                                    returnIconPackage = null,
+                                    isPreview = true
+                                )
+                            }
                         )
                     }
                 }
