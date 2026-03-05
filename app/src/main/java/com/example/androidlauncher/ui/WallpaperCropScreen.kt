@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -38,12 +38,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +52,8 @@ import java.io.FileOutputStream
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+
+private const val MAX_ZOOM = 5f
 
 /**
  * Ein Bildschirm zum Zuschneiden von Hintergrundbildern.
@@ -73,34 +73,35 @@ fun WallpaperCropScreen(
     homeScreenPreview: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    var bitmap by remember(sourceUri) { mutableStateOf<Bitmap?>(null) }
+    var isLoading by remember(sourceUri) { mutableStateOf(true) }
 
     // Transformations-Zustand
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    var scale by remember(sourceUri) { mutableFloatStateOf(1f) }
+    var offsetX by remember(sourceUri) { mutableFloatStateOf(0f) }
+    var offsetY by remember(sourceUri) { mutableFloatStateOf(0f) }
 
     // Bounds Check für Pan/Zoom
-    var minScale by remember { mutableFloatStateOf(1f) }
+    var minScale by remember(sourceUri) { mutableFloatStateOf(1f) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    var userHasInteracted by remember(sourceUri) { mutableStateOf(false) }
+    var initializedContainerSize by remember(sourceUri) { mutableStateOf(IntSize.Zero) }
 
     // Initiales Laden des Bildes
     LaunchedEffect(sourceUri) {
         withContext(Dispatchers.IO) {
             try {
-                context.contentResolver.openInputStream(sourceUri)?.use { stream ->
-                    // Wir laden das Bild. Für sehr große Bilder könnte man hier subsampling nutzen (BitmapFactory.Options)
-                    // Da wir aber später croppen wollen, laden wir es hier erst einmal so.
-                    // Bei OutOfMemory müsste man aggressiver subsamplen.
-                    val original = BitmapFactory.decodeStream(stream)
+                val original = context.contentResolver.openInputStream(sourceUri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
 
-                    // Rotations-Logik (EXIF) weggelassen zur Vereinfachung,
-                    // für Produktionscode sollte EXIF-Rotation beachtet werden.
-                    // Moderne Decoder handhaben das teils automatisch oder brauchen Helper.
-
+                withContext(Dispatchers.Main) {
+                    if (original == null) {
+                        Toast.makeText(context, "Fehler beim Laden des Bildes", Toast.LENGTH_SHORT).show()
+                        onCancel()
+                        return@withContext
+                    }
                     bitmap = original
                     isLoading = false
                 }
@@ -114,23 +115,42 @@ fun WallpaperCropScreen(
         }
     }
 
-    // Initialisierung der Skalierung sobald Bild und Container Größe bekannt sind
-    LaunchedEffect(bitmap, containerSize) {
+    // Initialisierung robust gegen spaete Layout-Groessenaenderungen.
+    LaunchedEffect(bitmap, containerSize, userHasInteracted) {
         val bmp = bitmap
         if (bmp != null && containerSize.width > 0 && containerSize.height > 0) {
+            val targetMinScale = max(
+                containerSize.width.toFloat() / bmp.width.toFloat(),
+                containerSize.height.toFloat() / bmp.height.toFloat()
+            )
 
-            val scaleX = containerSize.width.toFloat() / bmp.width
-            val scaleY = containerSize.height.toFloat() / bmp.height
+            if (!userHasInteracted) {
+                // Vor erster Geste immer auf Cover fitten, auch wenn die Viewport-Groesse nachtraeglich wechselt.
+                minScale = targetMinScale
+                scale = targetMinScale
+                val scaledWidth = bmp.width * scale
+                val scaledHeight = bmp.height * scale
+                offsetX = (containerSize.width - scaledWidth) / 2f
+                offsetY = (containerSize.height - scaledHeight) / 2f
+            } else {
+                // Nach erster Geste Position beibehalten, nur an neue Mindest-Skalierung/Grenzen anpassen.
+                minScale = targetMinScale
+                val adjustedScale = scale.coerceAtLeast(targetMinScale)
+                val boundedOffset = clampOffsetToViewport(
+                    bitmapWidth = bmp.width,
+                    bitmapHeight = bmp.height,
+                    viewportWidth = containerSize.width,
+                    viewportHeight = containerSize.height,
+                    scale = adjustedScale,
+                    offsetX = offsetX,
+                    offsetY = offsetY
+                )
+                scale = adjustedScale
+                offsetX = boundedOffset.first
+                offsetY = boundedOffset.second
+            }
 
-            // "Center Crop" Logik als Startwert: Fülle den Screen
-            minScale = max(scaleX, scaleY)
-            scale = minScale
-
-            // Zentrieren
-            val scaledWidth = bmp.width * scale
-            val scaledHeight = bmp.height * scale
-            offsetX = (containerSize.width - scaledWidth) / 2f
-            offsetY = (containerSize.height - scaledHeight) / 2f
+            initializedContainerSize = containerSize
         }
     }
 
@@ -141,73 +161,54 @@ fun WallpaperCropScreen(
             .onSizeChanged { containerSize = it }
             .clipToBounds()
     ) {
-        if (isLoading) {
+        if (isLoading || bitmap == null || initializedContainerSize == IntSize.Zero) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
                 color = Color.White
             )
         } else {
             bitmap?.let { bmp ->
-                val bmpWidthDp = with(density) { bmp.width.toDp() }
-                val bmpHeightDp = with(density) { bmp.height.toDp() }
+                val imageBitmap = remember(bmp) { bmp.asImageBitmap() }
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) {
+                        .pointerInput(bmp, containerSize, minScale) {
                             detectTransformGestures { centroid, pan, zoom, _ ->
-                                if (bitmap == null) return@detectTransformGestures
-                                val bmp = bitmap!!
+                                if (!userHasInteracted && (zoom != 1f || pan.x != 0f || pan.y != 0f)) {
+                                    userHasInteracted = true
+                                }
+                                val newScale = (scale * zoom).coerceIn(minScale, MAX_ZOOM)
 
-                                // 1. Berechne neuen Skalierungsfaktor
-                                val newScale = (scale * zoom).coerceAtLeast(minScale).coerceAtMost(5f)
-
-                                // 2. Berechne neuen Offset, damit Zoom um den Schwerpunkt (Finger) passiert
-                                // Formel: newOffset = centroid - (centroid - oldOffset) * (newScale / oldScale)
+                                // Zoom um den Finger-Schwerpunkt + anschließend Pan.
                                 val zoomFactor = newScale / scale
-                                var newOffsetX = centroid.x - (centroid.x - offsetX) * zoomFactor
-                                var newOffsetY = centroid.y - (centroid.y - offsetY) * zoomFactor
-
-                                // 3. Addiere Pan-Bewegung
-                                newOffsetX += pan.x
-                                newOffsetY += pan.y
-
-                                // 4. Begrenze Offset
-                                val scaledWidth = bmp.width * newScale
-                                val scaledHeight = bmp.height * newScale
-
-                                val minOffsetX = if (scaledWidth > containerSize.width)
-                                    -(scaledWidth - containerSize.width) else (containerSize.width - scaledWidth) / 2f
-                                val maxOffsetX = if (scaledWidth > containerSize.width)
-                                    0f else (containerSize.width - scaledWidth) / 2f
-
-                                val minOffsetY = if (scaledHeight > containerSize.height)
-                                    -(scaledHeight - containerSize.height) else (containerSize.height - scaledHeight) / 2f
-                                val maxOffsetY = if (scaledHeight > containerSize.height)
-                                    0f else (containerSize.height - scaledHeight) / 2f
+                                val rawOffsetX = centroid.x - (centroid.x - offsetX) * zoomFactor + pan.x
+                                val rawOffsetY = centroid.y - (centroid.y - offsetY) * zoomFactor + pan.y
 
                                 scale = newScale
-                                offsetX = newOffsetX.coerceIn(minOffsetX, maxOffsetX)
-                                offsetY = newOffsetY.coerceIn(minOffsetY, maxOffsetY)
+                                val boundedOffset = clampOffsetToViewport(
+                                    bitmapWidth = bmp.width,
+                                    bitmapHeight = bmp.height,
+                                    viewportWidth = containerSize.width,
+                                    viewportHeight = containerSize.height,
+                                    scale = newScale,
+                                    offsetX = rawOffsetX,
+                                    offsetY = rawOffsetY
+                                )
+                                offsetX = boundedOffset.first
+                                offsetY = boundedOffset.second
                             }
                         }
                 ) {
-                   Image(
-                       bitmap = bmp.asImageBitmap(),
-                       contentDescription = null,
-                       alignment = Alignment.TopStart,
-                       modifier = Modifier
-                           .size(bmpWidthDp, bmpHeightDp)
-                           .graphicsLayer {
-                               this.scaleX = scale
-                               this.scaleY = scale
-                               this.translationX = offsetX
-                               this.translationY = offsetY
-                               // Origin auf 0,0 setzen für einfachere Pan/Zoom Berechnung von oben links
-                               this.transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
-                           },
-                       contentScale = ContentScale.FillBounds
-                   )
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val drawWidth = (bmp.width * scale).roundToInt().coerceAtLeast(1)
+                        val drawHeight = (bmp.height * scale).roundToInt().coerceAtLeast(1)
+                        drawImage(
+                            image = imageBitmap,
+                            dstOffset = IntOffset(offsetX.roundToInt(), offsetY.roundToInt()),
+                            dstSize = IntSize(drawWidth, drawHeight)
+                        )
+                    }
                 }
             }
         }
@@ -281,6 +282,35 @@ fun WallpaperCropScreen(
     }
 }
 
+private fun clampOffsetToViewport(
+    bitmapWidth: Int,
+    bitmapHeight: Int,
+    viewportWidth: Int,
+    viewportHeight: Int,
+    scale: Float,
+    offsetX: Float,
+    offsetY: Float
+): Pair<Float, Float> {
+    val scaledWidth = bitmapWidth * scale
+    val scaledHeight = bitmapHeight * scale
+
+    val minOffsetX = if (scaledWidth > viewportWidth) {
+        -(scaledWidth - viewportWidth)
+    } else {
+        (viewportWidth - scaledWidth) / 2f
+    }
+    val maxOffsetX = if (scaledWidth > viewportWidth) 0f else minOffsetX
+
+    val minOffsetY = if (scaledHeight > viewportHeight) {
+        -(scaledHeight - viewportHeight)
+    } else {
+        (viewportHeight - scaledHeight) / 2f
+    }
+    val maxOffsetY = if (scaledHeight > viewportHeight) 0f else minOffsetY
+
+    return offsetX.coerceIn(minOffsetX, maxOffsetX) to offsetY.coerceIn(minOffsetY, maxOffsetY)
+}
+
 /**
  * Schneidet den sichtbaren Bereich aus dem Bitmap aus und speichert ihn.
  */
@@ -332,4 +362,3 @@ private fun cropAndSaveImage(
         null
     }
 }
-
