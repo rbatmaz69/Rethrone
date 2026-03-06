@@ -224,10 +224,24 @@ class MainActivity : ComponentActivity() {
                 var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
+                var isLauncherResumed by remember { mutableStateOf(false) }
+                var screenOffWhileLauncherForeground by remember { mutableStateOf(false) }
+                var skipNextResumeReturn by remember { mutableStateOf(false) }
 
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
+                            isLauncherResumed = true
+                        }
+                        if (event == Lifecycle.Event.ON_PAUSE) {
+                            isLauncherResumed = false
+                        }
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            if (skipNextResumeReturn) {
+                                Log.d(RETURN_TAG, "skip return animation after lock/unlock because launcher was foreground at screen off")
+                                skipNextResumeReturn = false
+                                return@LifecycleEventObserver
+                            }
                             val accessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
                             val usageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
                             val storedPackages = ReturnOriginStore.getStoredPackageNames(context)
@@ -429,9 +443,28 @@ class MainActivity : ComponentActivity() {
                 DisposableEffect(Unit) {
                     val receiver = object : BroadcastReceiver() {
                         override fun onReceive(ctx: Context?, intent: Intent?) {
-                            scope.launch {
-                                delay(800)
-                                refreshAppList()
+                            when (intent?.action) {
+                                Intent.ACTION_SCREEN_OFF -> {
+                                    if (isLauncherResumed) {
+                                        screenOffWhileLauncherForeground = true
+                                        Log.d(RETURN_TAG, "screen off while launcher foreground -> arm unlock skip")
+                                    }
+                                }
+                                Intent.ACTION_USER_PRESENT -> {
+                                    if (screenOffWhileLauncherForeground) {
+                                        skipNextResumeReturn = true
+                                        screenOffWhileLauncherForeground = false
+                                        Log.d(RETURN_TAG, "user present after launcher screen off -> skip next resume return")
+                                    }
+                                }
+                                Intent.ACTION_PACKAGE_ADDED,
+                                Intent.ACTION_PACKAGE_REMOVED,
+                                Intent.ACTION_PACKAGE_REPLACED -> {
+                                    scope.launch {
+                                        delay(800)
+                                        refreshAppList()
+                                    }
+                                }
                             }
                         }
                     }
@@ -439,6 +472,8 @@ class MainActivity : ComponentActivity() {
                         addAction(Intent.ACTION_PACKAGE_ADDED)
                         addAction(Intent.ACTION_PACKAGE_REMOVED)
                         addAction(Intent.ACTION_PACKAGE_REPLACED)
+                        addAction(Intent.ACTION_SCREEN_OFF)
+                        addAction(Intent.ACTION_USER_PRESENT)
                         addDataScheme("package")
                     }
                     context.registerReceiver(receiver, filter)
