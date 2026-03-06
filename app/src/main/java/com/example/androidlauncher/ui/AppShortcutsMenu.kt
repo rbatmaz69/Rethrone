@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -60,6 +61,7 @@ fun AppShortcutsMenu(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
     val shortcuts = remember(packageName) {
         getAppShortcuts(context, packageName).take(4)
     }
@@ -98,7 +100,7 @@ fun AppShortcutsMenu(
             isVisible = true
             isDismissing = false
             // Vibrationsfeedback beim Öffnen
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 

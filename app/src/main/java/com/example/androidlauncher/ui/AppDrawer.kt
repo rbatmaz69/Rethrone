@@ -80,6 +80,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalFontWeight
+import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.composables.icons.lucide.*
@@ -119,6 +120,7 @@ fun AppDrawer(
     val appFont = LocalAppFont.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val drawerBackgroundBrush = remember(colorTheme, isDarkTextEnabled) {
         colorTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.88f)
@@ -307,9 +309,11 @@ fun AppDrawer(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.End
                                         ) {
+                                            @Suppress("DEPRECATION")
                                             TextButton(onClick = { isCreateFolderDialogOpen = false }) {
                                                 Text("Abbrechen", color = Color.Gray)
                                             }
+                                            @Suppress("DEPRECATION")
                                             TextButton(onClick = {
                                                 if (folderNameInput.isNotBlank()) {
                                                     val nameExists = folders.any { it.name == folderNameInput }
@@ -457,7 +461,7 @@ fun AppDrawer(
                                     onUpdateFolders = onUpdateFolders,
                                     bouncePackage = returnIconPackage,
                                     onLongPress = { appInfo, bounds ->
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuApp = appInfo
                                         menuAppBounds = bounds
                                     },
@@ -665,7 +669,7 @@ fun AppDrawer(
                                         newList.removeAt(fromIdx)
                                         newList.add(targetIdx, pkg)
                                         onUpdateFolders(currentFoldersState.map { if (it.id == currentFolderState.id) it.copy(appPackageNames = newList) else it })
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     }
                                 }
 
@@ -707,7 +711,7 @@ fun AppDrawer(
                                                         draggingItemPkg = currentApps[globalIdx].packageName
                                                         touchPosition = offset
                                                         initialTouchOffsetInItem = Offset(offset.x % cellW, offset.y % cellH)
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     }
                                                 },
                                                 onDragEnd = { draggingItemPkg = null },
@@ -744,20 +748,25 @@ fun AppDrawer(
                                                             isInFolder = true,
                                                             currentFolderId = currentActiveFolder.id,
                                                             isEditMode = isEditMode,
-                                                            onLongPress = { appInfo, bounds -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); menuApp = appInfo; menuAppBounds = bounds },
+                                                            bouncePackage = returnIconPackage,
+                                                            onLongPress = { appInfo, bounds ->
+                                                                if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                menuApp = appInfo
+                                                                menuAppBounds = bounds
+                                                            },
                                                             onAppLaunchRequested = { requestedApp, bounds ->
                                                                 context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
                                                                     onLaunchApp(requestedApp.packageName, intent, bounds)
                                                                 }
                                                             }
-                                                         )
+                                                        )
 
                                                         if (isEditMode && !isDragging) {
                                                             val view = androidx.compose.ui.platform.LocalView.current
                                                             Box(
                                                                 modifier = Modifier.align(Alignment.TopEnd).offset(x = (-2).dp, y = (-2).dp).zIndex(10f).size(badgeSize).background(mainTextColor.copy(alpha = 0.85f), CircleShape)
                                                                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                        if (hapticEnabled) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                                                         val updatedFolders = LauncherLogic.removeAppFromFolder(folders, currentActiveFolder.id, app.packageName)
                                                                         onUpdateFolders(updatedFolders)
                                                                         if (updatedFolders.none { it.id == currentActiveFolder.id }) activeFolderId = null
@@ -823,6 +832,7 @@ fun AppDrawer(
                                 Text(folder.name, fontSize = 16.sp * fontSize.scale, color = mainTextColor)
                             }
                         }
+                        @Suppress("DEPRECATION")
                         TextButton(onClick = { showFolderSelection = false }, modifier = Modifier.align(Alignment.End).padding(top = 8.dp)) { Text("Abbrechen", color = Color.Gray) }
                     }
                 }

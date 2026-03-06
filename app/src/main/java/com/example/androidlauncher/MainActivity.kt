@@ -164,6 +164,7 @@ class MainActivity : ComponentActivity() {
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
+            val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
@@ -272,7 +273,8 @@ class MainActivity : ComponentActivity() {
                 darkTextEnabled = isDarkTextEnabled,
                 showFavoriteLabels = showFavoriteLabels,
                 liquidGlassEnabled = isLiquidGlassEnabled,
-                appFont = currentAppFont
+                appFont = currentAppFont,
+                hapticFeedbackEnabled = isHapticFeedbackEnabled
             ) {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val menuBackgroundColor = currentTheme.menuSurfaceColor(isDarkTextEnabled)
@@ -922,6 +924,10 @@ class MainActivity : ComponentActivity() {
                             onClearSearchHistory = {
                                 scope.launch { searchSuggestionsManager.clearWebHistory() }
                                 Toast.makeText(context, "Suchverlauf gelöscht", Toast.LENGTH_SHORT).show()
+                            },
+                            isHapticFeedbackEnabled = isHapticFeedbackEnabled,
+                            onHapticFeedbackToggled = { enabled ->
+                                scope.launch { themeManager.setHapticFeedbackEnabled(enabled) }
                             },
                             onClose = { isEditConfigOpen = false }
                         )

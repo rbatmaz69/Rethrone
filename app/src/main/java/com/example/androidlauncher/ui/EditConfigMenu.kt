@@ -40,19 +40,6 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 
 /**
  * Konfigurationsmenü für Anpassungen.
- *
- * Bietet Zugang zu:
- * - **App-Icons anpassen** (öffnet [IconConfigMenu])
- * - **Wallpaper ändern** (öffnet System-Bildauswahl mit UCrop)
- * - **Hintergrund anpassen** (öffnet [WallpaperConfigMenu])
- * - **Benachrichtigung** (öffnet System-Einstellungen)
- *
- * @param onOpenIconConfig Callback zum Öffnen der Icon-Konfiguration.
- * @param onChangeWallpaper Callback zum Starten der Wallpaper-Auswahl.
- * @param onResetWallpaper Callback zum Entfernen des benutzerdefinierten Wallpapers.
- * @param onOpenWallpaperAdjust Callback zum Öffnen der Wallpaper-Feinabstimmung.
- * @param isCustomWallpaperSet Ob aktuell ein benutzerdefiniertes Wallpaper gesetzt ist.
- * @param onClose Callback zum Schließen des Menüs.
  */
 @Composable
 fun EditConfigMenu(
@@ -66,6 +53,8 @@ fun EditConfigMenu(
     isSmartSuggestionsEnabled: Boolean,
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     onClearSearchHistory: () -> Unit,
+    isHapticFeedbackEnabled: Boolean,
+    onHapticFeedbackToggled: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -96,6 +85,7 @@ fun EditConfigMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            @Suppress("DEPRECATION")
             Text(
                 "Bearbeiten",
                 fontSize = 24.sp,
@@ -115,6 +105,27 @@ fun EditConfigMenu(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(top = 32.dp, bottom = 8.dp)
         ) {
+            item {
+                EditSectionHeader(
+                    title = "Allgemein",
+                    mainTextColor = mainTextColor
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.Smartphone,
+                    label = "Haptisches Feedback",
+                    description = "Vibration bei Interaktionen",
+                    checked = isHapticFeedbackEnabled,
+                    onCheckedChange = onHapticFeedbackToggled,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "haptic_feedback_switch"
+                )
+            }
+
             item {
                 EditMenuItem(
                     icon = Lucide.Settings2,
@@ -287,22 +298,6 @@ private fun EditSectionHeader(
     )
 }
 
-/**
- * Einzelnes Menü-Element im Bearbeiten-Menü.
- *
- * Zeigt ein Icon, Label und optionalen Status oder Trailing-Content.
- * Unterstützt den Liquid-Glass-Effekt mit abgeschwächten Alpha-Werten
- * für eine subtilere Darstellung als die Standard-Glass-Elemente.
- *
- * @param icon Lucide/Material-Icon links.
- * @param label Beschriftung des Elements.
- * @param onClick Callback bei Klick.
- * @param mainTextColor Primäre Textfarbe.
- * @param isLiquidGlassEnabled Ob Liquid Glass aktiv ist.
- * @param isDarkTextEnabled Ob der dunkle Textmodus aktiv ist.
- * @param statusLabel Optionaler Status-Text (z.B. "An" / "Aus").
- * @param trailingContent Optionaler benutzerdefinierter Trailing-Inhalt.
- */
 @Composable
 fun EditMenuItem(
     icon: ImageVector,
@@ -315,63 +310,31 @@ fun EditMenuItem(
     trailingContent: @Composable (() -> Unit)? = null
 ) {
     val backgroundModifier = if (isLiquidGlassEnabled) {
-        // Subtilere Alpha-Werte als Standard-Glass für Menü-Items
         val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
-        val borderBrush = LiquidGlass.borderBrush(
-            isDarkTextEnabled,
-            startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f,
-            endAlpha = 0.05f
-        )
-        Modifier
-            .background(glassBrush, RoundedCornerShape(16.dp))
-            .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
+        val borderBrush = LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, endAlpha = 0.05f)
+        Modifier.background(glassBrush, RoundedCornerShape(16.dp)).border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
     } else {
         Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
     }
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .then(backgroundModifier)
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).then(backgroundModifier).clickable { onClick() },
         color = Color.Transparent
     ) {
         Row(
-            modifier = Modifier
-                .padding(vertical = 20.dp, horizontal = 16.dp),
+            modifier = Modifier.padding(vertical = 20.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = mainTextColor,
-                modifier = Modifier.size(24.dp)
-            )
+            Icon(imageVector = icon, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = label,
-                color = mainTextColor,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.weight(1f)
-            )
+            Text(text = label, color = mainTextColor, fontSize = 18.sp, fontWeight = FontWeight.Normal, modifier = Modifier.weight(1f))
             if (statusLabel != null) {
-                Text(
-                    text = statusLabel,
-                    color = mainTextColor.copy(alpha = 0.5f),
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
+                Text(text = statusLabel, color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
             }
             if (trailingContent != null) {
                 trailingContent()
             } else {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = mainTextColor.copy(alpha = 0.4f)
-                )
+                Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f))
             }
         }
     }
