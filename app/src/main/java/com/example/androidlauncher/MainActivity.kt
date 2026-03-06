@@ -586,6 +586,28 @@ class MainActivity : ComponentActivity() {
                                             isSearchLaunching = false
                                         }
                                     }
+                                },
+                                onWebLaunch = { intent, bounds ->
+                                    if (isSearchLaunching) return@BottomSearch
+                                    isSearchLaunching = true
+                                    activeSearchLaunchBounds = bounds
+                                    isSearchOpen = false
+                                    scope.launch {
+                                        try {
+                                            delay(16)
+                                            val launchSourceView = this@MainActivity.findViewById<View>(android.R.id.content)
+                                            launchAppWithSourceBoundsAnimation(
+                                                context = context,
+                                                intent = intent,
+                                                sourceView = launchSourceView,
+                                                sourceBounds = bounds
+                                            )
+                                            delay(240)
+                                        } finally {
+                                            activeSearchLaunchBounds = null
+                                            isSearchLaunching = false
+                                        }
+                                    }
                                 }
                             )
                         }
