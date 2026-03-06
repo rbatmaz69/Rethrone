@@ -197,13 +197,12 @@ class MainActivity : ComponentActivity() {
 
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
                 var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
-                var pendingReturnAnimationStartedAt by remember { mutableStateOf(0L) }
+                var pendingReturnAnimationStartedWallClockMs by remember { mutableStateOf(0L) }
                 var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var returnIconPackage by remember { mutableStateOf<String?>(null) }
                 var searchButtonBounceToken by remember { mutableStateOf(0) }
                 val returnOverlayDurationMs = 260L
                 val returnBounceDelayMs = 185L
-                val pendingReturnFreshWindowMs = 2200L
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
@@ -225,8 +224,7 @@ class MainActivity : ComponentActivity() {
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
                 var isLauncherResumed by remember { mutableStateOf(false) }
-                var screenOffWhileLauncherForeground by remember { mutableStateOf(false) }
-                var skipNextResumeReturn by remember { mutableStateOf(false) }
+                var returnResumeGuardState by remember { mutableStateOf(ReturnResumeGuardState()) }
 
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
@@ -237,30 +235,32 @@ class MainActivity : ComponentActivity() {
                             isLauncherResumed = false
                         }
                         if (event == Lifecycle.Event.ON_RESUME) {
-                            if (skipNextResumeReturn) {
-                                Log.d(RETURN_TAG, "skip return animation after lock/unlock because launcher was foreground at screen off")
-                                skipNextResumeReturn = false
+                            val resumeDecision = ReturnResumeGuard.onResume(returnResumeGuardState)
+                            returnResumeGuardState = resumeDecision.nextState
+                            if (resumeDecision.shouldSuppress) {
+                                Log.d(
+                                    RETURN_TAG,
+                                    "skip return animation on launcher resume caused by lockscreen state awaitingUserPresent=${returnResumeGuardState.awaitingUserPresent} skipNextResume=${returnResumeGuardState.skipNextResume}"
+                                )
                                 return@LifecycleEventObserver
                             }
                             val accessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
                             val usageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
                             val storedPackages = ReturnOriginStore.getStoredPackageNames(context)
-                            val beforeLauncher = if (accessibilityEnabled) LauncherAccessibilityService.getLastForegroundPackageBeforeLauncher(context) else null
-                            val bestCandidate = if (accessibilityEnabled) LauncherAccessibilityService.getBestReturnCandidatePackage(context) else null
-                            val usageCandidate = if (usageAccessEnabled) ForegroundAppResolver.getRecentForegroundPackage(context, storedPackages) else null
-                            val lastLaunched = ReturnOriginStore.getLastLaunchedPackageName(context)
-                            val storedOriginCount = ReturnOriginStore.getStoredOriginCount(context)
-                            val pendingAgeMs = if (pendingReturnAnimation != null && pendingReturnAnimationStartedAt > 0L) {
-                                SystemClock.elapsedRealtime() - pendingReturnAnimationStartedAt
+                            val beforeLauncherObservation = if (accessibilityEnabled) {
+                                LauncherAccessibilityService.getLastForegroundObservationBeforeLauncher(context)
                             } else {
-                                Long.MAX_VALUE
+                                null
                             }
-                            val freshPendingPackage = pendingReturnAnimation
-                                ?.takeIf { pendingAgeMs in 0..pendingReturnFreshWindowMs }
-                                ?.launchedPackageName
+                            val usageObservation = if (usageAccessEnabled) {
+                                ForegroundAppResolver.getRecentForegroundObservation(context, storedPackages)
+                            } else {
+                                null
+                            }
+                            val storedOriginCount = ReturnOriginStore.getStoredOriginCount(context)
                             Log.d(
                                 RETURN_TAG,
-                                "resume a11y=$accessibilityEnabled usage=$usageAccessEnabled storedPackages=$storedPackages beforeLauncher=$beforeLauncher best=$bestCandidate usageCandidate=$usageCandidate lastLaunched=$lastLaunched storedOrigins=$storedOriginCount pending=${pendingReturnAnimation?.launchedPackageName} pendingAgeMs=$pendingAgeMs freshPending=$freshPendingPackage"
+                                "resume a11y=$accessibilityEnabled usage=$usageAccessEnabled storedPackages=$storedPackages storedOrigins=$storedOriginCount pending=${pendingReturnAnimation?.launchedPackageName} pendingLaunchWall=${pendingReturnAnimationStartedWallClockMs} beforeLauncher=$beforeLauncherObservation usageObservation=$usageObservation"
                             )
 
                             if (!accessibilityEnabled && !usageAccessEnabled && storedOriginCount > 1 && !hasShownUsageAccessPrompt) {
@@ -269,26 +269,16 @@ class MainActivity : ComponentActivity() {
                                 Log.d(RETURN_TAG, "prompt usage access because multiple origins exist and no foreground tracking is available")
                             }
 
-                            val safeLastLaunched = if (storedOriginCount == 1) lastLaunched else null
-                            val returnAnimation = if (accessibilityEnabled) {
-                                val returningPackage = beforeLauncher ?: usageCandidate ?: bestCandidate ?: freshPendingPackage ?: safeLastLaunched
-                                if (!returningPackage.isNullOrBlank()) {
-                                    ReturnOriginStore.get(context, returningPackage)
-                                } else {
-                                    null
-                                }
-                            } else {
-                                val returningPackage = usageCandidate ?: freshPendingPackage ?: safeLastLaunched
-                                if (!returningPackage.isNullOrBlank()) {
-                                    ReturnOriginStore.get(context, returningPackage)
-                                } else {
-                                    null
-                                }
-                            }
+                            val gateDecision = ReturnAnimationGate.resolve(
+                                pendingReturnAnimation = pendingReturnAnimation,
+                                pendingLaunchStartedAtMs = pendingReturnAnimationStartedWallClockMs,
+                                observations = listOfNotNull(beforeLauncherObservation, usageObservation)
+                            )
+                            val returnAnimation = gateDecision.returnAnimation
 
                             Log.d(
                                 RETURN_TAG,
-                                "resume chosen=${returnAnimation?.launchedPackageName} target=${returnAnimation?.packageName} source=${returnAnimation?.source} bounds=${returnAnimation?.bounds != null}"
+                                "resume gateReason=${gateDecision.reason} matchedObservation=${gateDecision.matchedObservation} chosen=${returnAnimation?.launchedPackageName} target=${returnAnimation?.packageName} source=${returnAnimation?.source} bounds=${returnAnimation?.bounds != null}"
                             )
 
                             returnAnimation?.let {
@@ -307,10 +297,10 @@ class MainActivity : ComponentActivity() {
                                 }
                                 activeReturnAnimation = it
                                 returnIconPackage = null
+                                pendingReturnAnimation = null
+                                pendingReturnAnimationStartedWallClockMs = 0L
+                                ReturnOriginStore.clear(context, it.launchedPackageName)
                                 Log.d(RETURN_TAG, "activateReturn launched=${it.launchedPackageName} target=${it.packageName} source=${it.source}")
-                                if (!accessibilityEnabled) {
-                                    pendingReturnAnimation = null
-                                }
                             }
                         }
                     }
@@ -392,7 +382,7 @@ class MainActivity : ComponentActivity() {
                         "saveReturn launched=$packageName target=$returnPackageName source=$source launchBounds=${bounds != null} returnBounds=${returnBounds != null}"
                     )
                     pendingReturnAnimation = returnAnimation
-                    pendingReturnAnimationStartedAt = SystemClock.elapsedRealtime()
+                    pendingReturnAnimationStartedWallClockMs = System.currentTimeMillis()
                     ReturnOriginStore.save(context, packageName, returnAnimation)
                     isAppLaunchAnimating = true
                     activeLaunchBackground = overlayColor
@@ -445,16 +435,19 @@ class MainActivity : ComponentActivity() {
                         override fun onReceive(ctx: Context?, intent: Intent?) {
                             when (intent?.action) {
                                 Intent.ACTION_SCREEN_OFF -> {
+                                    returnResumeGuardState = ReturnResumeGuard.onScreenOff(
+                                        state = returnResumeGuardState,
+                                        launcherWasForeground = isLauncherResumed
+                                    )
                                     if (isLauncherResumed) {
-                                        screenOffWhileLauncherForeground = true
-                                        Log.d(RETURN_TAG, "screen off while launcher foreground -> arm unlock skip")
+                                        Log.d(RETURN_TAG, "screen off while launcher foreground -> suppress return during lockscreen cycle")
                                     }
                                 }
                                 Intent.ACTION_USER_PRESENT -> {
-                                    if (screenOffWhileLauncherForeground) {
-                                        skipNextResumeReturn = true
-                                        screenOffWhileLauncherForeground = false
-                                        Log.d(RETURN_TAG, "user present after launcher screen off -> skip next resume return")
+                                    val previousState = returnResumeGuardState
+                                    returnResumeGuardState = ReturnResumeGuard.onUserPresent(returnResumeGuardState)
+                                    if (previousState != returnResumeGuardState) {
+                                        Log.d(RETURN_TAG, "user present after launcher screen off -> suppress next launcher resume return")
                                     }
                                 }
                                 Intent.ACTION_PACKAGE_ADDED,

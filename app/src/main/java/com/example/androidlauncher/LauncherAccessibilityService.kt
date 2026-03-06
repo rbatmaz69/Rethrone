@@ -120,6 +120,23 @@ class LauncherAccessibilityService : AccessibilityService() {
             return pkg
         }
 
+        fun getLastForegroundPackageBeforeLauncherAt(context: Context): Long {
+            val observedAt = prefs(context).getLong(KEY_LAST_PACKAGE_BEFORE_LAUNCHER_AT, 0L)
+            Log.d(TAG, "getLastBeforeLauncherAt=$observedAt")
+            return observedAt
+        }
+
+        fun getLastForegroundObservationBeforeLauncher(context: Context): ForegroundAppObservation? {
+            val packageName = getLastForegroundPackageBeforeLauncher(context) ?: return null
+            val observedAt = getLastForegroundPackageBeforeLauncherAt(context)
+            if (observedAt <= 0L) return null
+            return ForegroundAppObservation(
+                packageName = packageName,
+                observedAtMs = observedAt,
+                source = "accessibility-before-launcher"
+            )
+        }
+
         fun getBestReturnCandidatePackage(context: Context): String? {
             val prefs = prefs(context)
             val pkg = getLastForegroundPackageBeforeLauncher(context)
