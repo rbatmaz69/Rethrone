@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -73,12 +74,13 @@ import com.example.androidlauncher.ui.FontSelectionMenu
 import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.InfoDialog
+import com.example.androidlauncher.ui.LaunchAnimationOverlay
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
 import com.example.androidlauncher.ui.SizeConfigMenu
 import com.example.androidlauncher.ui.SystemWallpaperView
 import com.example.androidlauncher.ui.WallpaperConfigMenu
 import com.example.androidlauncher.ui.WallpaperCropScreen
-import com.example.androidlauncher.ui.launchAppNoTransition
+import com.example.androidlauncher.ui.launchAppWithSourceBoundsAnimation
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import kotlinx.coroutines.Dispatchers
@@ -188,6 +190,8 @@ class MainActivity : ComponentActivity() {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
+                var isSearchLaunching by remember { mutableStateOf(false) }
+                var activeSearchLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
@@ -560,14 +564,39 @@ class MainActivity : ComponentActivity() {
                             BottomSearch(
                                 apps = allApps,
                                 onClose = { isSearchOpen = false },
-                                onAppLaunch = { app ->
+                                onAppLaunch = { app, bounds ->
+                                    if (isSearchLaunching) return@BottomSearch
+                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@BottomSearch
+                                    isSearchLaunching = true
+                                    activeSearchLaunchBounds = bounds
                                     isSearchOpen = false
-                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                    if (intent != null) launchAppNoTransition(context, intent)
+                                    scope.launch {
+                                        try {
+                                            delay(16)
+                                            val launchSourceView = this@MainActivity.findViewById<View>(android.R.id.content)
+                                            launchAppWithSourceBoundsAnimation(
+                                                context = context,
+                                                intent = intent,
+                                                sourceView = launchSourceView,
+                                                sourceBounds = bounds
+                                            )
+                                            delay(240)
+                                        } finally {
+                                            activeSearchLaunchBounds = null
+                                            isSearchLaunching = false
+                                        }
+                                    }
                                 }
                             )
                         }
                     }
+
+                    LaunchAnimationOverlay(
+                        bounds = activeSearchLaunchBounds,
+                        rootSize = rootSize,
+                        background = menuBackgroundColor,
+                        scrimColor = if (isDarkTextEnabled) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.18f)
+                    )
 
                     activeReturnAnimation?.let { animation ->
                         ReturnAnimationOverlay(

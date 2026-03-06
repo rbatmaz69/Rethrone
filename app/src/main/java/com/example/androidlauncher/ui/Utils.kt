@@ -11,6 +11,7 @@ import android.content.pm.ShortcutInfo
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
+import android.view.View
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -40,7 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -61,6 +61,8 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * Default system-side mapping for app icons to Lucide icons.
@@ -211,6 +213,41 @@ fun getLucideIconByName(name: String): ImageVector? {
     return null
 }
 
+fun launchAppWithSourceBoundsAnimation(
+    context: Context,
+    intent: Intent,
+    sourceView: View?,
+    sourceBounds: Rect?
+) {
+    val safeBounds = sourceBounds ?: run {
+        launchAppNoTransition(context, Intent(intent))
+        return
+    }
+    val launchWidth = safeBounds.width.roundToInt().coerceAtLeast(1)
+    val launchHeight = safeBounds.height.roundToInt().coerceAtLeast(1)
+    if (launchWidth <= 1 || launchHeight <= 1 || sourceView == null) {
+        launchAppNoTransition(context, Intent(intent))
+        return
+    }
+
+    val launchIntent = Intent(intent).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    try {
+        val options = ActivityOptions.makeScaleUpAnimation(
+            sourceView,
+            safeBounds.left.roundToInt().coerceAtLeast(0),
+            safeBounds.top.roundToInt().coerceAtLeast(0),
+            launchWidth,
+            launchHeight
+        )
+        context.startActivity(launchIntent, options.toBundle())
+    } catch (_: Exception) {
+        launchAppNoTransition(context, Intent(intent))
+    }
+}
+
 fun launchAppNoTransition(context: Context, intent: Intent) {
     val activity = context.findActivity()
     try {
@@ -285,6 +322,70 @@ fun ReturnAnimationOverlay(
                     width = with(density) { currentWidthPx.toDp() },
                     height = with(density) { currentHeightPx.toDp() }
                 )
+                .background(background)
+        )
+    }
+}
+
+@Composable
+fun LaunchAnimationOverlay(
+    bounds: Rect?,
+    rootSize: IntSize,
+    background: Color,
+    modifier: Modifier = Modifier,
+    scrimColor: Color = Color.Black.copy(alpha = 0.16f)
+) {
+    if (bounds == null || rootSize.width == 0 || rootSize.height == 0) return
+
+    val density = LocalDensity.current
+    val progress = remember(bounds, rootSize) { Animatable(0f) }
+    LaunchedEffect(bounds, rootSize) {
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(durationMillis = 230, easing = FastOutSlowInEasing))
+    }
+
+    val launchTranslation = remember(bounds, rootSize) {
+        val centerX = rootSize.width / 2f
+        val centerY = rootSize.height / 2f
+        Offset(bounds.center.x - centerX, bounds.center.y - centerY)
+    }
+    val launchStartScale = remember(bounds, rootSize) {
+        val wScale = bounds.width / rootSize.width.toFloat()
+        val hScale = bounds.height / rootSize.height.toFloat()
+        max(wScale, hScale).coerceIn(0.04f, 0.35f)
+    }
+
+    val scale = launchStartScale + (1f - launchStartScale) * progress.value
+    val translationX = launchTranslation.x * (1f - progress.value)
+    val translationY = launchTranslation.y * (1f - progress.value)
+    val scrimAlpha = (progress.value * 0.9f).coerceIn(0f, 1f)
+    val overlayAlpha = (1f - (progress.value * 0.08f)).coerceIn(0.92f, 1f)
+    val cornerRadiusDp = with(density) { (28.dp.toPx() * (1f - progress.value)).toDp() }
+    val animatedShape = RoundedCornerShape(cornerRadiusDp)
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .zIndex(1900f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(scrimColor.copy(alpha = scrimColor.alpha * scrimAlpha))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    this.scaleX = scale
+                    this.scaleY = scale
+                    this.translationX = translationX
+                    this.translationY = translationY
+                    this.transformOrigin = TransformOrigin.Center
+                    this.alpha = overlayAlpha
+                    this.shape = animatedShape
+                    this.clip = true
+                }
                 .background(background)
         )
     }
