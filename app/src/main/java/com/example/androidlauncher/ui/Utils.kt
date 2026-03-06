@@ -15,6 +15,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -281,6 +282,7 @@ fun ReturnAnimationOverlay(
     background: Color,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
+    durationMillis: Int = 260,
     targetScale: Float = 0.7f
 ) {
     if (bounds == null || rootSize.width == 0 || rootSize.height == 0) {
@@ -289,32 +291,39 @@ fun ReturnAnimationOverlay(
     }
     val density = LocalDensity.current
     val progress = remember { Animatable(0f) }
-    LaunchedEffect(bounds, rootSize) {
+    LaunchedEffect(bounds, rootSize, targetScale, durationMillis) {
         progress.snapTo(0f)
-        progress.animateTo(1f, tween(durationMillis = 220, easing = FastOutSlowInEasing))
+        progress.animateTo(1f, tween(durationMillis = durationMillis, easing = LinearOutSlowInEasing))
         onFinished()
     }
+
     val centerX = rootSize.width / 2f
     val centerY = rootSize.height / 2f
     val launchTranslation = Offset(bounds.center.x - centerX, bounds.center.y - centerY)
-    val targetWidthPx = (bounds.width * targetScale).coerceAtLeast(with(density) { 24.dp.toPx() })
-    val targetHeightPx = (bounds.height * targetScale).coerceAtLeast(with(density) { 24.dp.toPx() })
-    val translationX = launchTranslation.x * progress.value
-    val translationY = launchTranslation.y * progress.value
-    val currentWidthPx = rootSize.width - (rootSize.width - targetWidthPx) * progress.value
-    val currentHeightPx = rootSize.height - (rootSize.height - targetHeightPx) * progress.value
+    val targetWidthPx = (bounds.width * targetScale).coerceAtLeast(with(density) { 30.dp.toPx() })
+    val targetHeightPx = (bounds.height * targetScale).coerceAtLeast(with(density) { 30.dp.toPx() })
+    val easedProgress = progress.value
+    val translationX = launchTranslation.x * easedProgress
+    val translationY = launchTranslation.y * easedProgress
+    val currentWidthPx = rootSize.width - (rootSize.width - targetWidthPx) * easedProgress
+    val currentHeightPx = rootSize.height - (rootSize.height - targetHeightPx) * easedProgress
     val currentCenterX = centerX + translationX
     val currentCenterY = centerY + translationY
     val topLeftX = (currentCenterX - currentWidthPx / 2f).toInt()
     val topLeftY = (currentCenterY - currentHeightPx / 2f).toInt()
+    val radiusProgress = ((easedProgress - 0.18f) / 0.82f).coerceIn(0f, 1f)
+    val cornerRadiusDp = with(density) {
+        val startRadiusPx = 6.dp.toPx()
+        val endRadiusPx = 26.dp.toPx()
+        (startRadiusPx + (endRadiusPx - startRadiusPx) * radiusProgress).toDp()
+    }
+    val animatedShape = RoundedCornerShape(cornerRadiusDp)
+    val overlayAlpha = if (easedProgress < 0.82f) 1f else (1f - ((easedProgress - 0.82f) / 0.18f)).coerceIn(0f, 1f)
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .zIndex(2000f)
-            .graphicsLayer {
-                this.transformOrigin = TransformOrigin.Center
-                this.alpha = 1f - progress.value
-            }
     ) {
         Box(
             modifier = Modifier
@@ -323,6 +332,11 @@ fun ReturnAnimationOverlay(
                     width = with(density) { currentWidthPx.toDp() },
                     height = with(density) { currentHeightPx.toDp() }
                 )
+                .graphicsLayer {
+                    this.shape = animatedShape
+                    this.clip = true
+                    this.alpha = overlayAlpha
+                }
                 .background(background)
         )
     }

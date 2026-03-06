@@ -192,6 +192,8 @@ class MainActivity : ComponentActivity() {
                 var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var returnIconPackage by remember { mutableStateOf<String?>(null) }
+                val returnOverlayDurationMs = 260L
+                val returnBounceDelayMs = 185L
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
@@ -229,7 +231,7 @@ class MainActivity : ComponentActivity() {
                                     selectedFolderForConfig = null
                                 }
                                 activeReturnAnimation = it
-                                returnIconPackage = it.packageName
+                                returnIconPackage = null
                                 pendingReturnAnimation = null
                             }
                         }
@@ -238,9 +240,17 @@ class MainActivity : ComponentActivity() {
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                 }
 
+                LaunchedEffect(activeReturnAnimation?.packageName) {
+                    val packageName = activeReturnAnimation?.packageName ?: return@LaunchedEffect
+                    delay(returnBounceDelayMs)
+                    if (activeReturnAnimation?.packageName == packageName) {
+                        returnIconPackage = packageName
+                    }
+                }
+
                 LaunchedEffect(returnIconPackage) {
                     if (returnIconPackage != null) {
-                        delay(300)
+                        delay(220)
                         returnIconPackage = null
                     }
                 }
@@ -632,7 +642,8 @@ class MainActivity : ComponentActivity() {
                             rootSize = rootSize,
                             background = Color(0xFF0F0F0F),
                             onFinished = { activeReturnAnimation = null },
-                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.65f else 0.7f
+                            durationMillis = returnOverlayDurationMs.toInt(),
+                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
                         )
                     }
 
