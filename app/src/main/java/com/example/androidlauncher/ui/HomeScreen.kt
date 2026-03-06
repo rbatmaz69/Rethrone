@@ -401,6 +401,7 @@ private fun FavoriteItem(
         label = "HomeReturnBounce"
     )
     val itemBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
+    val iconBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
 
     // Horizontaler Swipe-Zustand für Shortcuts
     var horizontalOffset by remember { mutableFloatStateOf(0f) }
@@ -437,7 +438,7 @@ private fun FavoriteItem(
                     }
                     .bounceClick(intSrc)
                     .clickable(interactionSource = intSrc, indication = null) {
-                        val launchBounds = itemBounds.value ?: return@clickable
+                        val launchBounds = iconBounds.value ?: itemBounds.value ?: return@clickable
                         val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@clickable
                         onLaunchApp(app.packageName, intent, launchBounds)
                     }
@@ -451,7 +452,9 @@ private fun FavoriteItem(
             Box(modifier = Modifier.graphicsLayer {
                 scaleX = bounceScale
                 scaleY = bounceScale
-            }) {
+            }.onGloballyPositioned { coordinates ->
+                iconBounds.value = coordinates.boundsInRoot()
+             }) {
                 AppIconView(app, showBadge = true)
             }
             if (showLabels) {

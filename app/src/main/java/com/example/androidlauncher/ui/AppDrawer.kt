@@ -820,20 +820,23 @@ fun AppItem(
     onAppLaunchRequested: ((AppInfo, Rect?) -> Unit)? = null,
     bouncePackage: String? = null
 ) {
-    val context = LocalContext.current
-    val fontSize = LocalFontSize.current
-    val fontWeight = LocalFontWeight.current
-    val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val intSrc = remember { MutableInteractionSource() }
-    var itemBounds by remember { mutableStateOf<Rect?>(null) }
-    val bounceScale by animateFloatAsState(targetValue = if (bouncePackage == app.packageName) 1.12f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "DrawerReturnBounce")
+     val context = LocalContext.current
+     val fontSize = LocalFontSize.current
+     val fontWeight = LocalFontWeight.current
+     val isDarkTextEnabled = LocalDarkTextEnabled.current
+     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+     val intSrc = remember { MutableInteractionSource() }
+     var itemBounds by remember { mutableStateOf<Rect?>(null) }
+     var iconBounds by remember { mutableStateOf<Rect?>(null) }
+     val bounceScale by animateFloatAsState(targetValue = if (bouncePackage == app.packageName) 1.12f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "DrawerReturnBounce")
 
-    Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.onGloballyPositioned { coordinates -> itemBounds = coordinates.boundsInRoot() }.graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }.bounceClick(intSrc, enabled = !isEditMode).combinedClickable(interactionSource = intSrc, indication = null, enabled = !isEditMode, onClick = { onAppLaunchRequested?.let { it(app, itemBounds) } ?: run { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } } }, onLongClick = { itemBounds?.let { onLongPress(app, it) } })) {
-            AppIconView(app)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), fontWeight = fontWeight.weight)
-        }
-    }
-}
+     Box(modifier = Modifier.width(if (adaptiveColumns == 5) 64.dp else 80.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.onGloballyPositioned { coordinates -> itemBounds = coordinates.boundsInRoot() }.graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }.bounceClick(intSrc, enabled = !isEditMode).combinedClickable(interactionSource = intSrc, indication = null, enabled = !isEditMode, onClick = { onAppLaunchRequested?.let { it(app, iconBounds ?: itemBounds) } ?: run { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } } }, onLongClick = { (iconBounds ?: itemBounds)?.let { onLongPress(app, it) } })) {
+            Box(modifier = Modifier.onGloballyPositioned { coordinates -> iconBounds = coordinates.boundsInRoot() }) {
+                AppIconView(app)
+            }
+             Spacer(modifier = Modifier.height(8.dp))
+             Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), fontWeight = fontWeight.weight)
+         }
+     }
+ }

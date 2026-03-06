@@ -16,5 +16,6 @@ enum class LaunchSource {
 data class ReturnAnimation(
     val bounds: androidx.compose.ui.geometry.Rect?, // The screen bounds of the icon that launched the app
     val source: LaunchSource, // Where the launch came from
-    val packageName: String // The package name of the app (used for filtering/matching)
+    val packageName: String, // The return target identifier (icon/search button bounce target)
+    val launchedPackageName: String = packageName // The actually launched app package for foreground matching
 )
