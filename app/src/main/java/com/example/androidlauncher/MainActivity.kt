@@ -22,6 +22,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.tween
@@ -80,7 +81,7 @@ import com.example.androidlauncher.ui.SizeConfigMenu
 import com.example.androidlauncher.ui.SystemWallpaperView
 import com.example.androidlauncher.ui.WallpaperConfigMenu
 import com.example.androidlauncher.ui.WallpaperCropScreen
-import com.example.androidlauncher.ui.launchAppWithSourceBoundsAnimation
+import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import kotlinx.coroutines.Dispatchers
@@ -190,9 +191,12 @@ class MainActivity : ComponentActivity() {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
+                var shouldSkipSearchExitAnimation by remember { mutableStateOf(false) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
                 var activeSearchLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+                val searchLaunchDurationMs = 320L
+                val searchLaunchStartDelayMs = 90L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
@@ -266,6 +270,26 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                fun requestSearchLaunch(intent: Intent, bounds: androidx.compose.ui.geometry.Rect?) {
+                    if (isSearchLaunching) return
+                    isSearchLaunching = true
+                    shouldSkipSearchExitAnimation = true
+                    activeSearchLaunchBounds = bounds
+                    isSearchOpen = false
+
+                    scope.launch {
+                        try {
+                            delay(searchLaunchStartDelayMs)
+                            launchAppNoTransition(context, Intent(intent))
+                            delay((searchLaunchDurationMs - searchLaunchStartDelayMs).coerceAtLeast(0L))
+                        } finally {
+                            activeSearchLaunchBounds = null
+                            isSearchLaunching = false
+                            shouldSkipSearchExitAnimation = false
+                        }
+                    }
+                }
+
                 LaunchedEffect(Unit) { refreshAppList() }
 
                 DisposableEffect(Unit) {
@@ -324,7 +348,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     when {
                         selectedFolderForConfig != null -> selectedFolderForConfig = null
-                        isSearchOpen -> isSearchOpen = false
+                        isSearchOpen -> {
+                            shouldSkipSearchExitAnimation = false
+                            isSearchOpen = false
+                        }
                         isFontSelectionOpen -> isFontSelectionOpen = false
                         isWallpaperConfigOpen -> isWallpaperConfigOpen = false
                         isIconConfigOpen -> isIconConfigOpen = false
@@ -397,7 +424,10 @@ class MainActivity : ComponentActivity() {
                                 isSettingsOpen = isSettingsOpen,
                                 isSearchOpen = isSearchOpen,
                                 onOpenDrawer = { isDrawerOpen = true },
-                                onOpenSearch = { isSearchOpen = true },
+                                onOpenSearch = {
+                                    shouldSkipSearchExitAnimation = false
+                                    isSearchOpen = true
+                                },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
@@ -551,65 +581,32 @@ class MainActivity : ComponentActivity() {
                     }
 
                     AnimatedVisibility(
-                        visible = isSearchOpen,
+                        visible = isSearchOpen && !isSearchLaunching,
                         enter = fadeIn(animationSpec = tween(200)),
-                        exit = fadeOut(animationSpec = tween(200))
+                        exit = if (shouldSkipSearchExitAnimation) ExitTransition.None else fadeOut(animationSpec = tween(200))
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.3f))
                                 .pointerInput(Unit) {
-                                    detectTapGestures { isSearchOpen = false }
+                                    detectTapGestures {
+                                        shouldSkipSearchExitAnimation = false
+                                        isSearchOpen = false
+                                    }
                                 }
                         ) {
                             BottomSearch(
                                 apps = allApps,
-                                onClose = { isSearchOpen = false },
-                                onAppLaunch = { app, bounds ->
-                                    if (isSearchLaunching) return@BottomSearch
-                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@BottomSearch
-                                    isSearchLaunching = true
-                                    activeSearchLaunchBounds = bounds
+                                onClose = {
+                                    shouldSkipSearchExitAnimation = false
                                     isSearchOpen = false
-                                    scope.launch {
-                                        try {
-                                            delay(16)
-                                            val launchSourceView = this@MainActivity.findViewById<View>(android.R.id.content)
-                                            launchAppWithSourceBoundsAnimation(
-                                                context = context,
-                                                intent = intent,
-                                                sourceView = launchSourceView,
-                                                sourceBounds = bounds
-                                            )
-                                            delay(240)
-                                        } finally {
-                                            activeSearchLaunchBounds = null
-                                            isSearchLaunching = false
-                                        }
-                                    }
+                                },
+                                onAppLaunch = { app, bounds ->
+                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@BottomSearch
+                                    requestSearchLaunch(intent, bounds)
                                 },
                                 onWebLaunch = { intent, bounds ->
-                                    if (isSearchLaunching) return@BottomSearch
-                                    isSearchLaunching = true
-                                    activeSearchLaunchBounds = bounds
-                                    isSearchOpen = false
-                                    scope.launch {
-                                        try {
-                                            delay(16)
-                                            val launchSourceView = this@MainActivity.findViewById<View>(android.R.id.content)
-                                            launchAppWithSourceBoundsAnimation(
-                                                context = context,
-                                                intent = intent,
-                                                sourceView = launchSourceView,
-                                                sourceBounds = bounds
-                                            )
-                                            delay(240)
-                                        } finally {
-                                            activeSearchLaunchBounds = null
-                                            isSearchLaunching = false
-                                        }
-                                    }
+                                    requestSearchLaunch(intent, bounds)
                                 },
                                 preferredImeWebLaunchBounds = homeSearchButtonBounds
                              )
@@ -621,7 +618,7 @@ class MainActivity : ComponentActivity() {
                         bounds = activeSearchLaunchBounds,
                         rootSize = rootSize,
                         background = menuBackgroundColor,
-                        scrimColor = if (isDarkTextEnabled) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.18f)
+                        scrimColor = Color.Transparent
                     )
 
                     activeReturnAnimation?.let { animation ->

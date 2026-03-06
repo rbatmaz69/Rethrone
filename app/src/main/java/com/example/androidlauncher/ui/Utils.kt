@@ -341,7 +341,7 @@ fun LaunchAnimationOverlay(
     val progress = remember(bounds, rootSize) { Animatable(0f) }
     LaunchedEffect(bounds, rootSize) {
         progress.snapTo(0f)
-        progress.animateTo(1f, tween(durationMillis = 230, easing = FastOutSlowInEasing))
+        progress.animateTo(1f, tween(durationMillis = 320, easing = FastOutSlowInEasing))
     }
 
     val launchTranslation = remember(bounds, rootSize) {
