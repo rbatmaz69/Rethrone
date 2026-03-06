@@ -10,7 +10,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
-import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -200,8 +199,8 @@ class MainActivity : ComponentActivity() {
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
                 var activeSearchLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-                val searchLaunchDurationMs = 320L
-                val searchLaunchStartDelayMs = 90L
+                val searchLaunchDurationMs = 260L
+                val searchLaunchSettleAfterStartMs = 30L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
@@ -284,9 +283,9 @@ class MainActivity : ComponentActivity() {
 
                     scope.launch {
                         try {
-                            delay(searchLaunchStartDelayMs)
+                            delay(searchLaunchDurationMs)
                             launchAppNoTransition(context, Intent(intent))
-                            delay((searchLaunchDurationMs - searchLaunchStartDelayMs).coerceAtLeast(0L))
+                            delay(searchLaunchSettleAfterStartMs)
                         } finally {
                             activeSearchLaunchBounds = null
                             isSearchLaunching = false
@@ -623,6 +622,7 @@ class MainActivity : ComponentActivity() {
                         bounds = activeSearchLaunchBounds,
                         rootSize = rootSize,
                         background = searchLaunchOverlayColor,
+                        durationMillis = searchLaunchDurationMs.toInt(),
                         scrimColor = Color.Transparent
                     )
 
