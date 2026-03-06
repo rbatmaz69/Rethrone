@@ -183,6 +183,11 @@ class MainActivity : ComponentActivity() {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground
                 else currentTheme.drawerBackground
+                val searchLaunchOverlayColor = if (isDarkTextEnabled) {
+                    currentTheme.lightBackground.copy(alpha = 0.97f)
+                } else {
+                    currentTheme.drawerBackground.copy(alpha = 0.985f)
+                }
 
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
                 var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
@@ -617,7 +622,7 @@ class MainActivity : ComponentActivity() {
                     LaunchAnimationOverlay(
                         bounds = activeSearchLaunchBounds,
                         rootSize = rootSize,
-                        background = menuBackgroundColor,
+                        background = searchLaunchOverlayColor,
                         scrimColor = Color.Transparent
                     )
 

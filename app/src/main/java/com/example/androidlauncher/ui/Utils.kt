@@ -49,6 +49,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -345,6 +347,7 @@ fun LaunchAnimationOverlay(
         progress.animateTo(1f, tween(durationMillis = 320, easing = FastOutSlowInEasing))
     }
 
+    val isDarkSurface = background.luminance() < 0.45f
     val startWidthPx = bounds.width.coerceAtLeast(with(density) { 28.dp.toPx() })
     val startHeightPx = bounds.height.coerceAtLeast(with(density) { 28.dp.toPx() })
     val currentWidthPx = startWidthPx + (rootSize.width - startWidthPx) * progress.value
@@ -357,30 +360,59 @@ fun LaunchAnimationOverlay(
         (startRadiusPx + (endRadiusPx - startRadiusPx) * progress.value).toDp()
     }
     val animatedShape = RoundedCornerShape(cornerRadiusDp)
-    val surfaceAlpha = (0.94f + 0.06f * progress.value).coerceIn(0f, 1f)
-    val highlightAlpha = (0.16f * (1f - progress.value)).coerceIn(0f, 1f)
+    val surfaceAlpha = (0.965f + 0.03f * progress.value).coerceIn(0f, 1f)
     val shadowElevation = with(density) {
         (24.dp.toPx() + (2.dp.toPx() - 24.dp.toPx()) * progress.value)
     }
-    val gradientBrush = remember(background, progress.value) {
+    val gradientStartColor = remember(background, isDarkSurface, surfaceAlpha) {
+        lerp(background, if (isDarkSurface) Color.White else Color.Black, if (isDarkSurface) 0.055f else 0.022f)
+            .copy(alpha = surfaceAlpha)
+    }
+    val gradientMidColor = remember(background, isDarkSurface, surfaceAlpha) {
+        lerp(background, if (isDarkSurface) Color.White else Color.Black, if (isDarkSurface) 0.028f else 0.012f)
+            .copy(alpha = surfaceAlpha * 0.995f)
+    }
+    val gradientEndColor = remember(background, isDarkSurface, surfaceAlpha) {
+        lerp(background, if (isDarkSurface) Color.Black else Color.Black, if (isDarkSurface) 0.03f else 0.018f)
+            .copy(alpha = surfaceAlpha * 0.988f)
+    }
+    val gradientBrush = remember(gradientStartColor, gradientMidColor, gradientEndColor, rootSize) {
         Brush.linearGradient(
             colors = listOf(
-                background.copy(alpha = surfaceAlpha),
-                background.copy(alpha = surfaceAlpha * 0.985f),
-                background.copy(alpha = surfaceAlpha * 0.965f)
+                gradientStartColor,
+                gradientMidColor,
+                gradientEndColor
             ),
             start = Offset.Zero,
-            end = Offset(rootSize.width.toFloat(), rootSize.height.toFloat())
+            end = Offset(rootSize.width.toFloat() * 0.92f, rootSize.height.toFloat())
         )
     }
-    val highlightBrush = remember(background, progress.value) {
+    val highlightColor = remember(background, isDarkSurface, progress.value) {
+        lerp(background, if (isDarkSurface) Color.White else Color.White, if (isDarkSurface) 0.18f else 0.08f)
+            .copy(alpha = if (isDarkSurface) 0.11f * (1f - progress.value) else 0.07f * (1f - progress.value))
+    }
+    val edgeTintColor = remember(background, isDarkSurface, progress.value) {
+        lerp(background, if (isDarkSurface) Color.White else Color.Black, if (isDarkSurface) 0.08f else 0.035f)
+            .copy(alpha = if (isDarkSurface) 0.06f * (1f - progress.value * 0.75f) else 0.035f * (1f - progress.value * 0.7f))
+    }
+    val highlightBrush = remember(highlightColor, currentWidthPx, currentHeightPx) {
         Brush.radialGradient(
             colors = listOf(
-                Color.White.copy(alpha = highlightAlpha),
+                highlightColor,
                 Color.Transparent
             ),
-            center = Offset(currentWidthPx * 0.25f, currentHeightPx * 0.22f),
-            radius = max(currentWidthPx, currentHeightPx) * 0.72f
+            center = Offset(currentWidthPx * 0.28f, currentHeightPx * 0.24f),
+            radius = max(currentWidthPx, currentHeightPx) * 0.55f
+        )
+    }
+    val edgeBrush = remember(edgeTintColor, currentWidthPx, currentHeightPx) {
+        Brush.linearGradient(
+            colors = listOf(
+                Color.Transparent,
+                edgeTintColor
+            ),
+            start = Offset(currentWidthPx * 0.4f, currentHeightPx * 0.25f),
+            end = Offset(currentWidthPx, currentHeightPx)
         )
     }
     val scrimAlpha = (scrimColor.alpha * progress.value * 0.3f).coerceIn(0f, scrimColor.alpha)
@@ -415,8 +447,8 @@ fun LaunchAnimationOverlay(
                     this.shape = animatedShape
                     this.clip = true
                     this.shadowElevation = shadowElevation
-                    this.ambientShadowColor = Color.Black.copy(alpha = 0.10f)
-                    this.spotShadowColor = Color.Black.copy(alpha = 0.14f)
+                    this.ambientShadowColor = Color.Black.copy(alpha = 0.08f)
+                    this.spotShadowColor = Color.Black.copy(alpha = 0.12f)
                 }
                 .background(gradientBrush)
         ) {
@@ -424,6 +456,11 @@ fun LaunchAnimationOverlay(
                 modifier = Modifier
                     .matchParentSize()
                     .background(highlightBrush)
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(edgeBrush)
             )
         }
     }
