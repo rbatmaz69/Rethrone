@@ -2,6 +2,7 @@ package com.example.androidlauncher
 
 import android.app.AppOpsManager
 import android.app.usage.UsageEvents
+import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -13,6 +14,9 @@ import android.util.Log
 private const val TAG = "UsageReturn"
 
 object ForegroundAppResolver {
+    private const val EVENT_LOOKBACK_MS = 15_000L
+    private const val STATS_LOOKBACK_MS = 6 * 60 * 60 * 1000L
+
     fun openUsageAccessSettings(context: Context) {
         val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -33,24 +37,55 @@ object ForegroundAppResolver {
         return granted
     }
 
-    fun getRecentForegroundPackage(context: Context, lookbackMs: Long = 15_000L): String? {
+    fun getRecentForegroundPackage(context: Context, allowedPackages: Set<String> = emptySet()): String? {
         if (!hasUsageAccess(context)) return null
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return null
+        val eventCandidate = getEventCandidate(context, usageStatsManager, allowedPackages)
+        val statsCandidate = getUsageStatsCandidate(context, usageStatsManager, allowedPackages)
+        val resolved = eventCandidate ?: statsCandidate
+        Log.d(TAG, "recentForegroundCandidate=$resolved eventCandidate=$eventCandidate statsCandidate=$statsCandidate")
+        return resolved
+    }
+
+    private fun getEventCandidate(context: Context, usageStatsManager: UsageStatsManager, allowedPackages: Set<String>): String? {
         val now = System.currentTimeMillis()
-        val begin = now - lookbackMs
+        val begin = now - EVENT_LOOKBACK_MS
         val events = usageStatsManager.queryEvents(begin, now)
         val event = UsageEvents.Event()
         var candidate: String? = null
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             val packageName = event.packageName?.takeIf { it.isNotBlank() } ?: continue
-            if (packageName == context.packageName) continue
-            if (packageName == "com.android.systemui" || packageName.contains("systemui")) continue
+            if (shouldIgnorePackage(context, packageName, allowedPackages)) continue
             if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
                 candidate = packageName
             }
         }
-        Log.d(TAG, "recentForegroundCandidate=$candidate")
+        Log.d(TAG, "eventCandidate=$candidate")
         return candidate
+    }
+
+    private fun getUsageStatsCandidate(context: Context, usageStatsManager: UsageStatsManager, allowedPackages: Set<String>): String? {
+        val now = System.currentTimeMillis()
+        val stats = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            now - STATS_LOOKBACK_MS,
+            now
+        ) ?: return null
+
+        val candidate = stats
+            .asSequence()
+            .filter { !shouldIgnorePackage(context, it.packageName, allowedPackages) }
+            .maxByOrNull { it.lastTimeUsed }
+            ?.packageName
+
+        Log.d(TAG, "statsCandidate=$candidate")
+        return candidate
+    }
+
+    private fun shouldIgnorePackage(context: Context, packageName: String, allowedPackages: Set<String>): Boolean {
+        if (packageName == context.packageName || packageName == "com.android.systemui" || packageName.contains("systemui")) return true
+        if (allowedPackages.isNotEmpty() && packageName !in allowedPackages) return true
+        return false
     }
 }

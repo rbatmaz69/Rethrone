@@ -230,9 +230,10 @@ class MainActivity : ComponentActivity() {
                         if (event == Lifecycle.Event.ON_RESUME) {
                             val accessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
                             val usageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
+                            val storedPackages = ReturnOriginStore.getStoredPackageNames(context)
                             val beforeLauncher = if (accessibilityEnabled) LauncherAccessibilityService.getLastForegroundPackageBeforeLauncher(context) else null
                             val bestCandidate = if (accessibilityEnabled) LauncherAccessibilityService.getBestReturnCandidatePackage(context) else null
-                            val usageCandidate = if (!accessibilityEnabled) ForegroundAppResolver.getRecentForegroundPackage(context) else null
+                            val usageCandidate = if (usageAccessEnabled) ForegroundAppResolver.getRecentForegroundPackage(context, storedPackages) else null
                             val lastLaunched = ReturnOriginStore.getLastLaunchedPackageName(context)
                             val storedOriginCount = ReturnOriginStore.getStoredOriginCount(context)
                             val pendingAgeMs = if (pendingReturnAnimation != null && pendingReturnAnimationStartedAt > 0L) {
@@ -245,7 +246,7 @@ class MainActivity : ComponentActivity() {
                                 ?.launchedPackageName
                             Log.d(
                                 RETURN_TAG,
-                                "resume a11y=$accessibilityEnabled usage=$usageAccessEnabled beforeLauncher=$beforeLauncher best=$bestCandidate usageCandidate=$usageCandidate lastLaunched=$lastLaunched storedOrigins=$storedOriginCount pending=${pendingReturnAnimation?.launchedPackageName} pendingAgeMs=$pendingAgeMs freshPending=$freshPendingPackage"
+                                "resume a11y=$accessibilityEnabled usage=$usageAccessEnabled storedPackages=$storedPackages beforeLauncher=$beforeLauncher best=$bestCandidate usageCandidate=$usageCandidate lastLaunched=$lastLaunched storedOrigins=$storedOriginCount pending=${pendingReturnAnimation?.launchedPackageName} pendingAgeMs=$pendingAgeMs freshPending=$freshPendingPackage"
                             )
 
                             if (!accessibilityEnabled && !usageAccessEnabled && storedOriginCount > 1 && !hasShownUsageAccessPrompt) {
@@ -256,7 +257,7 @@ class MainActivity : ComponentActivity() {
 
                             val safeLastLaunched = if (storedOriginCount == 1) lastLaunched else null
                             val returnAnimation = if (accessibilityEnabled) {
-                                val returningPackage = beforeLauncher ?: bestCandidate ?: freshPendingPackage ?: safeLastLaunched
+                                val returningPackage = beforeLauncher ?: usageCandidate ?: bestCandidate ?: freshPendingPackage ?: safeLastLaunched
                                 if (!returningPackage.isNullOrBlank()) {
                                     ReturnOriginStore.get(context, returningPackage)
                                 } else {

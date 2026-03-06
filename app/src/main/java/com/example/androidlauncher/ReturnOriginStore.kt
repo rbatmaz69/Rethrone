@@ -12,6 +12,16 @@ private const val TAG = "ReturnStore"
 object ReturnOriginStore {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    fun getStoredPackageNames(context: Context): Set<String> {
+        val packages = prefs(context).all.keys
+            .asSequence()
+            .filter { it.startsWith(ENTRY_PREFIX) }
+            .map { it.removePrefix(ENTRY_PREFIX) }
+            .toSet()
+        Log.d(TAG, "storedPackages=$packages")
+        return packages
+    }
+
     fun getStoredOriginCount(context: Context): Int {
         val count = prefs(context).all.keys.count { it.startsWith(ENTRY_PREFIX) }
         Log.d(TAG, "storedOriginCount=$count")
