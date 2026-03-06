@@ -21,6 +21,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.tween
@@ -33,6 +34,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -73,6 +77,7 @@ import com.example.androidlauncher.ui.FontSelectionMenu
 import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.InfoDialog
+import com.example.androidlauncher.ui.LaunchAnimationOverlay
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
 import com.example.androidlauncher.ui.SizeConfigMenu
 import com.example.androidlauncher.ui.SystemWallpaperView
@@ -92,6 +97,8 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
+        private const val SEARCH_RETURN_TARGET = "__search_return_target__"
+        private const val RETURN_TAG = "ReturnFlow"
     }
 
     private lateinit var backCallback: OnBackPressedCallback
@@ -157,6 +164,8 @@ class MainActivity : ComponentActivity() {
 
             var isWallpaperCropOpen by remember { mutableStateOf(false) }
             var pendingWallpaperUri by remember { mutableStateOf<Uri?>(null) }
+            var showUsageAccessPrompt by remember { mutableStateOf(false) }
+            var hasShownUsageAccessPrompt by remember { mutableStateOf(false) }
 
             val wallpaperPickerLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.PickVisualMedia()
@@ -180,14 +189,32 @@ class MainActivity : ComponentActivity() {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground
                 else currentTheme.drawerBackground
+                val searchLaunchOverlayColor = if (isDarkTextEnabled) {
+                    currentTheme.lightBackground.copy(alpha = 0.97f)
+                } else {
+                    currentTheme.drawerBackground.copy(alpha = 0.985f)
+                }
 
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
                 var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
+                var pendingReturnAnimationStartedAt by remember { mutableStateOf(0L) }
                 var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var returnIconPackage by remember { mutableStateOf<String?>(null) }
+                var searchButtonBounceToken by remember { mutableStateOf(0) }
+                val returnOverlayDurationMs = 260L
+                val returnBounceDelayMs = 185L
+                val pendingReturnFreshWindowMs = 2200L
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
+                var shouldSkipSearchExitAnimation by remember { mutableStateOf(false) }
+                var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+                var isSearchLaunching by remember { mutableStateOf(false) }
+                var isAppLaunchAnimating by remember { mutableStateOf(false) }
+                var activeLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+                var activeLaunchBackground by remember { mutableStateOf(searchLaunchOverlayColor) }
+                val searchLaunchDurationMs = 260L
+                val searchLaunchSettleAfterStartMs = 30L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
@@ -197,11 +224,74 @@ class MainActivity : ComponentActivity() {
                 var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
+                var isLauncherResumed by remember { mutableStateOf(false) }
+                var screenOffWhileLauncherForeground by remember { mutableStateOf(false) }
+                var skipNextResumeReturn by remember { mutableStateOf(false) }
 
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
-                            pendingReturnAnimation?.let {
+                            isLauncherResumed = true
+                        }
+                        if (event == Lifecycle.Event.ON_PAUSE) {
+                            isLauncherResumed = false
+                        }
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            if (skipNextResumeReturn) {
+                                Log.d(RETURN_TAG, "skip return animation after lock/unlock because launcher was foreground at screen off")
+                                skipNextResumeReturn = false
+                                return@LifecycleEventObserver
+                            }
+                            val accessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
+                            val usageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
+                            val storedPackages = ReturnOriginStore.getStoredPackageNames(context)
+                            val beforeLauncher = if (accessibilityEnabled) LauncherAccessibilityService.getLastForegroundPackageBeforeLauncher(context) else null
+                            val bestCandidate = if (accessibilityEnabled) LauncherAccessibilityService.getBestReturnCandidatePackage(context) else null
+                            val usageCandidate = if (usageAccessEnabled) ForegroundAppResolver.getRecentForegroundPackage(context, storedPackages) else null
+                            val lastLaunched = ReturnOriginStore.getLastLaunchedPackageName(context)
+                            val storedOriginCount = ReturnOriginStore.getStoredOriginCount(context)
+                            val pendingAgeMs = if (pendingReturnAnimation != null && pendingReturnAnimationStartedAt > 0L) {
+                                SystemClock.elapsedRealtime() - pendingReturnAnimationStartedAt
+                            } else {
+                                Long.MAX_VALUE
+                            }
+                            val freshPendingPackage = pendingReturnAnimation
+                                ?.takeIf { pendingAgeMs in 0..pendingReturnFreshWindowMs }
+                                ?.launchedPackageName
+                            Log.d(
+                                RETURN_TAG,
+                                "resume a11y=$accessibilityEnabled usage=$usageAccessEnabled storedPackages=$storedPackages beforeLauncher=$beforeLauncher best=$bestCandidate usageCandidate=$usageCandidate lastLaunched=$lastLaunched storedOrigins=$storedOriginCount pending=${pendingReturnAnimation?.launchedPackageName} pendingAgeMs=$pendingAgeMs freshPending=$freshPendingPackage"
+                            )
+
+                            if (!accessibilityEnabled && !usageAccessEnabled && storedOriginCount > 1 && !hasShownUsageAccessPrompt) {
+                                showUsageAccessPrompt = true
+                                hasShownUsageAccessPrompt = true
+                                Log.d(RETURN_TAG, "prompt usage access because multiple origins exist and no foreground tracking is available")
+                            }
+
+                            val safeLastLaunched = if (storedOriginCount == 1) lastLaunched else null
+                            val returnAnimation = if (accessibilityEnabled) {
+                                val returningPackage = beforeLauncher ?: usageCandidate ?: bestCandidate ?: freshPendingPackage ?: safeLastLaunched
+                                if (!returningPackage.isNullOrBlank()) {
+                                    ReturnOriginStore.get(context, returningPackage)
+                                } else {
+                                    null
+                                }
+                            } else {
+                                val returningPackage = usageCandidate ?: freshPendingPackage ?: safeLastLaunched
+                                if (!returningPackage.isNullOrBlank()) {
+                                    ReturnOriginStore.get(context, returningPackage)
+                                } else {
+                                    null
+                                }
+                            }
+
+                            Log.d(
+                                RETURN_TAG,
+                                "resume chosen=${returnAnimation?.launchedPackageName} target=${returnAnimation?.packageName} source=${returnAnimation?.source} bounds=${returnAnimation?.bounds != null}"
+                            )
+
+                            returnAnimation?.let {
                                 isDrawerOpen = it.source == LaunchSource.DRAWER
                                 if (!isDrawerOpen) {
                                     isSettingsOpen = false
@@ -216,8 +306,11 @@ class MainActivity : ComponentActivity() {
                                     selectedFolderForConfig = null
                                 }
                                 activeReturnAnimation = it
-                                returnIconPackage = it.packageName
-                                pendingReturnAnimation = null
+                                returnIconPackage = null
+                                Log.d(RETURN_TAG, "activateReturn launched=${it.launchedPackageName} target=${it.packageName} source=${it.source}")
+                                if (!accessibilityEnabled) {
+                                    pendingReturnAnimation = null
+                                }
                             }
                         }
                     }
@@ -225,9 +318,25 @@ class MainActivity : ComponentActivity() {
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                 }
 
+                LaunchedEffect(activeReturnAnimation?.packageName) {
+                    val packageName = activeReturnAnimation?.packageName ?: return@LaunchedEffect
+                    delay(returnBounceDelayMs)
+                    if (activeReturnAnimation?.packageName == packageName) {
+                        if (packageName == SEARCH_RETURN_TARGET) {
+                            Log.d(RETURN_TAG, "bounce searchButton target=$packageName")
+                             searchButtonBounceToken += 1
+                        } else {
+                            Log.d(RETURN_TAG, "bounce icon target=$packageName")
+                             returnIconPackage = packageName
+                        }
+                    } else {
+                        Log.d(RETURN_TAG, "bounce skipped stale target=$packageName active=${activeReturnAnimation?.packageName}")
+                    }
+                }
+
                 LaunchedEffect(returnIconPackage) {
                     if (returnIconPackage != null) {
-                        delay(300)
+                        delay(220)
                         returnIconPackage = null
                     }
                 }
@@ -261,14 +370,101 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                fun requestLauncherLaunch(
+                    packageName: String,
+                    intent: Intent,
+                    bounds: androidx.compose.ui.geometry.Rect?,
+                    source: LaunchSource,
+                    overlayColor: Color = searchLaunchOverlayColor,
+                    returnBounds: androidx.compose.ui.geometry.Rect? = bounds,
+                    returnPackageName: String = packageName,
+                    onCompleted: (() -> Unit)? = null
+                ) {
+                    if (isAppLaunchAnimating) return
+                    val returnAnimation = ReturnAnimation(
+                        bounds = returnBounds,
+                        source = source,
+                        packageName = returnPackageName,
+                        launchedPackageName = packageName
+                    )
+                    Log.d(
+                        RETURN_TAG,
+                        "saveReturn launched=$packageName target=$returnPackageName source=$source launchBounds=${bounds != null} returnBounds=${returnBounds != null}"
+                    )
+                    pendingReturnAnimation = returnAnimation
+                    pendingReturnAnimationStartedAt = SystemClock.elapsedRealtime()
+                    ReturnOriginStore.save(context, packageName, returnAnimation)
+                    isAppLaunchAnimating = true
+                    activeLaunchBackground = overlayColor
+                    activeLaunchBounds = bounds
+
+                    scope.launch {
+                        try {
+                            delay(searchLaunchDurationMs)
+                            launchAppNoTransition(context, Intent(intent))
+                            delay(searchLaunchSettleAfterStartMs)
+                        } finally {
+                            activeLaunchBounds = null
+                            isAppLaunchAnimating = false
+                            onCompleted?.invoke()
+                        }
+                    }
+                }
+
+                fun requestSearchLaunch(intent: Intent, bounds: androidx.compose.ui.geometry.Rect?) {
+                    if (isSearchLaunching || isAppLaunchAnimating) return
+                    isSearchLaunching = true
+                    shouldSkipSearchExitAnimation = true
+                    isSearchOpen = false
+                    val resolvedPackageName = intent.`package`
+                        ?: intent.component?.packageName
+                        ?: context.packageManager.resolveActivity(Intent(intent), PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
+                        ?: context.packageManager.resolveActivity(Intent(intent), 0)?.activityInfo?.packageName
+                        ?: intent.data?.host
+                        ?: "search-launch"
+                    Log.d(RETURN_TAG, "requestSearchLaunch resolved=$resolvedPackageName bounds=${bounds != null} searchButton=${homeSearchButtonBounds != null}")
+                     requestLauncherLaunch(
+                        packageName = resolvedPackageName,
+                        intent = intent,
+                        bounds = bounds,
+                        source = LaunchSource.HOME,
+                        overlayColor = searchLaunchOverlayColor,
+                        returnBounds = homeSearchButtonBounds ?: bounds,
+                        returnPackageName = SEARCH_RETURN_TARGET,
+                        onCompleted = {
+                            isSearchLaunching = false
+                            shouldSkipSearchExitAnimation = false
+                        }
+                    )
+                }
+
                 LaunchedEffect(Unit) { refreshAppList() }
 
                 DisposableEffect(Unit) {
                     val receiver = object : BroadcastReceiver() {
                         override fun onReceive(ctx: Context?, intent: Intent?) {
-                            scope.launch {
-                                delay(800)
-                                refreshAppList()
+                            when (intent?.action) {
+                                Intent.ACTION_SCREEN_OFF -> {
+                                    if (isLauncherResumed) {
+                                        screenOffWhileLauncherForeground = true
+                                        Log.d(RETURN_TAG, "screen off while launcher foreground -> arm unlock skip")
+                                    }
+                                }
+                                Intent.ACTION_USER_PRESENT -> {
+                                    if (screenOffWhileLauncherForeground) {
+                                        skipNextResumeReturn = true
+                                        screenOffWhileLauncherForeground = false
+                                        Log.d(RETURN_TAG, "user present after launcher screen off -> skip next resume return")
+                                    }
+                                }
+                                Intent.ACTION_PACKAGE_ADDED,
+                                Intent.ACTION_PACKAGE_REMOVED,
+                                Intent.ACTION_PACKAGE_REPLACED -> {
+                                    scope.launch {
+                                        delay(800)
+                                        refreshAppList()
+                                    }
+                                }
                             }
                         }
                     }
@@ -276,6 +472,8 @@ class MainActivity : ComponentActivity() {
                         addAction(Intent.ACTION_PACKAGE_ADDED)
                         addAction(Intent.ACTION_PACKAGE_REMOVED)
                         addAction(Intent.ACTION_PACKAGE_REPLACED)
+                        addAction(Intent.ACTION_SCREEN_OFF)
+                        addAction(Intent.ACTION_USER_PRESENT)
                         addDataScheme("package")
                     }
                     context.registerReceiver(receiver, filter)
@@ -319,7 +517,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     when {
                         selectedFolderForConfig != null -> selectedFolderForConfig = null
-                        isSearchOpen -> isSearchOpen = false
+                        isSearchOpen -> {
+                            shouldSkipSearchExitAnimation = false
+                            isSearchOpen = false
+                        }
                         isFontSelectionOpen -> isFontSelectionOpen = false
                         isWallpaperConfigOpen -> isWallpaperConfigOpen = false
                         isIconConfigOpen -> isIconConfigOpen = false
@@ -381,8 +582,14 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onOpenFolderConfig = { folder -> selectedFolderForConfig = folder },
                                 onClose = { isDrawerOpen = false },
-                                onAppLaunchForReturn = { pkg, bounds ->
-                                    pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.DRAWER, pkg)
+                                onLaunchApp = { pkg, intent, bounds ->
+                                    requestLauncherLaunch(
+                                        packageName = pkg,
+                                        intent = intent,
+                                        bounds = bounds,
+                                        source = LaunchSource.DRAWER,
+                                        overlayColor = searchLaunchOverlayColor
+                                    )
                                 },
                                 returnIconPackage = returnIconPackage
                             )
@@ -392,20 +599,31 @@ class MainActivity : ComponentActivity() {
                                 isSettingsOpen = isSettingsOpen,
                                 isSearchOpen = isSearchOpen,
                                 onOpenDrawer = { isDrawerOpen = true },
-                                onOpenSearch = { isSearchOpen = true },
+                                onOpenSearch = {
+                                    shouldSkipSearchExitAnimation = false
+                                    isSearchOpen = true
+                                },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
                                 onOpenSystemSettings = { isEditConfigOpen = true },
                                 onOpenInfo = { isInfoOpen = true },
-                                onAppLaunchForReturn = { pkg, bounds ->
-                                    pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.HOME, pkg)
+                                onLaunchApp = { pkg, intent, bounds ->
+                                    requestLauncherLaunch(
+                                        packageName = pkg,
+                                        intent = intent,
+                                        bounds = bounds,
+                                        source = LaunchSource.HOME,
+                                        overlayColor = searchLaunchOverlayColor
+                                    )
                                 },
-                                returnIconPackage = returnIconPackage
+                                returnIconPackage = returnIconPackage,
+                                searchButtonBounceToken = searchButtonBounceToken,
+                                onSearchButtonBoundsChanged = { bounds -> homeSearchButtonBounds = bounds }
                             )
                         }
-                    }
+                     }
 
                     MenuOverlay(visible = isFavoritesConfigOpen, backgroundColor = menuBackgroundColor) {
                         FavoritesConfigMenu(
@@ -545,37 +763,58 @@ class MainActivity : ComponentActivity() {
                     }
 
                     AnimatedVisibility(
-                        visible = isSearchOpen,
+                        visible = isSearchOpen && !isSearchLaunching,
                         enter = fadeIn(animationSpec = tween(200)),
-                        exit = fadeOut(animationSpec = tween(200))
+                        exit = if (shouldSkipSearchExitAnimation) ExitTransition.None else fadeOut(animationSpec = tween(200))
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.3f))
                                 .pointerInput(Unit) {
-                                    detectTapGestures { isSearchOpen = false }
+                                    detectTapGestures {
+                                        shouldSkipSearchExitAnimation = false
+                                        isSearchOpen = false
+                                    }
                                 }
                         ) {
                             BottomSearch(
                                 apps = allApps,
-                                onClose = { isSearchOpen = false },
-                                onAppLaunch = { app ->
+                                onClose = {
+                                    shouldSkipSearchExitAnimation = false
                                     isSearchOpen = false
-                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                    if (intent != null) launchAppNoTransition(context, intent)
-                                }
-                            )
+                                },
+                                onAppLaunch = { app, bounds ->
+                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@BottomSearch
+                                    requestSearchLaunch(intent, bounds)
+                                },
+                                onWebLaunch = { intent, bounds ->
+                                    requestSearchLaunch(intent, bounds)
+                                },
+                                preferredImeWebLaunchBounds = homeSearchButtonBounds
+                             )
+
                         }
                     }
+
+                    LaunchAnimationOverlay(
+                        bounds = activeLaunchBounds,
+                        rootSize = rootSize,
+                        background = activeLaunchBackground,
+                        durationMillis = searchLaunchDurationMs.toInt(),
+                        scrimColor = Color.Transparent
+                    )
 
                     activeReturnAnimation?.let { animation ->
                         ReturnAnimationOverlay(
                             bounds = animation.bounds,
                             rootSize = rootSize,
                             background = Color(0xFF0F0F0F),
-                            onFinished = { activeReturnAnimation = null },
-                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.65f else 0.7f
+                            onFinished = {
+                                Log.d(RETURN_TAG, "returnOverlayFinished launched=${animation.launchedPackageName} target=${animation.packageName}")
+                                activeReturnAnimation = null
+                            },
+                            durationMillis = returnOverlayDurationMs.toInt(),
+                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
                         )
                     }
 
@@ -615,17 +854,42 @@ class MainActivity : ComponentActivity() {
                                         onOpenSizeConfig = {},
                                         onOpenSystemSettings = {},
                                         onOpenInfo = {},
-                                        onAppLaunchForReturn = { _, _ -> },
+                                        onLaunchApp = { _, _, _ -> },
                                         returnIconPackage = null,
+                                        searchButtonBounceToken = 0,
+                                        onSearchButtonBoundsChanged = {},
                                         isPreview = true
                                     )
                                 }
                             )
                         }
                     }
-                }
-            }
-        }
+
+                    if (showUsageAccessPrompt) {
+                        AlertDialog(
+                            onDismissRequest = { showUsageAccessPrompt = false },
+                            title = { Text("Nutzungszugriff aktivieren") },
+                            text = {
+                                Text("Damit die Rückkehranimation nach dem Öffnen über Recents exakt zur richtigen App-Position zurückgeht, aktiviere bitte den Nutzungszugriff für den Launcher.")
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showUsageAccessPrompt = false
+                                    ForegroundAppResolver.openUsageAccessSettings(context)
+                                }) {
+                                    Text("Öffnen")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showUsageAccessPrompt = false }) {
+                                    Text("Später")
+                                }
+                            }
+                        )
+                    }
+                 }
+             }
+         }
     }
 
     override fun onNewIntent(intent: Intent?) {

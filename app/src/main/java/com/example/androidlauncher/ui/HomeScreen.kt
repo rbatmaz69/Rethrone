@@ -9,13 +9,11 @@ import android.provider.CalendarContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -76,7 +74,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
@@ -91,16 +88,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.max
-
-/**
- * Datenklasse für einen App-Start-Request vom Homescreen.
- * Speichert die nötigen Informationen für die Start-Animation.
- */
-data class HomeLaunchRequest(
-    val packageName: String,
-    val bounds: Rect?,
-    val intent: Intent?
-)
 
 /**
  * Homescreen des Launchers.
@@ -120,7 +107,7 @@ data class HomeLaunchRequest(
  * @param onOpenSizeConfig Callback zum Öffnen der Größen-Konfiguration.
  * @param onOpenSystemSettings Callback zum Öffnen der System-Einstellungen.
  * @param onOpenInfo Callback zum Öffnen des Info-Dialogs.
- * @param onAppLaunchForReturn Callback für die Rückkehr-Animation.
+ * @param onLaunchApp Callback zum Starten einer App.
  * @param returnIconPackage Paketname der App, die gerade zurückkehrt (für Bounce-Animation).
  * @param isPreview Ob der Screen im Vorschau-Modus (z.B. Crop-Screen) angezeigt wird.
  */
@@ -137,8 +124,10 @@ fun HomeScreen(
     onOpenSizeConfig: () -> Unit,
     onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    onLaunchApp: (String, Intent, Rect?) -> Unit,
     returnIconPackage: String?,
+    searchButtonBounceToken: Int = 0,
+    onSearchButtonBoundsChanged: (Rect?) -> Unit = {},
     isPreview: Boolean = false
 ) {
     val context = LocalContext.current
@@ -149,7 +138,6 @@ fun HomeScreen(
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
-    var launchRequest by remember { mutableStateOf<HomeLaunchRequest?>(null) }
 
     // Shortcut-Zustand
     var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
@@ -159,16 +147,6 @@ fun HomeScreen(
         targetValue = if (isSettingsOpen) 180f else 0f,
         animationSpec = tween(300, easing = EaseInOutCubic), label = ""
     )
-
-    // App-Start mit Verzögerung für die Animation
-    if (!isPreview) {
-        LaunchedEffect(launchRequest) {
-            val request = launchRequest ?: return@LaunchedEffect
-            delay(280)
-            request.intent?.let { launchAppNoTransition(context, it) }
-            launchRequest = null
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -212,8 +190,7 @@ fun HomeScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 Spacer(modifier = Modifier.height(30.dp))
                 ClockHeader(
-                    onAppLaunchForReturn = onAppLaunchForReturn,
-                    onLaunchRequest = { launchRequest = it },
+                    onLaunchApp = onLaunchApp,
                     returnIconPackage = returnIconPackage,
                     isPreview = isPreview
                 )
@@ -248,13 +225,11 @@ fun HomeScreen(
                                 fontSize = fontSize.scale,
                                 mainTextColor = mainTextColor,
                                 returnIconPackage = returnIconPackage,
-                                onAppLaunchForReturn = onAppLaunchForReturn,
-                                onLaunchRequest = { launchRequest = it },
+                                onLaunchApp = onLaunchApp,
                                 onShortcutRequested = { shortcutApp, bounds ->
                                     selectedShortcutApp = shortcutApp
                                     shortcutMenuBounds = bounds
                                 },
-                                launchRequest = launchRequest,
                                 isPreview = isPreview
                             )
                         }
@@ -297,6 +272,14 @@ fun HomeScreen(
 
                 val intSrc = remember { MutableInteractionSource() }
                 val searchIntSrc = remember { MutableInteractionSource() }
+                var isSearchButtonBouncing by remember { mutableStateOf(false) }
+
+                LaunchedEffect(searchButtonBounceToken) {
+                    if (searchButtonBounceToken <= 0) return@LaunchedEffect
+                    isSearchButtonBouncing = true
+                    delay(240)
+                    isSearchButtonBouncing = false
+                }
 
                 val settingsBtnScale by animateFloatAsState(
                     targetValue = if (isSettingsOpen) 1.2f else 1f,
@@ -322,7 +305,11 @@ fun HomeScreen(
                         exit = scaleOut(animationSpec = tween(150)) + fadeOut(animationSpec = tween(150))
                     ) {
                         val searchButtonScale by animateFloatAsState(
-                            targetValue = if (isSearchOpen) 0.8f else 1f,
+                            targetValue = when {
+                                isSearchOpen -> 0.8f
+                                isSearchButtonBouncing -> 1.12f
+                                else -> 1f
+                            },
                             animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                             label = "SearchButtonScale"
                         )
@@ -342,6 +329,7 @@ fun HomeScreen(
                                 .size(56.dp)
                                 .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.15f)
                                 .clip(CircleShape)
+                                .onGloballyPositioned { onSearchButtonBoundsChanged(it.boundsInRoot()) }
                                 .then(if (!isPreview) Modifier.bounceClick(searchIntSrc).clickable(interactionSource = searchIntSrc, indication = null) { onOpenSearch() } else Modifier),
                             contentAlignment = Alignment.Center
                         ) {
@@ -382,13 +370,6 @@ fun HomeScreen(
                 }
             }
         }
-
-        // App-Start-Overlay-Animation
-        HomeLaunchOverlay(
-            launchRequest = launchRequest,
-            rootSize = rootSize,
-            backgroundColor = colorTheme.drawerBackground
-        )
     }
 }
 
@@ -405,10 +386,8 @@ private fun FavoriteItem(
     fontSize: Float,
     mainTextColor: Color,
     returnIconPackage: String?,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit,
+    onLaunchApp: (String, Intent, Rect?) -> Unit,
     onShortcutRequested: (AppInfo, Rect?) -> Unit,
-    launchRequest: HomeLaunchRequest?,
     isPreview: Boolean = false
 ) {
     val context = LocalContext.current
@@ -422,13 +401,14 @@ private fun FavoriteItem(
         label = "HomeReturnBounce"
     )
     val itemBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
+    val iconBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
 
     // Horizontaler Swipe-Zustand für Shortcuts
     var horizontalOffset by remember { mutableFloatStateOf(0f) }
     val animatedOffset by animateFloatAsState(
-        targetValue = horizontalOffset,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "SwipeOffset"
+        label = "SwipeOffset",
+        targetValue = horizontalOffset
     )
 
     Surface(
@@ -458,11 +438,9 @@ private fun FavoriteItem(
                     }
                     .bounceClick(intSrc)
                     .clickable(interactionSource = intSrc, indication = null) {
-                        if (launchRequest == null) {
-                            onAppLaunchForReturn(app.packageName, itemBounds.value)
-                            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                            onLaunchRequest(HomeLaunchRequest(app.packageName, itemBounds.value, intent))
-                        }
+                        val launchBounds = iconBounds.value ?: itemBounds.value ?: return@clickable
+                        val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@clickable
+                        onLaunchApp(app.packageName, intent, launchBounds)
                     }
             } else Modifier)
     ) {
@@ -474,7 +452,9 @@ private fun FavoriteItem(
             Box(modifier = Modifier.graphicsLayer {
                 scaleX = bounceScale
                 scaleY = bounceScale
-            }) {
+            }.onGloballyPositioned { coordinates ->
+                iconBounds.value = coordinates.boundsInRoot()
+             }) {
                 AppIconView(app, showBadge = true)
             }
             if (showLabels) {
@@ -491,93 +471,6 @@ private fun FavoriteItem(
     }
 }
 
-// ── App-Start-Overlay ────────────────────────────────────────────
-
-/**
- * Overlay-Animation beim Starten einer App vom Homescreen.
- * Zeigt einen sich vergrößernden farbigen Bereich, der vom Icon-Ursprung expandiert.
- */
-@Composable
-private fun HomeLaunchOverlay(
-    launchRequest: HomeLaunchRequest?,
-    rootSize: IntSize,
-    backgroundColor: Color
-) {
-    val launchTransition = updateTransition(targetState = launchRequest != null, label = "HomeLaunchTransition")
-    val launchProgress by launchTransition.animateFloat(
-        transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium) },
-        label = "HomeLaunchProgress"
-    ) { if (it) 1f else 0f }
-    val launchOverlayAlpha by launchTransition.animateFloat(
-        transitionSpec = { tween(durationMillis = 220, easing = LinearEasing) },
-        label = "HomeLaunchOverlayAlpha"
-    ) { if (it) 1f else 0f }
-
-    val launchBounds = launchRequest?.bounds
-    val launchTranslation = remember(launchBounds, rootSize) {
-        if (launchBounds != null && rootSize.width > 0 && rootSize.height > 0) {
-            val centerX = rootSize.width / 2f
-            val centerY = rootSize.height / 2f
-            Offset(launchBounds.center.x - centerX, launchBounds.center.y - centerY)
-        } else Offset.Zero
-    }
-    val launchStartScale = remember(launchBounds, rootSize) {
-        if (launchBounds != null && rootSize.width > 0 && rootSize.height > 0) {
-            val wScale = launchBounds.width / rootSize.width.toFloat()
-            val hScale = launchBounds.height / rootSize.height.toFloat()
-            max(wScale, hScale).coerceIn(0.06f, 0.35f)
-        } else 0.08f
-    }
-
-    if (launchProgress > 0f) {
-        val scale = launchStartScale + (1f - launchStartScale) * launchProgress
-        val translationX = launchTranslation.x * (1f - launchProgress)
-        val translationY = launchTranslation.y * (1f - launchProgress)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(2000f)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {}
-                )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        this.scaleX = scale
-                        this.scaleY = scale
-                        this.translationX = translationX
-                        this.translationY = translationY
-                        this.transformOrigin = TransformOrigin.Center
-                        this.alpha = launchOverlayAlpha
-                    }
-                    .background(backgroundColor)
-            )
-        }
-    }
-}
-
-// ── Hilfsfunktionen ──────────────────────────────────────────────
-
-/**
- * Erweitert die Benachrichtigungsleiste des Systems.
- * Nutzt die interne StatusBarManager-API via Reflection.
- */
-@SuppressLint("WrongConstant")
-internal fun expandNotifications(context: Context) {
-    try {
-        val statusBarService = context.getSystemService("statusbar")
-        val statusBarManager = Class.forName("android.app.StatusBarManager")
-        val method = statusBarManager.getMethod("expandNotificationsPanel")
-        method.invoke(statusBarService)
-    } catch (_: Exception) {
-        // Fehlschlag ist nicht kritisch – auf manchen Geräten nicht unterstützt
-    }
-}
-
 // ── ClockHeader ──────────────────────────────────────────────────
 
 /**
@@ -591,8 +484,7 @@ internal fun expandNotifications(context: Context) {
  */
 @Composable
 fun ClockHeader(
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit,
+    onLaunchApp: (String, Intent, Rect?) -> Unit,
     returnIconPackage: String?,
     isPreview: Boolean = false
 ) {
@@ -650,7 +542,7 @@ fun ClockHeader(
                 }
                 .clip(RoundedCornerShape(8.dp))
                 .then(if (!isPreview) Modifier.bounceClick(intSrcTime).clickable(interactionSource = intSrcTime, indication = null) {
-                    launchClockApp(context, clockBounds.value, onAppLaunchForReturn, onLaunchRequest) { clockPackage = it }
+                    launchClockApp(context, clockBounds.value, onLaunchApp) { clockPackage = it }
                 } else Modifier)
         )
         // Datum
@@ -669,7 +561,7 @@ fun ClockHeader(
                 .then(if (!isPreview) Modifier
                     .bounceClick(intSrcDate)
                     .clickable(interactionSource = intSrcDate, indication = null) {
-                        launchCalendarApp(context, calendarBounds.value, onAppLaunchForReturn, onLaunchRequest) { calendarPackage = it }
+                        launchCalendarApp(context, calendarBounds.value, onLaunchApp) { calendarPackage = it }
                     } else Modifier)
                 .padding(horizontal = 4.dp, vertical = 2.dp)
         )
@@ -683,8 +575,7 @@ fun ClockHeader(
 private fun launchClockApp(
     context: Context,
     bounds: Rect?,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit,
+    onLaunchApp: (String, Intent, Rect?) -> Unit,
     onPackageFound: (String) -> Unit
 ) {
     val pm = context.packageManager
@@ -761,8 +652,7 @@ private fun launchClockApp(
         val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-            onAppLaunchForReturn(foundPkg, bounds)
-            onLaunchRequest(HomeLaunchRequest(foundPkg, bounds, launchIntent))
+            onLaunchApp(foundPkg, launchIntent, bounds)
             return
         }
     }
@@ -785,8 +675,7 @@ private fun launchClockApp(
 private fun launchCalendarApp(
     context: Context,
     bounds: Rect?,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit,
+    onLaunchApp: (String, Intent, Rect?) -> Unit,
     onPackageFound: (String) -> Unit
 ) {
     val pm = context.packageManager
@@ -808,12 +697,10 @@ private fun launchCalendarApp(
         val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-            onAppLaunchForReturn(foundPkg, bounds)
-            onLaunchRequest(HomeLaunchRequest(foundPkg, bounds, launchIntent))
+            onLaunchApp(foundPkg, launchIntent, bounds)
         } else {
             calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-            onAppLaunchForReturn(foundPkg, bounds)
-            onLaunchRequest(HomeLaunchRequest(foundPkg, bounds, calendarIntent))
+            onLaunchApp(foundPkg, calendarIntent, bounds)
         }
         return
     }
@@ -829,5 +716,18 @@ private fun launchCalendarApp(
         try {
             context.startActivity(selectorIntent)
         } catch (_: Exception) { }
+    }
+}
+
+// ── Hilfsfunktionen ──────────────────────────────────────────────
+
+@SuppressLint("WrongConstant")
+internal fun expandNotifications(context: Context) {
+    try {
+        val statusBarService = context.getSystemService("statusbar")
+        val statusBarManager = Class.forName("android.app.StatusBarManager")
+        val method = statusBarManager.getMethod("expandNotificationsPanel")
+        method.invoke(statusBarService)
+    } catch (_: Exception) {
     }
 }

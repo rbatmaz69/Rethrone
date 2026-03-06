@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -27,10 +28,16 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,6 +50,7 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
+import kotlin.math.min
 
 /**
  * Schwebende Suchleiste am unteren Bildschirmrand.
@@ -53,13 +61,16 @@ import kotlinx.coroutines.delay
 fun BottomSearch(
     apps: List<AppInfo>,
     onClose: () -> Unit,
-    onAppLaunch: (AppInfo) -> Unit
+    onAppLaunch: (AppInfo, Rect?) -> Unit,
+    onWebLaunch: (Intent, Rect?) -> Unit,
+    preferredImeWebLaunchBounds: Rect? = null
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontSize = LocalFontSize.current
+    val density = LocalDensity.current
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
@@ -90,6 +101,11 @@ fun BottomSearch(
 
     var query by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
+    var searchBarBounds by remember { mutableStateOf<Rect?>(null) }
+    var searchBarIconBounds by remember { mutableStateOf<Rect?>(null) }
+    val keyboardLaunchSizePx = with(density) { 40.dp.toPx() }
+    val searchBarHorizontalPaddingPx = with(density) { 20.dp.toPx() }
+    val searchBarIconSizePx = with(density) { 20.dp.toPx() }
 
     val filteredApps = remember(query, apps) {
         LauncherLogic.filterAppsByRelevance(apps, query).take(3)
@@ -177,7 +193,7 @@ fun BottomSearch(
                                     app = app,
                                     mainTextColor = mainTextColor,
                                     fontSizeScale = fontSize.scale,
-                                    onClick = { onAppLaunch(app) }
+                                    onClick = { bounds -> onAppLaunch(app, bounds) }
                                 )
                             }
                         }
@@ -205,21 +221,9 @@ fun BottomSearch(
                                 mainTextColor = mainTextColor,
                                 isLiquidGlass = isLiquidGlassEnabled,
                                 isDarkText = isDarkTextEnabled,
-                                onClick = {
-                                    val finalUrl = if (query.startsWith("http") || query.contains(".")) {
-                                        if (!query.startsWith("http")) "https://$query" else query
-                                    } else "https://www.google.com/search?q=$query"
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
-                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        context.startActivity(intent)
-                                        onClose()
-                                    } catch (_: Exception) {
-                                        val intent = Intent(Intent.ACTION_WEB_SEARCH).apply { putExtra(SearchManager.QUERY, query) }
-                                        if (intent.resolveActivity(context.packageManager) != null) {
-                                            context.startActivity(intent)
-                                            onClose()
-                                        }
+                                onClick = { bounds ->
+                                    buildWebSearchIntent(context, query)?.let { intent ->
+                                        onWebLaunch(intent, bounds)
                                     }
                                 }
                             )
@@ -233,13 +237,16 @@ fun BottomSearch(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(searchContainerModifier)
+                        .onGloballyPositioned { searchBarBounds = it.boundsInRoot() }
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = null,
                         tint = mainTextColor.copy(alpha = 0.5f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
+                            .onGloballyPositioned { searchBarIconBounds = it.boundsInRoot() }
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Box(modifier = Modifier.weight(1f)) {
@@ -263,21 +270,17 @@ fun BottomSearch(
                             keyboardActions = KeyboardActions(
                                 onSearch = {
                                     if (query.isNotEmpty()) {
-                                         val finalUrl = if (query.startsWith("http") || query.contains(".")) {
-                                             if (!query.startsWith("http")) "https://$query" else query
-                                         } else "https://www.google.com/search?q=$query"
-                                         try {
-                                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
-                                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                             context.startActivity(intent)
-                                             onClose()
-                                         } catch (_: Exception) {
-                                             val intent = Intent(Intent.ACTION_WEB_SEARCH).apply { putExtra(SearchManager.QUERY, query) }
-                                             if (intent.resolveActivity(context.packageManager) != null) {
-                                                 context.startActivity(intent)
-                                                 onClose()
-                                             }
-                                         }
+                                        buildWebSearchIntent(context, query)?.let { intent ->
+                                            val keyboardLaunchBounds = preferredImeWebLaunchBounds
+                                                ?: searchBarIconBounds
+                                                 ?: createCompactLaunchBounds(
+                                                     containerBounds = searchBarBounds,
+                                                     sizePx = keyboardLaunchSizePx,
+                                                     horizontalInsetPx = searchBarHorizontalPaddingPx,
+                                                     anchorSizePx = searchBarIconSizePx
+                                                 )
+                                            onWebLaunch(intent, keyboardLaunchBounds)
+                                        }
                                     }
                                 }
                             )
@@ -294,21 +297,112 @@ fun BottomSearch(
     }
 }
 
+private fun createCompactLaunchBounds(
+    containerBounds: Rect?,
+    sizePx: Float,
+    horizontalInsetPx: Float,
+    anchorSizePx: Float
+): Rect? {
+    val bounds = containerBounds ?: return null
+    val launchWidth = min(sizePx, bounds.width)
+    val launchHeight = min(sizePx, bounds.height)
+    val anchorCenterX = bounds.left + horizontalInsetPx + (anchorSizePx / 2f)
+    val left = (anchorCenterX - launchWidth / 2f)
+        .coerceIn(bounds.left, bounds.right - launchWidth)
+    val top = (bounds.center.y - launchHeight / 2f)
+        .coerceIn(bounds.top, bounds.bottom - launchHeight)
+    return Rect(
+        left = left,
+        top = top,
+        right = left + launchWidth,
+        bottom = top + launchHeight
+    )
+}
+
+private fun buildWebSearchIntent(context: android.content.Context, query: String): Intent? {
+    val finalUrl = if (query.startsWith("http") || query.contains(".")) {
+        if (!query.startsWith("http")) "https://$query" else query
+    } else {
+        "https://www.google.com/search?q=$query"
+    }
+
+    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl)).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    if (browserIntent.resolveActivity(context.packageManager) != null) {
+        return browserIntent
+    }
+
+    val webSearchIntent = Intent(Intent.ACTION_WEB_SEARCH).apply {
+        putExtra(SearchManager.QUERY, query)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    return webSearchIntent.takeIf { it.resolveActivity(context.packageManager) != null }
+}
+
 @Composable
 fun AppSearchItem(
     app: AppInfo,
     mainTextColor: Color,
     fontSizeScale: Float,
-    onClick: () -> Unit
+    onClick: (Rect?) -> Unit
 ) {
+    val density = LocalDensity.current
+    var iconBounds by remember(app.packageName) { mutableStateOf<Rect?>(null) }
+    var rowBounds by remember(app.packageName) { mutableStateOf<Rect?>(null) }
+    val minLaunchSizePx = with(density) { 28.dp.toPx() }
+    val preferredLaunchSizePx = with(density) { 40.dp.toPx() }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onClick() }
+            .onGloballyPositioned { rowBounds = it.boundsInRoot() }
+            .pointerInput(app.packageName, rowBounds, iconBounds) {
+                detectTapGestures { tapOffset ->
+                    val currentRowBounds = rowBounds
+                    val currentIconBounds = iconBounds
+                    val launchBounds = if (currentRowBounds != null) {
+                        val absoluteTap = Offset(
+                            x = currentRowBounds.left + tapOffset.x,
+                            y = currentRowBounds.top + tapOffset.y
+                        )
+                        when {
+                            currentIconBounds?.contains(absoluteTap) == true -> currentIconBounds
+                            else -> {
+                                val launchWidth = min(
+                                    preferredLaunchSizePx.coerceAtLeast(minLaunchSizePx),
+                                    currentRowBounds.width
+                                )
+                                val launchHeight = min(
+                                    preferredLaunchSizePx.coerceAtLeast(minLaunchSizePx),
+                                    currentRowBounds.height
+                                )
+                                val left = (absoluteTap.x - launchWidth / 2f)
+                                    .coerceIn(currentRowBounds.left, currentRowBounds.right - launchWidth)
+                                val top = (absoluteTap.y - launchHeight / 2f)
+                                    .coerceIn(currentRowBounds.top, currentRowBounds.bottom - launchHeight)
+                                Rect(
+                                    left = left,
+                                    top = top,
+                                    right = left + launchWidth,
+                                    bottom = top + launchHeight
+                                )
+                            }
+                        }
+                    } else {
+                        currentIconBounds
+                    }
+                    onClick(launchBounds)
+                }
+            }
             .padding(vertical = 10.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(36.dp)) { AppIconView(app = app) }
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .onGloballyPositioned { iconBounds = it.boundsInRoot() }
+        ) { AppIconView(app = app) }
         Spacer(modifier = Modifier.width(16.dp))
         Text(text = app.label, color = mainTextColor, fontSize = 16.sp * fontSizeScale, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -320,26 +414,70 @@ fun WebSearchItem(
     mainTextColor: Color,
     isLiquidGlass: Boolean,
     isDarkText: Boolean,
-    onClick: () -> Unit
+    onClick: (Rect?) -> Unit
 ) {
+    val density = LocalDensity.current
     val backgroundModifier = if (isLiquidGlass) {
         Modifier.background(
             color = if (isDarkText) Color.Black.copy(alpha = 0.03f) else Color.White.copy(alpha = 0.05f),
             shape = RoundedCornerShape(12.dp)
         )
     } else Modifier
+    var iconBounds by remember(query) { mutableStateOf<Rect?>(null) }
+    var rowBounds by remember(query) { mutableStateOf<Rect?>(null) }
+    val minLaunchSizePx = with(density) { 28.dp.toPx() }
+    val preferredLaunchSizePx = with(density) { 40.dp.toPx() }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(backgroundModifier)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onClick() }
+            .onGloballyPositioned { rowBounds = it.boundsInRoot() }
+            .pointerInput(query, rowBounds, iconBounds) {
+                detectTapGestures { tapOffset ->
+                    val currentRowBounds = rowBounds
+                    val currentIconBounds = iconBounds
+                    val launchBounds = if (currentRowBounds != null) {
+                        val absoluteTap = Offset(
+                            x = currentRowBounds.left + tapOffset.x,
+                            y = currentRowBounds.top + tapOffset.y
+                        )
+                        when {
+                            currentIconBounds?.contains(absoluteTap) == true -> currentIconBounds
+                            else -> {
+                                val launchWidth = min(
+                                    preferredLaunchSizePx.coerceAtLeast(minLaunchSizePx),
+                                    currentRowBounds.width
+                                )
+                                val launchHeight = min(
+                                    preferredLaunchSizePx.coerceAtLeast(minLaunchSizePx),
+                                    currentRowBounds.height
+                                )
+                                val left = (absoluteTap.x - launchWidth / 2f)
+                                    .coerceIn(currentRowBounds.left, currentRowBounds.right - launchWidth)
+                                val top = (absoluteTap.y - launchHeight / 2f)
+                                    .coerceIn(currentRowBounds.top, currentRowBounds.bottom - launchHeight)
+                                Rect(
+                                    left = left,
+                                    top = top,
+                                    right = left + launchWidth,
+                                    bottom = top + launchHeight
+                                )
+                            }
+                        }
+                    } else {
+                        currentIconBounds
+                    }
+                    onClick(launchBounds)
+                }
+            }
             .padding(vertical = 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(36.dp)
+                .onGloballyPositioned { iconBounds = it.boundsInRoot() }
                 .background(mainTextColor.copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
