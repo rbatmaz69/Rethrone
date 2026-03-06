@@ -139,6 +139,7 @@ fun HomeScreen(
     onOpenInfo: () -> Unit,
     onAppLaunchForReturn: (String, Rect?) -> Unit,
     returnIconPackage: String?,
+    onSearchButtonBoundsChanged: (Rect?) -> Unit = {},
     isPreview: Boolean = false
 ) {
     val context = LocalContext.current
@@ -342,6 +343,7 @@ fun HomeScreen(
                                 .size(56.dp)
                                 .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.15f)
                                 .clip(CircleShape)
+                                .onGloballyPositioned { onSearchButtonBoundsChanged(it.boundsInRoot()) }
                                 .then(if (!isPreview) Modifier.bounceClick(searchIntSrc).clickable(interactionSource = searchIntSrc, indication = null) { onOpenSearch() } else Modifier),
                             contentAlignment = Alignment.Center
                         ) {

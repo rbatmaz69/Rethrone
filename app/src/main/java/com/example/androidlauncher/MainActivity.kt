@@ -190,6 +190,7 @@ class MainActivity : ComponentActivity() {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
+                var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
                 var activeSearchLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
@@ -406,7 +407,8 @@ class MainActivity : ComponentActivity() {
                                 onAppLaunchForReturn = { pkg, bounds ->
                                     pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.HOME, pkg)
                                 },
-                                returnIconPackage = returnIconPackage
+                                returnIconPackage = returnIconPackage,
+                                onSearchButtonBoundsChanged = { bounds -> homeSearchButtonBounds = bounds }
                             )
                         }
                     }
@@ -608,8 +610,10 @@ class MainActivity : ComponentActivity() {
                                             isSearchLaunching = false
                                         }
                                     }
-                                }
-                            )
+                                },
+                                preferredImeWebLaunchBounds = homeSearchButtonBounds
+                             )
+
                         }
                     }
 
@@ -668,6 +672,7 @@ class MainActivity : ComponentActivity() {
                                         onOpenInfo = {},
                                         onAppLaunchForReturn = { _, _ -> },
                                         returnIconPackage = null,
+                                        onSearchButtonBoundsChanged = {},
                                         isPreview = true
                                     )
                                 }

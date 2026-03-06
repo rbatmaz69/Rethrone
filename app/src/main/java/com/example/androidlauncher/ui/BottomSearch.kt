@@ -62,13 +62,15 @@ fun BottomSearch(
     apps: List<AppInfo>,
     onClose: () -> Unit,
     onAppLaunch: (AppInfo, Rect?) -> Unit,
-    onWebLaunch: (Intent, Rect?) -> Unit
+    onWebLaunch: (Intent, Rect?) -> Unit,
+    preferredImeWebLaunchBounds: Rect? = null
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontSize = LocalFontSize.current
+    val density = LocalDensity.current
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
@@ -99,6 +101,11 @@ fun BottomSearch(
 
     var query by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
+    var searchBarBounds by remember { mutableStateOf<Rect?>(null) }
+    var searchBarIconBounds by remember { mutableStateOf<Rect?>(null) }
+    val keyboardLaunchSizePx = with(density) { 40.dp.toPx() }
+    val searchBarHorizontalPaddingPx = with(density) { 20.dp.toPx() }
+    val searchBarIconSizePx = with(density) { 20.dp.toPx() }
 
     val filteredApps = remember(query, apps) {
         LauncherLogic.filterAppsByRelevance(apps, query).take(3)
@@ -230,13 +237,16 @@ fun BottomSearch(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(searchContainerModifier)
+                        .onGloballyPositioned { searchBarBounds = it.boundsInRoot() }
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = null,
                         tint = mainTextColor.copy(alpha = 0.5f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
+                            .onGloballyPositioned { searchBarIconBounds = it.boundsInRoot() }
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Box(modifier = Modifier.weight(1f)) {
@@ -261,8 +271,15 @@ fun BottomSearch(
                                 onSearch = {
                                     if (query.isNotEmpty()) {
                                         buildWebSearchIntent(context, query)?.let { intent ->
-                                            context.startActivity(intent)
-                                            onClose()
+                                            val keyboardLaunchBounds = preferredImeWebLaunchBounds
+                                                ?: searchBarIconBounds
+                                                 ?: createCompactLaunchBounds(
+                                                     containerBounds = searchBarBounds,
+                                                     sizePx = keyboardLaunchSizePx,
+                                                     horizontalInsetPx = searchBarHorizontalPaddingPx,
+                                                     anchorSizePx = searchBarIconSizePx
+                                                 )
+                                            onWebLaunch(intent, keyboardLaunchBounds)
                                         }
                                     }
                                 }
@@ -278,6 +295,28 @@ fun BottomSearch(
             }
         }
     }
+}
+
+private fun createCompactLaunchBounds(
+    containerBounds: Rect?,
+    sizePx: Float,
+    horizontalInsetPx: Float,
+    anchorSizePx: Float
+): Rect? {
+    val bounds = containerBounds ?: return null
+    val launchWidth = min(sizePx, bounds.width)
+    val launchHeight = min(sizePx, bounds.height)
+    val anchorCenterX = bounds.left + horizontalInsetPx + (anchorSizePx / 2f)
+    val left = (anchorCenterX - launchWidth / 2f)
+        .coerceIn(bounds.left, bounds.right - launchWidth)
+    val top = (bounds.center.y - launchHeight / 2f)
+        .coerceIn(bounds.top, bounds.bottom - launchHeight)
+    return Rect(
+        left = left,
+        top = top,
+        right = left + launchWidth,
+        bottom = top + launchHeight
+    )
 }
 
 private fun buildWebSearchIntent(context: android.content.Context, query: String): Intent? {
