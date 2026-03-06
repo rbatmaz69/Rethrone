@@ -1,5 +1,7 @@
 package com.example.androidlauncher.ui
 
+import com.example.androidlauncher.ForegroundAppResolver
+import com.example.androidlauncher.LauncherAccessibilityService
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +25,8 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Image
+import com.composables.icons.lucide.Shield
+import com.composables.icons.lucide.Hand
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -60,9 +64,13 @@ fun EditConfigMenu(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     var isNotificationEnabled by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
+    var isAccessibilityEnabled by remember { mutableStateOf(LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) }
+    var isUsageAccessEnabled by remember { mutableStateOf(ForegroundAppResolver.hasUsageAccess(context)) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         isNotificationEnabled = isNotificationServiceEnabled(context)
+        isAccessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
+        isUsageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
     }
 
     Column(
@@ -149,6 +157,44 @@ fun EditConfigMenu(
                 openNotificationSettings(context)
             },
             statusLabel = if (isNotificationEnabled) "An" else "Aus",
+            mainTextColor = mainTextColor,
+            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            isDarkTextEnabled = isDarkTextEnabled
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Text(
+            text = "Zugriffe",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = mainTextColor.copy(alpha = 0.7f),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        EditMenuItem(
+            icon = Lucide.Hand,
+            label = "Bedienungshilfen",
+            onClick = {
+                openAccessibilitySettings(context)
+            },
+            statusLabel = if (isAccessibilityEnabled) "An" else "Aus",
+            mainTextColor = mainTextColor,
+            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            isDarkTextEnabled = isDarkTextEnabled
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        EditMenuItem(
+            icon = Lucide.Shield,
+            label = "Nutzungszugriff",
+            onClick = {
+                ForegroundAppResolver.openUsageAccessSettings(context)
+            },
+            statusLabel = if (isUsageAccessEnabled) "An" else "Aus",
             mainTextColor = mainTextColor,
             isLiquidGlassEnabled = isLiquidGlassEnabled,
             isDarkTextEnabled = isDarkTextEnabled

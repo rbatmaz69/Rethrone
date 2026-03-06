@@ -194,6 +194,11 @@ fun openNotificationSettings(context: Context) {
     }
 }
 
+fun openAccessibilitySettings(context: Context) {
+    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+    context.startActivity(intent)
+}
+
 fun getLucideIconByName(name: String): ImageVector? {
     val lucideClass = Lucide::class.java
     try {
