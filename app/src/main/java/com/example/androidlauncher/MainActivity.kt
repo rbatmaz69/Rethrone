@@ -200,9 +200,11 @@ class MainActivity : ComponentActivity() {
                 var shouldSkipSearchExitAnimation by remember { mutableStateOf(false) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
-                var activeSearchLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-                val searchLaunchDurationMs = 260L
-                val searchLaunchSettleAfterStartMs = 30L
+                var isAppLaunchAnimating by remember { mutableStateOf(false) }
+                var activeLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+                var activeLaunchBackground by remember { mutableStateOf(searchLaunchOverlayColor) }
+                 val searchLaunchDurationMs = 260L
+                 val searchLaunchSettleAfterStartMs = 30L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
@@ -284,12 +286,19 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                fun requestSearchLaunch(intent: Intent, bounds: androidx.compose.ui.geometry.Rect?) {
-                    if (isSearchLaunching) return
-                    isSearchLaunching = true
-                    shouldSkipSearchExitAnimation = true
-                    activeSearchLaunchBounds = bounds
-                    isSearchOpen = false
+                fun requestLauncherLaunch(
+                    packageName: String,
+                    intent: Intent,
+                    bounds: androidx.compose.ui.geometry.Rect?,
+                    source: LaunchSource,
+                    overlayColor: Color = searchLaunchOverlayColor,
+                    onCompleted: (() -> Unit)? = null
+                ) {
+                    if (isAppLaunchAnimating) return
+                    pendingReturnAnimation = ReturnAnimation(bounds, source, packageName)
+                    isAppLaunchAnimating = true
+                    activeLaunchBackground = overlayColor
+                    activeLaunchBounds = bounds
 
                     scope.launch {
                         try {
@@ -297,11 +306,32 @@ class MainActivity : ComponentActivity() {
                             launchAppNoTransition(context, Intent(intent))
                             delay(searchLaunchSettleAfterStartMs)
                         } finally {
-                            activeSearchLaunchBounds = null
+                            activeLaunchBounds = null
+                            isAppLaunchAnimating = false
+                            onCompleted?.invoke()
+                        }
+                    }
+                }
+
+                fun requestSearchLaunch(intent: Intent, bounds: androidx.compose.ui.geometry.Rect?) {
+                    if (isSearchLaunching || isAppLaunchAnimating) return
+                    isSearchLaunching = true
+                    shouldSkipSearchExitAnimation = true
+                    isSearchOpen = false
+                    requestLauncherLaunch(
+                        packageName = intent.`package`
+                            ?: intent.component?.packageName
+                            ?: intent.data?.host
+                            ?: "search-launch",
+                        intent = intent,
+                        bounds = bounds,
+                        source = LaunchSource.HOME,
+                        overlayColor = searchLaunchOverlayColor,
+                        onCompleted = {
                             isSearchLaunching = false
                             shouldSkipSearchExitAnimation = false
                         }
-                    }
+                    )
                 }
 
                 LaunchedEffect(Unit) { refreshAppList() }
@@ -427,8 +457,14 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onOpenFolderConfig = { folder -> selectedFolderForConfig = folder },
                                 onClose = { isDrawerOpen = false },
-                                onAppLaunchForReturn = { pkg, bounds ->
-                                    pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.DRAWER, pkg)
+                                onLaunchApp = { pkg, intent, bounds ->
+                                    requestLauncherLaunch(
+                                        packageName = pkg,
+                                        intent = intent,
+                                        bounds = bounds,
+                                        source = LaunchSource.DRAWER,
+                                        overlayColor = searchLaunchOverlayColor
+                                    )
                                 },
                                 returnIconPackage = returnIconPackage
                             )
@@ -448,8 +484,14 @@ class MainActivity : ComponentActivity() {
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
                                 onOpenSystemSettings = { isEditConfigOpen = true },
                                 onOpenInfo = { isInfoOpen = true },
-                                onAppLaunchForReturn = { pkg, bounds ->
-                                    pendingReturnAnimation = ReturnAnimation(bounds, LaunchSource.HOME, pkg)
+                                onLaunchApp = { pkg, intent, bounds ->
+                                    requestLauncherLaunch(
+                                        packageName = pkg,
+                                        intent = intent,
+                                        bounds = bounds,
+                                        source = LaunchSource.HOME,
+                                        overlayColor = searchLaunchOverlayColor
+                                    )
                                 },
                                 returnIconPackage = returnIconPackage,
                                 onSearchButtonBoundsChanged = { bounds -> homeSearchButtonBounds = bounds }
@@ -629,9 +671,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     LaunchAnimationOverlay(
-                        bounds = activeSearchLaunchBounds,
+                        bounds = activeLaunchBounds,
                         rootSize = rootSize,
-                        background = searchLaunchOverlayColor,
+                        background = activeLaunchBackground,
                         durationMillis = searchLaunchDurationMs.toInt(),
                         scrimColor = Color.Transparent
                     )
@@ -683,7 +725,7 @@ class MainActivity : ComponentActivity() {
                                         onOpenSizeConfig = {},
                                         onOpenSystemSettings = {},
                                         onOpenInfo = {},
-                                        onAppLaunchForReturn = { _, _ -> },
+                                        onLaunchApp = { _, _, _ -> },
                                         returnIconPackage = null,
                                         onSearchButtonBoundsChanged = {},
                                         isPreview = true

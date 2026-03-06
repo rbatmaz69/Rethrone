@@ -97,7 +97,7 @@ fun AppDrawer(
     onUpdateFolders: (List<FolderInfo>) -> Unit,
     onOpenFolderConfig: (FolderInfo) -> Unit,
     onClose: () -> Unit,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    onLaunchApp: (String, Intent, Rect?) -> Unit,
     returnIconPackage: String?
 ) {
     val context = LocalContext.current
@@ -157,7 +157,6 @@ fun AppDrawer(
     
     var drawerSize by remember { mutableStateOf(IntSize.Zero) }
     var folderPosition by remember { mutableStateOf(Offset.Zero) }
-    var launchRequest by remember { mutableStateOf<LaunchRequest?>(null) }
     var isEditMode by remember { mutableStateOf(false) }
     var isFolderNameFocused by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
@@ -188,15 +187,6 @@ fun AppDrawer(
             initialTouchOffsetInItem = Offset.Zero
             isFolderNameFocused = false
         }
-    }
-
-    LaunchedEffect(launchRequest) {
-        val request = launchRequest ?: return@LaunchedEffect
-        delay(280)
-        context.packageManager.getLaunchIntentForPackage(request.app.packageName)?.let {
-            launchAppNoTransition(context, it)
-        }
-        launchRequest = null
     }
 
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
@@ -466,9 +456,8 @@ fun AppDrawer(
                                         menuAppBounds = bounds
                                     },
                                     onAppLaunchRequested = { requestedApp, bounds ->
-                                        if (launchRequest == null) {
-                                            onAppLaunchForReturn(requestedApp.packageName, bounds)
-                                            launchRequest = LaunchRequest(requestedApp, bounds)
+                                        context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
+                                            onLaunchApp(requestedApp.packageName, intent, bounds)
                                         }
                                     }
                                 )
@@ -476,47 +465,6 @@ fun AppDrawer(
                         }
                     }
                 }
-            }
-        }
-
-        val launchTransition = updateTransition(targetState = launchRequest != null, label = "LaunchTransition")
-        val launchProgress by launchTransition.animateFloat(
-            transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium) },
-            label = "LaunchProgress"
-        ) { if (it) 1f else 0f }
-        val launchOverlayAlpha by launchTransition.animateFloat(
-            transitionSpec = { tween(durationMillis = 220, easing = LinearEasing) },
-            label = "LaunchOverlayAlpha"
-        ) { if (it) 1f else 0f }
-        val launchBounds = launchRequest?.bounds
-        val launchTranslation = remember(launchBounds, drawerSize) {
-            if (launchBounds != null && drawerSize.width > 0 && drawerSize.height > 0) {
-                val centerX = drawerSize.width / 2f
-                val centerY = drawerSize.height / 2f
-                Offset(launchBounds.center.x - centerX, launchBounds.center.y - centerY)
-            } else Offset.Zero
-        }
-        val launchStartScale = remember(launchBounds, drawerSize) {
-            if (launchBounds != null && drawerSize.width > 0 && drawerSize.height > 0) {
-                val wScale = launchBounds.width / drawerSize.width.toFloat()
-                val hScale = launchBounds.height / drawerSize.height.toFloat()
-                max(wScale, hScale).coerceIn(0.06f, 0.35f)
-            } else 0.08f
-        }
-
-        if (launchProgress > 0f) {
-            val scale = launchStartScale + (1f - launchStartScale) * launchProgress
-            val translationX = launchTranslation.x * (1f - launchProgress)
-            val translationY = launchTranslation.y * (1f - launchProgress)
-            Box(modifier = Modifier.fillMaxSize().zIndex(2000f).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})) {
-                Box(modifier = Modifier.fillMaxSize().graphicsLayer {
-                    this.scaleX = scale
-                    this.scaleY = scale
-                    this.translationX = translationX
-                    this.translationY = translationY
-                    this.transformOrigin = TransformOrigin.Center
-                    this.alpha = launchOverlayAlpha
-                }.background(MaterialTheme.colorScheme.background))
             }
         }
 
@@ -734,8 +682,12 @@ fun AppDrawer(
                                                             app = app, adaptiveColumns = 3, isFavorite = isFavorite(app.packageName), onToggleFavorite = onToggleFavorite, folders = folders, onUpdateFolders = onUpdateFolders,
                                                             isInFolder = true, currentFolderId = currentActiveFolder.id, isEditMode = isEditMode, bouncePackage = returnIconPackage,
                                                             onLongPress = { appInfo, bounds -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); menuApp = appInfo; menuAppBounds = bounds },
-                                                            onAppLaunchRequested = { requestedApp, bounds -> if (launchRequest == null) { onAppLaunchForReturn(requestedApp.packageName, bounds); launchRequest = LaunchRequest(requestedApp, bounds) } }
-                                                        )
+                                                            onAppLaunchRequested = { requestedApp, bounds ->
+                                                                context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
+                                                                    onLaunchApp(requestedApp.packageName, intent, bounds)
+                                                                }
+                                                            }
+                                                         )
 
                                                         if (isEditMode && !isDragging) {
                                                             val view = androidx.compose.ui.platform.LocalView.current
@@ -885,5 +837,3 @@ fun AppItem(
         }
     }
 }
-
-private data class LaunchRequest(val app: AppInfo, val bounds: Rect?)
