@@ -44,6 +44,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
@@ -344,50 +345,87 @@ fun LaunchAnimationOverlay(
         progress.animateTo(1f, tween(durationMillis = 320, easing = FastOutSlowInEasing))
     }
 
-    val launchTranslation = remember(bounds, rootSize) {
-        val centerX = rootSize.width / 2f
-        val centerY = rootSize.height / 2f
-        Offset(bounds.center.x - centerX, bounds.center.y - centerY)
+    val startWidthPx = bounds.width.coerceAtLeast(with(density) { 28.dp.toPx() })
+    val startHeightPx = bounds.height.coerceAtLeast(with(density) { 28.dp.toPx() })
+    val currentWidthPx = startWidthPx + (rootSize.width - startWidthPx) * progress.value
+    val currentHeightPx = startHeightPx + (rootSize.height - startHeightPx) * progress.value
+    val currentLeftPx = bounds.left * (1f - progress.value)
+    val currentTopPx = bounds.top * (1f - progress.value)
+    val cornerRadiusDp = with(density) {
+        val startRadiusPx = 34.dp.toPx()
+        val endRadiusPx = 4.dp.toPx()
+        (startRadiusPx + (endRadiusPx - startRadiusPx) * progress.value).toDp()
     }
-    val launchStartScale = remember(bounds, rootSize) {
-        val wScale = bounds.width / rootSize.width.toFloat()
-        val hScale = bounds.height / rootSize.height.toFloat()
-        max(wScale, hScale).coerceIn(0.04f, 0.35f)
-    }
-
-    val scale = launchStartScale + (1f - launchStartScale) * progress.value
-    val translationX = launchTranslation.x * (1f - progress.value)
-    val translationY = launchTranslation.y * (1f - progress.value)
-    val scrimAlpha = (progress.value * 0.9f).coerceIn(0f, 1f)
-    val overlayAlpha = (1f - (progress.value * 0.08f)).coerceIn(0.92f, 1f)
-    val cornerRadiusDp = with(density) { (28.dp.toPx() * (1f - progress.value)).toDp() }
     val animatedShape = RoundedCornerShape(cornerRadiusDp)
+    val surfaceAlpha = (0.94f + 0.06f * progress.value).coerceIn(0f, 1f)
+    val highlightAlpha = (0.16f * (1f - progress.value)).coerceIn(0f, 1f)
+    val shadowElevation = with(density) {
+        (24.dp.toPx() + (2.dp.toPx() - 24.dp.toPx()) * progress.value)
+    }
+    val gradientBrush = remember(background, progress.value) {
+        Brush.linearGradient(
+            colors = listOf(
+                background.copy(alpha = surfaceAlpha),
+                background.copy(alpha = surfaceAlpha * 0.985f),
+                background.copy(alpha = surfaceAlpha * 0.965f)
+            ),
+            start = Offset.Zero,
+            end = Offset(rootSize.width.toFloat(), rootSize.height.toFloat())
+        )
+    }
+    val highlightBrush = remember(background, progress.value) {
+        Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = highlightAlpha),
+                Color.Transparent
+            ),
+            center = Offset(currentWidthPx * 0.25f, currentHeightPx * 0.22f),
+            radius = max(currentWidthPx, currentHeightPx) * 0.72f
+        )
+    }
+    val scrimAlpha = (scrimColor.alpha * progress.value * 0.3f).coerceIn(0f, scrimColor.alpha)
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .zIndex(1900f)
     ) {
+        if (scrimAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(scrimColor.copy(alpha = scrimAlpha))
+            )
+        }
+
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(scrimColor.copy(alpha = scrimColor.alpha * scrimAlpha))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
+                .offset {
+                    IntOffset(
+                        x = currentLeftPx.roundToInt(),
+                        y = currentTopPx.roundToInt()
+                    )
+                }
+                .size(
+                    width = with(density) { currentWidthPx.toDp() },
+                    height = with(density) { currentHeightPx.toDp() }
+                )
                 .graphicsLayer {
-                    this.scaleX = scale
-                    this.scaleY = scale
-                    this.translationX = translationX
-                    this.translationY = translationY
-                    this.transformOrigin = TransformOrigin.Center
-                    this.alpha = overlayAlpha
+                    this.alpha = 1f
                     this.shape = animatedShape
                     this.clip = true
+                    this.shadowElevation = shadowElevation
+                    this.ambientShadowColor = Color.Black.copy(alpha = 0.10f)
+                    this.spotShadowColor = Color.Black.copy(alpha = 0.14f)
                 }
-                .background(background)
-        )
+                .background(gradientBrush)
+        ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(highlightBrush)
+            )
+        }
     }
 }
 
