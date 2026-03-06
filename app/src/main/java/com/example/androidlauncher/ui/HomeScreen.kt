@@ -126,6 +126,7 @@ fun HomeScreen(
     onOpenInfo: () -> Unit,
     onLaunchApp: (String, Intent, Rect?) -> Unit,
     returnIconPackage: String?,
+    searchButtonBounceToken: Int = 0,
     onSearchButtonBoundsChanged: (Rect?) -> Unit = {},
     isPreview: Boolean = false
 ) {
@@ -271,6 +272,14 @@ fun HomeScreen(
 
                 val intSrc = remember { MutableInteractionSource() }
                 val searchIntSrc = remember { MutableInteractionSource() }
+                var isSearchButtonBouncing by remember { mutableStateOf(false) }
+
+                LaunchedEffect(searchButtonBounceToken) {
+                    if (searchButtonBounceToken <= 0) return@LaunchedEffect
+                    isSearchButtonBouncing = true
+                    delay(240)
+                    isSearchButtonBouncing = false
+                }
 
                 val settingsBtnScale by animateFloatAsState(
                     targetValue = if (isSettingsOpen) 1.2f else 1f,
@@ -296,7 +305,11 @@ fun HomeScreen(
                         exit = scaleOut(animationSpec = tween(150)) + fadeOut(animationSpec = tween(150))
                     ) {
                         val searchButtonScale by animateFloatAsState(
-                            targetValue = if (isSearchOpen) 0.8f else 1f,
+                            targetValue = when {
+                                isSearchOpen -> 0.8f
+                                isSearchButtonBouncing -> 1.12f
+                                else -> 1f
+                            },
                             animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                             label = "SearchButtonScale"
                         )

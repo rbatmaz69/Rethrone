@@ -94,6 +94,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
+        private const val SEARCH_RETURN_TARGET = "__search_return_target__"
     }
 
     private lateinit var backCallback: OnBackPressedCallback
@@ -192,6 +193,7 @@ class MainActivity : ComponentActivity() {
                 var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var returnIconPackage by remember { mutableStateOf<String?>(null) }
+                var searchButtonBounceToken by remember { mutableStateOf(0) }
                 val returnOverlayDurationMs = 260L
                 val returnBounceDelayMs = 185L
                 var isDrawerOpen by remember { mutableStateOf(false) }
@@ -246,9 +248,13 @@ class MainActivity : ComponentActivity() {
                     val packageName = activeReturnAnimation?.packageName ?: return@LaunchedEffect
                     delay(returnBounceDelayMs)
                     if (activeReturnAnimation?.packageName == packageName) {
-                        returnIconPackage = packageName
-                    }
-                }
+                        if (packageName == SEARCH_RETURN_TARGET) {
+                            searchButtonBounceToken += 1
+                        } else {
+                            returnIconPackage = packageName
+                        }
+                     }
+                 }
 
                 LaunchedEffect(returnIconPackage) {
                     if (returnIconPackage != null) {
@@ -292,13 +298,15 @@ class MainActivity : ComponentActivity() {
                     bounds: androidx.compose.ui.geometry.Rect?,
                     source: LaunchSource,
                     overlayColor: Color = searchLaunchOverlayColor,
-                    onCompleted: (() -> Unit)? = null
-                ) {
-                    if (isAppLaunchAnimating) return
-                    pendingReturnAnimation = ReturnAnimation(bounds, source, packageName)
-                    isAppLaunchAnimating = true
-                    activeLaunchBackground = overlayColor
-                    activeLaunchBounds = bounds
+                    returnBounds: androidx.compose.ui.geometry.Rect? = bounds,
+                    returnPackageName: String = packageName,
+                     onCompleted: (() -> Unit)? = null
+                 ) {
+                     if (isAppLaunchAnimating) return
+                    pendingReturnAnimation = ReturnAnimation(returnBounds, source, returnPackageName)
+                     isAppLaunchAnimating = true
+                     activeLaunchBackground = overlayColor
+                     activeLaunchBounds = bounds
 
                     scope.launch {
                         try {
@@ -327,6 +335,8 @@ class MainActivity : ComponentActivity() {
                         bounds = bounds,
                         source = LaunchSource.HOME,
                         overlayColor = searchLaunchOverlayColor,
+                        returnBounds = homeSearchButtonBounds ?: bounds,
+                        returnPackageName = SEARCH_RETURN_TARGET,
                         onCompleted = {
                             isSearchLaunching = false
                             shouldSkipSearchExitAnimation = false
@@ -494,7 +504,8 @@ class MainActivity : ComponentActivity() {
                                     )
                                 },
                                 returnIconPackage = returnIconPackage,
-                                onSearchButtonBoundsChanged = { bounds -> homeSearchButtonBounds = bounds }
+                                searchButtonBounceToken = searchButtonBounceToken,
+                                 onSearchButtonBoundsChanged = { bounds -> homeSearchButtonBounds = bounds }
                             )
                         }
                     }
@@ -727,6 +738,7 @@ class MainActivity : ComponentActivity() {
                                         onOpenInfo = {},
                                         onLaunchApp = { _, _, _ -> },
                                         returnIconPackage = null,
+                                        searchButtonBounceToken = 0,
                                         onSearchButtonBoundsChanged = {},
                                         isPreview = true
                                     )
