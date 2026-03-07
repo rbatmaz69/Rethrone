@@ -1,10 +1,8 @@
 package com.example.androidlauncher.ui
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -14,9 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -57,19 +53,14 @@ fun AppContextMenu(
     onRemoveFromFolder: (() -> Unit)? = null
 ) {
     val colorTheme = LocalColorTheme.current
-    val fontSize = LocalFontSize.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-
-    val themedLightBackground = remember(colorTheme.primary) {
-        val primary = colorTheme.primary
-        Color(
-            red = primary.red * 0.90f + 0.10f,
-            green = primary.green * 0.90f + 0.10f,
-            blue = primary.blue * 0.90f + 0.10f,
-            alpha = 1f
-        )
+    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.menuSurfaceColor(isDarkTextEnabled)
+    }
+    val favoriteHighlightColor = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.highlightColor(isDarkTextEnabled)
     }
 
     val density = LocalDensity.current
@@ -186,10 +177,10 @@ fun AppContextMenu(
                         }
                         .clickable(enabled = false) {}
                         .then(menuModifier),
-                    color = if (isDarkTextEnabled) themedLightBackground.copy(alpha = 0.98f) else colorTheme.drawerBackground.copy(alpha = 0.98f),
-                    shape = RoundedCornerShape(24.dp),
-                    shadowElevation = 24.dp
-                ) {
+                    color = menuSurfaceColor.copy(alpha = 0.98f),
+                     shape = RoundedCornerShape(24.dp),
+                     shadowElevation = 24.dp
+                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         ContextMenuItem(
                             icon = Lucide.Info,
@@ -203,7 +194,7 @@ fun AppContextMenu(
                         ContextMenuItem(
                             icon = if (isFavorite) Lucide.StarOff else Lucide.Star,
                             text = if (isFavorite) "Vom Home entfernen" else "Zu Favoriten hinzufügen",
-                            color = if (isFavorite) Color(0xFFFFB74D) else mainTextColor,
+                            color = if (isFavorite) favoriteHighlightColor else mainTextColor,
                             onClick = { onToggleFavorite(); dismissWithAnimation() }
                         )
 

@@ -11,12 +11,11 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,13 +49,17 @@ fun ColorConfigMenu(
     onClose: () -> Unit
 ) {
     val fontWeight = LocalFontWeight.current
-    // Nur für primäre Schriften und Symbole
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val backgroundBrush = remember(selectedTheme, isDarkTextEnabled) {
+        selectedTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.95f)
+    }
+    val orderedThemes = remember {
+        ColorTheme.entries.sortedWith(compareByDescending<ColorTheme> { it.isArtTheme }.thenBy { it.themeName })
+    }
 
-    val backgroundColor = if (isDarkTextEnabled) selectedTheme.lightBackground else selectedTheme.drawerBackground
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
         SystemWallpaperView(customWallpaperUri)
-        Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
+        Box(modifier = Modifier.fillMaxSize().background(backgroundBrush))
 
         Column(
             modifier = Modifier
@@ -178,8 +181,7 @@ fun ColorConfigMenu(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                @Suppress("EnumValuesSoftDeprecate")
-                items(ColorTheme.values()) { theme ->
+                items(orderedThemes, key = { it.name }) { theme ->
                     ThemeOptionItem(
                         theme = theme,
                         isSelected = theme == selectedTheme,
@@ -212,6 +214,11 @@ fun PreviewCard(
         Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
     }
 
+    val previewBrush = remember(colorTheme, isHome, isDarkTextEnabled) {
+        if (isHome) colorTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.88f)
+        else colorTheme.menuBrush(isDarkTextEnabled, alpha = 0.96f)
+    }
+
     Box(
         modifier = modifier.then(cardModifier)
     ) {
@@ -223,18 +230,7 @@ fun PreviewCard(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (isHome) {
-                            Brush.verticalGradient(listOf(colorTheme.primary.copy(alpha = 0.6f), colorTheme.secondary.copy(alpha = 0.6f)))
-                        } else {
-                            // Wenn schwarze Schrift aktiv ist, zeigen wir den hellen Hintergrund
-                            if (mainTextColor == Color(0xFF010101)) {
-                                SolidColor(colorTheme.lightBackground)
-                            } else {
-                                SolidColor(colorTheme.drawerBackground)
-                            }
-                        }
-                    )
+                    .background(previewBrush)
             ) {
                 // In der Vorschau spiegeln wir die Schriftfarbe wider
                 if (isHome) {
@@ -299,6 +295,13 @@ fun ThemeOptionItem(
             .then(if (border != null) Modifier.border(border, RoundedCornerShape(16.dp)) else Modifier)
     }
 
+    val previewBrush = remember(theme, isDarkTextEnabled) {
+        theme.menuBrush(isDarkTextEnabled, alpha = if (isDarkTextEnabled) 0.98f else 0.94f)
+    }
+    val themeBorderColor = remember(theme, isDarkTextEnabled) {
+        theme.borderColor(isDarkTextEnabled)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -309,17 +312,41 @@ fun ThemeOptionItem(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.width(60.dp), horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                Box(modifier = Modifier.size(24.dp).background(theme.primary, CircleShape).border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape))
-                Box(modifier = Modifier.size(24.dp).background(theme.secondary, CircleShape).border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape))
-            }
-            
+            Box(
+                modifier = Modifier
+                    .width(72.dp)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(previewBrush)
+                    .border(1.dp, themeBorderColor, RoundedCornerShape(999.dp))
+            )
+
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Name des Themes wird schwarz (Schrift)
-            Text(theme.themeName, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
-            
-            // Haken wird schwarz (Symbol)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(theme.themeName, color = mainTextColor, fontSize = 16.sp)
+                    if (theme.isArtTheme) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "ART",
+                            color = mainTextColor.copy(alpha = 0.65f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(mainTextColor.copy(alpha = 0.08f))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = if (theme.isArtTheme) "Mehrfarbiger Atmosphären-Verlauf" else "Klassische minimalistische Palette",
+                    color = mainTextColor.copy(alpha = 0.55f),
+                    fontSize = 12.sp
+                )
+            }
+
             if (isSelected) {
                 Icon(Icons.Default.Check, contentDescription = null, tint = mainTextColor)
             }

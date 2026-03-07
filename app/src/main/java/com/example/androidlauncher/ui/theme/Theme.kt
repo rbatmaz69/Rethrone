@@ -30,19 +30,8 @@ val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
 val LocalFontWeight = staticCompositionLocalOf { FontWeightLevel.NORMAL }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
-/**
- * CompositionLocal for the "Liquid Glass" visual effect.
- */
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
 val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
-
-private val DarkColorScheme = darkColorScheme(
-    primary = ColorTheme.SIGNATURE.primary,
-    secondary = ColorTheme.SIGNATURE.secondary,
-    tertiary = ColorTheme.SIGNATURE.tertiary,
-    background = ColorTheme.SIGNATURE.lightBackground,
-    surface = ColorTheme.SIGNATURE.lightBackground.copy(alpha = 0.8f)
-)
 
 @Composable
 fun AndroidLauncherTheme(
@@ -64,14 +53,23 @@ fun AndroidLauncherTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         else -> {
-            val backgroundColor = if (darkTextEnabled) colorTheme.lightBackground else colorTheme.drawerBackground
+            val backgroundColor = colorTheme.backgroundColor(darkTextEnabled)
+            val menuSurfaceColor = colorTheme.menuSurfaceColor(darkTextEnabled)
+            val searchSurfaceColor = colorTheme.searchSurfaceColor(darkTextEnabled)
+            val accentColor = colorTheme.accentColor(darkTextEnabled)
+            val highlightColor = colorTheme.highlightColor(darkTextEnabled)
+            val outlineColor = colorTheme.borderColor(darkTextEnabled)
 
             darkColorScheme(
                 primary = colorTheme.primary,
-                secondary = colorTheme.secondary,
-                tertiary = colorTheme.tertiary,
+                secondary = accentColor,
+                tertiary = highlightColor,
                 background = backgroundColor,
-                surface = backgroundColor.copy(alpha = 0.8f)
+                surface = menuSurfaceColor,
+                surfaceVariant = searchSurfaceColor,
+                secondaryContainer = searchSurfaceColor,
+                tertiaryContainer = highlightColor.copy(alpha = 0.22f),
+                outline = outlineColor
             )
         }
     }
@@ -80,7 +78,6 @@ fun AndroidLauncherTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Deprecated aber nötig für Edge-to-Edge Kompatibilität auf älteren API-Levels
             @Suppress("DEPRECATION")
             window.statusBarColor = Color.Transparent.toArgb()
             @Suppress("DEPRECATION")
