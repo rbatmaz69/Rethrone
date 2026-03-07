@@ -10,9 +10,12 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,7 +24,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -44,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,6 +63,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * Datenklasse für einen App-Start-Request vom Homescreen.
@@ -68,22 +75,29 @@ data class HomeLaunchRequest(
 )
 
 /**
- * Homescreen des Launchers.
+ * Homescreen des Launchers mit intuitivem Bearbeitungsmodus für Element-Positionen.
  */
 @Composable
 fun HomeScreen(
     favorites: List<AppInfo>,
     isSettingsOpen: Boolean,
     isSearchOpen: Boolean,
+    isEditMode: Boolean = false,
+    favoritesOffsetX: Float = 0f,
+    favoritesOffsetY: Float = 0f,
+    clockOffsetY: Float = 0f,
     onOpenDrawer: () -> Unit,
     onOpenSearch: () -> Unit,
     onToggleSettings: () -> Unit,
+    onToggleEditMode: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
     onOpenColorConfig: () -> Unit,
     onOpenSizeConfig: () -> Unit,
     onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
+    onSaveFavoritesOffset: (Float, Float) -> Unit,
+    onSaveClockOffset: (Float) -> Unit,
+    onLaunchApp: (String, Intent, Rect?) -> Unit,
     returnIconPackage: String?,
     searchButtonBounceToken: Int = 0,
     onSearchButtonBoundsChanged: (Rect?) -> Unit = {},
@@ -97,8 +111,13 @@ fun HomeScreen(
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
+    var currentFavOffsetX by remember(favoritesOffsetX, isEditMode) { mutableStateOf(favoritesOffsetX) }
+    var currentFavOffsetY by remember(favoritesOffsetY, isEditMode) { mutableStateOf(favoritesOffsetY) }
+    var currentClockOffsetY by remember(clockOffsetY, isEditMode) { mutableStateOf(clockOffsetY) }
     
-    // Sicherer State für den Launch-Request
+    // Launch Request State
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
     var launchRequest by launchRequestState
 
@@ -110,12 +129,12 @@ fun HomeScreen(
         animationSpec = tween(300, easing = EaseInOutCubic), label = ""
     )
 
-    // App-Start nur ausführen, wenn nicht im Vorschau-Modus
+    // App-Start verzögert ausführen für Animationen
     LaunchedEffect(launchRequest) {
         if (isPreview) return@LaunchedEffect
         val request = launchRequest ?: return@LaunchedEffect
         delay(280)
-        request.intent?.let { launchAppNoTransition(context, it) }
+        request.intent?.let { onLaunchApp(request.packageName, it, request.bounds) }
         launchRequest = null
     }
 
@@ -126,10 +145,12 @@ fun HomeScreen(
             .onGloballyPositioned { rootSize = it.size }
             .then(if (!isPreview) {
                 Modifier
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { _, dragAmount ->
-                            if (dragAmount < -50) onOpenDrawer()
-                            else if (dragAmount > 50) expandNotifications(context)
+                    .pointerInput(isEditMode) {
+                        if (!isEditMode) {
+                            detectVerticalDragGestures { _, dragAmount ->
+                                if (dragAmount < -50) onOpenDrawer()
+                                else if (dragAmount > 50) expandNotifications(context)
+                            }
                         }
                     }
                     .pointerInput(Unit) {
@@ -138,15 +159,17 @@ fun HomeScreen(
                                 if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
                                     LauncherAccessibilityService.requestLockScreen(context)
                                 } else {
-                                    Toast.makeText(context, "Bitte aktiviere den Accessibility Service in den Einstellungen", Toast.LENGTH_LONG).show()
-                                    try { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) } catch (_: Exception) {}
+                                    Toast.makeText(context, "Accessibility Service erforderlich", Toast.LENGTH_SHORT).show()
                                 }
+                            },
+                            onLongPress = {
+                                if (!isEditMode) onToggleEditMode()
                             }
                         )
                     }
             } else Modifier)
     ) {
-        // Haupt-Inhalt: Uhr und Favoriten
+        // --- Haupt-Layout ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -154,76 +177,170 @@ fun HomeScreen(
                 .navigationBarsPadding() 
                 .padding(horizontal = 24.dp)
         ) {
-            @Suppress("DEPRECATION")
             Spacer(modifier = Modifier.height(30.dp))
             
-            ClockHeader(
-                onAppLaunchForReturn = onAppLaunchForReturn,
-                onLaunchRequest = { launchRequest = it },
-                returnIconPackage = returnIconPackage,
-                isPreview = isPreview
-            )
+            // 1. Uhr / Widget Bereich (Verschiebbar im Edit-Mode)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset { IntOffset(0, currentClockOffsetY.roundToInt()) }
+                    .then(if (isEditMode) {
+                        Modifier
+                            .border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
+                            .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                            .pointerInput(Unit) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    currentClockOffsetY += dragAmount.y
+                                }
+                            }
+                    } else Modifier)
+            ) {
+                ClockHeader(
+                    onAppLaunchForReturn = { pkg, bounds -> onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds) },
+                    onLaunchRequest = { launchRequest = it },
+                    returnIconPackage = returnIconPackage,
+                    isPreview = isPreview || isEditMode
+                )
+            }
 
-            // Favoriten-Bereich: Durch Spacer perfekt zentriert (Proportional)
-            @Suppress("DEPRECATION")
             Spacer(modifier = Modifier.weight(1f))
 
-            Column(
-                modifier = Modifier.padding(start = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            // 2. Favoriten-Liste (Verschiebbar im Edit-Mode)
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(currentFavOffsetX.roundToInt(), currentFavOffsetY.roundToInt()) }
+                    .then(if (isEditMode) {
+                        Modifier
+                            .border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
+                            .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                            .pointerInput(Unit) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    currentFavOffsetX += dragAmount.x
+                                    currentFavOffsetY += dragAmount.y
+                                }
+                            }
+                    } else Modifier)
+                    .padding(if (isEditMode) 12.dp else 0.dp)
             ) {
-                if (favorites.isEmpty()) {
-                    val intSrc = remember { MutableInteractionSource() }
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled)
-                            .clip(CircleShape)
-                            .then(if (!isPreview) Modifier.bounceClick(intSrc).clickable(interactionSource = intSrc, indication = null) { onOpenFavoritesConfig() } else Modifier),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
-                    }
-                } else {
-                    favorites.forEach { app ->
-                        FavoriteItem(
-                            app = app,
-                            showLabels = showLabels,
-                            fontSize = fontSize.scale,
-                            mainTextColor = mainTextColor,
-                            returnIconPackage = returnIconPackage,
-                            onAppLaunchForReturn = onAppLaunchForReturn,
-                            onLaunchRequest = { launchRequest = it },
-                            onShortcutRequested = { shortcutApp, bounds ->
-                                selectedShortcutApp = shortcutApp
-                                shortcutMenuBounds = bounds
-                            },
-                            launchRequest = launchRequest,
-                            isPreview = isPreview
-                        )
+                Column(
+                    modifier = Modifier.padding(start = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (favorites.isEmpty()) {
+                        val intSrc = remember { MutableInteractionSource() }
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled)
+                                .clip(CircleShape)
+                                .then(if (!isPreview) Modifier.bounceClick(intSrc).clickable(interactionSource = intSrc, indication = null, enabled = !isEditMode) { onOpenFavoritesConfig() } else Modifier),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
+                        }
+                    } else {
+                        favorites.forEach { app ->
+                            FavoriteItem(
+                                app = app,
+                                showLabels = showLabels,
+                                fontSize = fontSize.scale,
+                                mainTextColor = mainTextColor,
+                                returnIconPackage = returnIconPackage,
+                                onAppLaunchForReturn = { pkg, bounds -> onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds) },
+                                onLaunchRequest = { launchRequest = it },
+                                onShortcutRequested = { shortcutApp, bounds ->
+                                    selectedShortcutApp = shortcutApp
+                                    shortcutMenuBounds = bounds
+                                },
+                                launchRequest = launchRequest,
+                                isPreview = isPreview || isEditMode
+                            )
+                        }
                     }
                 }
             }
 
-            // Unterer Spacer sorgt für die Zentrierung und hält Abstand zu den Buttons
-            @Suppress("DEPRECATION")
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        // Shortcut Overlay (Nur im Echtbetrieb)
-        if (!isPreview) {
-            selectedShortcutApp?.let { app ->
-                AppShortcutsMenu(
-                    packageName = app.packageName,
-                    targetBounds = shortcutMenuBounds,
-                    onDismiss = { selectedShortcutApp = null; shortcutMenuBounds = null },
-                    onShortcutClick = { shortcut -> launchShortcut(context, app.packageName, shortcut.id) }
-                )
+        // --- Edit Mode Kontrollen (Minimalistisches Menü am unteren Rand) ---
+        AnimatedVisibility(
+            visible = isEditMode,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter).zIndex(3000f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Info-Badge
+                Surface(
+                    color = mainTextColor.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f))
+                ) {
+                    Text(
+                        "Position anpassen",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        color = mainTextColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Kontroll-Buttons (Abbrechen, Zurücksetzen, Speichern)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Abbrechen
+                    EditControlButton(
+                        icon = Icons.Default.Close,
+                        onClick = { onToggleEditMode() }, // Beendet Modus ohne Speichern (lokaler State verworfen)
+                        tint = mainTextColor.copy(alpha = 0.6f)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(20.dp))
+
+                    // Zurücksetzen auf Standard
+                    EditControlButton(
+                        icon = Icons.Default.Refresh,
+                        onClick = {
+                            currentFavOffsetX = 0f
+                            currentFavOffsetY = 0f
+                            currentClockOffsetY = 0f
+                        },
+                        tint = mainTextColor
+                    )
+
+                    Spacer(modifier = Modifier.width(20.dp))
+
+                    // Speichern
+                    EditControlButton(
+                        icon = Icons.Default.Check,
+                        onClick = {
+                            onSaveFavoritesOffset(currentFavOffsetX, currentFavOffsetY)
+                            onSaveClockOffset(currentClockOffsetY)
+                            onToggleEditMode()
+                            Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
+                        },
+                        containerColor = mainTextColor,
+                        tint = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+                    )
+                }
             }
         }
 
-        // Settings- und Such-Buttons (Nur im Echtbetrieb)
-        if (!isPreview) {
+        // --- Standard UI (Settings & Search) - nur sichtbar wenn nicht im Edit-Mode ---
+        if (!isPreview && !isEditMode) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -314,8 +431,51 @@ fun HomeScreen(
             }
         }
 
+        // Shortcut Overlay (Nur im Echtbetrieb)
+        if (!isPreview && !isEditMode) {
+            selectedShortcutApp?.let { app ->
+                AppShortcutsMenu(
+                    packageName = app.packageName,
+                    targetBounds = shortcutMenuBounds,
+                    onDismiss = { selectedShortcutApp = null; shortcutMenuBounds = null },
+                    onShortcutClick = { shortcut -> launchShortcut(context, app.packageName, shortcut.id) }
+                )
+            }
+        }
+
         // App-Start-Overlay
         HomeLaunchOverlay(launchRequest = launchRequest, rootSize = rootSize, backgroundColor = colorTheme.drawerBackground)
+    }
+}
+
+/**
+ * Hilfs-Button für den Bearbeitungsmodus.
+ */
+@Composable
+private fun EditControlButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    tint: Color,
+    containerColor: Color = Color.Transparent
+) {
+    val intSrc = remember { MutableInteractionSource() }
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val isDarkTextEnabled = LocalDarkTextEnabled.current
+
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .then(if (containerColor == Color.Transparent) {
+                Modifier.conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.1f)
+            } else {
+                Modifier.background(containerColor, CircleShape)
+            })
+            .clip(CircleShape)
+            .bounceClick(intSrc)
+            .clickable(interactionSource = intSrc, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
     }
 }
 

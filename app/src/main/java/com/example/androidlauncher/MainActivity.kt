@@ -174,6 +174,11 @@ class MainActivity : ComponentActivity() {
             val searchHistory by searchSuggestionsManager.webHistory.collectAsState(initial = emptyList())
             val appUsageStats by searchSuggestionsManager.appUsageStats.collectAsState(initial = emptyMap())
 
+            // UI Offset States
+            val favoritesOffsetX by themeManager.favoritesOffsetX.collectAsState(initial = 0f)
+            val favoritesOffsetY by themeManager.favoritesOffsetY.collectAsState(initial = 0f)
+            val clockOffsetY by themeManager.clockOffsetY.collectAsState(initial = 0f)
+
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
             val autoIconFallbacks by iconManager.autoIconFallbacks.collectAsState(initial = emptyMap())
@@ -300,6 +305,7 @@ class MainActivity : ComponentActivity() {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
+                var isHomeEditMode by remember { mutableStateOf(false) }
                 var shouldSkipSearchExitAnimation by remember { mutableStateOf(false) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
@@ -677,6 +683,7 @@ class MainActivity : ComponentActivity() {
                         isIconConfigOpen = false
                         isWallpaperConfigOpen = false
                         isInfoOpen = false
+                        isHomeEditMode = false
                         selectedFolderForConfig = null
                     }
                 }
@@ -685,12 +692,12 @@ class MainActivity : ComponentActivity() {
                     isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
                     isIconConfigOpen, isWallpaperConfigOpen, isInfoOpen,
-                    selectedFolderForConfig, isSearchOpen
+                    selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
                         isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen ||
                         isEditConfigOpen || isIconConfigOpen || isWallpaperConfigOpen ||
-                        isInfoOpen || selectedFolderForConfig != null || isSearchOpen
+                        isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
 
@@ -698,10 +705,11 @@ class MainActivity : ComponentActivity() {
                     enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
                         isIconConfigOpen || isWallpaperConfigOpen || isInfoOpen ||
-                        selectedFolderForConfig != null || isSearchOpen
+                        selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                 ) {
                     when {
                         selectedFolderForConfig != null -> selectedFolderForConfig = null
+                        isHomeEditMode -> isHomeEditMode = false
                         isSearchOpen -> {
                             shouldSkipSearchExitAnimation = false
                             isSearchOpen = false
@@ -784,17 +792,24 @@ class MainActivity : ComponentActivity() {
                                 favorites = favorites,
                                 isSettingsOpen = isSettingsOpen,
                                 isSearchOpen = isSearchOpen,
+                                isEditMode = isHomeEditMode,
+                                favoritesOffsetX = favoritesOffsetX,
+                                favoritesOffsetY = favoritesOffsetY,
+                                clockOffsetY = clockOffsetY,
                                 onOpenDrawer = { isDrawerOpen = true },
                                 onOpenSearch = {
                                     shouldSkipSearchExitAnimation = false
                                     isSearchOpen = true
                                 },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
+                                onToggleEditMode = { isHomeEditMode = !isHomeEditMode },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
                                 onOpenSystemSettings = { isEditConfigOpen = true },
                                 onOpenInfo = { isInfoOpen = true },
+                                onSaveFavoritesOffset = { x, y -> scope.launch { themeManager.setFavoritesOffset(x, y) } },
+                                onSaveClockOffset = { y -> scope.launch { themeManager.setClockOffset(y) } },
                                 onLaunchApp = { pkg, intent, bounds ->
                                     requestLauncherLaunch(
                                         packageName = pkg,
@@ -1084,14 +1099,21 @@ class MainActivity : ComponentActivity() {
                                         favorites = favorites,
                                         isSettingsOpen = false, // Clean state for preview
                                         isSearchOpen = false,
+                                        isEditMode = false,
+                                        favoritesOffsetX = 0f,
+                                        favoritesOffsetY = 0f,
+                                        clockOffsetY = 0f,
                                         onOpenDrawer = {},
                                         onOpenSearch = {},
                                         onToggleSettings = {},
+                                        onToggleEditMode = {},
                                         onOpenFavoritesConfig = {},
                                         onOpenColorConfig = {},
                                         onOpenSizeConfig = {},
                                         onOpenSystemSettings = {},
                                         onOpenInfo = {},
+                                        onSaveFavoritesOffset = { _, _ -> },
+                                        onSaveClockOffset = { _ -> },
                                         onLaunchApp = { _, _, _ -> },
                                         returnIconPackage = null,
                                         searchButtonBounceToken = 0,
