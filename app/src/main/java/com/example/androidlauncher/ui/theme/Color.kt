@@ -365,21 +365,48 @@ enum class ColorTheme(
         ).all { contrastRatio(textColor, it) >= MinimumReadableContrast }
     }
 
+    private val lightSurfaceAnchor: Color
+        get() = listOf(
+            primary.blendWith(Color.White, 0.16f),
+            secondary.blendWith(Color.White, 0.24f),
+            highlight.blendWith(Color.White, 0.32f)
+        ).averageColor().blendWith(Color(0xFFF6F2ED), 0.10f)
+
     private fun backgroundGradientColors(darkTextEnabled: Boolean): List<Color> =
-        if (darkTextEnabled) artGradient.map { it.blendWith(Color.White, 0.74f) }
-        else artGradient.map { it.blendWith(Color.Black, darkBackgroundBlend) }
+        if (darkTextEnabled) {
+            artGradient
+                .map { it.blendWith(lightSurfaceAnchor, 0.42f) }
+                .ensureAverageContrastForDarkText()
+        } else {
+            artGradient.map { it.blendWith(Color.Black, darkBackgroundBlend) }
+        }
 
     private fun menuGradientColors(darkTextEnabled: Boolean): List<Color> =
-        if (darkTextEnabled) menuGradient.map { it.blendWith(Color.White, 0.80f) }
-        else menuGradient.map { it.blendWith(drawerBackground, darkMenuBlend) }
+        if (darkTextEnabled) {
+            menuGradient
+                .map { it.blendWith(lightSurfaceAnchor, 0.50f) }
+                .ensureAverageContrastForDarkText()
+        } else {
+            menuGradient.map { it.blendWith(drawerBackground, darkMenuBlend) }
+        }
 
     private fun searchGradientColors(darkTextEnabled: Boolean): List<Color> =
-        if (darkTextEnabled) searchGradient.map { it.blendWith(Color.White, 0.84f) }
-        else searchGradient.map { it.blendWith(drawerBackground, darkSearchBlend) }
+        if (darkTextEnabled) {
+            searchGradient
+                .map { it.blendWith(lightSurfaceAnchor, 0.58f) }
+                .ensureAverageContrastForDarkText()
+        } else {
+            searchGradient.map { it.blendWith(drawerBackground, darkSearchBlend) }
+        }
 
     private fun animationGradientColors(darkTextEnabled: Boolean): List<Color> =
-        if (darkTextEnabled) animationGradient.map { it.blendWith(Color.White, 0.76f) }
-        else animationGradient.map { it.blendWith(Color.Black, darkAnimationBlend) }
+        if (darkTextEnabled) {
+            animationGradient
+                .map { it.blendWith(lightSurfaceAnchor, 0.46f) }
+                .ensureAverageContrastForDarkText()
+        } else {
+            animationGradient.map { it.blendWith(Color.Black, darkAnimationBlend) }
+        }
 
     companion object {
         val DarkTextColor = Color(0xFF010101)
@@ -406,6 +433,19 @@ private fun List<Color>.averageColor(): Color {
 
 private fun List<Color>.withAlpha(alpha: Float): List<Color> = map {
     it.copy(alpha = (it.alpha * alpha).coerceIn(0f, 1f))
+}
+
+private fun List<Color>.ensureAverageContrastForDarkText(
+    minimumContrast: Float = ColorTheme.MinimumReadableContrast
+): List<Color> {
+    var adjusted = this
+    repeat(10) {
+        if (contrastRatio(ColorTheme.DarkTextColor, adjusted.averageColor()) >= minimumContrast) {
+            return adjusted
+        }
+        adjusted = adjusted.map { it.blendWith(Color.White, 0.06f) }
+    }
+    return adjusted
 }
 
 private fun Color.blendWith(other: Color, ratio: Float): Color {
