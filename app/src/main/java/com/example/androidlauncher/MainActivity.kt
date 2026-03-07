@@ -36,6 +36,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -827,7 +828,8 @@ class MainActivity : ComponentActivity() {
                         }
                      }
 
-                    MenuOverlay(visible = isFavoritesConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isFavoritesConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isFavoritesConfigOpen = false }) {
+                        @Suppress("DEPRECATION")
                         FavoritesConfigMenu(
                             apps = allApps,
                             initialFavoritePackages = favoritePackages,
@@ -843,7 +845,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = selectedFolderForConfig != null, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = selectedFolderForConfig != null, backgroundColor = menuBackgroundColor, onClose = { selectedFolderForConfig = null }) {
                         selectedFolderForConfig?.let { folder ->
                             FolderConfigMenu(
                                 folder = folder,
@@ -852,7 +854,6 @@ class MainActivity : ComponentActivity() {
                                 onConfirm = { updatedFolder ->
                                     val folderExists = folders.any { it.id == updatedFolder.id }
                                     val newFolders = if (updatedFolder.appPackageNames.isEmpty()) {
-                                        // CUSTOM: Delete folder if empty on confirm
                                         folders.filter { it.id != updatedFolder.id }
                                     } else if (folderExists) {
                                         folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
@@ -872,7 +873,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    MenuOverlay(visible = isColorConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isColorConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isColorConfigOpen = false }) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
                             onThemeSelected = { scope.launch { themeManager.setTheme(it) } },
@@ -885,7 +886,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isSizeConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isSizeConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isSizeConfigOpen = false }) {
                         SizeConfigMenu(
                             currentFontSize = currentFontSize,
                             onFontSizeSelected = { scope.launch { themeManager.setFontSize(it) } },
@@ -900,7 +901,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isFontSelectionOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isFontSelectionOpen, backgroundColor = menuBackgroundColor, onClose = { isFontSelectionOpen = false }) {
                         FontSelectionMenu(
                             currentAppFont = currentAppFont,
                             onAppFontSelected = { scope.launch { themeManager.setAppFont(it) } },
@@ -908,7 +909,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isEditConfigOpen && !isWallpaperCropOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isEditConfigOpen && !isWallpaperCropOpen, backgroundColor = menuBackgroundColor, onClose = { isEditConfigOpen = false }) {
                         EditConfigMenu(
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onChangeWallpaper = {
@@ -947,7 +948,6 @@ class MainActivity : ComponentActivity() {
                                     if (Settings.System.canWrite(context)) {
                                         themeManager.setHapticFeedbackEnabled(enabled)
                                     } else {
-                                        // Request permission to write system settings
                                         val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
                                             data = Uri.parse("package:" + context.packageName)
                                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -961,7 +961,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isWallpaperConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isWallpaperConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isWallpaperConfigOpen = false }) {
                         WallpaperConfigMenu(
                             blurLevel = wallpaperBlur,
                             onBlurChange = { scope.launch { themeManager.setWallpaperBlur(it) } },
@@ -974,7 +974,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isIconConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isIconConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isIconConfigOpen = false }) {
                         IconConfigMenu(
                             apps = allApps,
                             customIcons = customIcons,
@@ -1000,7 +1000,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isInfoOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(visible = isInfoOpen, backgroundColor = menuBackgroundColor, onClose = { isInfoOpen = false }) {
                         InfoDialog(
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isInfoOpen = false }
@@ -1083,21 +1083,21 @@ class MainActivity : ComponentActivity() {
                                     scope.launch {
                                         themeManager.setCustomWallpaperUri(uri.toString())
                                         isWallpaperCropOpen = false
-                                        delay(280) // Exit-Animation sichtbar zu Ende laufen lassen
+                                        delay(280)
                                         pendingWallpaperUri = null
                                     }
                                 },
                                 onCancel = {
                                     isWallpaperCropOpen = false
                                     scope.launch {
-                                        delay(280) // Exit-Animation sichtbar zu Ende laufen lassen
+                                        delay(280)
                                         pendingWallpaperUri = null
                                     }
                                 },
                                 homeScreenPreview = {
                                     HomeScreen(
                                         favorites = favorites,
-                                        isSettingsOpen = false, // Clean state for preview
+                                        isSettingsOpen = false,
                                         isSearchOpen = false,
                                         isEditMode = false,
                                         favoritesOffsetX = 0f,
@@ -1234,10 +1234,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Ein Overlay für Menüs, das Ein- und Ausblenden sowie Swipe-Down zum Schließen unterstützt.
+ */
 @Composable
 private fun MenuOverlay(
     visible: Boolean,
     backgroundColor: Color,
+    onClose: () -> Unit,
     content: @Composable () -> Unit
 ) {
     AnimatedVisibility(
@@ -1251,11 +1255,26 @@ private fun MenuOverlay(
             animationSpec = tween(300, easing = EaseInCubic)
         ) + fadeOut()
     ) {
+        var totalDragY by remember { mutableStateOf(0f) }
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectTapGestures { }
+                    detectTapGestures { } // Verhindert Klicks durch das Overlay hindurch
+                }
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            if (totalDragY > 300f) onClose()
+                            totalDragY = 0f
+                        },
+                        onDragCancel = { totalDragY = 0f },
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            totalDragY += dragAmount
+                        }
+                    )
                 }
                 .background(backgroundColor)
         ) {
