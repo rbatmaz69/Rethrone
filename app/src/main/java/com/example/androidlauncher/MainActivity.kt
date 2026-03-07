@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -187,12 +188,15 @@ class MainActivity : ComponentActivity() {
                 appFont = currentAppFont
             ) {
                 val lifecycleOwner = LocalLifecycleOwner.current
-                val menuBackgroundColor = if (isDarkTextEnabled) currentTheme.lightBackground
-                else currentTheme.drawerBackground
-                val searchLaunchOverlayColor = if (isDarkTextEnabled) {
-                    currentTheme.lightBackground.copy(alpha = 0.97f)
-                } else {
-                    currentTheme.drawerBackground.copy(alpha = 0.985f)
+                val menuBackgroundColor = currentTheme.menuSurfaceColor(isDarkTextEnabled)
+                val searchLaunchOverlayColor = currentTheme.searchSurfaceColor(isDarkTextEnabled).copy(
+                    alpha = if (isDarkTextEnabled) 0.97f else 0.985f
+                )
+                val launchOverlayBrush = remember(currentTheme, isDarkTextEnabled) {
+                    currentTheme.animationBrush(isDarkTextEnabled, alpha = 0.98f)
+                }
+                val returnOverlayBrush = remember(currentTheme, isDarkTextEnabled) {
+                    currentTheme.animationBrush(isDarkTextEnabled, alpha = 0.92f)
                 }
 
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
@@ -212,6 +216,7 @@ class MainActivity : ComponentActivity() {
                 var isAppLaunchAnimating by remember { mutableStateOf(false) }
                 var activeLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var activeLaunchBackground by remember { mutableStateOf(searchLaunchOverlayColor) }
+                var activeLaunchBackgroundBrush by remember { mutableStateOf<Brush?>(launchOverlayBrush) }
                 val searchLaunchDurationMs = 260L
                 val searchLaunchSettleAfterStartMs = 30L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
@@ -366,6 +371,7 @@ class MainActivity : ComponentActivity() {
                     bounds: androidx.compose.ui.geometry.Rect?,
                     source: LaunchSource,
                     overlayColor: Color = searchLaunchOverlayColor,
+                    overlayBrush: Brush? = launchOverlayBrush,
                     returnBounds: androidx.compose.ui.geometry.Rect? = bounds,
                     returnPackageName: String = packageName,
                     onCompleted: (() -> Unit)? = null
@@ -386,6 +392,7 @@ class MainActivity : ComponentActivity() {
                     ReturnOriginStore.save(context, packageName, returnAnimation)
                     isAppLaunchAnimating = true
                     activeLaunchBackground = overlayColor
+                    activeLaunchBackgroundBrush = overlayBrush
                     activeLaunchBounds = bounds
 
                     scope.launch {
@@ -419,6 +426,7 @@ class MainActivity : ComponentActivity() {
                         bounds = bounds,
                         source = LaunchSource.HOME,
                         overlayColor = searchLaunchOverlayColor,
+                        overlayBrush = launchOverlayBrush,
                         returnBounds = homeSearchButtonBounds ?: bounds,
                         returnPackageName = SEARCH_RETURN_TARGET,
                         onCompleted = {
@@ -581,7 +589,8 @@ class MainActivity : ComponentActivity() {
                                         intent = intent,
                                         bounds = bounds,
                                         source = LaunchSource.DRAWER,
-                                        overlayColor = searchLaunchOverlayColor
+                                        overlayColor = searchLaunchOverlayColor,
+                                        overlayBrush = launchOverlayBrush
                                     )
                                 },
                                 returnIconPackage = returnIconPackage
@@ -608,7 +617,8 @@ class MainActivity : ComponentActivity() {
                                         intent = intent,
                                         bounds = bounds,
                                         source = LaunchSource.HOME,
-                                        overlayColor = searchLaunchOverlayColor
+                                        overlayColor = searchLaunchOverlayColor,
+                                        overlayBrush = launchOverlayBrush
                                     )
                                 },
                                 returnIconPackage = returnIconPackage,
@@ -793,23 +803,25 @@ class MainActivity : ComponentActivity() {
                         bounds = activeLaunchBounds,
                         rootSize = rootSize,
                         background = activeLaunchBackground,
+                        backgroundBrush = activeLaunchBackgroundBrush,
                         durationMillis = searchLaunchDurationMs.toInt(),
                         scrimColor = Color.Transparent
-                    )
+                     )
 
-                    activeReturnAnimation?.let { animation ->
-                        ReturnAnimationOverlay(
-                            bounds = animation.bounds,
-                            rootSize = rootSize,
-                            background = Color(0xFF0F0F0F),
-                            onFinished = {
-                                Log.d(RETURN_TAG, "returnOverlayFinished launched=${animation.launchedPackageName} target=${animation.packageName}")
-                                activeReturnAnimation = null
-                            },
-                            durationMillis = returnOverlayDurationMs.toInt(),
-                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
-                        )
-                    }
+                     activeReturnAnimation?.let { animation ->
+                         ReturnAnimationOverlay(
+                             bounds = animation.bounds,
+                             rootSize = rootSize,
+                             background = currentTheme.menuSurfaceColor(isDarkTextEnabled),
+                             backgroundBrush = returnOverlayBrush,
+                             onFinished = {
+                                 Log.d(RETURN_TAG, "returnOverlayFinished launched=${animation.launchedPackageName} target=${animation.packageName}")
+                                 activeReturnAnimation = null
+                             },
+                             durationMillis = returnOverlayDurationMs.toInt(),
+                             targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
+                         )
+                     }
 
                     AnimatedVisibility(
                         visible = isWallpaperCropOpen && pendingWallpaperUri != null,

@@ -109,15 +109,14 @@ fun AppDrawer(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-
-    val themedLightBackground = remember(colorTheme.primary) {
-        val primary = colorTheme.primary
-        Color(
-            red = primary.red * 0.90f + 0.10f,
-            green = primary.green * 0.90f + 0.10f,
-            blue = primary.blue * 0.90f + 0.10f,
-            alpha = 1f
-        )
+    val drawerBackgroundBrush = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.88f)
+    }
+    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.menuSurfaceColor(isDarkTextEnabled)
+    }
+    val overlayScrimColor = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.overlayScrimColor(isDarkTextEnabled)
     }
 
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -198,7 +197,7 @@ fun AppDrawer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(SolidColor(MaterialTheme.colorScheme.background.copy(alpha = 0.85f)))
+                .background(drawerBackgroundBrush)
         )
         
         Column(
@@ -243,7 +242,7 @@ fun AppDrawer(
                                         .wrapContentHeight()
                                         .then(dialogBorderModifier),
                                     shape = RoundedCornerShape(28.dp),
-                                    color = if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground,
+                                    color = menuSurfaceColor,
                                     tonalElevation = 6.dp
                                 ) {
                                     Column(modifier = Modifier.padding(24.dp)) {
@@ -497,10 +496,10 @@ fun AppDrawer(
         if (folderProgress > 0f || showFolder) {
             lastValidFolder?.let { currentActiveFolder ->
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = overlayAlpha))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {
-                            if (isEditMode) isEditMode = false else activeFolderId = null
-                        }),
+                    modifier = Modifier.fillMaxSize().background(overlayScrimColor.copy(alpha = overlayAlpha))
+                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {
+                             if (isEditMode) isEditMode = false else activeFolderId = null
+                         }),
                     contentAlignment = Alignment.Center
                 ) {
                     val scale = 0.05f + (1f - 0.05f) * folderProgress
@@ -511,17 +510,17 @@ fun AppDrawer(
                     else BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f))
 
                     Surface(
-                        modifier = Modifier.fillMaxWidth(0.85f).wrapContentHeight().graphicsLayer {
-                            this.scaleX = scale
-                            this.scaleY = scale
-                            this.translationX = translationX
-                            this.translationY = translationY
-                            this.transformOrigin = TransformOrigin.Center
-                            if (isCurrentFolderDeleted) this.alpha = folderProgress
-                        }.clickable(enabled = false) {},
-                        color = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
-                        shape = RoundedCornerShape(32.dp), border = folderBorder, shadowElevation = 24.dp
-                    ) {
+                         modifier = Modifier.fillMaxWidth(0.85f).wrapContentHeight().graphicsLayer {
+                             this.scaleX = scale
+                             this.scaleY = scale
+                             this.translationX = translationX
+                             this.translationY = translationY
+                             this.transformOrigin = TransformOrigin.Center
+                             if (isCurrentFolderDeleted) this.alpha = folderProgress
+                         }.clickable(enabled = false) {},
+                        color = menuSurfaceColor.copy(alpha = 0.98f),
+                         shape = RoundedCornerShape(32.dp), border = folderBorder, shadowElevation = 24.dp
+                     ) {
                         Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             val infiniteTransition = rememberInfiniteTransition(label = "WiggleTransition")
                             val wiggleAngle by infiniteTransition.animateFloat(
@@ -740,7 +739,7 @@ fun AppDrawer(
             AppContextMenu(
                 isFavorite = isFavorite(currentMenuApp.packageName), targetBounds = menuAppBounds, onDismiss = { menuApp = null }, onToggleFavorite = { onToggleFavorite(currentMenuApp.packageName) },
                 onAppInfo = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null) }) },
-                onUninstall = { try { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null); flags = Intent.FLAG_ACTIVITY_NEW_TASK }) } catch (e: Exception) { Toast.makeText(context, "Deinstallation konnte nicht gestartet werden", Toast.LENGTH_SHORT).show() } },
+                onUninstall = { try { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null); flags = Intent.FLAG_ACTIVITY_NEW_TASK }) } catch (_: Exception) { Toast.makeText(context, "Deinstallation konnte nicht gestartet werden", Toast.LENGTH_SHORT).show() } },
                 onMoveToFolder = if (folders.isNotEmpty()) { { folderSelectionApp = currentMenuApp; showFolderSelection = true } } else null,
                 onRemoveFromFolder = folders.find { it.appPackageNames.contains(currentMenuApp.packageName) }?.let { folder -> { onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, folder.id, currentMenuApp.packageName)) } }
             )
@@ -749,8 +748,8 @@ fun AppDrawer(
         if (showFolderSelection && folderSelectionApp != null) {
             Dialog(onDismissRequest = { showFolderSelection = false }) {
                 val dialogBorderModifier = if (isLiquidGlassEnabled) Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp)) else Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
-                Surface(modifier = Modifier.fillMaxWidth(0.8f).wrapContentHeight().then(dialogBorderModifier), shape = RoundedCornerShape(28.dp), color = (if (isDarkTextEnabled) themedLightBackground else colorTheme.drawerBackground).copy(alpha = 0.98f), shadowElevation = 16.dp) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                Surface(modifier = Modifier.fillMaxWidth(0.8f).wrapContentHeight().then(dialogBorderModifier), shape = RoundedCornerShape(28.dp), color = menuSurfaceColor.copy(alpha = 0.98f), shadowElevation = 16.dp) {
+                     Column(modifier = Modifier.padding(20.dp)) {
                         Text("In Ordner verschieben", fontSize = 18.sp * fontSize.scale, fontWeight = fontWeight.weight, color = mainTextColor, modifier = Modifier.padding(bottom = 16.dp))
                         folders.forEach { folder ->
                             @Suppress("DEPRECATION")

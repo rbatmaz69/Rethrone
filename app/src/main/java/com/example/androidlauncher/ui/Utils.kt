@@ -45,6 +45,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
@@ -285,6 +286,7 @@ fun ReturnAnimationOverlay(
     bounds: Rect?, 
     rootSize: IntSize, 
     background: Color,
+    backgroundBrush: Brush? = null,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
     durationMillis: Int = 260,
@@ -342,7 +344,10 @@ fun ReturnAnimationOverlay(
                     this.clip = true
                     this.alpha = overlayAlpha
                 }
-                .background(background)
+                .then(
+                    if (backgroundBrush != null) Modifier.background(backgroundBrush)
+                    else Modifier.background(background)
+                )
         )
     }
 }
@@ -352,6 +357,7 @@ fun LaunchAnimationOverlay(
     bounds: Rect?,
     rootSize: IntSize,
     background: Color,
+    backgroundBrush: Brush? = null,
     modifier: Modifier = Modifier,
     durationMillis: Int = 320,
     scrimColor: Color = Color.Black.copy(alpha = 0.16f)
@@ -384,6 +390,9 @@ fun LaunchAnimationOverlay(
             .fillMaxSize()
             .zIndex(1900f)
     ) {
+        if (scrimColor.alpha > 0f) {
+            Box(modifier = Modifier.fillMaxSize().background(scrimColor))
+        }
         Box(
             modifier = Modifier
                 .offset {
@@ -400,7 +409,10 @@ fun LaunchAnimationOverlay(
                     this.shape = animatedShape
                     this.clip = true
                 }
-                .background(background)
+                .then(
+                    if (backgroundBrush != null) Modifier.background(backgroundBrush)
+                    else Modifier.background(background)
+                )
         )
     }
 }

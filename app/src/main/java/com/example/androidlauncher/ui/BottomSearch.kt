@@ -2,7 +2,7 @@ package com.example.androidlauncher.ui
 
 import android.content.Intent
 import android.app.SearchManager
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -77,30 +77,21 @@ fun BottomSearch(
     val density = LocalDensity.current
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val searchSurfaceBrush = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.searchBrush(isDarkTextEnabled, alpha = if (isDarkTextEnabled) 0.97f else 0.94f)
+    }
+    val themeBorderColor = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.borderColor(isDarkTextEnabled)
+    }
 
-    // Theme-Konfiguration
-    val searchContainerModifier = if (isDarkTextEnabled) {
-        val primary = colorTheme.primary
-        val themedLightBackground = Color(
-            red = primary.red * 0.90f + 0.10f,
-            green = primary.green * 0.90f + 0.10f,
-            blue = primary.blue * 0.90f + 0.10f,
-            alpha = 1f
-        )
-        val menuBgColor = themedLightBackground.copy(alpha = 0.98f)
-        if (isLiquidGlassEnabled) {
-            Modifier
-                .background(menuBgColor, RoundedCornerShape(28.dp))
-                .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
-        } else {
-            Modifier.background(menuBgColor, RoundedCornerShape(28.dp))
-        }
-    } else if (isLiquidGlassEnabled) {
+    val searchContainerModifier = if (isLiquidGlassEnabled) {
         Modifier
-            .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(28.dp))
+            .background(searchSurfaceBrush, RoundedCornerShape(28.dp))
             .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
     } else {
-        Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
+        Modifier
+            .background(searchSurfaceBrush, RoundedCornerShape(28.dp))
+            .border(BorderStroke(1.dp, themeBorderColor), RoundedCornerShape(28.dp))
     }
 
     var query by remember { mutableStateOf("") }
@@ -169,7 +160,7 @@ fun BottomSearch(
         isSearchBarVisible = true
     }
 
-    val overlayColor = if (isDarkTextEnabled) Color.White.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.65f)
+    val overlayColor = colorTheme.overlayScrimColor(isDarkTextEnabled)
 
     Box(
         modifier = Modifier
@@ -394,7 +385,7 @@ private fun buildWebSearchIntent(context: android.content.Context, query: String
         "https://www.google.com/search?q=$query"
     }
 
-    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl)).apply {
+    val browserIntent = Intent(Intent.ACTION_VIEW, finalUrl.toUri()).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     if (browserIntent.resolveActivity(context.packageManager) != null) {
