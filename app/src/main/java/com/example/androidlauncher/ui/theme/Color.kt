@@ -358,6 +358,86 @@ enum class ColorTheme(
         Color(0xFF050505),
         highlight = Color(0xFFD5D5D5)
     ),
+    PLASMA_BURST(
+        "Plasma Burst",
+        Color(0xFFFF007A),
+        Color(0xFF8A2BE2),
+        Color.White,
+        Color(0xFF140616),
+        highlight = Color(0xFFFFC3E0)
+    ),
+    LASER_LIME(
+        "Laser Lime",
+        Color(0xFF98FF00),
+        Color(0xFFD4FF3F),
+        Color.Black,
+        Color(0xFF0E1404),
+        highlight = Color(0xFFF0FFB8)
+    ),
+    ELECTRIC_AQUA(
+        "Electric Aqua",
+        Color(0xFF00E5FF),
+        Color(0xFF00FFC6),
+        Color.Black,
+        Color(0xFF041317),
+        highlight = Color(0xFFC8FFF8)
+    ),
+    ULTRAVIOLET_PULSE(
+        "Ultraviolet Pulse",
+        Color(0xFF6F00FF),
+        Color(0xFFD100FF),
+        Color.White,
+        Color(0xFF11061A),
+        highlight = Color(0xFFF0C6FF)
+    ),
+    SOLAR_FLARE(
+        "Solar Flare",
+        Color(0xFFFFC400),
+        Color(0xFFFF6A00),
+        Color.Black,
+        Color(0xFF1A1003),
+        highlight = Color(0xFFFFE2A8)
+    ),
+    HYPER_CORAL(
+        "Hyper Coral",
+        Color(0xFFFF5A5F),
+        Color(0xFFFF2D92),
+        Color.White,
+        Color(0xFF19080D),
+        highlight = Color(0xFFFFC3D8)
+    ),
+    NITRO_BLUE(
+        "Nitro Blue",
+        Color(0xFF0057FF),
+        Color(0xFF00A6FF),
+        Color.White,
+        Color(0xFF06101D),
+        highlight = Color(0xFFC8E1FF)
+    ),
+    ACID_MELON(
+        "Acid Melon",
+        Color(0xFFB8FF00),
+        Color(0xFFFF4FD8),
+        Color.Black,
+        Color(0xFF15110A),
+        highlight = Color(0xFFFFD2F2)
+    ),
+    PIXEL_FIRE(
+        "Pixel Fire",
+        Color(0xFFFF4D00),
+        Color(0xFFFF003C),
+        Color.White,
+        Color(0xFF19080A),
+        highlight = Color(0xFFFFC4B8)
+    ),
+    RAVE_GRAPE(
+        "Rave Grape",
+        Color(0xFF7F00FF),
+        Color(0xFFFF00AA),
+        Color.White,
+        Color(0xFF120619),
+        highlight = Color(0xFFFFCCEF)
+    ),
     OCEAN(
         "Ocean",
         Color(0xFF0D47A1),
