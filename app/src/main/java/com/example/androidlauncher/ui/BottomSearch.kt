@@ -32,12 +32,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +69,7 @@ fun BottomSearch(
     preferredImeWebLaunchBounds: Rect? = null
 ) {
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
@@ -101,8 +105,27 @@ fun BottomSearch(
 
     var query by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
+    var isSearchBarVisible by remember { mutableStateOf(false) }
+    var hasRequestedInitialFocus by remember { mutableStateOf(false) }
     var searchBarBounds by remember { mutableStateOf<Rect?>(null) }
     var searchBarIconBounds by remember { mutableStateOf<Rect?>(null) }
+    val searchBarHiddenLiftPx = with(density) { 34.dp.toPx() }
+    val searchBarScale by animateFloatAsState(
+        targetValue = if (isSearchBarVisible) 1f else 0.86f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BottomSearchBarScale"
+    )
+    val searchBarTranslationY by animateFloatAsState(
+        targetValue = if (isSearchBarVisible) 0f else searchBarHiddenLiftPx,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "BottomSearchBarTranslationY"
+    )
     val keyboardLaunchSizePx = with(density) { 40.dp.toPx() }
     val searchBarHorizontalPaddingPx = with(density) { 20.dp.toPx() }
     val searchBarIconSizePx = with(density) { 20.dp.toPx() }
@@ -138,8 +161,13 @@ fun BottomSearch(
         }
     }
 
-    BackHandler { onClose() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    BackHandler {
+        keyboardController?.hide()
+        onClose()
+    }
+    LaunchedEffect(Unit) {
+        isSearchBarVisible = true
+    }
 
     val overlayColor = if (isDarkTextEnabled) Color.White.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.65f)
 
@@ -147,7 +175,10 @@ fun BottomSearch(
         modifier = Modifier
             .fillMaxSize()
             .background(overlayColor)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onClose() }
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                keyboardController?.hide()
+                onClose()
+            }
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -232,63 +263,100 @@ fun BottomSearch(
                 }
 
                 // Such-Eingabefeld (Bubble)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(searchContainerModifier)
-                        .onGloballyPositioned { searchBarBounds = it.boundsInRoot() }
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                AnimatedVisibility(
+                    visible = isSearchBarVisible,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 140, delayMillis = 10)) +
+                        slideInVertically(
+                            initialOffsetY = { it / 2 },
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ),
+                    exit = fadeOut(animationSpec = tween(120)) +
+                        slideOutVertically(
+                            targetOffsetY = { it / 3 },
+                            animationSpec = tween(durationMillis = 140, easing = EaseInCubic)
+                        ) +
+                        scaleOut(
+                            targetScale = 0.98f,
+                            animationSpec = tween(durationMillis = 140, easing = EaseInCubic)
+                        )
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = mainTextColor.copy(alpha = 0.5f),
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .size(20.dp)
-                            .onGloballyPositioned { searchBarIconBounds = it.boundsInRoot() }
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (query.isEmpty()) {
-                            Text(text = "Search...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 18.sp)
-                        }
-                        BasicTextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
-                                .onPreInterceptKeyBeforeSoftKeyboard { event ->
-                                    if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
-                                        onClose()
-                                        true
-                                    } else false
-                                },
-                            textStyle = LocalTextStyle.current.copy(color = mainTextColor, fontSize = 18.sp),
-                            singleLine = true,
-                            cursorBrush = SolidColor(mainTextColor),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    if (query.isNotEmpty()) {
-                                        buildWebSearchIntent(context, query)?.let { intent ->
-                                            val keyboardLaunchBounds = preferredImeWebLaunchBounds
-                                                ?: searchBarIconBounds
-                                                 ?: createCompactLaunchBounds(
-                                                     containerBounds = searchBarBounds,
-                                                     sizePx = keyboardLaunchSizePx,
-                                                     horizontalInsetPx = searchBarHorizontalPaddingPx,
-                                                     anchorSizePx = searchBarIconSizePx
-                                                 )
-                                            onWebLaunch(intent, keyboardLaunchBounds)
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                scaleX = searchBarScale
+                                scaleY = searchBarScale
+                                translationY = searchBarTranslationY
+                            }
+                            .then(searchContainerModifier)
+                            .onGloballyPositioned { searchBarBounds = it.boundsInRoot() }
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = mainTextColor.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .onGloballyPositioned { searchBarIconBounds = it.boundsInRoot() }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (query.isEmpty()) {
+                                Text(text = "Search...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 18.sp)
+                            }
+                            BasicTextField(
+                                value = query,
+                                onValueChange = { query = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester)
+                                    .testTag("bottom_search_field")
+                                    .onGloballyPositioned {
+                                        if (isSearchBarVisible && !hasRequestedInitialFocus) {
+                                            hasRequestedInitialFocus = true
+                                            focusRequester.requestFocus()
+                                            keyboardController?.show()
                                         }
                                     }
-                                }
+                                    .onPreInterceptKeyBeforeSoftKeyboard { event ->
+                                        if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
+                                            keyboardController?.hide()
+                                            onClose()
+                                            true
+                                        } else false
+                                    },
+                                textStyle = LocalTextStyle.current.copy(color = mainTextColor, fontSize = 18.sp),
+                                singleLine = true,
+                                cursorBrush = SolidColor(mainTextColor),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(
+                                    onSearch = {
+                                        if (query.isNotEmpty()) {
+                                            buildWebSearchIntent(context, query)?.let { intent ->
+                                                val keyboardLaunchBounds = preferredImeWebLaunchBounds
+                                                    ?: searchBarIconBounds
+                                                     ?: createCompactLaunchBounds(
+                                                         containerBounds = searchBarBounds,
+                                                         sizePx = keyboardLaunchSizePx,
+                                                         horizontalInsetPx = searchBarHorizontalPaddingPx,
+                                                         anchorSizePx = searchBarIconSizePx
+                                                     )
+                                                onWebLaunch(intent, keyboardLaunchBounds)
+                                            }
+                                        }
+                                    }
+                                )
                             )
-                        )
-                    }
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = "" }, modifier = Modifier.size(24.dp)) {
-                            Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = mainTextColor.copy(alpha = 0.5f))
+                        }
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { query = "" }, modifier = Modifier.size(24.dp)) {
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = mainTextColor.copy(alpha = 0.5f))
+                            }
                         }
                     }
                 }

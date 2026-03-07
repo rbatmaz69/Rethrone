@@ -329,6 +329,7 @@ fun HomeScreen(
                                 .size(56.dp)
                                 .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.15f)
                                 .clip(CircleShape)
+                                .testTag("home_search_button")
                                 .onGloballyPositioned { onSearchButtonBoundsChanged(it.boundsInRoot()) }
                                 .then(if (!isPreview) Modifier.bounceClick(searchIntSrc).clickable(interactionSource = searchIntSrc, indication = null) { onOpenSearch() } else Modifier),
                             contentAlignment = Alignment.Center
