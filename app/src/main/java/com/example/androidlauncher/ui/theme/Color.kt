@@ -173,6 +173,111 @@ enum class ColorTheme(
         highlight = Color(0xFFF0E6E8),
         isArtTheme = true
     ),
+    NEON_NOIR(
+        "Neon Noir",
+        Color(0xFF111827),
+        Color(0xFF00C2FF),
+        Color.White,
+        Color(0xFF070B14),
+        artGradient = listOf(Color(0xFF070B14), Color(0xFF182033), Color(0xFF3B1D5E), Color(0xFF00C2FF)),
+        menuGradient = listOf(Color(0xFF0B1020), Color(0xFF1A2340), Color(0xFF2E2B5A), Color(0xFF1388C9)),
+        searchGradient = listOf(Color(0xFF12182C), Color(0xFF22304D), Color(0xFF3E3C66), Color(0xFF5ED8FF)),
+        animationGradient = listOf(Color(0xFF090E19), Color(0xFF1A2B48), Color(0xFF55338A), Color(0xFF24D8FF)),
+        highlight = Color(0xFF9CEEFF),
+        isArtTheme = true
+    ),
+    VOLCANIC_GLASS(
+        "Volcanic Glass",
+        Color(0xFF3A1F22),
+        Color(0xFFE2653C),
+        Color.White,
+        Color(0xFF140D10),
+        artGradient = listOf(Color(0xFF140D10), Color(0xFF342125), Color(0xFF6C2F2D), Color(0xFFE2653C)),
+        menuGradient = listOf(Color(0xFF1A1214), Color(0xFF3D2327), Color(0xFF7B342F), Color(0xFFC95A3F)),
+        searchGradient = listOf(Color(0xFF25171A), Color(0xFF51282B), Color(0xFF924138), Color(0xFFF08A5D)),
+        animationGradient = listOf(Color(0xFF171012), Color(0xFF4B2223), Color(0xFFA13D30), Color(0xFFFF8F66)),
+        highlight = Color(0xFFFFC1A2),
+        isArtTheme = true
+    ),
+    OXIDE_COPPER(
+        "Oxide Copper",
+        Color(0xFF5B4A3D),
+        Color(0xFF2F8F83),
+        Color.Black,
+        Color(0xFF151515),
+        artGradient = listOf(Color(0xFF171616), Color(0xFF514238), Color(0xFF9E6B43), Color(0xFF2F8F83)),
+        menuGradient = listOf(Color(0xFF1A1A19), Color(0xFF4B4037), Color(0xFF8A6649), Color(0xFF3D8D82)),
+        searchGradient = listOf(Color(0xFF23211F), Color(0xFF645443), Color(0xFFA97854), Color(0xFF6BB5A4)),
+        animationGradient = listOf(Color(0xFF171717), Color(0xFF5A4638), Color(0xFFB36F49), Color(0xFF7BC5BA)),
+        highlight = Color(0xFFD9E6E0),
+        isArtTheme = true
+    ),
+    AMETHYST_SMOKE(
+        "Amethyst Smoke",
+        Color(0xFF4D3A62),
+        Color(0xFF8C7AAE),
+        Color.White,
+        Color(0xFF14111A),
+        artGradient = listOf(Color(0xFF18131D), Color(0xFF43324E), Color(0xFF6D5A85), Color(0xFFC7BEDB)),
+        menuGradient = listOf(Color(0xFF1A1520), Color(0xFF4A395B), Color(0xFF76648E), Color(0xFFB1A6CA)),
+        searchGradient = listOf(Color(0xFF241D2C), Color(0xFF5A4A6F), Color(0xFF8B7AA9), Color(0xFFD8D1E6)),
+        animationGradient = listOf(Color(0xFF1A1420), Color(0xFF57406A), Color(0xFF8D73B3), Color(0xFFE4DDF0)),
+        highlight = Color(0xFFF0ECF8),
+        isArtTheme = true
+    ),
+    PETROL_DREAM(
+        "Petrol Dream",
+        Color(0xFF12394A),
+        Color(0xFF2E6F7E),
+        Color.White,
+        Color(0xFF081217),
+        artGradient = listOf(Color(0xFF081217), Color(0xFF12394A), Color(0xFF1E5B67), Color(0xFF9FBF8A)),
+        menuGradient = listOf(Color(0xFF0D171C), Color(0xFF184252), Color(0xFF29616F), Color(0xFF7FA78A)),
+        searchGradient = listOf(Color(0xFF122027), Color(0xFF245060), Color(0xFF3D7682), Color(0xFFC4D7B2)),
+        animationGradient = listOf(Color(0xFF0A1418), Color(0xFF1A4655), Color(0xFF337585), Color(0xFFD9E7C5)),
+        highlight = Color(0xFFE8F0DE),
+        isArtTheme = true
+    ),
+    FERRARI_RED(
+        "Ferrari Red",
+        Color(0xFFD20A11),
+        Color(0xFFFF3B30),
+        Color.White,
+        Color(0xFF160607),
+        highlight = Color(0xFFFFB1A9)
+    ),
+    GRAPHITE_MONO(
+        "Graphite Mono",
+        Color(0xFF3B4048),
+        Color(0xFF626973),
+        Color.White,
+        Color(0xFF0E1115),
+        highlight = Color(0xFFD0D4DA)
+    ),
+    IVORY_INK(
+        "Ivory Ink",
+        Color(0xFFF2EBDD),
+        Color(0xFFD8CEBE),
+        Color.Black,
+        Color(0xFF201D19),
+        highlight = Color(0xFFFFFAF2)
+    ),
+    OLIVE_MONO(
+        "Olive Mono",
+        Color(0xFF6E7450),
+        Color(0xFF8D9566),
+        Color.Black,
+        Color(0xFF17180F),
+        highlight = Color(0xFFDDE2C8)
+    ),
+    ONYX_GOLD(
+        "Onyx Gold",
+        Color(0xFF1C1A19),
+        Color(0xFFC9A96A),
+        Color.White,
+        Color(0xFF090807),
+        highlight = Color(0xFFF0E1BC)
+    ),
     OCEAN(
         "Ocean",
         Color(0xFF0D47A1),
