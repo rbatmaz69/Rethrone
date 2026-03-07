@@ -121,6 +121,58 @@ enum class ColorTheme(
         highlight = Color(0xFF78E3BE),
         isArtTheme = true
     ),
+    MOONLIT_LAKE(
+        "Moonlit Lake",
+        Color(0xFF214E73),
+        Color(0xFF6FA3C8),
+        Color.White,
+        Color(0xFF0B1520),
+        artGradient = listOf(Color(0xFF0A1420), Color(0xFF17324A), Color(0xFF285A7A), Color(0xFF90B7D5)),
+        menuGradient = listOf(Color(0xFF101B28), Color(0xFF1A344A), Color(0xFF3C6687), Color(0xFF7FA7C4)),
+        searchGradient = listOf(Color(0xFF1A2D40), Color(0xFF2C516E), Color(0xFF5F86A4), Color(0xFF9CBBD0)),
+        animationGradient = listOf(Color(0xFF0B1623), Color(0xFF244D6C), Color(0xFF4A7EA6), Color(0xFFB7D0E3)),
+        highlight = Color(0xFFD5E3EE),
+        isArtTheme = true
+    ),
+    EMBER_RAIN(
+        "Ember Rain",
+        Color(0xFF7A3A2A),
+        Color(0xFFB96A4A),
+        Color.White,
+        Color(0xFF1A1214),
+        artGradient = listOf(Color(0xFF1A1214), Color(0xFF4B2930), Color(0xFF8B4A39), Color(0xFFC88963)),
+        menuGradient = listOf(Color(0xFF201719), Color(0xFF4E2C30), Color(0xFF855041), Color(0xFFB97A5B)),
+        searchGradient = listOf(Color(0xFF2B1C20), Color(0xFF61343B), Color(0xFF9A5B4C), Color(0xFFD19C78)),
+        animationGradient = listOf(Color(0xFF1C1315), Color(0xFF6D372D), Color(0xFFB7694E), Color(0xFFE2B08C)),
+        highlight = Color(0xFFE7C2A4),
+        isArtTheme = true
+    ),
+    PINE_DAWN(
+        "Pine Dawn",
+        Color(0xFF305348),
+        Color(0xFF7EA68A),
+        Color.Black,
+        Color(0xFF122019),
+        artGradient = listOf(Color(0xFF122019), Color(0xFF29443A), Color(0xFF4E7564), Color(0xFFB7C9AF)),
+        menuGradient = listOf(Color(0xFF18261F), Color(0xFF355346), Color(0xFF62836E), Color(0xFF9FB59B)),
+        searchGradient = listOf(Color(0xFF213127), Color(0xFF4A6957), Color(0xFF7E9D85), Color(0xFFC5D0BE)),
+        animationGradient = listOf(Color(0xFF14221B), Color(0xFF3A5C4D), Color(0xFF6D9079), Color(0xFFD6DDC6)),
+        highlight = Color(0xFFE3E9DA),
+        isArtTheme = true
+    ),
+    ROSE_DUST(
+        "Rose Dust",
+        Color(0xFF7A5566),
+        Color(0xFFB58A9A),
+        Color.Black,
+        Color(0xFF1C171B),
+        artGradient = listOf(Color(0xFF21191E), Color(0xFF5E4250), Color(0xFF9A7381), Color(0xFFD8C2C6)),
+        menuGradient = listOf(Color(0xFF261D21), Color(0xFF674954), Color(0xFF9C7784), Color(0xFFC7AAB2)),
+        searchGradient = listOf(Color(0xFF33262C), Color(0xFF7B5967), Color(0xFFAF8894), Color(0xFFE0CFD3)),
+        animationGradient = listOf(Color(0xFF241B1F), Color(0xFF7D5967), Color(0xFFB78C97), Color(0xFFE8D9DC)),
+        highlight = Color(0xFFF0E6E8),
+        isArtTheme = true
+    ),
     OCEAN(
         "Ocean",
         Color(0xFF0D47A1),

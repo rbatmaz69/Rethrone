@@ -16,8 +16,8 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `total number of color themes is 35`() {
-        assertEquals(35, ColorTheme.entries.size)
+    fun `total number of color themes is 39`() {
+        assertEquals(39, ColorTheme.entries.size)
     }
 
     @Test
@@ -88,7 +88,11 @@ class ColorThemeTest {
             "ARCTIC_MIST",
             "OCEAN_DEPTHS",
             "MISTY_VALLEY",
-            "AURORA_VEIL"
+            "AURORA_VEIL",
+            "MOONLIT_LAKE",
+            "EMBER_RAIN",
+            "PINE_DAWN",
+            "ROSE_DUST"
         ).forEach { name ->
             assertTrue("Expected theme $name to exist", name in actualNames)
         }
