@@ -40,7 +40,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
  * - **App-Icons anpassen** (öffnet [IconConfigMenu])
  * - **Wallpaper ändern** (öffnet System-Bildauswahl mit UCrop)
  * - **Hintergrund anpassen** (öffnet [WallpaperConfigMenu])
- * - **Benachrichtigungs-Punkte** (öffnet System-Einstellungen)
+ * - **Benachrichtigung** (öffnet System-Einstellungen)
  *
  * @param onOpenIconConfig Callback zum Öffnen der Icon-Konfiguration.
  * @param onChangeWallpaper Callback zum Starten der Wallpaper-Auswahl.
@@ -148,20 +148,6 @@ fun EditConfigMenu(
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        EditMenuItem(
-            icon = Lucide.Bell,
-            label = "Benachrichtigungs-Punkte",
-            onClick = {
-                openNotificationSettings(context)
-            },
-            statusLabel = if (isNotificationEnabled) "An" else "Aus",
-            mainTextColor = mainTextColor,
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
-            isDarkTextEnabled = isDarkTextEnabled
-        )
-
         Spacer(modifier = Modifier.height(28.dp))
 
         Text(
@@ -173,6 +159,20 @@ fun EditConfigMenu(
         )
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        EditMenuItem(
+            icon = Lucide.Bell,
+            label = "Benachrichtigung",
+            onClick = {
+                openNotificationSettings(context)
+            },
+            statusLabel = if (isNotificationEnabled) "An" else "Aus",
+            mainTextColor = mainTextColor,
+            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            isDarkTextEnabled = isDarkTextEnabled
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         EditMenuItem(
             icon = Lucide.Hand,
