@@ -278,6 +278,86 @@ enum class ColorTheme(
         Color(0xFF090807),
         highlight = Color(0xFFF0E1BC)
     ),
+    COBALT_MONO(
+        "Cobalt Mono",
+        Color(0xFF1346C7),
+        Color(0xFF4D74E6),
+        Color.White,
+        Color(0xFF08101F),
+        highlight = Color(0xFFC4D3FF)
+    ),
+    JADE_MONO(
+        "Jade Mono",
+        Color(0xFF0C7A58),
+        Color(0xFF32A87D),
+        Color.White,
+        Color(0xFF071810),
+        highlight = Color(0xFFCDEEE0)
+    ),
+    PLUM_MONO(
+        "Plum Mono",
+        Color(0xFF6A1B7A),
+        Color(0xFF9C4DB0),
+        Color.White,
+        Color(0xFF150A18),
+        highlight = Color(0xFFE9D4EF)
+    ),
+    CITRINE_MONO(
+        "Citrine Mono",
+        Color(0xFFA87400),
+        Color(0xFFC99518),
+        Color.Black,
+        Color(0xFF181203),
+        highlight = Color(0xFFF3E2A1)
+    ),
+    TEAL_MONO(
+        "Teal Mono",
+        Color(0xFF007A78),
+        Color(0xFF2FA7A3),
+        Color.White,
+        Color(0xFF071716),
+        highlight = Color(0xFFC8F0EE)
+    ),
+    MAROON_MONO(
+        "Maroon Mono",
+        Color(0xFF7A1027),
+        Color(0xFFA53A50),
+        Color.White,
+        Color(0xFF17070B),
+        highlight = Color(0xFFF1CDD4)
+    ),
+    SLATE_MONO(
+        "Slate Mono",
+        Color(0xFF4A5568),
+        Color(0xFF718096),
+        Color.White,
+        Color(0xFF0F141B),
+        highlight = Color(0xFFDCE3EC)
+    ),
+    SANDSTONE_MONO(
+        "Sandstone Mono",
+        Color(0xFF8C6A43),
+        Color(0xFFB28A5C),
+        Color.White,
+        Color(0xFF17120C),
+        highlight = Color(0xFFEAD9C5)
+    ),
+    BRONZE_MONO(
+        "Bronze Mono",
+        Color(0xFF8D5A2B),
+        Color(0xFFB97A3D),
+        Color.White,
+        Color(0xFF181008),
+        highlight = Color(0xFFF1D4B2)
+    ),
+    OBSIDIAN_MONO(
+        "Obsidian Mono",
+        Color(0xFF171717),
+        Color(0xFF343434),
+        Color.White,
+        Color(0xFF050505),
+        highlight = Color(0xFFD5D5D5)
+    ),
     OCEAN(
         "Ocean",
         Color(0xFF0D47A1),
