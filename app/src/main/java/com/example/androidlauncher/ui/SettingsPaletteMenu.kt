@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
@@ -175,6 +176,7 @@ fun SettingsPaletteMenu(
                         modifier = Modifier
                             .fillMaxSize()
                             .then(backgroundModifier)
+                            .testTag("settings_palette_item_${item.id}")
                             .clickable(
                                 interactionSource = interactionSource,
                                 indication = null,

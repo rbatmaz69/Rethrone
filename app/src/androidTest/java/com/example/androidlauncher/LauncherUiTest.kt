@@ -81,4 +81,21 @@ class LauncherUiTest {
 
         composeTestRule.onNodeWithTag("bottom_search_field").assertIsDisplayed().assertIsFocused()
     }
+
+    @Test
+    fun shakeGesturesSwitchIsReachableFromEditMenu() {
+        composeTestRule.onNodeWithTag("settings_button").assertIsDisplayed().performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("settings_palette_item_edit").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeTestRule.onNodeWithTag("settings_palette_item_edit").performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("shake_gestures_switch").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeTestRule.onNodeWithTag("shake_gestures_switch").assertIsDisplayed()
+    }
 }

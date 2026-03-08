@@ -41,6 +41,7 @@ class ThemeManager(private val context: Context) {
         private val WALLPAPER_BLUR_KEY = floatPreferencesKey("wallpaper_blur")
         private val WALLPAPER_DIM_KEY = floatPreferencesKey("wallpaper_dim")
         private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
+        private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
     }
 
     /**
@@ -166,6 +167,14 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
+     * Observable flow for shake gesture toggle.
+     */
+    val isShakeGesturesEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[SHAKE_GESTURES_KEY] ?: true
+        }
+
+    /**
      * Updates the selected theme.
      */
     suspend fun setTheme(theme: ColorTheme) {
@@ -274,6 +283,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setWallpaperZoom(zoom: Float) {
         context.dataStore.edit { preferences ->
             preferences[WALLPAPER_ZOOM_KEY] = zoom
+        }
+    }
+
+    /**
+     * Toggles shake gestures.
+     */
+    suspend fun setShakeGesturesEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SHAKE_GESTURES_KEY] = enabled
         }
     }
 }
