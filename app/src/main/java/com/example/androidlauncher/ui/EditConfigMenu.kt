@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -66,6 +68,7 @@ fun EditConfigMenu(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val menuListState = rememberLazyListState()
 
     var isNotificationEnabled by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
     var isAccessibilityEnabled by remember { mutableStateOf(LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) }
@@ -100,134 +103,152 @@ fun EditConfigMenu(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        LazyColumn(
+            state = menuListState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(top = 32.dp, bottom = 8.dp)
+        ) {
+            item {
+                EditMenuItem(
+                    icon = Lucide.Settings2,
+                    label = "App-Icons anpassen",
+                    onClick = onOpenIconConfig,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled
+                )
+            }
 
-        EditMenuItem(
-            icon = Lucide.Settings2,
-            label = "App-Icons anpassen",
-            onClick = onOpenIconConfig,
-            mainTextColor = mainTextColor,
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
-            isDarkTextEnabled = isDarkTextEnabled
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        EditMenuItem(
-            icon = Lucide.Image,
-            label = "Wallpaper ändern",
-            onClick = onChangeWallpaper,
-            mainTextColor = mainTextColor,
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
-            isDarkTextEnabled = isDarkTextEnabled,
-            trailingContent = {
-                if (isCustomWallpaperSet) {
-                    IconButton(onClick = onResetWallpaper) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Remove Wallpaper",
-                            tint = mainTextColor.copy(alpha = 0.6f),
-                            modifier = Modifier.size(24.dp)
-                        )
+            item {
+                EditMenuItem(
+                    icon = Lucide.Image,
+                    label = "Wallpaper ändern",
+                    onClick = onChangeWallpaper,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    trailingContent = {
+                        if (isCustomWallpaperSet) {
+                            IconButton(onClick = onResetWallpaper) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Remove Wallpaper",
+                                    tint = mainTextColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = mainTextColor.copy(alpha = 0.4f)
+                            )
+                        }
                     }
-                } else {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = mainTextColor.copy(alpha = 0.4f)
+                )
+            }
+
+            if (isCustomWallpaperSet) {
+                item {
+                    EditMenuItem(
+                        icon = Lucide.Settings2,
+                        label = "Hintergrund anpassen",
+                        onClick = onOpenWallpaperAdjust,
+                        mainTextColor = mainTextColor,
+                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        isDarkTextEnabled = isDarkTextEnabled
                     )
                 }
             }
-        )
 
-        if (isCustomWallpaperSet) {
-            Spacer(modifier = Modifier.height(12.dp))
-            EditMenuItem(
-                icon = Lucide.Settings2,
-                label = "Hintergrund anpassen",
-                onClick = onOpenWallpaperAdjust,
-                mainTextColor = mainTextColor,
-                isLiquidGlassEnabled = isLiquidGlassEnabled,
-                isDarkTextEnabled = isDarkTextEnabled
-            )
+            item {
+                EditSectionHeader(
+                    title = "Gesten",
+                    mainTextColor = mainTextColor
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.Smartphone,
+                    label = "Shake-Gesten",
+                    description = "1× Schütteln: Taschenlampe · 2× Schütteln: Kamera",
+                    checked = isShakeGesturesEnabled,
+                    onCheckedChange = onShakeGesturesToggled,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "shake_gestures_switch"
+                )
+            }
+
+            item {
+                EditSectionHeader(
+                    title = "Zugriffe",
+                    mainTextColor = mainTextColor
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.Bell,
+                    label = "Benachrichtigung",
+                    onClick = {
+                        openNotificationSettings(context)
+                    },
+                    statusLabel = if (isNotificationEnabled) "An" else "Aus",
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.Hand,
+                    label = "Bedienungshilfen",
+                    onClick = {
+                        openAccessibilitySettings(context)
+                    },
+                    statusLabel = if (isAccessibilityEnabled) "An" else "Aus",
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.Shield,
+                    label = "Nutzungszugriff",
+                    onClick = {
+                        ForegroundAppResolver.openUsageAccessSettings(context)
+                    },
+                    statusLabel = if (isUsageAccessEnabled) "An" else "Aus",
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Text(
-            text = "Gesten",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            color = mainTextColor.copy(alpha = 0.7f),
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        EditToggleItem(
-            icon = Lucide.Smartphone,
-            label = "Shake-Gesten",
-            description = "1× Schütteln: Taschenlampe · 2× Schütteln: Kamera",
-            checked = isShakeGesturesEnabled,
-            onCheckedChange = onShakeGesturesToggled,
-            mainTextColor = mainTextColor,
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
-            isDarkTextEnabled = isDarkTextEnabled,
-            switchTestTag = "shake_gestures_switch"
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Text(
-            text = "Zugriffe",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            color = mainTextColor.copy(alpha = 0.7f),
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        EditMenuItem(
-            icon = Lucide.Bell,
-            label = "Benachrichtigung",
-            onClick = {
-                openNotificationSettings(context)
-            },
-            statusLabel = if (isNotificationEnabled) "An" else "Aus",
-            mainTextColor = mainTextColor,
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
-            isDarkTextEnabled = isDarkTextEnabled
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        EditMenuItem(
-            icon = Lucide.Hand,
-            label = "Bedienungshilfen",
-            onClick = {
-                openAccessibilitySettings(context)
-            },
-            statusLabel = if (isAccessibilityEnabled) "An" else "Aus",
-            mainTextColor = mainTextColor,
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
-            isDarkTextEnabled = isDarkTextEnabled
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        EditMenuItem(
-            icon = Lucide.Shield,
-            label = "Nutzungszugriff",
-            onClick = {
-                ForegroundAppResolver.openUsageAccessSettings(context)
-            },
-            statusLabel = if (isUsageAccessEnabled) "An" else "Aus",
-            mainTextColor = mainTextColor,
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
-            isDarkTextEnabled = isDarkTextEnabled
-        )
     }
+}
+
+@Composable
+private fun EditSectionHeader(
+    title: String,
+    mainTextColor: Color
+) {
+    Text(
+        text = title,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Medium,
+        color = mainTextColor.copy(alpha = 0.7f),
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+    )
 }
 
 /**
