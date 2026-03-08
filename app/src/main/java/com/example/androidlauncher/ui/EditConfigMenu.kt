@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +28,7 @@ import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.Shield
 import com.composables.icons.lucide.Hand
+import com.composables.icons.lucide.Smartphone
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -56,6 +58,8 @@ fun EditConfigMenu(
     onResetWallpaper: () -> Unit,
     onOpenWallpaperAdjust: () -> Unit,
     isCustomWallpaperSet: Boolean,
+    isShakeGesturesEnabled: Boolean,
+    onShakeGesturesToggled: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -147,6 +151,30 @@ fun EditConfigMenu(
                 isDarkTextEnabled = isDarkTextEnabled
             )
         }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Text(
+            text = "Gesten",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = mainTextColor.copy(alpha = 0.7f),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        EditToggleItem(
+            icon = Lucide.Smartphone,
+            label = "Shake-Gesten",
+            description = "1× Schütteln: Taschenlampe · 2× Schütteln: Kamera",
+            checked = isShakeGesturesEnabled,
+            onCheckedChange = onShakeGesturesToggled,
+            mainTextColor = mainTextColor,
+            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            isDarkTextEnabled = isDarkTextEnabled,
+            switchTestTag = "shake_gestures_switch"
+        )
 
         Spacer(modifier = Modifier.height(28.dp))
 
@@ -288,6 +316,77 @@ fun EditMenuItem(
                     tint = mainTextColor.copy(alpha = 0.4f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun EditToggleItem(
+    icon: ImageVector,
+    label: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    mainTextColor: Color,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean,
+    switchTestTag: String
+) {
+    val backgroundModifier = if (isLiquidGlassEnabled) {
+        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
+        val borderBrush = LiquidGlass.borderBrush(
+            isDarkTextEnabled,
+            startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f,
+            endAlpha = 0.05f
+        )
+        Modifier
+            .background(glassBrush, RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
+    } else {
+        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .then(backgroundModifier)
+            .clickable { onCheckedChange(!checked) },
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 18.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = mainTextColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    color = mainTextColor,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    color = mainTextColor.copy(alpha = 0.6f),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Switch(
+                modifier = Modifier.testTag(switchTestTag),
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
+            )
         }
     }
 }

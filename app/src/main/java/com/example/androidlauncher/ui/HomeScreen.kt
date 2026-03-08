@@ -356,6 +356,7 @@ fun HomeScreen(
                                 fallbackAlpha = if (isSettingsOpen) 0.1f else 0.15f
                             )
                             .clip(CircleShape)
+                            .testTag("settings_button")
                             .then(if (!isPreview) Modifier.bounceClick(intSrc).clickable(interactionSource = intSrc, indication = null) { onToggleSettings() } else Modifier),
                         contentAlignment = Alignment.Center
                     ) {

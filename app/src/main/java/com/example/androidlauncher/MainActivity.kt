@@ -1,5 +1,6 @@
 package com.example.androidlauncher
 
+import android.Manifest
 import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -53,7 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -140,6 +141,8 @@ class MainActivity : ComponentActivity() {
             val iconManager = remember { IconManager(context) }
             val favoritesManager = remember { FavoritesManager(context) }
             val appRepository = remember { AppRepository(context) }
+            val launcherDeviceActions = remember { LauncherDeviceActions(context) }
+            val shakeManager = remember { LauncherShakeManager(context) }
 
             LaunchedEffect(Unit) {
                 favoritesManager.migrateFromSharedPreferences(context)
@@ -153,6 +156,7 @@ class MainActivity : ComponentActivity() {
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
+            val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
@@ -167,6 +171,9 @@ class MainActivity : ComponentActivity() {
             var pendingWallpaperUri by remember { mutableStateOf<Uri?>(null) }
             var showUsageAccessPrompt by remember { mutableStateOf(false) }
             var hasShownUsageAccessPrompt by remember { mutableStateOf(false) }
+            var pendingPermissionGestureAction by remember {
+                mutableStateOf<LauncherShakeGestureDetector.GestureAction?>(null)
+            }
 
             val wallpaperPickerLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.PickVisualMedia()
@@ -174,6 +181,70 @@ class MainActivity : ComponentActivity() {
                 uri?.let { sourceUri ->
                     pendingWallpaperUri = sourceUri
                     isWallpaperCropOpen = true
+                }
+            }
+
+            val cameraPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission()
+            ) { isGranted ->
+                val pendingAction = pendingPermissionGestureAction
+                pendingPermissionGestureAction = null
+
+                if (pendingAction != LauncherShakeGestureDetector.GestureAction.TOGGLE_FLASHLIGHT) {
+                    return@rememberLauncherForActivityResult
+                }
+
+                if (!isGranted) {
+                    Toast.makeText(
+                        context,
+                        "Kamerazugriff wird für die Taschenlampe benötigt",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@rememberLauncherForActivityResult
+                }
+
+                when (launcherDeviceActions.toggleFlashlight()) {
+                    is FlashlightToggleResult.Success -> Unit
+                    FlashlightToggleResult.Unsupported -> {
+                        Toast.makeText(context, "Keine Taschenlampe verfügbar", Toast.LENGTH_SHORT).show()
+                    }
+                    FlashlightToggleResult.MissingPermission -> {
+                        Toast.makeText(
+                            context,
+                            "Kamerazugriff wird für die Taschenlampe benötigt",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    FlashlightToggleResult.Error -> {
+                        Toast.makeText(context, "Taschenlampe konnte nicht geändert werden", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            shakeManager.onGestureAction = { gestureAction ->
+                launcherDeviceActions.vibrateGestureFeedback()
+                when (gestureAction) {
+                    LauncherShakeGestureDetector.GestureAction.TOGGLE_FLASHLIGHT -> {
+                        when (launcherDeviceActions.toggleFlashlight()) {
+                            is FlashlightToggleResult.Success -> Unit
+                            FlashlightToggleResult.Unsupported -> {
+                                Toast.makeText(context, "Keine Taschenlampe verfügbar", Toast.LENGTH_SHORT).show()
+                            }
+                            FlashlightToggleResult.MissingPermission -> {
+                                pendingPermissionGestureAction = gestureAction
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                            FlashlightToggleResult.Error -> {
+                                Toast.makeText(context, "Taschenlampe konnte nicht geändert werden", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    LauncherShakeGestureDetector.GestureAction.OPEN_CAMERA -> {
+                        val didOpenCamera = launcherDeviceActions.openCamera(this@MainActivity)
+                        if (!didOpenCamera) {
+                            Toast.makeText(context, "Keine Kamera-App gefunden", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
             }
 
@@ -311,6 +382,21 @@ class MainActivity : ComponentActivity() {
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+
+                DisposableEffect(isLauncherResumed, isShakeGesturesEnabled) {
+                    if (isLauncherResumed && isShakeGesturesEnabled) {
+                        launcherDeviceActions.startTorchMonitoring()
+                        shakeManager.start()
+                    } else {
+                        shakeManager.stop()
+                        launcherDeviceActions.stopTorchMonitoring()
+                    }
+
+                    onDispose {
+                        shakeManager.stop()
+                        launcherDeviceActions.stopTorchMonitoring()
+                    }
                 }
 
                 LaunchedEffect(activeReturnAnimation?.packageName) {
@@ -730,6 +816,10 @@ class MainActivity : ComponentActivity() {
                             },
                             onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
                             isCustomWallpaperSet = customWallpaperUri != null,
+                            isShakeGesturesEnabled = isShakeGesturesEnabled,
+                            onShakeGesturesToggled = { enabled ->
+                                scope.launch { themeManager.setShakeGesturesEnabled(enabled) }
+                            },
                             onClose = { isEditConfigOpen = false }
                         )
                     }
