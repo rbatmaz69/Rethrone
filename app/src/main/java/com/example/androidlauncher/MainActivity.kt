@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -207,7 +206,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 when (launcherDeviceActions.toggleFlashlight()) {
-                    is FlashlightToggleResult.Success -> Unit
+                    is FlashlightToggleResult.Success -> {
+                        launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
+                    }
                     FlashlightToggleResult.Unsupported -> {
                         Toast.makeText(context, "Keine Taschenlampe verfügbar", Toast.LENGTH_SHORT).show()
                     }
@@ -225,11 +226,12 @@ class MainActivity : ComponentActivity() {
             }
 
             shakeManager.onGestureAction = { gestureAction ->
-                launcherDeviceActions.vibrateGestureFeedback()
                 when (gestureAction) {
                     LauncherShakeGestureDetector.GestureAction.TOGGLE_FLASHLIGHT -> {
                         when (launcherDeviceActions.toggleFlashlight()) {
-                            is FlashlightToggleResult.Success -> Unit
+                            is FlashlightToggleResult.Success -> {
+                                launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
+                            }
                             FlashlightToggleResult.Unsupported -> {
                                 Toast.makeText(context, "Keine Taschenlampe verfügbar", Toast.LENGTH_SHORT).show()
                             }
@@ -244,7 +246,9 @@ class MainActivity : ComponentActivity() {
                     }
                     LauncherShakeGestureDetector.GestureAction.OPEN_CAMERA -> {
                         val didOpenCamera = launcherDeviceActions.openCamera(this@MainActivity)
-                        if (!didOpenCamera) {
+                        if (didOpenCamera) {
+                            launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
+                        } else {
                             Toast.makeText(context, "Keine Kamera-App gefunden", Toast.LENGTH_SHORT).show()
                         }
                     }

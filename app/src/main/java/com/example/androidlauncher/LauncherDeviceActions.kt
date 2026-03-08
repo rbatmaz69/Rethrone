@@ -17,6 +17,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.MediaStore
+import android.view.HapticFeedbackConstants
 
 sealed interface FlashlightToggleResult {
     data class Success(val isEnabled: Boolean) : FlashlightToggleResult
@@ -31,6 +32,7 @@ sealed interface FlashlightToggleResult {
 class LauncherDeviceActions(context: Context) {
     companion object {
         private const val APP_CAMERA_CATEGORY = "android.intent.category.APP_CAMERA"
+        private const val SUCCESS_VIBRATION_DURATION_MS = 70L
     }
 
     private val appContext = context.applicationContext
@@ -133,17 +135,49 @@ class LauncherDeviceActions(context: Context) {
         }
     }
 
-    fun vibrateGestureFeedback() {
+    fun vibrateGestureFeedback(activity: Activity? = null) {
+        val targetView = activity?.currentFocus ?: activity?.window?.decorView
+
+        runCatching {
+            val feedbackConstant = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                HapticFeedbackConstants.CONFIRM
+            } else {
+                HapticFeedbackConstants.KEYBOARD_TAP
+            }
+            targetView?.performHapticFeedback(
+                feedbackConstant,
+                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+            )
+        }
+
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             appContext.getSystemService(VibratorManager::class.java)?.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
-            appContext.getSystemService(Vibrator::class.java)
+            appContext.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         } ?: return
 
         if (!vibrator.hasVibrator()) return
 
-        vibrator.vibrate(VibrationEffect.createOneShot(35L, VibrationEffect.DEFAULT_AMPLITUDE))
+        runCatching {
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                    vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+                }
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
+                    vibrator.vibrate(
+                        VibrationEffect.createOneShot(
+                            SUCCESS_VIBRATION_DURATION_MS,
+                            VibrationEffect.DEFAULT_AMPLITUDE
+                        )
+                    )
+                }
+                else -> {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(SUCCESS_VIBRATION_DURATION_MS)
+                }
+            }
+        }
     }
 
     private fun resolveActivity(intent: Intent): ResolveInfo? {
