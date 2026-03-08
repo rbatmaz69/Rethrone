@@ -2,12 +2,15 @@ package com.example.androidlauncher
 
 import android.Manifest
 import android.app.ActivityManager
+import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
@@ -1007,17 +1010,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun validateDefaultLauncher() {
-        val resolveInfo = packageManager.resolveActivity(createHomeIntent(), PackageManager.MATCH_DEFAULT_ONLY)
-        val resolvedPackage = resolveInfo?.activityInfo?.packageName
-        if (resolvedPackage.isNullOrBlank()) return
-        if (resolvedPackage != packageName) {
-            if (!defaultLauncherWarningShown || lastDefaultLauncherPackage != resolvedPackage) {
-                Toast.makeText(this, getString(R.string.default_launcher_warning), Toast.LENGTH_LONG).show()
-                defaultLauncherWarningShown = true
-            }
-        } else {
+        val resolvedPackage = resolveDefaultHomePackage() ?: return
+        if (resolvedPackage == packageName) {
             defaultLauncherWarningShown = false
+            lastDefaultLauncherPackage = resolvedPackage
+            return
         }
+
+        if (!defaultLauncherWarningShown || lastDefaultLauncherPackage != resolvedPackage) {
+            Toast.makeText(this, getString(R.string.default_launcher_warning), Toast.LENGTH_LONG).show()
+            defaultLauncherWarningShown = true
+        }
+
         lastDefaultLauncherPackage = resolvedPackage
     }
 
@@ -1034,6 +1038,37 @@ class MainActivity : ComponentActivity() {
 
     private fun createHomeIntent() = Intent(Intent.ACTION_MAIN).apply {
         addCategory(Intent.CATEGORY_HOME)
+    }
+
+    private fun resolveDefaultHomePackage(): String? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(RoleManager::class.java)
+            if (roleManager?.isRoleHeld(RoleManager.ROLE_HOME) == true) {
+                return packageName
+            }
+        }
+
+        val resolvedDefault = packageManager.resolveActivity(
+            createHomeIntent(),
+            PackageManager.MATCH_DEFAULT_ONLY
+        )?.activityInfo?.packageName
+        if (resolvedDefault != null) {
+            return resolvedDefault
+        }
+
+        val homeActivities = packageManager.queryIntentActivities(
+            createHomeIntent(),
+            PackageManager.MATCH_DEFAULT_ONLY
+        )
+        val uniqueHomePackages = homeActivities
+            .mapNotNull { resolveInfo -> resolveInfo.activityInfo?.packageName }
+            .distinct()
+
+        return when {
+            uniqueHomePackages.size == 1 -> uniqueHomePackages.first()
+            packageName in uniqueHomePackages && uniqueHomePackages.none { it != packageName } -> packageName
+            else -> null
+        }
     }
 }
 

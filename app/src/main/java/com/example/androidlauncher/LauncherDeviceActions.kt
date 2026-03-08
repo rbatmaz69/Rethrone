@@ -2,9 +2,11 @@ package com.example.androidlauncher
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
@@ -103,17 +105,29 @@ class LauncherDeviceActions(context: Context) {
 
     fun openCamera(activity: Activity): Boolean {
         val candidateIntents = listOf(
-            Intent(MediaStore.ACTION_IMAGE_CAPTURE),
             Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA),
-            Intent(Intent.ACTION_MAIN).addCategory(APP_CAMERA_CATEGORY)
+            Intent(Intent.ACTION_MAIN).addCategory(APP_CAMERA_CATEGORY),
+            Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         )
 
-        return candidateIntents.any { intent ->
-            val resolvedActivity = intent.resolveActivity(packageManager) ?: return@any false
+        return candidateIntents.any { baseIntent ->
+            val resolvedActivity = resolveActivity(baseIntent) ?: return@any false
+            val explicitIntent = Intent(baseIntent).apply {
+                component = ComponentName(
+                    resolvedActivity.activityInfo.packageName,
+                    resolvedActivity.activityInfo.name
+                )
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
             try {
-                activity.startActivity(intent.setPackage(resolvedActivity.packageName))
+                activity.startActivity(explicitIntent)
                 true
             } catch (_: ActivityNotFoundException) {
+                false
+            } catch (_: SecurityException) {
+                false
+            } catch (_: RuntimeException) {
                 false
             }
         }
@@ -130,6 +144,11 @@ class LauncherDeviceActions(context: Context) {
         if (!vibrator.hasVibrator()) return
 
         vibrator.vibrate(VibrationEffect.createOneShot(35L, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    private fun resolveActivity(intent: Intent): ResolveInfo? {
+        return packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            ?: packageManager.resolveActivity(intent, 0)
     }
 
     private fun findTorchCameraId(): String? {
