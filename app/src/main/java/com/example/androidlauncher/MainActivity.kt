@@ -70,6 +70,7 @@ import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.IconSize
+import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.BottomSearch
@@ -143,6 +144,7 @@ class MainActivity : ComponentActivity() {
             val iconManager = remember { IconManager(context) }
             val favoritesManager = remember { FavoritesManager(context) }
             val appRepository = remember { AppRepository(context) }
+            val searchSuggestionsManager = remember { SearchSuggestionsManager(context) }
             val launcherDeviceActions = remember { LauncherDeviceActions(context) }
             val shakeManager = remember { LauncherShakeManager(context) }
 
@@ -159,11 +161,14 @@ class MainActivity : ComponentActivity() {
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
+            val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
             val wallpaperDim by themeManager.wallpaperDim.collectAsState(initial = 0.1f)
             val wallpaperZoom by themeManager.wallpaperZoom.collectAsState(initial = 1.0f)
+            val searchHistory by searchSuggestionsManager.webHistory.collectAsState(initial = emptyList())
+            val appUsageStats by searchSuggestionsManager.appUsageStats.collectAsState(initial = emptyMap())
 
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
@@ -467,6 +472,7 @@ class MainActivity : ComponentActivity() {
                     overlayBrush: Brush? = launchOverlayBrush,
                     returnBounds: androidx.compose.ui.geometry.Rect? = bounds,
                     returnPackageName: String = packageName,
+                    trackAppLaunch: Boolean = true,
                     onCompleted: (() -> Unit)? = null
                 ) {
                     if (isAppLaunchAnimating) return
@@ -492,6 +498,9 @@ class MainActivity : ComponentActivity() {
                         try {
                             delay(searchLaunchDurationMs)
                             launchAppNoTransition(context, Intent(intent))
+                            if (trackAppLaunch && isSmartSuggestionsEnabled) {
+                                searchSuggestionsManager.recordAppLaunch(packageName)
+                            }
                             delay(searchLaunchSettleAfterStartMs)
                         } finally {
                             activeLaunchBounds = null
@@ -501,11 +510,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                fun requestSearchLaunch(intent: Intent, bounds: androidx.compose.ui.geometry.Rect?) {
+                fun requestSearchLaunch(
+                    intent: Intent,
+                    bounds: androidx.compose.ui.geometry.Rect?,
+                    webQuery: String? = null
+                ) {
                     if (isSearchLaunching || isAppLaunchAnimating) return
                     isSearchLaunching = true
                     shouldSkipSearchExitAnimation = true
                     isSearchOpen = false
+                    if (!webQuery.isNullOrBlank() && isSmartSuggestionsEnabled) {
+                        scope.launch {
+                            searchSuggestionsManager.recordWebSearch(webQuery)
+                        }
+                    }
                     val resolvedPackageName = intent.`package`
                         ?: intent.component?.packageName
                         ?: context.packageManager.resolveActivity(Intent(intent), PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
@@ -522,6 +540,7 @@ class MainActivity : ComponentActivity() {
                         overlayBrush = launchOverlayBrush,
                         returnBounds = homeSearchButtonBounds ?: bounds,
                         returnPackageName = SEARCH_RETURN_TARGET,
+                        trackAppLaunch = webQuery.isNullOrBlank(),
                         onCompleted = {
                             isSearchLaunching = false
                             shouldSkipSearchExitAnimation = false
@@ -827,6 +846,14 @@ class MainActivity : ComponentActivity() {
                             onShakeGesturesToggled = { enabled ->
                                 scope.launch { themeManager.setShakeGesturesEnabled(enabled) }
                             },
+                            isSmartSuggestionsEnabled = isSmartSuggestionsEnabled,
+                            onSmartSuggestionsToggled = { enabled ->
+                                scope.launch { themeManager.setSmartSuggestionsEnabled(enabled) }
+                            },
+                            onClearSearchHistory = {
+                                scope.launch { searchSuggestionsManager.clearWebHistory() }
+                                Toast.makeText(context, "Suchverlauf gelöscht", Toast.LENGTH_SHORT).show()
+                            },
                             onClose = { isEditConfigOpen = false }
                         )
                     }
@@ -887,10 +914,16 @@ class MainActivity : ComponentActivity() {
                                     val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@BottomSearch
                                     requestSearchLaunch(intent, bounds)
                                 },
-                                onWebLaunch = { intent, bounds ->
-                                    requestSearchLaunch(intent, bounds)
+                                onWebLaunch = { intent, bounds, query ->
+                                    requestSearchLaunch(intent, bounds, webQuery = query)
                                 },
-                                preferredImeWebLaunchBounds = homeSearchButtonBounds
+                                preferredImeWebLaunchBounds = homeSearchButtonBounds,
+                                webHistory = searchHistory,
+                                appUsageStats = appUsageStats,
+                                smartSuggestionsEnabled = isSmartSuggestionsEnabled,
+                                onRemoveHistorySuggestion = { queryToRemove ->
+                                    scope.launch { searchSuggestionsManager.removeWebSearch(queryToRemove) }
+                                }
                              )
 
                         }
