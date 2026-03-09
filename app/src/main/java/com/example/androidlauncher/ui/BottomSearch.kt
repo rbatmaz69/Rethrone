@@ -159,12 +159,17 @@ fun BottomSearch(
             )
     }
     val suggestionExitTransition = remember {
-        fadeOut(animationSpec = tween(durationMillis = 180)) +
+        fadeOut(
+            animationSpec = tween(
+                durationMillis = 230,
+                easing = LinearOutSlowInEasing
+            )
+        ) +
             shrinkVertically(
                 shrinkTowards = Alignment.Bottom,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessLow
+                    stiffness = 140f
                 )
             )
     }
@@ -179,12 +184,17 @@ fun BottomSearch(
             )
     }
     val singleSuggestionExitTransition = remember {
-        fadeOut(animationSpec = tween(durationMillis = 160)) +
+        fadeOut(
+            animationSpec = tween(
+                durationMillis = 210,
+                easing = LinearOutSlowInEasing
+            )
+        ) +
             shrinkVertically(
                 shrinkTowards = Alignment.Bottom,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessLow
+                    stiffness = 140f
                 )
             )
     }
