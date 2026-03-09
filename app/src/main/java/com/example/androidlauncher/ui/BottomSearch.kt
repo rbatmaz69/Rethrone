@@ -112,9 +112,12 @@ fun BottomSearch(
     var hasRequestedInitialFocus by remember { mutableStateOf(false) }
     var searchBarBounds by remember { mutableStateOf<Rect?>(null) }
     var searchBarIconBounds by remember { mutableStateOf<Rect?>(null) }
+    var searchBarHeightPx by remember { mutableFloatStateOf(0f) }
+    val searchBarSpacing = 10.dp
     val keyboardLaunchSizePx = with(density) { 40.dp.toPx() }
     val searchBarHorizontalPaddingPx = with(density) { 20.dp.toPx() }
     val searchBarIconSizePx = with(density) { 20.dp.toPx() }
+    val suggestionsBottomPadding = with(density) { searchBarHeightPx.toDp() } + searchBarSpacing
 
     val appSuggestions = remember(query, apps, appUsageStats, smartSuggestionsEnabled) {
         if (query.isBlank()) {
@@ -134,6 +137,27 @@ fun BottomSearch(
     }
     val webSuggestionQuery = remember(query, historySuggestion) {
         query.trim().takeIf { it.isNotEmpty() && historySuggestion == null }
+    }
+
+    val suggestionEnterTransition = remember {
+        fadeIn(animationSpec = tween(durationMillis = 220)) +
+            expandVertically(
+                expandFrom = Alignment.Bottom,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+    }
+    val suggestionExitTransition = remember {
+        fadeOut(animationSpec = tween(durationMillis = 180)) +
+            shrinkVertically(
+                shrinkTowards = Alignment.Bottom,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
     }
 
     BackHandler {
@@ -160,22 +184,36 @@ fun BottomSearch(
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.ime)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
+                .padding(16.dp)
         ) {
             Column(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(bottom = suggestionsBottomPadding)
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
+                verticalArrangement = Arrangement.spacedBy(searchBarSpacing)
             ) {
                 AnimatedVisibility(
                     visible = query.isNotEmpty() && appSuggestions.isNotEmpty(),
-                    enter = fadeIn(tween(180)) + expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-                    exit = fadeOut(tween(120)) + shrinkVertically()
+                    enter = suggestionEnterTransition,
+                    exit = suggestionExitTransition
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(searchContainerModifier)
+                            .animateContentSize(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            )
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -194,13 +232,19 @@ fun BottomSearch(
 
                 AnimatedVisibility(
                     visible = query.isNotEmpty() && (historySuggestion != null || webSuggestionQuery != null),
-                    enter = fadeIn(tween(180)) + expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-                    exit = fadeOut(tween(120)) + shrinkVertically()
+                    enter = suggestionEnterTransition,
+                    exit = suggestionExitTransition
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(searchContainerModifier)
+                            .animateContentSize(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            )
                             .padding(horizontal = 16.dp, vertical = 14.dp)
                     ) {
                         when {
@@ -237,89 +281,93 @@ fun BottomSearch(
                         }
                     }
                 }
+            }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(searchContainerModifier)
-                        .onGloballyPositioned { searchBarBounds = it.boundsInRoot() }
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = mainTextColor.copy(alpha = 0.5f),
-                        modifier = Modifier
-                            .size(20.dp)
-                            .onGloballyPositioned { searchBarIconBounds = it.boundsInRoot() }
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (query.isEmpty()) {
-                            Text(
-                                text = "Suchen...",
-                                color = mainTextColor.copy(alpha = 0.38f),
-                                fontSize = 17.sp
-                            )
-                        }
-                        BasicTextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester)
-                                .testTag("bottom_search_field")
-                                .onGloballyPositioned {
-                                    if (!hasRequestedInitialFocus) {
-                                        hasRequestedInitialFocus = true
-                                        focusRequester.requestFocus()
-                                        keyboardController?.show()
-                                    }
-                                }
-                                .onPreInterceptKeyBeforeSoftKeyboard { event ->
-                                    if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
-                                        keyboardController?.hide()
-                                        onClose()
-                                        true
-                                    } else false
-                                },
-                            textStyle = LocalTextStyle.current.copy(color = mainTextColor, fontSize = 18.sp),
-                            singleLine = true,
-                            cursorBrush = SolidColor(mainTextColor),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    if (query.isNotEmpty()) {
-                                        val trimmedQuery = query.trim()
-                                        buildWebSearchIntent(context, trimmedQuery)?.let { intent ->
-                                            val keyboardLaunchBounds = preferredImeWebLaunchBounds
-                                                ?: searchBarIconBounds
-                                                ?: createCompactLaunchBounds(
-                                                    containerBounds = searchBarBounds,
-                                                    sizePx = keyboardLaunchSizePx,
-                                                    horizontalInsetPx = searchBarHorizontalPaddingPx,
-                                                    anchorSizePx = searchBarIconSizePx
-                                                )
-                                            onWebLaunch(intent, keyboardLaunchBounds, trimmedQuery)
-                                        }
-                                    }
-                                }
-                            )
-                        )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .then(searchContainerModifier)
+                    .onGloballyPositioned {
+                        searchBarBounds = it.boundsInRoot()
+                        searchBarHeightPx = it.size.height.toFloat()
                     }
-                    if (query.isNotEmpty()) {
-                        IconButton(
-                            onClick = { query = "" },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear",
-                                tint = mainTextColor.copy(alpha = 0.42f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = mainTextColor.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .onGloballyPositioned { searchBarIconBounds = it.boundsInRoot() }
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "Suchen...",
+                            color = mainTextColor.copy(alpha = 0.38f),
+                            fontSize = 17.sp
+                    )
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
+                            .testTag("bottom_search_field")
+                            .onGloballyPositioned {
+                                if (!hasRequestedInitialFocus) {
+                                    hasRequestedInitialFocus = true
+                                    focusRequester.requestFocus()
+                                    keyboardController?.show()
+                                }
+                            }
+                            .onPreInterceptKeyBeforeSoftKeyboard { event ->
+                                if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
+                                    keyboardController?.hide()
+                                    onClose()
+                                    true
+                                } else false
+                            },
+                        textStyle = LocalTextStyle.current.copy(color = mainTextColor, fontSize = 18.sp),
+                        singleLine = true,
+                        cursorBrush = SolidColor(mainTextColor),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                if (query.isNotEmpty()) {
+                                    val trimmedQuery = query.trim()
+                                    buildWebSearchIntent(context, trimmedQuery)?.let { intent ->
+                                        val keyboardLaunchBounds = preferredImeWebLaunchBounds
+                                            ?: searchBarIconBounds
+                                            ?: createCompactLaunchBounds(
+                                                containerBounds = searchBarBounds,
+                                                sizePx = keyboardLaunchSizePx,
+                                                horizontalInsetPx = searchBarHorizontalPaddingPx,
+                                                anchorSizePx = searchBarIconSizePx
+                                            )
+                                    onWebLaunch(intent, keyboardLaunchBounds, trimmedQuery)
+                                    }
+                                }
+                            }
+                        )
+                    )
+                }
+                if (query.isNotEmpty()) {
+                    IconButton(
+                        onClick = { query = "" },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Clear",
+                            tint = mainTextColor.copy(alpha = 0.42f),
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
