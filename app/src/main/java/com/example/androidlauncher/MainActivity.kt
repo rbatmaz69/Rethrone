@@ -58,10 +58,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+<<<<<<< HEAD
 import androidx.lifecycle.compose.LocalLifecycleOwner
+=======
+>>>>>>> 92dc571 (#68: resolve return flow and foreground observation errors)
 import androidx.compose.ui.unit.IntSize
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
@@ -283,6 +288,7 @@ class MainActivity : ComponentActivity() {
                 appFont = currentAppFont,
                 hapticFeedbackEnabled = isHapticFeedbackEnabled
             ) {
+                @Suppress("DEPRECATION")
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val menuBackgroundColor = currentTheme.menuSurfaceColor(isDarkTextEnabled)
                 val searchLaunchOverlayColor = currentTheme.searchSurfaceColor(isDarkTextEnabled).copy(
@@ -326,7 +332,9 @@ class MainActivity : ComponentActivity() {
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
                 var isLauncherResumed by remember { mutableStateOf(false) }
-                var returnResumeGuardState by remember { mutableStateOf(ReturnResumeGuardState()) }
+                var returnResumeGuardState by remember {
+                    mutableStateOf(ReturnResumeGuardState())
+                }
 
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
@@ -340,12 +348,14 @@ class MainActivity : ComponentActivity() {
                             val resumeDecision = ReturnResumeGuard.onResume(returnResumeGuardState)
                             returnResumeGuardState = resumeDecision.nextState
                             if (resumeDecision.shouldSuppress) {
-                                Log.d(
-                                    RETURN_TAG,
-                                    "skip return animation on launcher resume caused by lockscreen state awaitingUserPresent=${returnResumeGuardState.awaitingUserPresent} skipNextResume=${returnResumeGuardState.skipNextResume}"
-                                )
-                                return@LifecycleEventObserver
-                            }
+                                val awaitingUserPresent = returnResumeGuardState.awaitingUserPresent
+                                val skipNextResume = returnResumeGuardState.skipNextResume
+                                 Log.d(
+                                     RETURN_TAG,
+                                    "skip return animation on launcher resume caused by lockscreen state awaitingUserPresent=$awaitingUserPresent skipNextResume=$skipNextResume"
+                                 )
+                                 return@LifecycleEventObserver
+                             }
                             val accessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
                             val usageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
                             val storedPackages = ReturnOriginStore.getStoredPackageNames(context)
@@ -376,15 +386,21 @@ class MainActivity : ComponentActivity() {
                                 pendingLaunchStartedAtMs = pendingReturnAnimationStartedWallClockMs,
                                 observations = listOfNotNull(beforeLauncherObservation, usageObservation)
                             )
-                            val returnAnimation = gateDecision.returnAnimation
+                            val selectedReturnAnimation = gateDecision.returnAnimation
+                             val gateReason = gateDecision.reason
+                             val gateMatchedObservation = gateDecision.matchedObservation
+                            val chosenPackage = selectedReturnAnimation?.launchedPackageName
+                            val targetPackage = selectedReturnAnimation?.packageName
+                            val source = selectedReturnAnimation?.source
+                            val hasBounds = selectedReturnAnimation?.bounds != null
 
-                            Log.d(
-                                RETURN_TAG,
-                                "resume gateReason=${gateDecision.reason} matchedObservation=${gateDecision.matchedObservation} chosen=${returnAnimation?.launchedPackageName} target=${returnAnimation?.packageName} source=${returnAnimation?.source} bounds=${returnAnimation?.bounds != null}"
-                            )
+                             Log.d(
+                                 RETURN_TAG,
+                                 "resume gateReason=$gateReason matchedObservation=$gateMatchedObservation chosen=$chosenPackage target=$targetPackage source=$source bounds=$hasBounds"
+                             )
 
-                            returnAnimation?.let {
-                                isDrawerOpen = it.source == LaunchSource.DRAWER
+                            selectedReturnAnimation?.let { animation ->
+                                isDrawerOpen = animation.source == LaunchSource.DRAWER
                                 if (!isDrawerOpen) {
                                     isSettingsOpen = false
                                     isFavoritesConfigOpen = false
@@ -396,13 +412,13 @@ class MainActivity : ComponentActivity() {
                                     isWallpaperConfigOpen = false
                                     isInfoOpen = false
                                     selectedFolderForConfig = null
-                                }
-                                activeReturnAnimation = it
+                                 }
+                                activeReturnAnimation = animation
                                 returnIconPackage = null
                                 pendingReturnAnimation = null
                                 pendingReturnAnimationStartedWallClockMs = 0L
-                                ReturnOriginStore.clear(context, it.launchedPackageName)
-                                Log.d(RETURN_TAG, "activateReturn launched=${it.launchedPackageName} target=${it.packageName} source=${it.source}")
+                                ReturnOriginStore.clear(context, animation.launchedPackageName)
+                                Log.d(RETURN_TAG, "activateReturn launched=${animation.launchedPackageName} target=${animation.packageName} source=${animation.source}")
                             }
                         }
                     }
@@ -630,9 +646,9 @@ class MainActivity : ComponentActivity() {
                             when (intent?.action) {
                                 Intent.ACTION_SCREEN_OFF -> {
                                     returnResumeGuardState = ReturnResumeGuard.onScreenOff(
-                                        state = returnResumeGuardState,
-                                        launcherWasForeground = isLauncherResumed
-                                    )
+                                         state = returnResumeGuardState,
+                                         launcherWasForeground = isLauncherResumed
+                                     )
                                     if (isLauncherResumed) {
                                         Log.d(RETURN_TAG, "screen off while launcher foreground -> suppress return during lockscreen cycle")
                                     }
@@ -949,7 +965,7 @@ class MainActivity : ComponentActivity() {
                                         themeManager.setHapticFeedbackEnabled(enabled)
                                     } else {
                                         val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
-                                            data = Uri.parse("package:" + context.packageName)
+                                            data = ("package:" + context.packageName).toUri()
                                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         }
                                         context.startActivity(intent)

@@ -66,7 +66,7 @@ class LauncherAccessibilityService : AccessibilityService() {
                 putString(KEY_LAST_NON_LAUNCHER_PACKAGE, packageName)
                 Log.d(TAG, "remember lastNonLauncher=$packageName")
             }
-            if (packageName == launcherPackage && !currentPackage.isNullOrBlank() && currentPackage != launcherPackage) {
+            if (packageName == launcherPackage && !currentPackage.isNullOrBlank()) {
                 putString(KEY_LAST_PACKAGE_BEFORE_LAUNCHER, currentPackage)
                 putLong(KEY_LAST_PACKAGE_BEFORE_LAUNCHER_AT, System.currentTimeMillis())
                 Log.d(TAG, "remember beforeLauncher=$currentPackage")
