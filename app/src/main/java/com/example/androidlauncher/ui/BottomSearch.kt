@@ -113,11 +113,11 @@ fun BottomSearch(
     var searchBarBounds by remember { mutableStateOf<Rect?>(null) }
     var searchBarIconBounds by remember { mutableStateOf<Rect?>(null) }
     var searchBarHeightPx by remember { mutableFloatStateOf(0f) }
+    var historyWebContainerHeightPx by remember { mutableFloatStateOf(0f) }
     val searchBarSpacing = 10.dp
     val keyboardLaunchSizePx = with(density) { 40.dp.toPx() }
     val searchBarHorizontalPaddingPx = with(density) { 20.dp.toPx() }
     val searchBarIconSizePx = with(density) { 20.dp.toPx() }
-    val suggestionsBottomPadding = with(density) { searchBarHeightPx.toDp() } + searchBarSpacing
 
     val appSuggestions = remember(query, apps, appUsageStats, smartSuggestionsEnabled) {
         if (query.isBlank()) {
@@ -138,6 +138,15 @@ fun BottomSearch(
     val webSuggestionQuery = remember(query, historySuggestion) {
         query.trim().takeIf { it.isNotEmpty() && historySuggestion == null }
     }
+    val hasHistoryWebSuggestion = historySuggestion != null || webSuggestionQuery != null
+    val searchBarHeight = with(density) { searchBarHeightPx.toDp() }
+    val historyWebContainerHeight = with(density) { historyWebContainerHeightPx.toDp() }
+    val historyWebBottomPadding = searchBarHeight + searchBarSpacing
+    val appSuggestionsBottomPadding = historyWebBottomPadding + if (hasHistoryWebSuggestion) {
+        historyWebContainerHeight + searchBarSpacing
+    } else {
+        0.dp
+    }
 
     val suggestionEnterTransition = remember {
         fadeIn(animationSpec = tween(durationMillis = 220)) +
@@ -151,6 +160,26 @@ fun BottomSearch(
     }
     val suggestionExitTransition = remember {
         fadeOut(animationSpec = tween(durationMillis = 180)) +
+            shrinkVertically(
+                shrinkTowards = Alignment.Bottom,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+    }
+    val singleSuggestionEnterTransition = remember {
+        fadeIn(animationSpec = tween(durationMillis = 180)) +
+            expandVertically(
+                expandFrom = Alignment.Bottom,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+    }
+    val singleSuggestionExitTransition = remember {
+        fadeOut(animationSpec = tween(durationMillis = 160)) +
             shrinkVertically(
                 shrinkTowards = Alignment.Bottom,
                 animationSpec = spring(
@@ -186,98 +215,87 @@ fun BottomSearch(
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
                 .padding(16.dp)
         ) {
-            Column(
+            AnimatedVisibility(
+                visible = query.isNotEmpty() && appSuggestions.isNotEmpty(),
+                enter = suggestionEnterTransition,
+                exit = suggestionExitTransition,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(bottom = suggestionsBottomPadding)
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
-                verticalArrangement = Arrangement.spacedBy(searchBarSpacing)
+                    .padding(bottom = appSuggestionsBottomPadding)
             ) {
-                AnimatedVisibility(
-                    visible = query.isNotEmpty() && appSuggestions.isNotEmpty(),
-                    enter = suggestionEnterTransition,
-                    exit = suggestionExitTransition
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(searchContainerModifier)
-                            .animateContentSize(
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(searchContainerModifier)
+                        .animateContentSize(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow
                             )
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        appSuggestions.forEach { app ->
-                            AppSearchItem(
-                                app = app,
+                        )
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    appSuggestions.forEach { app ->
+                        AppSearchItem(
+                            app = app,
+                            query = query,
+                            rowBackgroundColor = rowBackgroundColor,
+                            mainTextColor = mainTextColor,
+                            fontSizeScale = fontSize.scale,
+                            onClick = { bounds -> onAppLaunch(app, bounds) }
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = query.isNotEmpty() && hasHistoryWebSuggestion,
+                enter = singleSuggestionEnterTransition,
+                exit = singleSuggestionExitTransition,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = historyWebBottomPadding)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(searchContainerModifier)
+                        .onGloballyPositioned { historyWebContainerHeightPx = it.size.height.toFloat() }
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    when {
+                        historySuggestion != null -> {
+                            SearchHistoryItem(
+                                entry = historySuggestion,
                                 query = query,
                                 rowBackgroundColor = rowBackgroundColor,
                                 mainTextColor = mainTextColor,
-                                fontSizeScale = fontSize.scale,
-                                onClick = { bounds -> onAppLaunch(app, bounds) }
+                                isLiquidGlass = isLiquidGlassEnabled,
+                                isDarkText = isDarkTextEnabled,
+                                onClick = { bounds ->
+                                    buildWebSearchIntent(context, historySuggestion.query)?.let { intent ->
+                                        onWebLaunch(intent, bounds, historySuggestion.query)
+                                    }
+                                },
+                                onRemove = { onRemoveHistorySuggestion(historySuggestion.query) }
                             )
                         }
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = query.isNotEmpty() && (historySuggestion != null || webSuggestionQuery != null),
-                    enter = suggestionEnterTransition,
-                    exit = suggestionExitTransition
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(searchContainerModifier)
-                            .animateContentSize(
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
-                            )
-                            .padding(horizontal = 16.dp, vertical = 14.dp)
-                    ) {
-                        when {
-                            historySuggestion != null -> {
-                                SearchHistoryItem(
-                                    entry = historySuggestion,
-                                    query = query,
-                                    rowBackgroundColor = rowBackgroundColor,
-                                    mainTextColor = mainTextColor,
-                                    isLiquidGlass = isLiquidGlassEnabled,
-                                    isDarkText = isDarkTextEnabled,
-                                    onClick = { bounds ->
-                                        buildWebSearchIntent(context, historySuggestion.query)?.let { intent ->
-                                            onWebLaunch(intent, bounds, historySuggestion.query)
-                                        }
-                                    },
-                                    onRemove = { onRemoveHistorySuggestion(historySuggestion.query) }
-                                )
-                            }
-                            webSuggestionQuery != null -> {
-                                WebSearchItem(
-                                    query = webSuggestionQuery,
-                                    rowBackgroundColor = primaryWebRowColor,
-                                    mainTextColor = mainTextColor,
-                                    isLiquidGlass = isLiquidGlassEnabled,
-                                    isDarkText = isDarkTextEnabled,
-                                    onClick = { bounds ->
-                                        buildWebSearchIntent(context, webSuggestionQuery)?.let { intent ->
-                                            onWebLaunch(intent, bounds, webSuggestionQuery)
-                                        }
+                        webSuggestionQuery != null -> {
+                            WebSearchItem(
+                                query = webSuggestionQuery,
+                                rowBackgroundColor = primaryWebRowColor,
+                                mainTextColor = mainTextColor,
+                                isLiquidGlass = isLiquidGlassEnabled,
+                                isDarkText = isDarkTextEnabled,
+                                onClick = { bounds ->
+                                    buildWebSearchIntent(context, webSuggestionQuery)?.let { intent ->
+                                        onWebLaunch(intent, bounds, webSuggestionQuery)
                                     }
-                                )
-                            }
+                                }
+                            )
                         }
                     }
                 }
@@ -310,7 +328,7 @@ fun BottomSearch(
                             text = "Suchen...",
                             color = mainTextColor.copy(alpha = 0.38f),
                             fontSize = 17.sp
-                    )
+                        )
                     }
                     BasicTextField(
                         value = query,
@@ -350,7 +368,7 @@ fun BottomSearch(
                                                 horizontalInsetPx = searchBarHorizontalPaddingPx,
                                                 anchorSizePx = searchBarIconSizePx
                                             )
-                                    onWebLaunch(intent, keyboardLaunchBounds, trimmedQuery)
+                                        onWebLaunch(intent, keyboardLaunchBounds, trimmedQuery)
                                     }
                                 }
                             }
