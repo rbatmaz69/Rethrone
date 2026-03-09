@@ -17,6 +17,19 @@ object LauncherLogic {
     private const val DAY_IN_MILLIS = 24L * 60L * 60L * 1000L
     private val WORD_SEPARATOR_REGEX = Regex("[\\s._-]+")
 
+    sealed interface PrimarySearchSuggestion {
+        data class AppSuggestion(val app: AppInfo) : PrimarySearchSuggestion
+        data class HistorySuggestion(val entry: SearchHistoryEntry) : PrimarySearchSuggestion
+        data class WebSuggestion(val query: String) : PrimarySearchSuggestion
+    }
+
+    private data class ScoredPrimarySuggestion(
+        val suggestion: PrimarySearchSuggestion,
+        val score: Int,
+        val typePriority: Int,
+        val sortLabel: String
+    )
+
     /**
      * Filters the list of apps based on a search query.
      * Case-insensitive.
@@ -57,23 +70,9 @@ object LauncherLogic {
         val normalizedQuery = normalizeSearchText(query)
         if (normalizedQuery.isEmpty()) return emptyList()
 
-        return apps.mapNotNull { app ->
-            val matchScore = computeTextMatchScore(app.label, normalizedQuery)
-            if (matchScore == 0) return@mapNotNull null
-
-            val usage = appUsageStats[app.packageName]
-            val totalScore = matchScore +
-                usageFrequencyScore(usage?.launchCount ?: 0) +
-                recencyScore(usage?.lastLaunchedAt ?: 0L, now)
-
-            app to totalScore
-        }
-            .sortedWith(
-                compareByDescending<Pair<AppInfo, Int>> { it.second }
-                    .thenBy { it.first.label.lowercase() }
-            )
+        return buildAppCandidates(apps, normalizedQuery, appUsageStats, now)
             .take(limit)
-            .map { it.first }
+            .map { (it.suggestion as PrimarySearchSuggestion.AppSuggestion).app }
     }
 
     fun rankWebSuggestions(
@@ -85,24 +84,38 @@ object LauncherLogic {
         val normalizedQuery = normalizeSearchText(query)
         if (normalizedQuery.isEmpty()) return emptyList()
 
-        return history.mapNotNull { entry ->
-            val matchScore = computeTextMatchScore(entry.query, normalizedQuery)
-            if (matchScore == 0) return@mapNotNull null
-
-            val totalScore = matchScore +
-                usageFrequencyScore(entry.usageCount) +
-                recencyScore(entry.lastSearchedAt, now)
-
-            entry to totalScore
-        }
-            .sortedWith(
-                compareByDescending<Pair<SearchHistoryEntry, Int>> { it.second }
-                    .thenByDescending { it.first.usageCount }
-                    .thenByDescending { it.first.lastSearchedAt }
-                    .thenBy { it.first.query.lowercase() }
-            )
+        return buildHistoryCandidates(history, normalizedQuery, now)
             .take(limit)
-            .map { it.first }
+            .map { (it.suggestion as PrimarySearchSuggestion.HistorySuggestion).entry }
+    }
+
+    fun resolvePrimarySuggestion(
+        apps: List<AppInfo>,
+        history: List<SearchHistoryEntry>,
+        query: String,
+        appUsageStats: Map<String, AppUsageStats>,
+        smartSuggestionsEnabled: Boolean,
+        now: Long = System.currentTimeMillis()
+    ): PrimarySearchSuggestion? {
+        val normalizedQuery = normalizeSearchText(query)
+        if (normalizedQuery.isEmpty()) return null
+        val trimmedQuery = query.trim()
+
+        if (!smartSuggestionsEnabled) {
+            return filterAppsByRelevance(apps, trimmedQuery).firstOrNull()?.let {
+                PrimarySearchSuggestion.AppSuggestion(it)
+            } ?: PrimarySearchSuggestion.WebSuggestion(trimmedQuery)
+        }
+
+        val bestSmartSuggestion = (
+            buildAppCandidates(apps, normalizedQuery, appUsageStats, now) +
+                buildHistoryCandidates(history, normalizedQuery, now)
+            )
+            .sortedWith(primarySuggestionComparator())
+            .firstOrNull()
+            ?.suggestion
+
+        return bestSmartSuggestion ?: PrimarySearchSuggestion.WebSuggestion(trimmedQuery)
     }
 
     /**
@@ -266,6 +279,56 @@ object LauncherLogic {
             else -> 0
         }
     }
+
+    private fun buildAppCandidates(
+        apps: List<AppInfo>,
+        normalizedQuery: String,
+        appUsageStats: Map<String, AppUsageStats>,
+        now: Long
+    ): List<ScoredPrimarySuggestion> {
+        return apps.mapNotNull { app ->
+            val matchScore = computeTextMatchScore(app.label, normalizedQuery)
+            if (matchScore == 0) return@mapNotNull null
+
+            val usage = appUsageStats[app.packageName]
+            val totalScore = matchScore +
+                usageFrequencyScore(usage?.launchCount ?: 0) +
+                recencyScore(usage?.lastLaunchedAt ?: 0L, now)
+
+            ScoredPrimarySuggestion(
+                suggestion = PrimarySearchSuggestion.AppSuggestion(app),
+                score = totalScore,
+                typePriority = 2,
+                sortLabel = app.label.lowercase()
+            )
+        }.sortedWith(primarySuggestionComparator())
+    }
+
+    private fun buildHistoryCandidates(
+        history: List<SearchHistoryEntry>,
+        normalizedQuery: String,
+        now: Long
+    ): List<ScoredPrimarySuggestion> {
+        return history.mapNotNull { entry ->
+            val matchScore = computeTextMatchScore(entry.query, normalizedQuery)
+            if (matchScore == 0) return@mapNotNull null
+
+            val totalScore = matchScore +
+                usageFrequencyScore(entry.usageCount) +
+                recencyScore(entry.lastSearchedAt, now)
+
+            ScoredPrimarySuggestion(
+                suggestion = PrimarySearchSuggestion.HistorySuggestion(entry),
+                score = totalScore,
+                typePriority = 1,
+                sortLabel = entry.query.lowercase()
+            )
+        }.sortedWith(primarySuggestionComparator())
+    }
+
+    private fun primarySuggestionComparator() = compareByDescending<ScoredPrimarySuggestion> { it.score }
+        .thenByDescending { it.typePriority }
+        .thenBy { it.sortLabel }
 
     private fun normalizeSearchText(value: String): String {
         return value.trim().lowercase()

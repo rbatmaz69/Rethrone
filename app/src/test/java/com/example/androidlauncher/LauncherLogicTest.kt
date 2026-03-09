@@ -444,4 +444,119 @@ class LauncherLogicTest {
 
         assertTrue(rankedHistory.isEmpty())
     }
+
+    @Test
+    fun `resolvePrimarySuggestion bevorzugt beste App vor Verlauf bei hoeherem Score`() {
+        val now = 2_000_000L
+        val result = LauncherLogic.resolvePrimarySuggestion(
+            apps = listOf(
+                AppInfo("YouTube", "youtube"),
+                AppInfo("Browser", "browser")
+            ),
+            history = listOf(
+                SearchHistoryEntry("youtube video downloader", usageCount = 1, lastSearchedAt = now - 20_000L)
+            ),
+            query = "you",
+            appUsageStats = mapOf(
+                "youtube" to AppUsageStats("youtube", launchCount = 5, lastLaunchedAt = now - 1_000L)
+            ),
+            smartSuggestionsEnabled = true,
+            now = now
+        )
+
+        assertTrue(result is LauncherLogic.PrimarySearchSuggestion.AppSuggestion)
+        assertEquals("YouTube", (result as LauncherLogic.PrimarySearchSuggestion.AppSuggestion).app.label)
+    }
+
+    @Test
+    fun `resolvePrimarySuggestion nimmt Verlauf wenn kein besserer App Treffer existiert`() {
+        val now = 3_000_000L
+        val result = LauncherLogic.resolvePrimarySuggestion(
+            apps = listOf(AppInfo("Browser", "browser")),
+            history = listOf(
+                SearchHistoryEntry("weather berlin", usageCount = 4, lastSearchedAt = now - 1_000L)
+            ),
+            query = "wea",
+            appUsageStats = emptyMap(),
+            smartSuggestionsEnabled = true,
+            now = now
+        )
+
+        assertTrue(result is LauncherLogic.PrimarySearchSuggestion.HistorySuggestion)
+        assertEquals("weather berlin", (result as LauncherLogic.PrimarySearchSuggestion.HistorySuggestion).entry.query)
+    }
+
+    @Test
+    fun `resolvePrimarySuggestion faellt auf Websuche zurueck wenn kein Treffer existiert`() {
+        val result = LauncherLogic.resolvePrimarySuggestion(
+            apps = apps,
+            history = emptyList(),
+            query = "unbekanntes suchwort",
+            appUsageStats = emptyMap(),
+            smartSuggestionsEnabled = true,
+            now = 10_000L
+        )
+
+        assertTrue(result is LauncherLogic.PrimarySearchSuggestion.WebSuggestion)
+        assertEquals(
+            "unbekanntes suchwort",
+            (result as LauncherLogic.PrimarySearchSuggestion.WebSuggestion).query
+        )
+    }
+
+    @Test
+    fun `resolvePrimarySuggestion nutzt bei deaktivierten smart suggestions nur App oder Web Fallback`() {
+        val result = LauncherLogic.resolvePrimarySuggestion(
+            apps = listOf(AppInfo("YouTube", "youtube")),
+            history = listOf(SearchHistoryEntry("youtube video downloader", usageCount = 99, lastSearchedAt = 1_000L)),
+            query = "you",
+            appUsageStats = emptyMap(),
+            smartSuggestionsEnabled = false,
+            now = 2_000L
+        )
+
+        assertTrue(result is LauncherLogic.PrimarySearchSuggestion.AppSuggestion)
+        assertEquals("YouTube", (result as LauncherLogic.PrimarySearchSuggestion.AppSuggestion).app.label)
+    }
+
+    @Test
+    fun `rankAppSuggestions respects max of three suggestions`() {
+        val now = 7_000_000L
+        val rankedApps = LauncherLogic.rankAppSuggestions(
+            apps = listOf(
+                AppInfo("YouTube", "youtube"),
+                AppInfo("YouTube Music", "ytmusic"),
+                AppInfo("Your Files", "files"),
+                AppInfo("Young Calendar", "calendar")
+            ),
+            query = "you",
+            appUsageStats = mapOf(
+                "youtube" to AppUsageStats("youtube", 4, now - 1_000L),
+                "ytmusic" to AppUsageStats("ytmusic", 3, now - 2_000L),
+                "files" to AppUsageStats("files", 2, now - 3_000L),
+                "calendar" to AppUsageStats("calendar", 1, now - 4_000L)
+            ),
+            now = now,
+            limit = 3
+        )
+
+        assertEquals(3, rankedApps.size)
+    }
+
+    @Test
+    fun `rankWebSuggestions respects max of one suggestion`() {
+        val now = 8_000_000L
+        val rankedHistory = LauncherLogic.rankWebSuggestions(
+            history = listOf(
+                SearchHistoryEntry("weather berlin", usageCount = 4, lastSearchedAt = now - 1_000L),
+                SearchHistoryEntry("weather hamburg", usageCount = 3, lastSearchedAt = now - 2_000L)
+            ),
+            query = "wea",
+            now = now,
+            limit = 1
+        )
+
+        assertEquals(1, rankedHistory.size)
+        assertEquals("weather berlin", rankedHistory.first().query)
+    }
 }
