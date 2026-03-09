@@ -1,7 +1,9 @@
 package com.example.androidlauncher
 
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.data.AppUsageStats
 import com.example.androidlauncher.data.FolderInfo
+import com.example.androidlauncher.data.SearchHistoryEntry
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -366,5 +368,80 @@ class LauncherLogicTest {
         val result = LauncherLogic.filterApps(apps, "onta")
         assertEquals(1, result.size)
         assertEquals("Contacts", result[0].label)
+    }
+
+    @Test
+    fun `rankAppSuggestions bevorzugt Prefix Treffer mit Nutzung vor schwächerem Match`() {
+        val now = 1_000_000L
+        val rankedApps = LauncherLogic.rankAppSuggestions(
+            apps = listOf(
+                AppInfo("YouTube", "com.google.android.youtube"),
+                AppInfo("Your Files", "com.example.files"),
+                AppInfo("Daily You", "com.example.daily")
+            ),
+            query = "you",
+            appUsageStats = mapOf(
+                "com.example.files" to AppUsageStats(
+                    packageName = "com.example.files",
+                    launchCount = 5,
+                    lastLaunchedAt = now - 2_000L
+                )
+            ),
+            now = now,
+            limit = 3
+        )
+
+        assertEquals(
+            listOf("Your Files", "YouTube", "Daily You"),
+            rankedApps.map { it.label }
+        )
+    }
+
+    @Test
+    fun `rankAppSuggestions bevorzugt Wortanfang vor reinem Enthalten`() {
+        val rankedApps = LauncherLogic.rankAppSuggestions(
+            apps = listOf(
+                AppInfo("GitHub Copilot", "copilot"),
+                AppInfo("My github notes", "notes")
+            ),
+            query = "cop",
+            appUsageStats = emptyMap(),
+            now = 10_000L,
+            limit = 2
+        )
+
+        assertEquals(listOf("GitHub Copilot"), rankedApps.map { it.label })
+    }
+
+    @Test
+    fun `rankWebSuggestions bevorzugt haeufige und aktuelle Verlaufseintraege bei gleichem Match`() {
+        val now = 5_000_000L
+        val rankedHistory = LauncherLogic.rankWebSuggestions(
+            history = listOf(
+                SearchHistoryEntry("youtube video downloader", usageCount = 6, lastSearchedAt = now - 1_000L),
+                SearchHistoryEntry("youtube music", usageCount = 1, lastSearchedAt = now - 500L),
+                SearchHistoryEntry("learn kotlin", usageCount = 9, lastSearchedAt = now - 100L)
+            ),
+            query = "you",
+            now = now,
+            limit = 3
+        )
+
+        assertEquals(
+            listOf("youtube video downloader", "youtube music"),
+            rankedHistory.map { it.query }
+        )
+    }
+
+    @Test
+    fun `rankWebSuggestions gibt leer bei leerer Query zurueck`() {
+        val rankedHistory = LauncherLogic.rankWebSuggestions(
+            history = listOf(SearchHistoryEntry("weather berlin", usageCount = 2, lastSearchedAt = 100L)),
+            query = "   ",
+            now = 1_000L,
+            limit = 3
+        )
+
+        assertTrue(rankedHistory.isEmpty())
     }
 }

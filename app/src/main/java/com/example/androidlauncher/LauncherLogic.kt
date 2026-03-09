@@ -1,7 +1,9 @@
 package com.example.androidlauncher
 
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.data.AppUsageStats
 import com.example.androidlauncher.data.FolderInfo
+import com.example.androidlauncher.data.SearchHistoryEntry
 import java.util.UUID
 
 /**
@@ -12,6 +14,8 @@ import java.util.UUID
  */
 object LauncherLogic {
     const val MAX_FAVORITES = 6
+    private const val DAY_IN_MILLIS = 24L * 60L * 60L * 1000L
+    private val WORD_SEPARATOR_REGEX = Regex("[\\s._-]+")
 
     /**
      * Filters the list of apps based on a search query.
@@ -41,6 +45,64 @@ object LauncherLogic {
                     else -> 2
                 }
             }.thenBy { it.label })
+    }
+
+    fun rankAppSuggestions(
+        apps: List<AppInfo>,
+        query: String,
+        appUsageStats: Map<String, AppUsageStats>,
+        now: Long = System.currentTimeMillis(),
+        limit: Int = 4
+    ): List<AppInfo> {
+        val normalizedQuery = normalizeSearchText(query)
+        if (normalizedQuery.isEmpty()) return emptyList()
+
+        return apps.mapNotNull { app ->
+            val matchScore = computeTextMatchScore(app.label, normalizedQuery)
+            if (matchScore == 0) return@mapNotNull null
+
+            val usage = appUsageStats[app.packageName]
+            val totalScore = matchScore +
+                usageFrequencyScore(usage?.launchCount ?: 0) +
+                recencyScore(usage?.lastLaunchedAt ?: 0L, now)
+
+            app to totalScore
+        }
+            .sortedWith(
+                compareByDescending<Pair<AppInfo, Int>> { it.second }
+                    .thenBy { it.first.label.lowercase() }
+            )
+            .take(limit)
+            .map { it.first }
+    }
+
+    fun rankWebSuggestions(
+        history: List<SearchHistoryEntry>,
+        query: String,
+        now: Long = System.currentTimeMillis(),
+        limit: Int = 4
+    ): List<SearchHistoryEntry> {
+        val normalizedQuery = normalizeSearchText(query)
+        if (normalizedQuery.isEmpty()) return emptyList()
+
+        return history.mapNotNull { entry ->
+            val matchScore = computeTextMatchScore(entry.query, normalizedQuery)
+            if (matchScore == 0) return@mapNotNull null
+
+            val totalScore = matchScore +
+                usageFrequencyScore(entry.usageCount) +
+                recencyScore(entry.lastSearchedAt, now)
+
+            entry to totalScore
+        }
+            .sortedWith(
+                compareByDescending<Pair<SearchHistoryEntry, Int>> { it.second }
+                    .thenByDescending { it.first.usageCount }
+                    .thenByDescending { it.first.lastSearchedAt }
+                    .thenBy { it.first.query.lowercase() }
+            )
+            .take(limit)
+            .map { it.first }
     }
 
     /**
@@ -174,5 +236,38 @@ object LauncherLogic {
      */
     fun renameFolder(folders: List<FolderInfo>, folderId: String, newName: String): List<FolderInfo> {
         return folders.map { if (it.id == folderId) it.copy(name = newName) else it }
+    }
+
+    private fun computeTextMatchScore(text: String, normalizedQuery: String): Int {
+        val normalizedText = normalizeSearchText(text)
+        if (normalizedText.isEmpty() || normalizedQuery.isEmpty()) return 0
+
+        return when {
+            normalizedText == normalizedQuery -> 4_000
+            normalizedText.startsWith(normalizedQuery) -> 3_000
+            normalizedText.split(WORD_SEPARATOR_REGEX).any { it.startsWith(normalizedQuery) } -> 2_200
+            normalizedText.contains(normalizedQuery) -> 1_400
+            else -> 0
+        }
+    }
+
+    private fun usageFrequencyScore(usageCount: Int): Int {
+        return (usageCount.coerceAtLeast(0) * 90).coerceAtMost(900)
+    }
+
+    private fun recencyScore(lastUsedAt: Long, now: Long): Int {
+        if (lastUsedAt <= 0L) return 0
+        val age = (now - lastUsedAt).coerceAtLeast(0L)
+        return when {
+            age <= DAY_IN_MILLIS -> 260
+            age <= 7 * DAY_IN_MILLIS -> 180
+            age <= 30 * DAY_IN_MILLIS -> 100
+            age <= 90 * DAY_IN_MILLIS -> 40
+            else -> 0
+        }
+    }
+
+    private fun normalizeSearchText(value: String): String {
+        return value.trim().lowercase()
     }
 }

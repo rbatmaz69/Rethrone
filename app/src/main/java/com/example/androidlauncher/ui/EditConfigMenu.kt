@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +63,9 @@ fun EditConfigMenu(
     isCustomWallpaperSet: Boolean,
     isShakeGesturesEnabled: Boolean,
     onShakeGesturesToggled: (Boolean) -> Unit,
+    isSmartSuggestionsEnabled: Boolean,
+    onSmartSuggestionsToggled: (Boolean) -> Unit,
+    onClearSearchHistory: () -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -162,6 +166,38 @@ fun EditConfigMenu(
                         isDarkTextEnabled = isDarkTextEnabled
                     )
                 }
+            }
+
+            item {
+                EditSectionHeader(
+                    title = "Suche",
+                    mainTextColor = mainTextColor
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Icons.Default.Search,
+                    label = "Intelligente Suchvorschläge",
+                    description = "Lernt aus App-Starts und Websuchen. Alles bleibt lokal auf dem Gerät.",
+                    checked = isSmartSuggestionsEnabled,
+                    onCheckedChange = onSmartSuggestionsToggled,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "smart_search_switch"
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Icons.Default.Search,
+                    label = "Suchverlauf löschen",
+                    onClick = onClearSearchHistory,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled
+                )
             }
 
             item {

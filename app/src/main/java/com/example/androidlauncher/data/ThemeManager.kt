@@ -42,6 +42,7 @@ class ThemeManager(private val context: Context) {
         private val WALLPAPER_DIM_KEY = floatPreferencesKey("wallpaper_dim")
         private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
         private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
+        private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
     }
 
     /**
@@ -175,6 +176,14 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
+     * Observable flow for intelligent search suggestions.
+     */
+    val isSmartSuggestionsEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[SMART_SUGGESTIONS_KEY] ?: true
+        }
+
+    /**
      * Updates the selected theme.
      */
     suspend fun setTheme(theme: ColorTheme) {
@@ -292,6 +301,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setShakeGesturesEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[SHAKE_GESTURES_KEY] = enabled
+        }
+    }
+
+    /**
+     * Toggles intelligent search suggestions.
+     */
+    suspend fun setSmartSuggestionsEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SMART_SUGGESTIONS_KEY] = enabled
         }
     }
 }
