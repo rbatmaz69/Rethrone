@@ -24,7 +24,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -80,6 +81,39 @@ kover {
                 classes("com.example.androidlauncher.data.ThemeManager")
                 classes("com.example.androidlauncher.data.ThemeManager\$*")
                 classes("com.example.androidlauncher.data.ThemeManagerKt")
+                // Neue extrahierte UI-Dateien
+                classes("com.example.androidlauncher.ui.HomeScreenKt")
+                classes("com.example.androidlauncher.ui.HomeScreenKt\$*")
+                classes("com.example.androidlauncher.ui.FavoritesConfigMenuKt")
+                classes("com.example.androidlauncher.ui.FavoritesConfigMenuKt\$*")
+                classes("com.example.androidlauncher.ui.SystemWallpaperViewKt")
+                classes("com.example.androidlauncher.ui.SystemWallpaperViewKt\$*")
+                classes("com.example.androidlauncher.ui.LiquidGlass")
+                classes("com.example.androidlauncher.ui.LiquidGlass\$*")
+                classes("com.example.androidlauncher.ui.EditConfigMenuKt")
+                classes("com.example.androidlauncher.ui.EditConfigMenuKt\$*")
+                classes("com.example.androidlauncher.ui.FontSelectionMenuKt")
+                classes("com.example.androidlauncher.ui.FontSelectionMenuKt\$*")
+                classes("com.example.androidlauncher.ui.WallpaperConfigMenuKt")
+                classes("com.example.androidlauncher.ui.WallpaperConfigMenuKt\$*")
+                classes("com.example.androidlauncher.ui.IconConfigMenuKt")
+                classes("com.example.androidlauncher.ui.IconConfigMenuKt\$*")
+                classes("com.example.androidlauncher.ui.AppContextMenuKt")
+                classes("com.example.androidlauncher.ui.AppContextMenuKt\$*")
+                classes("com.example.androidlauncher.ui.AppShortcutsMenuKt")
+                classes("com.example.androidlauncher.ui.AppShortcutsMenuKt\$*")
+                classes("com.example.androidlauncher.ui.BottomSearchKt")
+                classes("com.example.androidlauncher.ui.BottomSearchKt\$*")
+                classes("com.example.androidlauncher.ui.InfoDialogKt")
+                classes("com.example.androidlauncher.ui.InfoDialogKt\$*")
+                classes("com.example.androidlauncher.data.FavoritesManager")
+                classes("com.example.androidlauncher.data.FavoritesManager\$*")
+                classes("com.example.androidlauncher.data.FavoritesManagerKt")
+                classes("com.example.androidlauncher.data.AppRepository")
+                classes("com.example.androidlauncher.data.AppRepository\$*")
+                classes("com.example.androidlauncher.data.IconManager")
+                classes("com.example.androidlauncher.data.IconManager\$*")
+                classes("com.example.androidlauncher.data.IconManagerKt")
             }
         }
     }
@@ -100,6 +134,7 @@ dependencies {
     
     // Lucide Icons
     implementation(libs.lucide.icons)
+
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

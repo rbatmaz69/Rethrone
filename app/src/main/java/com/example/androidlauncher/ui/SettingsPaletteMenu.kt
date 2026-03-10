@@ -18,16 +18,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Palette
+import com.composables.icons.lucide.Pencil
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
@@ -46,7 +47,7 @@ data class PaletteMenuItem(
  * - Favorites configuration
  * - Color theme configuration
  * - Size configuration
- * - System Settings
+ * - System Settings / Editing mode
  * - App Info
  */
 @Composable
@@ -69,7 +70,7 @@ fun SettingsPaletteMenu(
             PaletteMenuItem("themes", Lucide.Palette, "Themes", onOpenColorConfig),
             PaletteMenuItem("size", Lucide.ALargeSmall, "Größe", onOpenSizeConfig),
             PaletteMenuItem("favorites", Icons.Default.Star, "Favorites", onOpenFavoritesConfig),
-            PaletteMenuItem("system", Icons.Default.Settings, "System", onOpenSystemSettings),
+            PaletteMenuItem("edit", Lucide.Pencil, "Bearbeiten", onOpenSystemSettings),
             PaletteMenuItem("info", Icons.Default.Info, "Info", onOpenInfo),
         )
     }
@@ -120,49 +121,10 @@ fun SettingsPaletteMenu(
 
                 // Styles
                 val backgroundModifier = if (isLiquidGlassEnabled) {
-                     // Liquid/Glass Style Definition
-                    val glassBrush = if (isDarkTextEnabled) {
-                        // Light Mode - Kristallklar
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.15f),
-                                Color.Black.copy(alpha = 0.05f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    } else {
-                        // Dark Mode - Sehr transparentes Glas
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.15f),
-                                Color.White.copy(alpha = 0.05f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    }
-                    val borderBrush = if (isDarkTextEnabled) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.8f),
-                                Color.Black.copy(alpha = 0.3f)
-                            )
-                        )
-                    } else {
-                        // Hellerer Rand im Dark Mode für Glas-Kante
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.6f),
-                                Color.White.copy(alpha = 0.1f)
-                            )
-                        )
-                    }
                     Modifier
-                        .background(glassBrush, CircleShape)
-                        .border(BorderStroke(1.2.dp, borderBrush), CircleShape)
+                        .background(LiquidGlass.glassBrush(isDarkTextEnabled), CircleShape)
+                        .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), CircleShape)
                 } else {
-                    // Standard Ansicht
                     Modifier
                         .background(mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), CircleShape)
                         .border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.25f)), CircleShape)
@@ -214,6 +176,7 @@ fun SettingsPaletteMenu(
                         modifier = Modifier
                             .fillMaxSize()
                             .then(backgroundModifier)
+                            .testTag("settings_palette_item_${item.id}")
                             .clickable(
                                 interactionSource = interactionSource,
                                 indication = null,

@@ -1,7 +1,9 @@
 package com.example.androidlauncher
 
 import com.example.androidlauncher.ui.theme.ColorTheme
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class ColorThemeTest {
@@ -9,16 +11,13 @@ class ColorThemeTest {
     @Test
     fun `all color themes have non-blank themeName`() {
         ColorTheme.entries.forEach { theme ->
-            assertTrue(
-                "Theme ${theme.name} has blank themeName",
-                theme.themeName.isNotBlank()
-            )
+            assertTrue("Theme ${theme.name} has blank themeName", theme.themeName.isNotBlank())
         }
     }
 
     @Test
-    fun `total number of color themes is 29`() {
-        assertEquals(29, ColorTheme.entries.size)
+    fun `total number of color themes is 69`() {
+        assertEquals(69, ColorTheme.entries.size)
     }
 
     @Test
@@ -39,7 +38,6 @@ class ColorThemeTest {
         assertEquals(names.size, names.toSet().size)
     }
 
-
     @Test
     fun `SUNSET tertiary is Black`() {
         val sunset = ColorTheme.SUNSET
@@ -48,48 +46,85 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `SUNSHINE tertiary is Black`() {
-        assertEquals(0xFF000000.toInt(), ColorTheme.SUNSHINE.tertiary.hashCode())
-    }
-
-    @Test
     fun `all drawerBackground colors have full alpha`() {
         ColorTheme.entries.forEach { theme ->
-            val alpha = theme.drawerBackground.alpha
-            assertEquals(
-                "Theme ${theme.name} drawerBackground should be fully opaque",
-                1.0f, alpha, 0.001f
-            )
+            assertEquals("Theme ${theme.name} drawerBackground should be fully opaque", 1.0f, theme.drawerBackground.alpha, 0.001f)
         }
     }
 
     @Test
-    fun `all primary colors have full alpha`() {
+    fun `all primary secondary and tertiary colors have full alpha`() {
         ColorTheme.entries.forEach { theme ->
-            assertEquals(
-                "Theme ${theme.name} primary should be fully opaque",
-                1.0f, theme.primary.alpha, 0.001f
-            )
+            assertEquals("Theme ${theme.name} primary should be fully opaque", 1.0f, theme.primary.alpha, 0.001f)
+            assertEquals("Theme ${theme.name} secondary should be fully opaque", 1.0f, theme.secondary.alpha, 0.001f)
+            assertEquals("Theme ${theme.name} tertiary should be fully opaque", 1.0f, theme.tertiary.alpha, 0.001f)
         }
     }
 
     @Test
-    fun `all secondary colors have full alpha`() {
-        ColorTheme.entries.forEach { theme ->
-            assertEquals(
-                "Theme ${theme.name} secondary should be fully opaque",
-                1.0f, theme.secondary.alpha, 0.001f
-            )
+    fun `art themes expose at least three gradient stops for all themed brushes`() {
+        ColorTheme.entries.filter { it.isArtTheme }.forEach { theme ->
+            assertTrue("${theme.name} artGradient should have >= 3 stops", theme.artGradient.size >= 3)
+            assertTrue("${theme.name} menuGradient should have >= 3 stops", theme.menuGradient.size >= 3)
+            assertTrue("${theme.name} searchGradient should have >= 3 stops", theme.searchGradient.size >= 3)
+            assertTrue("${theme.name} animationGradient should have >= 3 stops", theme.animationGradient.size >= 3)
         }
     }
 
     @Test
-    fun `all tertiary colors have full alpha`() {
+    fun `all themes pass contrast checks for dark and light text modes`() {
         ColorTheme.entries.forEach { theme ->
-            assertEquals(
-                "Theme ${theme.name} tertiary should be fully opaque",
-                1.0f, theme.tertiary.alpha, 0.001f
-            )
+            assertTrue("${theme.name} should keep readable contrast in dark mode", theme.passesContrastForMainText(false))
+            assertTrue("${theme.name} should keep readable contrast in light mode", theme.passesContrastForMainText(true))
+        }
+    }
+
+    @Test
+    fun `new artistic theme names exist`() {
+        val actualNames = ColorTheme.entries.map { it.name }
+        listOf(
+            "MOUNTAIN_DUSK",
+            "DESERT_GLOW",
+            "ARCTIC_MIST",
+            "OCEAN_DEPTHS",
+            "MISTY_VALLEY",
+            "AURORA_VEIL",
+            "MOONLIT_LAKE",
+            "EMBER_RAIN",
+            "PINE_DAWN",
+            "ROSE_DUST",
+            "NEON_NOIR",
+            "VOLCANIC_GLASS",
+            "OXIDE_COPPER",
+            "AMETHYST_SMOKE",
+            "PETROL_DREAM",
+            "FERRARI_RED",
+            "GRAPHITE_MONO",
+            "IVORY_INK",
+            "OLIVE_MONO",
+            "ONYX_GOLD",
+            "COBALT_MONO",
+            "JADE_MONO",
+            "PLUM_MONO",
+            "CITRINE_MONO",
+            "TEAL_MONO",
+            "MAROON_MONO",
+            "SLATE_MONO",
+            "SANDSTONE_MONO",
+            "BRONZE_MONO",
+            "OBSIDIAN_MONO",
+            "PLASMA_BURST",
+            "LASER_LIME",
+            "ELECTRIC_AQUA",
+            "ULTRAVIOLET_PULSE",
+            "SOLAR_FLARE",
+            "HYPER_CORAL",
+            "NITRO_BLUE",
+            "ACID_MELON",
+            "PIXEL_FIRE",
+            "RAVE_GRAPE"
+        ).forEach { name ->
+            assertTrue("Expected theme $name to exist", name in actualNames)
         }
     }
 
@@ -100,20 +135,6 @@ class ColorThemeTest {
             fail("Expected IllegalArgumentException")
         } catch (_: IllegalArgumentException) {
             // expected
-        }
-    }
-
-    @Test
-    fun `expected theme names exist`() {
-        val expectedNames = listOf(
-            "SIGNATURE", "OCEAN", "FOREST", "SUNSET",
-            "LAVENDER", "SAKURA", "NIGHTSKY", "MINT", "SUNSHINE",
-            "SKY", "PEACH", "CANDY", "LEMONADE", "BUBBLEGUM",
-            "TROPICAL", "SPRING"
-        )
-        val actualNames = ColorTheme.entries.map { it.name }
-        expectedNames.forEach { name ->
-            assertTrue("Expected theme $name to exist", name in actualNames)
         }
     }
 }

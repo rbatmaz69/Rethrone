@@ -1,7 +1,5 @@
 package com.example.androidlauncher.ui
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,13 +11,11 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,8 +25,9 @@ import com.composables.icons.lucide.Moon
 import com.composables.icons.lucide.Sun
 import com.composables.icons.lucide.Droplets
 import com.composables.icons.lucide.Square
-import com.example.androidlauncher.SystemWallpaperView
+// SystemWallpaperView ist im selben Paket (ui)
 import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 
 
 /**
@@ -48,20 +45,38 @@ fun ColorConfigMenu(
     onDarkTextToggled: (Boolean) -> Unit,
     isLiquidGlassEnabled: Boolean,
     onLiquidGlassToggled: (Boolean) -> Unit,
+    customWallpaperUri: String? = null,
     onClose: () -> Unit
 ) {
-    // Nur für die primären Schriften und Symbole verwenden
+    val fontWeight = LocalFontWeight.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val backgroundBrush = remember(selectedTheme, isDarkTextEnabled) {
+        selectedTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.95f)
+    }
+    val orderedThemes = remember {
+        ColorTheme.entries.sortedWith(compareByDescending<ColorTheme> { it.isArtTheme }.thenBy { it.themeName })
+    }
 
-    val backgroundColor = if (isDarkTextEnabled) selectedTheme.lightBackground else selectedTheme.drawerBackground
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
-        SystemWallpaperView()
-        Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = 0.95f)))
+        SystemWallpaperView(customWallpaperUri)
+        Box(modifier = Modifier.fillMaxSize().background(backgroundBrush))
 
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Farben", fontSize = 24.sp, fontWeight = FontWeight.Light, color = mainTextColor)
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
+                Text("Farben", fontSize = 24.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = mainTextColor
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -72,38 +87,9 @@ fun ColorConfigMenu(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Bleibt grau (weiß mit alpha), da es eine sekundäre Info ist
-                Text("Vorschau", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
 
-                val darkTextSwitchColors = if (isLiquidGlassEnabled) {
-                    if (isDarkTextEnabled) {
-                        SwitchDefaults.colors(
-                            checkedTrackColor = Color.Black.copy(alpha = 0.15f),
-                            uncheckedTrackColor = Color.Black.copy(alpha = 0.05f),
-                            checkedThumbColor = Color.Black,
-                            uncheckedThumbColor = Color.Black.copy(alpha = 0.8f),
-                            checkedBorderColor = Color.Black.copy(alpha = 0.2f),
-                            uncheckedBorderColor = Color.Black.copy(alpha = 0.2f)
-                        )
-                    } else {
-                        SwitchDefaults.colors(
-                            checkedTrackColor = Color.White.copy(alpha = 0.25f),
-                            uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
-                            checkedThumbColor = Color.White,
-                            uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
-                            checkedBorderColor = Color.White.copy(alpha = 0.2f),
-                            uncheckedBorderColor = Color.White.copy(alpha = 0.15f)
-                        )
-                    }
-                } else {
-                    SwitchDefaults.colors(
-                        checkedTrackColor = Color.White.copy(alpha = 0.2f),
-                        uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
-                        checkedThumbColor = if (isDarkTextEnabled) Color.Black else Color.White,
-                        uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
-                        checkedBorderColor = Color.White.copy(alpha = 0.1f),
-                        uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
-                    )
-                }
+                val darkTextSwitchColors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
 
                 Switch(
                     checked = isDarkTextEnabled,
@@ -161,38 +147,9 @@ fun ColorConfigMenu(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Bleibt grau
-                Text("Themen", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                Text("Themen", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
 
-                val liquidGlassSwitchColors = if (isLiquidGlassEnabled) {
-                    if (isDarkTextEnabled) {
-                        SwitchDefaults.colors(
-                            checkedTrackColor = Color.Black.copy(alpha = 0.15f),
-                            uncheckedTrackColor = Color.Black.copy(alpha = 0.05f),
-                            checkedThumbColor = Color.Black,
-                            uncheckedThumbColor = Color.Black.copy(alpha = 0.8f),
-                            checkedBorderColor = Color.Black.copy(alpha = 0.2f),
-                            uncheckedBorderColor = Color.Black.copy(alpha = 0.2f)
-                        )
-                    } else {
-                        SwitchDefaults.colors(
-                            checkedTrackColor = Color.White.copy(alpha = 0.25f),
-                            uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
-                            checkedThumbColor = Color.White,
-                            uncheckedThumbColor = Color.White.copy(alpha = 0.9f),
-                            checkedBorderColor = Color.White.copy(alpha = 0.2f),
-                            uncheckedBorderColor = Color.White.copy(alpha = 0.15f)
-                        )
-                    }
-                } else {
-                    SwitchDefaults.colors(
-                        checkedTrackColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
-                        uncheckedTrackColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f),
-                        checkedThumbColor = if (isDarkTextEnabled) Color.Black else Color.White,
-                        uncheckedThumbColor = if (isDarkTextEnabled) Color.Black else Color.White.copy(alpha = 0.9f),
-                        checkedBorderColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f),
-                        uncheckedBorderColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f)
-                    )
-                }
+                val liquidGlassSwitchColors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
 
                 Switch(
                     checked = isLiquidGlassEnabled,
@@ -224,8 +181,7 @@ fun ColorConfigMenu(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                @Suppress("EnumValuesSoftDeprecate")
-                items(ColorTheme.values()) { theme ->
+                items(orderedThemes, key = { it.name }) { theme ->
                     ThemeOptionItem(
                         theme = theme,
                         isSelected = theme == selectedTheme,
@@ -251,47 +207,16 @@ fun PreviewCard(
     modifier: Modifier = Modifier
 ) {
     val cardModifier = if (isLiquidGlassEnabled) {
-        val glassBrush = if (isDarkTextEnabled) {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.15f),
-                    Color.Black.copy(alpha = 0.05f)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
-        } else {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.15f),
-                    Color.White.copy(alpha = 0.05f)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
-        }
-
-        val borderBrush = if (isDarkTextEnabled) {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.8f),
-                    Color.Black.copy(alpha = 0.3f)
-                )
-            )
-        } else {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.6f),
-                    Color.White.copy(alpha = 0.1f)
-                )
-            )
-        }
-
         Modifier
-            .background(glassBrush, RoundedCornerShape(16.dp))
-            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(16.dp))
+            .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(16.dp))
     } else {
-        Modifier.background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+    }
+
+    val previewBrush = remember(colorTheme, isHome, isDarkTextEnabled) {
+        if (isHome) colorTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.88f)
+        else colorTheme.menuBrush(isDarkTextEnabled, alpha = 0.96f)
     }
 
     Box(
@@ -299,24 +224,13 @@ fun PreviewCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Karten-Titel bleibt grau
-            Text(title, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (isHome) {
-                            Brush.verticalGradient(listOf(colorTheme.primary.copy(alpha = 0.6f), colorTheme.secondary.copy(alpha = 0.6f)))
-                        } else {
-                            // Wenn schwarze Schrift aktiv ist, zeigen wir den hellen Hintergrund
-                            if (mainTextColor == Color(0xFF010101)) {
-                                SolidColor(colorTheme.lightBackground)
-                            } else {
-                                SolidColor(colorTheme.drawerBackground)
-                            }
-                        }
-                    )
+                    .background(previewBrush)
             ) {
                 // In der Vorschau spiegeln wir die Schriftfarbe wider
                 if (isHome) {
@@ -363,51 +277,9 @@ fun ThemeOptionItem(
     onClick: () -> Unit
 ) {
     val itemModifier = if (isLiquidGlassEnabled) {
-        val glassBrush = if (isDarkTextEnabled) {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.15f),
-                    Color.Black.copy(alpha = 0.05f)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
-        } else {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.15f),
-                    Color.White.copy(alpha = 0.05f)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
-        }
-
-        val borderBrush = if (isDarkTextEnabled) {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.Black.copy(alpha = 0.8f),
-                    Color.Black.copy(alpha = 0.3f)
-                )
-            )
-        } else {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.6f),
-                    Color.White.copy(alpha = 0.1f)
-                )
-            )
-        }
-
         val baseModifier = Modifier
-            .background(glassBrush, RoundedCornerShape(16.dp))
-            .border(BorderStroke(1.2.dp, borderBrush), RoundedCornerShape(16.dp))
-
-        // If selected, we might want to add extra emphasis or keep it glass.
-        // For consistency with other glass items, we keep the glass look.
-        // If selected, maybe a slightly stronger border or background?
-        // But the previous implementation just used a slightly more opaque background.
-        // Let's stick to glass for now, maybe add the selection border if selected.
+            .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(16.dp))
 
         if (isSelected) {
              baseModifier.border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
@@ -415,13 +287,19 @@ fun ThemeOptionItem(
              baseModifier
         }
     } else {
-        // Standard style
-        val bgColor = if (isSelected) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
-        val border = if (isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else null
+        val bgColor = if (isSelected) mainTextColor.copy(alpha = 0.15f) else mainTextColor.copy(alpha = 0.05f)
+        val border = if (isSelected) BorderStroke(1.dp, mainTextColor.copy(alpha = 0.3f)) else null
 
         Modifier
             .background(bgColor, RoundedCornerShape(16.dp))
             .then(if (border != null) Modifier.border(border, RoundedCornerShape(16.dp)) else Modifier)
+    }
+
+    val previewBrush = remember(theme, isDarkTextEnabled) {
+        theme.menuBrush(isDarkTextEnabled, alpha = if (isDarkTextEnabled) 0.98f else 0.94f)
+    }
+    val themeBorderColor = remember(theme, isDarkTextEnabled) {
+        theme.borderColor(isDarkTextEnabled)
     }
 
     Box(
@@ -434,17 +312,41 @@ fun ThemeOptionItem(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.width(60.dp), horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                Box(modifier = Modifier.size(24.dp).background(theme.primary, CircleShape).border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape))
-                Box(modifier = Modifier.size(24.dp).background(theme.secondary, CircleShape).border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape))
-            }
-            
+            Box(
+                modifier = Modifier
+                    .width(72.dp)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(previewBrush)
+                    .border(1.dp, themeBorderColor, RoundedCornerShape(999.dp))
+            )
+
             Spacer(modifier = Modifier.width(16.dp))
             
-            // Name des Themes wird schwarz (Schrift)
-            Text(theme.themeName, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
-            
-            // Haken wird schwarz (Symbol)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(theme.themeName, color = mainTextColor, fontSize = 16.sp)
+                    if (theme.isArtTheme) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "ART",
+                            color = mainTextColor.copy(alpha = 0.65f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(mainTextColor.copy(alpha = 0.08f))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = if (theme.isArtTheme) "Mehrfarbiger Atmosphären-Verlauf" else "Klassische minimalistische Palette",
+                    color = mainTextColor.copy(alpha = 0.55f),
+                    fontSize = 12.sp
+                )
+            }
+
             if (isSelected) {
                 Icon(Icons.Default.Check, contentDescription = null, tint = mainTextColor)
             }

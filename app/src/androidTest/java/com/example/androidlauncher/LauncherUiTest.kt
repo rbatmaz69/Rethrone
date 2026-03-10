@@ -62,13 +62,40 @@ class LauncherUiTest {
         composeTestRule.onNodeWithTag("favorites_config_menu").assertIsDisplayed()
 
         // Select the first app in the list to be sure we find one
-        // We look for any item starting with config_app_item_
-        composeTestRule.onAllNodes(hasTestTag("config_app_item_", substring = true))[0].performClick()
+        composeTestRule.onAllNodes(hasTestTag("config_app_item_"))[0].performClick()
 
         // Confirm the selection
         composeTestRule.onNodeWithTag("confirm_favorites").performClick()
 
         // Check if at least one favorite item is now displayed on the home screen
-        composeTestRule.onAllNodes(hasTestTag("favorite_item_", substring = true))[0].assertIsDisplayed()
+        composeTestRule.onAllNodes(hasTestTag("favorite_item_"))[0].assertIsDisplayed()
+    }
+
+    @Test
+    fun homeSearchButtonOpensBottomSearchField() {
+        composeTestRule.onNodeWithTag("home_search_button").assertIsDisplayed().performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("bottom_search_field").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeTestRule.onNodeWithTag("bottom_search_field").assertIsDisplayed().assertIsFocused()
+    }
+
+    @Test
+    fun shakeGesturesSwitchIsReachableFromEditMenu() {
+        composeTestRule.onNodeWithTag("settings_button").assertIsDisplayed().performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("settings_palette_item_edit").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeTestRule.onNodeWithTag("settings_palette_item_edit").performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("shake_gestures_switch").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeTestRule.onNodeWithTag("shake_gestures_switch").assertIsDisplayed()
     }
 }
