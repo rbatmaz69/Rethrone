@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -309,6 +310,11 @@ private fun IconActionDialog(
                 .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { dismissSheet() }
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
+            val configuration = LocalConfiguration.current
+            val maxSheetHeight = remember(configuration.screenHeightDp) {
+                (configuration.screenHeightDp.dp * 0.82f)
+            }
+
             AnimatedVisibility(
                 visible = isVisible,
                 modifier = Modifier
@@ -327,6 +333,7 @@ private fun IconActionDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 460.dp)
+                        .heightIn(max = maxSheetHeight)
                         .testTag("icon_action_dialog")
                         .clip(shape)
                         .conditionalGlass(
@@ -342,8 +349,11 @@ private fun IconActionDialog(
                 ) {
                     Column(
                         modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
                             .padding(horizontal = 18.dp, vertical = 16.dp)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Box(
