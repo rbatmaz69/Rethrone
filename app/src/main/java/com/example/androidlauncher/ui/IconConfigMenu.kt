@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -25,24 +24,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.composables.icons.lucide.*
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.data.AutoIconFallbackType
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
-import com.example.androidlauncher.LauncherLogic
 import kotlinx.coroutines.delay
-import java.lang.reflect.Method
 
 /**
  * Konfigurationsmenü für benutzerdefinierte App-Icons.
@@ -134,10 +127,11 @@ fun IconConfigMenu(
         ) {
             itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { index, app ->
                 val customIconName = customIcons[app.packageName]
-                
+                val autoStatus = remember(app.autoIconFallback) { app.autoIconFallback.toStatusLabel() }
+
                 val isSearching = searchQuery.isNotBlank()
                 var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
-                
+
                 LaunchedEffect(app.packageName, isSearching) {
                     if (isSearching) {
                         delay((index % 12) * 30L)
@@ -147,7 +141,7 @@ fun IconConfigMenu(
 
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(400)) + 
+                    enter = fadeIn(animationSpec = tween(400)) +
                             scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
                             slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
                     exit = fadeOut(animationSpec = tween(200))
@@ -176,8 +170,13 @@ fun IconConfigMenu(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(app.label, color = mainTextColor, fontSize = 16.sp, fontWeight = fontWeight.weight)
-                                if (customIconName != null) {
-                                    Text(customIconName, color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp)
+                                when {
+                                    customIconName != null -> {
+                                        Text("Manuell · $customIconName", color = mainTextColor.copy(alpha = 0.55f), fontSize = 12.sp)
+                                    }
+                                    autoStatus != null -> {
+                                        Text(autoStatus, color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp)
+                                    }
                                 }
                             }
                             if (customIconName != null) {
@@ -202,6 +201,15 @@ fun IconConfigMenu(
             isLiquidGlassEnabled = isLiquidGlassEnabled,
             isDarkTextEnabled = isDarkTextEnabled
         )
+    }
+}
+
+private fun com.example.androidlauncher.data.AutoIconFallback?.toStatusLabel(): String? {
+    return when (this?.type) {
+        AutoIconFallbackType.ORIGINAL -> "Auto · Original"
+        AutoIconFallbackType.LUCIDE -> "Auto · Lucide ${lucideIconName.orEmpty()}".trim()
+        AutoIconFallbackType.NEUTRAL -> "Auto · Neutraler Container"
+        null -> null
     }
 }
 

@@ -172,6 +172,7 @@ class MainActivity : ComponentActivity() {
 
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
+            val autoIconFallbacks by iconManager.autoIconFallbacks.collectAsState(initial = emptyMap())
             val favoritePackages by favoritesManager.favorites.collectAsState(initial = emptyList())
 
             var isWallpaperCropOpen by remember { mutableStateOf(false) }
@@ -443,20 +444,41 @@ class MainActivity : ComponentActivity() {
                     scope.launch {
                         appRepository.cleanupLegacyCache()
                         val basicList = appRepository.getInstalledApps()
-                        if (allApps.size != basicList.size || allApps.map { it.packageName } != basicList.map { it.packageName }) {
-                            val currentIcons = allApps.associate { it.packageName to it.iconBitmap }
-                            allApps.clear()
-                            allApps.addAll(basicList.map {
-                                it.copy(iconBitmap = currentIcons[it.packageName])
-                            })
+                        val currentIcons = allApps.associate { it.packageName to it.iconBitmap }
+                        val currentFallbacks = allApps.associate { it.packageName to it.autoIconFallback }
+                        val mergedList = basicList.map {
+                            it.copy(
+                                iconBitmap = currentIcons[it.packageName],
+                                autoIconFallback = autoIconFallbacks[it.packageName] ?: currentFallbacks[it.packageName]
+                            )
                         }
+                        if (allApps.size != mergedList.size || allApps.map { it.packageName } != mergedList.map { it.packageName }) {
+                            allApps.clear()
+                            allApps.addAll(mergedList)
+                        } else {
+                            mergedList.forEachIndexed { index, appInfo ->
+                                if (index < allApps.size && allApps[index] != appInfo) {
+                                    allApps[index] = appInfo
+                                }
+                            }
+                        }
+
+                        val appSnapshot = allApps.toList()
                         appRepository.loadIconsWithPriority(
-                            apps = allApps.toList(),
+                            apps = appSnapshot,
                             favoritePackages = favoritePackages
-                        ) { idx, bitmap ->
+                        ) { idx, resolvedIcon ->
+                            val snapshotApp = appSnapshot.getOrNull(idx) ?: return@loadIconsWithPriority
+                            val fallback = resolvedIcon.autoFallback
+                            if (autoIconFallbacks[snapshotApp.packageName] != fallback) {
+                                iconManager.setAutoIconFallback(snapshotApp.packageName, fallback)
+                            }
                             withContext(Dispatchers.Main) {
-                                if (idx < allApps.size) {
-                                    allApps[idx] = allApps[idx].copy(iconBitmap = bitmap)
+                                if (idx < allApps.size && allApps[idx].packageName == snapshotApp.packageName) {
+                                    allApps[idx] = allApps[idx].copy(
+                                        iconBitmap = resolvedIcon.imageBitmap,
+                                        autoIconFallback = fallback
+                                    )
                                 }
                             }
                         }
@@ -531,7 +553,7 @@ class MainActivity : ComponentActivity() {
                         ?: intent.data?.host
                         ?: "search-launch"
                     Log.d(RETURN_TAG, "requestSearchLaunch resolved=$resolvedPackageName bounds=${bounds != null} searchButton=${homeSearchButtonBounds != null}")
-                     requestLauncherLaunch(
+                    requestLauncherLaunch(
                         packageName = resolvedPackageName,
                         intent = intent,
                         bounds = bounds,
@@ -549,6 +571,15 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) { refreshAppList() }
+                LaunchedEffect(autoIconFallbacks) {
+                    allApps.indices.forEach { index ->
+                        val app = allApps[index]
+                        val storedFallback = autoIconFallbacks[app.packageName]
+                        if (app.autoIconFallback != storedFallback) {
+                            allApps[index] = app.copy(autoIconFallback = storedFallback)
+                        }
+                    }
+                }
 
                 DisposableEffect(Unit) {
                     val receiver = object : BroadcastReceiver() {
@@ -573,7 +604,12 @@ class MainActivity : ComponentActivity() {
                                 Intent.ACTION_PACKAGE_ADDED,
                                 Intent.ACTION_PACKAGE_REMOVED,
                                 Intent.ACTION_PACKAGE_REPLACED -> {
+                                    val packageName = intent.data?.schemeSpecificPart
                                     scope.launch {
+                                        if (!packageName.isNullOrBlank()) {
+                                            appRepository.clearIconCache(packageName)
+                                            iconManager.invalidatePackage(packageName)
+                                        }
                                         delay(800)
                                         refreshAppList()
                                     }

@@ -70,115 +70,123 @@ class AppRepository(private val context: Context) {
     /**
      * Lädt ein einzelnes App-Icon – zuerst aus dem Datei-Cache,
      * bei Cache-Miss vom PackageManager.
-     *
-     * @param packageName Der Paketname der App.
-     * @return Das Icon als [ImageBitmap] oder null bei Fehler.
      */
     suspend fun loadIcon(packageName: String): ImageBitmap? {
-        // 1. Cache prüfen
-        val cached = loadIconFromCache(packageName)
-        if (cached != null) return cached
+        val bitmap = loadBitmap(packageName) ?: return null
+        return bitmap.toPreparedImageBitmap()
+    }
 
-        // 2. Vom System laden und cachen
-        return loadIconFromSystem(packageName)
+    /**
+     * Lädt ein einzelnes App-Icon und berechnet die automatische Fallback-Entscheidung.
+     */
+    suspend fun loadResolvedIcon(app: AppInfo): LoadedAppIcon? {
+        val bitmap = loadBitmap(app.packageName) ?: return null
+        return LoadedAppIcon(
+            imageBitmap = bitmap.toPreparedImageBitmap(),
+            autoFallback = IconQualityEvaluator.evaluate(bitmap, app.packageName, app.label)
+        )
     }
 
     /**
      * Lädt Icons für eine App-Liste mit Priorisierung der Favoriten.
-     * Favoriten-Icons werden zuerst geladen, damit sie sofort sichtbar sind.
-     *
-     * @param apps Die Ziel-Liste der Apps (wird in-place aktualisiert via Callback).
-     * @param favoritePackages Paketnamen der Favoriten (werden priorisiert).
-     * @param onIconLoaded Callback wenn ein Icon geladen wurde (Index + Bitmap).
      */
     suspend fun loadIconsWithPriority(
         apps: List<AppInfo>,
         favoritePackages: List<String>,
-        onIconLoaded: suspend (Int, ImageBitmap) -> Unit
+        onIconLoaded: suspend (Int, LoadedAppIcon) -> Unit
     ) {
         val favSet = favoritePackages.toSet()
-
-        // Indizes nach Priorität sortieren: Favoriten zuerst
         val sortedIndices = apps.indices.sortedByDescending { apps[it].packageName in favSet }
 
         sortedIndices.forEachIndexed { loopIdx, appIdx ->
             if (appIdx >= apps.size) return@forEachIndexed
             val app = apps[appIdx]
-            val bitmap = loadIcon(app.packageName)
-            if (bitmap != null) {
-                onIconLoaded(appIdx, bitmap)
+            val resolvedIcon = loadResolvedIcon(app)
+            if (resolvedIcon != null) {
+                onIconLoaded(appIdx, resolvedIcon)
             }
-            // Periodisch yielden um UI-Thread nicht zu blockieren
             if (loopIdx % 5 == 0) delay(1)
         }
     }
 
     /**
      * Löscht den Icon-Cache komplett.
-     * Nützlich wenn Icons nach App-Updates veraltet sind.
      */
     suspend fun clearIconCache() = withContext(Dispatchers.IO) {
         iconCacheDir.listFiles()?.forEach { it.delete() }
     }
 
+    /**
+     * Löscht den Icon-Cache für genau ein Paket.
+     */
+    suspend fun clearIconCache(packageName: String) = withContext(Dispatchers.IO) {
+        File(iconCacheDir, "$packageName.png").takeIf { it.exists() }?.delete()
+    }
+
     // ── Private Hilfsmethoden ────────────────────────────────────────
 
-    private suspend fun loadIconFromCache(packageName: String): ImageBitmap? =
+    private suspend fun loadBitmap(packageName: String): Bitmap? {
+        val cached = loadBitmapFromCache(packageName)
+        if (cached != null) return cached
+        return loadBitmapFromSystem(packageName)
+    }
+
+    private suspend fun loadBitmapFromCache(packageName: String): Bitmap? =
         withContext(Dispatchers.IO) {
             val iconFile = File(iconCacheDir, "$packageName.png")
             if (!iconFile.exists()) return@withContext null
             try {
-                val b = BitmapFactory.decodeFile(iconFile.absolutePath) ?: return@withContext null
-                val ib = b.asImageBitmap()
-                ib.prepareToDraw()
-                ib
+                BitmapFactory.decodeFile(iconFile.absolutePath)
             } catch (_: Exception) {
                 null
             }
         }
 
-    private suspend fun loadIconFromSystem(packageName: String): ImageBitmap? =
+    private suspend fun loadBitmapFromSystem(packageName: String): Bitmap? =
         withContext(Dispatchers.IO) {
             try {
                 val pm = context.packageManager
                 val info = pm.getApplicationInfo(packageName, 0)
                 val icon = info.loadIcon(pm)
 
-                // Bei AdaptiveIcons nur den Vordergrund verwenden
                 val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
                     icon.foreground ?: icon
                 } else {
                     icon
                 }
 
-                val b = createBitmap(ICON_SIZE, ICON_SIZE)
-                b.applyCanvas {
+                val bitmap = createBitmap(ICON_SIZE, ICON_SIZE)
+                bitmap.applyCanvas {
                     foregroundDrawable.setBounds(0, 0, ICON_SIZE, ICON_SIZE)
                     foregroundDrawable.draw(this)
                 }
 
-                val ib = b.asImageBitmap()
-                ib.prepareToDraw()
-
-                // Im Cache speichern
                 try {
                     FileOutputStream(File(iconCacheDir, "$packageName.png")).use { out ->
-                        b.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
                     }
                 } catch (_: Exception) {
                     // Cache-Fehler sind nicht kritisch
                 }
 
-                ib
+                bitmap
             } catch (_: Exception) {
                 null
             }
         }
 
+    private fun Bitmap.toPreparedImageBitmap(): ImageBitmap {
+        val imageBitmap = asImageBitmap()
+        imageBitmap.prepareToDraw()
+        return imageBitmap
+    }
+
+    data class LoadedAppIcon(
+        val imageBitmap: ImageBitmap,
+        val autoFallback: AutoIconFallback
+    )
+
     companion object {
-        /** Größe der gecachten Icons in Pixeln. */
         private const val ICON_SIZE = 144
     }
 }
-
-

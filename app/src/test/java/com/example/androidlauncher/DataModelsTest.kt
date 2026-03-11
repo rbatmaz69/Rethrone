@@ -36,24 +36,24 @@ class DataModelsTest {
 
     @Test
     fun `FontSize values count is 3`() {
-        assertEquals(3, FontSize.values().size)
+        assertEquals(3, FontSize.entries.size)
     }
 
     @Test
     fun `IconSize values count is 3`() {
-        assertEquals(3, IconSize.values().size)
+        assertEquals(3, IconSize.entries.size)
     }
 
     @Test
     fun `FontSize valueOf works for all entries`() {
-        FontSize.values().forEach { fs ->
+        FontSize.entries.forEach { fs ->
             assertEquals(fs, FontSize.valueOf(fs.name))
         }
     }
 
     @Test
     fun `IconSize valueOf works for all entries`() {
-        IconSize.values().forEach { ic ->
+        IconSize.entries.forEach { ic ->
             assertEquals(ic, IconSize.valueOf(ic.name))
         }
     }
@@ -71,6 +71,7 @@ class DataModelsTest {
         val app = AppInfo(label = "Test", packageName = "com.test")
         assertNull(app.iconBitmap)
         assertNull(app.lucideIcon)
+        assertNull(app.autoIconFallback)
     }
 
     @Test
@@ -101,6 +102,7 @@ class DataModelsTest {
         assertEquals("NewApp", copied.label)
         assertEquals("com.app", copied.packageName)
         assertNull(copied.iconBitmap)
+        assertNull(copied.autoIconFallback)
     }
 
     @Test
