@@ -550,8 +550,8 @@ fun AppDrawer(
                                 }
                             }
                             
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             val folderApps = remember(currentActiveFolder.appPackageNames, apps) { currentActiveFolder.appPackageNames.mapNotNull { pkg -> apps.find { it.packageName == pkg } } }
                             val currentFolderApps by rememberUpdatedState(folderApps)
                             
@@ -663,7 +663,7 @@ fun AppDrawer(
                                             val startIdx = page * itemsPerPage
                                             val endIdx = (startIdx + itemsPerPage).coerceAtMost(folderApps.size)
                                             val pageApps = folderApps.subList(startIdx, endIdx)
-                                            LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), userScrollEnabled = false, contentPadding = PaddingValues(top = 20.dp, start = 8.dp, end = 8.dp)) {
+                                            LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), userScrollEnabled = false, contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp)) {
                                                 itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
                                                     val globalIndex = startIdx + indexInPage
                                                     val isDragging = draggingItemPkg == app.packageName
@@ -671,7 +671,7 @@ fun AppDrawer(
                                                     val minusWidth = LocalIconSize.current.size * 0.14f
                                                     val minusHeight = 1.5.dp
 
-                                                    Box(modifier = Modifier.let { if (isDragging) it else Modifier.animateItem() }.zIndex(if (isDragging) 0f else 1f).graphicsLayer { rotationZ = if (isEditMode && !isDragging) { if (globalIndex % 2 == 0) wiggleAngle else -wiggleAngle } else 0f; alpha = if (isDragging) 0f else 1f }.padding(top = 12.dp, start = 2.dp, end = 2.dp)) {
+                                                    Box(modifier = Modifier.let { if (isDragging) it else Modifier.animateItem() }.zIndex(if (isDragging) 0f else 1f).graphicsLayer { rotationZ = if (isEditMode && !isDragging) { if (globalIndex % 2 == 0) wiggleAngle else -wiggleAngle } else 0f; alpha = if (isDragging) 0f else 1f }.padding(top = 4.dp, start = 2.dp, end = 2.dp)) {
                                                         AppItem(
                                                             app = app, adaptiveColumns = 3, isFavorite = isFavorite(app.packageName), onToggleFavorite = onToggleFavorite, folders = folders, onUpdateFolders = onUpdateFolders,
                                                             isInFolder = true, currentFolderId = currentActiveFolder.id, isEditMode = isEditMode, bouncePackage = returnIconPackage,
