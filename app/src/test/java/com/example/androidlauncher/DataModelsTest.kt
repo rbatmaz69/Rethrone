@@ -72,6 +72,7 @@ class DataModelsTest {
         assertNull(app.iconBitmap)
         assertNull(app.lucideIcon)
         assertNull(app.autoIconFallback)
+        assertNull(app.autoIconRule)
     }
 
     @Test
@@ -103,6 +104,7 @@ class DataModelsTest {
         assertEquals("com.app", copied.packageName)
         assertNull(copied.iconBitmap)
         assertNull(copied.autoIconFallback)
+        assertNull(copied.autoIconRule)
     }
 
     @Test

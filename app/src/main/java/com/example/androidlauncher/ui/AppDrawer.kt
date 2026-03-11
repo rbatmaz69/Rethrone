@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -193,7 +194,7 @@ fun AppDrawer(
     var showFolderSelection by remember { mutableStateOf(false) }
     var folderSelectionApp by remember { mutableStateOf<AppInfo?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { drawerSize = it.size }) {
+    Box(modifier = Modifier.fillMaxSize().testTag("app_drawer").onGloballyPositioned { drawerSize = it.size }) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -336,7 +337,7 @@ fun AppDrawer(
                 Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             }
 
-            Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
+            Box(modifier = Modifier.fillMaxWidth().testTag("app_drawer_search_field").then(searchBarModifier).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
                 interactionSource = searchIntSrc,
                 indication = null
             ) { focusRequester.requestFocus() }) {

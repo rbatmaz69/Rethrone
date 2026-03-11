@@ -83,7 +83,12 @@ class AppRepository(private val context: Context) {
         val bitmap = loadBitmap(app.packageName) ?: return null
         return LoadedAppIcon(
             imageBitmap = bitmap.toPreparedImageBitmap(),
-            autoFallback = IconQualityEvaluator.evaluate(bitmap, app.packageName, app.label)
+            autoFallback = IconQualityEvaluator.evaluate(
+                bitmap = bitmap,
+                packageName = app.packageName,
+                label = app.label,
+                explicitRule = app.autoIconRule
+            )
         )
     }
 

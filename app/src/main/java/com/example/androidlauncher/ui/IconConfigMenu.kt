@@ -14,8 +14,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -26,12 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.data.AutoIconFallbackType
+import com.example.androidlauncher.data.AutoIconRule
+import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
@@ -53,24 +57,29 @@ import kotlinx.coroutines.delay
 fun IconConfigMenu(
     apps: List<AppInfo>,
     customIcons: Map<String, String>,
+    iconRules: Map<String, AutoIconRule>,
     onIconSelected: (String, String?) -> Unit,
+    onAutoRuleSelected: (String, AutoIconRuleMode?) -> Unit,
+    onReanalyzeRequested: (String) -> Unit,
     onClose: () -> Unit
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontWeight = LocalFontWeight.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    
+
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(apps, searchQuery) {
         if (searchQuery.isBlank()) apps else apps.filter { it.label.contains(searchQuery, ignoreCase = true) }
     }
 
-    var selectedAppForIcon by remember { mutableStateOf<AppInfo?>(null) }
+    var selectedAppForActions by remember { mutableStateOf<AppInfo?>(null) }
+    var selectedAppForPicker by remember { mutableStateOf<AppInfo?>(null) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .testTag("icon_config_menu")
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 16.dp)
@@ -127,7 +136,10 @@ fun IconConfigMenu(
         ) {
             itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { index, app ->
                 val customIconName = customIcons[app.packageName]
-                val autoStatus = remember(app.autoIconFallback) { app.autoIconFallback.toStatusLabel() }
+                val explicitRule = iconRules[app.packageName]
+                val autoStatus = remember(app.autoIconFallback, app.autoIconRule, explicitRule) {
+                    buildIconStatusLabel(app, explicitRule)
+                }
 
                 val isSearching = searchQuery.isNotBlank()
                 var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
@@ -157,16 +169,17 @@ fun IconConfigMenu(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .testTag("icon_config_item_${app.packageName}")
                             .clip(RoundedCornerShape(16.dp))
                             .then(itemBackgroundModifier)
-                            .clickable { selectedAppForIcon = app },
+                            .clickable { selectedAppForActions = app },
                         color = Color.Transparent
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AppIconView(app, modifier = Modifier.size(40.dp))
+                            AppIconView(app, modifier = Modifier.size(40.dp), customIcons = customIcons)
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(app.label, color = mainTextColor, fontSize = 16.sp, fontWeight = fontWeight.weight)
@@ -179,11 +192,11 @@ fun IconConfigMenu(
                                     }
                                 }
                             }
-                            if (customIconName != null) {
-                                TextButton(onClick = { onIconSelected(app.packageName, null) }) {
-                                    Text("Reset", color = Color.Red.copy(alpha = 0.7f))
-                                }
-                            }
+                            Text(
+                                text = "Anpassen",
+                                color = mainTextColor.copy(alpha = 0.72f),
+                                fontSize = 12.sp
+                            )
                         }
                     }
                 }
@@ -191,24 +204,148 @@ fun IconConfigMenu(
         }
     }
 
-    if (selectedAppForIcon != null) {
+    selectedAppForActions?.let { app ->
+        IconActionDialog(
+            app = app,
+            customIconName = customIcons[app.packageName],
+            explicitRule = iconRules[app.packageName],
+            onPickLucide = {
+                selectedAppForPicker = app
+                selectedAppForActions = null
+            },
+            onResetManual = {
+                onIconSelected(app.packageName, null)
+                selectedAppForActions = null
+            },
+            onSelectRule = { mode ->
+                onAutoRuleSelected(app.packageName, mode)
+                selectedAppForActions = null
+            },
+            onReanalyze = {
+                onReanalyzeRequested(app.packageName)
+                selectedAppForActions = null
+            },
+            onDismiss = { selectedAppForActions = null },
+            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            isDarkTextEnabled = isDarkTextEnabled
+        )
+    }
+
+    if (selectedAppForPicker != null) {
         LucideIconPicker(
             onIconSelected = { iconName ->
-                onIconSelected(selectedAppForIcon!!.packageName, iconName)
-                selectedAppForIcon = null
+                onIconSelected(selectedAppForPicker!!.packageName, iconName)
+                selectedAppForPicker = null
             },
-            onDismiss = { selectedAppForIcon = null },
+            onDismiss = { selectedAppForPicker = null },
             isLiquidGlassEnabled = isLiquidGlassEnabled,
             isDarkTextEnabled = isDarkTextEnabled
         )
     }
 }
 
-private fun com.example.androidlauncher.data.AutoIconFallback?.toStatusLabel(): String? {
-    return when (this?.type) {
-        AutoIconFallbackType.ORIGINAL -> "Auto · Original"
-        AutoIconFallbackType.LUCIDE -> "Auto · Lucide ${lucideIconName.orEmpty()}".trim()
-        AutoIconFallbackType.NEUTRAL -> "Auto · Neutraler Container"
+@Composable
+private fun IconActionDialog(
+    app: AppInfo,
+    customIconName: String?,
+    explicitRule: AutoIconRule?,
+    onPickLucide: () -> Unit,
+    onResetManual: () -> Unit,
+    onSelectRule: (AutoIconRuleMode?) -> Unit,
+    onReanalyze: () -> Unit,
+    onDismiss: () -> Unit,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean
+) {
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val cardModifier = if (isLiquidGlassEnabled) {
+        Modifier
+            .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.12f, endAlpha = 0.04f), RoundedCornerShape(24.dp))
+            .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.18f, endAlpha = 0.06f)), RoundedCornerShape(24.dp))
+    } else {
+        Modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("icon_action_dialog")
+                .then(cardModifier),
+            color = Color.Transparent,
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(app.label, color = mainTextColor, style = MaterialTheme.typography.titleLarge)
+                Text(app.packageName, color = mainTextColor.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
+
+                IconActionButton(text = "Lucide-Icon auswählen", testTag = "icon_action_pick_lucide", onClick = onPickLucide)
+                IconActionButton(text = "Auto neu analysieren", testTag = "icon_action_reanalyze", onClick = onReanalyze)
+                IconActionButton(text = "Original immer behalten", testTag = "icon_action_keep_original") {
+                    onSelectRule(AutoIconRuleMode.KEEP_ORIGINAL)
+                }
+                IconActionButton(text = "Automatischen Fallback bevorzugen", testTag = "icon_action_force_fallback") {
+                    onSelectRule(AutoIconRuleMode.FORCE_FALLBACK)
+                }
+                IconActionButton(text = "Nur Heuristik verwenden", testTag = "icon_action_follow_heuristic") {
+                    onSelectRule(AutoIconRuleMode.FOLLOW_HEURISTIC)
+                }
+                if (explicitRule != null) {
+                    IconActionButton(text = "Gespeicherte Regel entfernen", testTag = "icon_action_clear_rule") {
+                        onSelectRule(null)
+                    }
+                }
+                if (customIconName != null) {
+                    IconActionButton(text = "Manuellen Override entfernen", testTag = "icon_action_reset_manual", onClick = onResetManual)
+                }
+                TextButton(
+                    modifier = Modifier.align(Alignment.End),
+                    onClick = onDismiss
+                ) {
+                    Text("Schließen")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IconActionButton(
+    text: String,
+    testTag: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+        )
+    }
+}
+
+private fun buildIconStatusLabel(app: AppInfo, explicitRule: AutoIconRule?): String? {
+    val ruleLabel = when (explicitRule?.mode) {
+        AutoIconRuleMode.KEEP_ORIGINAL -> "Regel · Original bevorzugen"
+        AutoIconRuleMode.FORCE_FALLBACK -> "Regel · Fallback bevorzugen"
+        AutoIconRuleMode.FOLLOW_HEURISTIC -> "Regel · Nur Heuristik"
+        null -> null
+    }
+    return ruleLabel ?: when (app.autoIconFallback?.type) {
+        com.example.androidlauncher.data.AutoIconFallbackType.ORIGINAL -> "Auto · Original"
+        com.example.androidlauncher.data.AutoIconFallbackType.LUCIDE -> "Auto · Lucide ${app.autoIconFallback.lucideIconName.orEmpty()}".trim()
+        com.example.androidlauncher.data.AutoIconFallbackType.NEUTRAL -> "Auto · Neutraler Container"
         null -> null
     }
 }
