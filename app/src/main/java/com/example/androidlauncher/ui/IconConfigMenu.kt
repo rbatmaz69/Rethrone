@@ -2,6 +2,7 @@ package com.example.androidlauncher.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -30,11 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.composables.icons.lucide.*
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.AutoIconRuleMode
@@ -44,6 +47,7 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Konfigurationsmenü für benutzerdefinierte App-Icons.
@@ -271,197 +275,265 @@ private fun IconActionDialog(
     val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
         colorTheme.menuSurfaceColor(isDarkTextEnabled)
     }
-    val shape = RoundedCornerShape(28.dp)
-    val scrimColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.26f) else Color.Black.copy(alpha = 0.38f)
+    val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp, bottomStart = 26.dp, bottomEnd = 26.dp)
+    val scrimColor = Color.Black.copy(alpha = if (isDarkTextEnabled) 0.24f else 0.42f)
+    val scope = rememberCoroutineScope()
+    var isVisible by remember { mutableStateOf(false) }
+    var isClosing by remember { mutableStateOf(false) }
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = if (isVisible) 220 else 180),
+        label = "iconActionScrimAlpha"
+    )
+
+    LaunchedEffect(Unit) { isVisible = true }
+
+    fun dismissSheet() {
+        if (isClosing) return
+        isClosing = true
+        isVisible = false
+        scope.launch {
+            delay(190)
+            onDismiss()
+        }
+    }
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = ::dismissSheet,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(scrimColor)
-                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onDismiss() }
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            contentAlignment = Alignment.Center
+                .background(scrimColor.copy(alpha = scrimAlpha))
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { dismissSheet() }
+                .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
-            Surface(
+            AnimatedVisibility(
+                visible = isVisible,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 420.dp)
-                    .testTag("icon_action_dialog")
-                    .clip(shape)
-                    .then(
-                        Modifier.conditionalGlass(
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding(),
+                enter = slideInVertically(
+                    initialOffsetY = { fullHeight -> fullHeight / 3 },
+                    animationSpec = tween(260)
+                ) + fadeIn(animationSpec = tween(220)),
+                exit = slideOutVertically(
+                    targetOffsetY = { fullHeight -> fullHeight / 4 },
+                    animationSpec = tween(180)
+                ) + fadeOut(animationSpec = tween(160))
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 460.dp)
+                        .testTag("icon_action_dialog")
+                        .clip(shape)
+                        .conditionalGlass(
                             shape = shape,
                             isDarkText = isDarkTextEnabled,
                             isEnabled = isLiquidGlassEnabled,
                             fallbackAlpha = 0.08f
                         )
-                    )
-                    .clickable(enabled = false) {},
-                color = menuSurfaceColor.copy(alpha = if (isLiquidGlassEnabled) 0.78f else 0.96f),
-                shape = shape,
-                shadowElevation = 24.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(22.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .clickable(enabled = false) {},
+                    color = menuSurfaceColor.copy(alpha = if (isLiquidGlassEnabled) 0.84f else 0.96f),
+                    shape = shape,
+                    shadowElevation = 28.dp
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .clip(CircleShape)
-                                    .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.06f),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AppIconView(app = app, modifier = Modifier.size(30.dp))
-                            }
-                            Column {
-                                Text(
-                                    text = app.label,
-                                    color = mainTextColor,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = fontWeight.weight
-                                )
-                                Text(
-                                    text = "Icon-Optionen",
-                                    color = secondaryTextColor,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = "Schließen", tint = mainTextColor)
-                        }
-                    }
-
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .conditionalGlass(RoundedCornerShape(20.dp), isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.05f)
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .padding(horizontal = 18.dp, vertical = 16.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        currentStatus?.let {
-                            Text(
-                                text = it,
-                                color = mainTextColor,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = fontWeight.weight
-                            )
-                        }
-                        Text(
-                            text = app.packageName,
-                            color = secondaryTextColor,
-                            style = MaterialTheme.typography.bodySmall
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .size(width = 42.dp, height = 4.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(mainTextColor.copy(alpha = 0.18f))
                         )
-                        if (customIconName != null) {
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(CircleShape)
+                                        .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.06f),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AppIconView(app = app, modifier = Modifier.size(30.dp))
+                                }
+                                Column {
+                                    Text(
+                                        text = app.label,
+                                        color = mainTextColor,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = fontWeight.weight
+                                    )
+                                    Text(
+                                        text = "Icon-Optionen",
+                                        color = secondaryTextColor,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                            IconButton(onClick = ::dismissSheet) {
+                                Icon(Icons.Default.Close, contentDescription = "Schließen", tint = mainTextColor)
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(20.dp))
+                                .conditionalGlass(RoundedCornerShape(20.dp), isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.05f)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            currentStatus?.let {
+                                Text(
+                                    text = it,
+                                    color = mainTextColor,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = fontWeight.weight
+                                )
+                            }
                             Text(
-                                text = "Manueller Override aktiv: $customIconName",
+                                text = app.packageName,
                                 color = secondaryTextColor,
                                 style = MaterialTheme.typography.bodySmall
                             )
+                            if (customIconName != null) {
+                                Text(
+                                    text = "Manueller Override aktiv: $customIconName",
+                                    color = secondaryTextColor,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
-                    }
 
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "Direkte Aktionen",
-                            color = secondaryTextColor,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                        IconActionButton(
-                            title = "Lucide-Icon auswählen",
-                            subtitle = "Weise dieser App direkt ein eigenes Icon zu",
-                            testTag = "icon_action_pick_lucide",
-                            onClick = onPickLucide,
-                            isPrimary = true,
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
-                            isDarkTextEnabled = isDarkTextEnabled
-                        )
-                        IconActionButton(
-                            title = "Auto neu analysieren",
-                            subtitle = "Prüft Original, Form und Lesbarkeit erneut",
-                            testTag = "icon_action_reanalyze",
-                            onClick = onReanalyze,
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
-                            isDarkTextEnabled = isDarkTextEnabled
-                        )
-                    }
-
-                    HorizontalDivider(color = mainTextColor.copy(alpha = 0.08f))
-
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "Automatische Regeln",
-                            color = secondaryTextColor,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                        IconActionButton(
-                            title = "Original immer behalten",
-                            subtitle = "Überschreibt die Heuristik und zeigt das echte App-Icon",
-                            testTag = "icon_action_keep_original",
-                            onClick = { onSelectRule(AutoIconRuleMode.KEEP_ORIGINAL) },
-                            isSelected = explicitRule?.mode == AutoIconRuleMode.KEEP_ORIGINAL,
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
-                            isDarkTextEnabled = isDarkTextEnabled
-                        )
-                        IconActionButton(
-                            title = "Automatischen Fallback bevorzugen",
-                            subtitle = "Erzwingt Lucide oder neutralen Container",
-                            testTag = "icon_action_force_fallback",
-                            onClick = { onSelectRule(AutoIconRuleMode.FORCE_FALLBACK) },
-                            isSelected = explicitRule?.mode == AutoIconRuleMode.FORCE_FALLBACK,
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
-                            isDarkTextEnabled = isDarkTextEnabled
-                        )
-                        IconActionButton(
-                            title = "Nur Heuristik verwenden",
-                            subtitle = "Entscheidung wieder automatisch treffen lassen",
-                            testTag = "icon_action_follow_heuristic",
-                            onClick = { onSelectRule(AutoIconRuleMode.FOLLOW_HEURISTIC) },
-                            isSelected = explicitRule?.mode == AutoIconRuleMode.FOLLOW_HEURISTIC,
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
-                            isDarkTextEnabled = isDarkTextEnabled
-                        )
-                        if (explicitRule != null) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                text = "Direkte Aktionen",
+                                color = secondaryTextColor,
+                                style = MaterialTheme.typography.labelLarge
+                            )
                             IconActionButton(
-                                title = "Gespeicherte Regel entfernen",
-                                subtitle = "Fällt auf die Standardlogik des Launchers zurück",
-                                testTag = "icon_action_clear_rule",
-                                onClick = { onSelectRule(null) },
+                                icon = Lucide.Palette,
+                                title = "Lucide-Icon auswählen",
+                                subtitle = "Weise dieser App direkt ein eigenes Icon zu",
+                                testTag = "icon_action_pick_lucide",
+                                onClick = {
+                                    dismissSheet()
+                                    onPickLucide()
+                                },
+                                isPrimary = true,
+                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                isDarkTextEnabled = isDarkTextEnabled
+                            )
+                            IconActionButton(
+                                icon = Lucide.RefreshCcw,
+                                title = "Auto neu analysieren",
+                                subtitle = "Prüft Original, Form und Lesbarkeit erneut",
+                                testTag = "icon_action_reanalyze",
+                                onClick = {
+                                    dismissSheet()
+                                    onReanalyze()
+                                },
                                 isLiquidGlassEnabled = isLiquidGlassEnabled,
                                 isDarkTextEnabled = isDarkTextEnabled
                             )
                         }
-                    }
 
-                    if (customIconName != null) {
                         HorizontalDivider(color = mainTextColor.copy(alpha = 0.08f))
-                        IconActionButton(
-                            title = "Manuellen Override entfernen",
-                            subtitle = "Nutzt wieder die automatische Entscheidung des Launchers",
-                            testTag = "icon_action_reset_manual",
-                            onClick = onResetManual,
-                            isDestructive = true,
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
-                            isDarkTextEnabled = isDarkTextEnabled
-                        )
+
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                text = "Automatische Regeln",
+                                color = secondaryTextColor,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                            IconActionButton(
+                                icon = Lucide.ShieldCheck,
+                                title = "Original immer behalten",
+                                subtitle = "Überschreibt die Heuristik und zeigt das echte App-Icon",
+                                testTag = "icon_action_keep_original",
+                                onClick = {
+                                    dismissSheet()
+                                    onSelectRule(AutoIconRuleMode.KEEP_ORIGINAL)
+                                },
+                                isSelected = explicitRule?.mode == AutoIconRuleMode.KEEP_ORIGINAL,
+                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                isDarkTextEnabled = isDarkTextEnabled
+                            )
+                            IconActionButton(
+                                icon = Lucide.Replace,
+                                title = "Automatischen Fallback bevorzugen",
+                                subtitle = "Erzwingt Lucide oder neutralen Container",
+                                testTag = "icon_action_force_fallback",
+                                onClick = {
+                                    dismissSheet()
+                                    onSelectRule(AutoIconRuleMode.FORCE_FALLBACK)
+                                },
+                                isSelected = explicitRule?.mode == AutoIconRuleMode.FORCE_FALLBACK,
+                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                isDarkTextEnabled = isDarkTextEnabled
+                            )
+                            IconActionButton(
+                                icon = Lucide.Search,
+                                title = "Nur Heuristik verwenden",
+                                subtitle = "Entscheidung wieder automatisch treffen lassen",
+                                testTag = "icon_action_follow_heuristic",
+                                onClick = {
+                                    dismissSheet()
+                                    onSelectRule(AutoIconRuleMode.FOLLOW_HEURISTIC)
+                                },
+                                isSelected = explicitRule?.mode == AutoIconRuleMode.FOLLOW_HEURISTIC,
+                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                isDarkTextEnabled = isDarkTextEnabled
+                            )
+                            if (explicitRule != null) {
+                                IconActionButton(
+                                    icon = Lucide.Eraser,
+                                    title = "Gespeicherte Regel entfernen",
+                                    subtitle = "Fällt auf die Standardlogik des Launchers zurück",
+                                    testTag = "icon_action_clear_rule",
+                                    onClick = {
+                                        dismissSheet()
+                                        onSelectRule(null)
+                                    },
+                                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                    isDarkTextEnabled = isDarkTextEnabled
+                                )
+                            }
+                        }
+
+                        if (customIconName != null) {
+                            HorizontalDivider(color = mainTextColor.copy(alpha = 0.08f))
+                            IconActionButton(
+                                icon = Lucide.Trash2,
+                                title = "Manuellen Override entfernen",
+                                subtitle = "Nutzt wieder die automatische Entscheidung des Launchers",
+                                testTag = "icon_action_reset_manual",
+                                onClick = {
+                                    dismissSheet()
+                                    onResetManual()
+                                },
+                                isDestructive = true,
+                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                isDarkTextEnabled = isDarkTextEnabled
+                            )
+                        }
                     }
                 }
             }
@@ -471,6 +543,7 @@ private fun IconActionDialog(
 
 @Composable
 private fun IconActionButton(
+    icon: ImageVector,
     title: String,
     subtitle: String,
     testTag: String,
@@ -506,14 +579,22 @@ private fun IconActionButton(
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(10.dp)
+                .size(34.dp)
                 .clip(CircleShape)
-                .background(accentColor.copy(alpha = if (isSelected || isPrimary || isDestructive) 0.95f else 0.4f))
-        )
+                .background(accentColor.copy(alpha = if (isSelected || isPrimary || isDestructive) 0.14f else 0.08f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(18.dp)
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
