@@ -553,18 +553,18 @@ fun AppDrawer(
                             }
                             
                             val folderTitleSpacing = when (iconSize) {
-                                IconSize.SMALL -> 2.dp
-                                IconSize.STANDARD -> 6.dp
+                                IconSize.SMALL -> 5.dp
+                                IconSize.STANDARD -> 8.dp
                                 IconSize.LARGE -> 12.dp
                             }
                             val folderGridTopPadding = when (iconSize) {
-                                IconSize.SMALL -> 0.dp
-                                IconSize.STANDARD -> 2.dp
+                                IconSize.SMALL -> 3.dp
+                                IconSize.STANDARD -> 5.dp
                                 IconSize.LARGE -> 8.dp
                             }
                             val folderItemTopPadding = when (iconSize) {
-                                IconSize.SMALL -> 0.dp
-                                IconSize.STANDARD -> 1.dp
+                                IconSize.SMALL -> 2.dp
+                                IconSize.STANDARD -> 3.dp
                                 IconSize.LARGE -> 4.dp
                             }
                             val folderContentHeight = when (iconSize) {
