@@ -25,7 +25,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.tween
@@ -35,8 +34,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -309,7 +308,6 @@ class MainActivity : ComponentActivity() {
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
                 var isHomeEditMode by remember { mutableStateOf(false) }
-                var shouldSkipSearchExitAnimation by remember { mutableStateOf(false) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
                 var isAppLaunchAnimating by remember { mutableStateOf(false) }
@@ -589,7 +587,6 @@ class MainActivity : ComponentActivity() {
                 ) {
                     if (isSearchLaunching || isAppLaunchAnimating) return
                     isSearchLaunching = true
-                    shouldSkipSearchExitAnimation = true
                     isSearchOpen = false
                     if (!webQuery.isNullOrBlank() && isSmartSuggestionsEnabled) {
                         scope.launch {
@@ -615,7 +612,6 @@ class MainActivity : ComponentActivity() {
                         trackAppLaunch = webQuery.isNullOrBlank(),
                         onCompleted = {
                             isSearchLaunching = false
-                            shouldSkipSearchExitAnimation = false
                         }
                     )
                 }
@@ -723,10 +719,7 @@ class MainActivity : ComponentActivity() {
                     when {
                         selectedFolderForConfig != null -> selectedFolderForConfig = null
                         isHomeEditMode -> isHomeEditMode = false
-                        isSearchOpen -> {
-                            shouldSkipSearchExitAnimation = false
-                            isSearchOpen = false
-                        }
+                        isSearchOpen -> isSearchOpen = false
                         isFontSelectionOpen -> isFontSelectionOpen = false
                         isWallpaperConfigOpen -> isWallpaperConfigOpen = false
                         isIconConfigOpen -> isIconConfigOpen = false
@@ -810,10 +803,7 @@ class MainActivity : ComponentActivity() {
                                 favoritesOffsetY = favoritesOffsetY,
                                 clockOffsetY = clockOffsetY,
                                 onOpenDrawer = { isDrawerOpen = true },
-                                onOpenSearch = {
-                                    shouldSkipSearchExitAnimation = false
-                                    isSearchOpen = true
-                                },
+                                onOpenSearch = { isSearchOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onToggleEditMode = { isHomeEditMode = !isHomeEditMode },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
@@ -849,6 +839,7 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isFavoritesConfigOpen,
                         backgroundColor = menuBackgroundColor,
+                        enableDragToClose = false,
                         onClose = { isFavoritesConfigOpen = false }
                     ) {
                         @Suppress("DEPRECATION")
@@ -870,6 +861,7 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = selectedFolderForConfig != null,
                         backgroundColor = menuBackgroundColor,
+                        enableDragToClose = false,
                         onClose = { selectedFolderForConfig = null }
                     ) {
                         selectedFolderForConfig?.let { folder ->
@@ -1073,17 +1065,13 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxSize()
                                 .pointerInput(Unit) {
                                     detectTapGestures {
-                                        shouldSkipSearchExitAnimation = false
                                         isSearchOpen = false
                                     }
                                 }
                         ) {
                             BottomSearch(
                                 apps = allApps,
-                                onClose = {
-                                    shouldSkipSearchExitAnimation = false
-                                    isSearchOpen = false
-                                },
+                                onClose = { isSearchOpen = false },
                                 onAppLaunch = { app, bounds ->
                                     val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
                                         ?: return@BottomSearch
@@ -1292,12 +1280,13 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Ein Overlay für Menüs, das Ein- und Ausblenden sowie Swipe-Down zum Schließen unterstützt.
+ * Ein Overlay für Menüs mit Ein-/Ausblend-Animation und optionalem Drag-to-close.
  */
 @Composable
 private fun MenuOverlay(
     visible: Boolean,
     backgroundColor: Color,
+    enableDragToClose: Boolean = true,
     onClose: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -1320,19 +1309,25 @@ private fun MenuOverlay(
                 .pointerInput(Unit) {
                     detectTapGestures { } // Verhindert Klicks durch das Overlay hindurch
                 }
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragEnd = {
-                            if (totalDragY > 300f) onClose()
-                            totalDragY = 0f
-                        },
-                        onDragCancel = { totalDragY = 0f },
-                        onVerticalDrag = { change, dragAmount ->
-                            change.consume()
-                            totalDragY += dragAmount
+                .then(
+                    if (enableDragToClose) {
+                        Modifier.pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    if (totalDragY > 300f) onClose()
+                                    totalDragY = 0f
+                                },
+                                onDragCancel = { totalDragY = 0f },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    totalDragY += dragAmount
+                                }
+                            )
                         }
-                    )
-                }
+                    } else {
+                        Modifier
+                    }
+                )
                 .background(backgroundColor)
         ) {
             content()

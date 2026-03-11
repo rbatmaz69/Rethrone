@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +56,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -104,6 +106,11 @@ fun FavoritesConfigMenu(
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
     val filteredApps = remember(apps, searchQuery) { LauncherLogic.filterApps(apps, searchQuery) }
     val focusRequester = remember { FocusRequester() }
+    val favoritesListState = rememberLazyListState()
+    val swipeToCloseConnection = rememberBottomBoundarySwipeToCloseConnection(
+        listState = favoritesListState,
+        onClose = onClose
+    )
 
     Column(
         modifier = Modifier
@@ -199,7 +206,10 @@ fun FavoritesConfigMenu(
 
         // App-Liste
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            state = favoritesListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(swipeToCloseConnection),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {

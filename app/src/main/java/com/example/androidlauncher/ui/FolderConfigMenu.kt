@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,6 +95,12 @@ fun FolderConfigMenu(
     }
 
     val focusRequester = remember { FocusRequester() }
+    val folderListState = rememberLazyListState()
+    val swipeToCloseConnection = rememberBottomBoundarySwipeToCloseConnection(
+        listState = folderListState,
+        enabled = !showDeleteConfirm,
+        onClose = onClose
+    )
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
         // Header
@@ -152,7 +160,10 @@ fun FolderConfigMenu(
 
         // Partitioned App List
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            state = folderListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(swipeToCloseConnection),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {

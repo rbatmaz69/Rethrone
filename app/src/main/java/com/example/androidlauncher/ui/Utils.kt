@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -49,6 +50,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -63,12 +65,15 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.composables.icons.lucide.Lucide
@@ -97,6 +102,63 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
         label = "bounceScale"
     )
     this.scale(scale)
+}
+
+@Composable
+fun rememberBottomBoundarySwipeToCloseConnection(
+    listState: LazyListState,
+    enabled: Boolean = true,
+    onClose: () -> Unit
+): NestedScrollConnection {
+    val density = LocalDensity.current
+    val swipeCloseThresholdPx = with(density) { 64.dp.toPx() }
+    var swipeDragDistance by remember(listState, enabled) { mutableStateOf(0f) }
+
+    return remember(listState, enabled, swipeCloseThresholdPx, onClose) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!enabled) {
+                    swipeDragDistance = 0f
+                    return Offset.Zero
+                }
+
+                val atBottom = !listState.canScrollForward
+                if (source == NestedScrollSource.UserInput && atBottom && available.y < 0f) {
+                    swipeDragDistance += -available.y
+                    if (swipeDragDistance >= swipeCloseThresholdPx) {
+                        swipeDragDistance = 0f
+                        onClose()
+                    }
+                    return Offset(0f, available.y)
+                }
+
+                if (!atBottom || available.y > 0f) {
+                    swipeDragDistance = 0f
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (!enabled) {
+                    swipeDragDistance = 0f
+                    return Velocity.Zero
+                }
+
+                val atBottom = !listState.canScrollForward
+                if (atBottom && available.y < -1500f) {
+                    swipeDragDistance = 0f
+                    onClose()
+                    return available
+                }
+                return Velocity.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                swipeDragDistance = 0f
+                return Velocity.Zero
+            }
+        }
+    }
 }
 
 @Composable
