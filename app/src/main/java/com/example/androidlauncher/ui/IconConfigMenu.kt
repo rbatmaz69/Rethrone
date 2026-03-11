@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -36,6 +38,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.AutoIconRuleMode
+import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
+import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
@@ -66,7 +70,8 @@ fun IconConfigMenu(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontWeight = LocalFontWeight.current
-    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
+    val secondaryTextColor = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
 
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(apps, searchQuery) {
@@ -122,7 +127,7 @@ fun IconConfigMenu(
                     textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
                     cursorBrush = SolidColor(mainTextColor),
                     singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 16.sp); it() }
+                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = secondaryTextColor, fontSize = 16.sp); it() }
                 )
             }
         }
@@ -188,7 +193,7 @@ fun IconConfigMenu(
                                         Text("Manuell · $customIconName", color = mainTextColor.copy(alpha = 0.55f), fontSize = 12.sp)
                                     }
                                     autoStatus != null -> {
-                                        Text(autoStatus, color = mainTextColor.copy(alpha = 0.5f), fontSize = 12.sp)
+                                        Text(autoStatus, color = secondaryTextColor, fontSize = 12.sp)
                                     }
                                 }
                             }
@@ -209,6 +214,7 @@ fun IconConfigMenu(
             app = app,
             customIconName = customIcons[app.packageName],
             explicitRule = iconRules[app.packageName],
+            currentStatus = buildIconStatusLabel(app, iconRules[app.packageName]),
             onPickLucide = {
                 selectedAppForPicker = app
                 selectedAppForActions = null
@@ -249,6 +255,7 @@ private fun IconActionDialog(
     app: AppInfo,
     customIconName: String?,
     explicitRule: AutoIconRule?,
+    currentStatus: String?,
     onPickLucide: () -> Unit,
     onResetManual: () -> Unit,
     onSelectRule: (AutoIconRuleMode?) -> Unit,
@@ -257,57 +264,205 @@ private fun IconActionDialog(
     isLiquidGlassEnabled: Boolean,
     isDarkTextEnabled: Boolean
 ) {
-    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val cardModifier = if (isLiquidGlassEnabled) {
-        Modifier
-            .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.12f, endAlpha = 0.04f), RoundedCornerShape(24.dp))
-            .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.18f, endAlpha = 0.06f)), RoundedCornerShape(24.dp))
-    } else {
-        Modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
+    val colorTheme = LocalColorTheme.current
+    val fontWeight = LocalFontWeight.current
+    val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
+    val secondaryTextColor = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
+    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.menuSurfaceColor(isDarkTextEnabled)
     }
+    val shape = RoundedCornerShape(28.dp)
+    val scrimColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.26f) else Color.Black.copy(alpha = 0.38f)
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .testTag("icon_action_dialog")
-                .then(cardModifier),
-            color = Color.Transparent,
-            shape = RoundedCornerShape(24.dp)
+                .fillMaxSize()
+                .background(scrimColor)
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onDismiss() }
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Column(
+            Surface(
                 modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+                    .testTag("icon_action_dialog")
+                    .clip(shape)
+                    .then(
+                        Modifier.conditionalGlass(
+                            shape = shape,
+                            isDarkText = isDarkTextEnabled,
+                            isEnabled = isLiquidGlassEnabled,
+                            fallbackAlpha = 0.08f
+                        )
+                    )
+                    .clickable(enabled = false) {},
+                color = menuSurfaceColor.copy(alpha = if (isLiquidGlassEnabled) 0.78f else 0.96f),
+                shape = shape,
+                shadowElevation = 24.dp
             ) {
-                Text(app.label, color = mainTextColor, style = MaterialTheme.typography.titleLarge)
-                Text(app.packageName, color = mainTextColor.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
-
-                IconActionButton(text = "Lucide-Icon auswählen", testTag = "icon_action_pick_lucide", onClick = onPickLucide)
-                IconActionButton(text = "Auto neu analysieren", testTag = "icon_action_reanalyze", onClick = onReanalyze)
-                IconActionButton(text = "Original immer behalten", testTag = "icon_action_keep_original") {
-                    onSelectRule(AutoIconRuleMode.KEEP_ORIGINAL)
-                }
-                IconActionButton(text = "Automatischen Fallback bevorzugen", testTag = "icon_action_force_fallback") {
-                    onSelectRule(AutoIconRuleMode.FORCE_FALLBACK)
-                }
-                IconActionButton(text = "Nur Heuristik verwenden", testTag = "icon_action_follow_heuristic") {
-                    onSelectRule(AutoIconRuleMode.FOLLOW_HEURISTIC)
-                }
-                if (explicitRule != null) {
-                    IconActionButton(text = "Gespeicherte Regel entfernen", testTag = "icon_action_clear_rule") {
-                        onSelectRule(null)
-                    }
-                }
-                if (customIconName != null) {
-                    IconActionButton(text = "Manuellen Override entfernen", testTag = "icon_action_reset_manual", onClick = onResetManual)
-                }
-                TextButton(
-                    modifier = Modifier.align(Alignment.End),
-                    onClick = onDismiss
+                Column(
+                    modifier = Modifier
+                        .padding(22.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("Schließen")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.06f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AppIconView(app = app, modifier = Modifier.size(30.dp))
+                            }
+                            Column {
+                                Text(
+                                    text = app.label,
+                                    color = mainTextColor,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = fontWeight.weight
+                                )
+                                Text(
+                                    text = "Icon-Optionen",
+                                    color = secondaryTextColor,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = "Schließen", tint = mainTextColor)
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .conditionalGlass(RoundedCornerShape(20.dp), isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.05f)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        currentStatus?.let {
+                            Text(
+                                text = it,
+                                color = mainTextColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = fontWeight.weight
+                            )
+                        }
+                        Text(
+                            text = app.packageName,
+                            color = secondaryTextColor,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        if (customIconName != null) {
+                            Text(
+                                text = "Manueller Override aktiv: $customIconName",
+                                color = secondaryTextColor,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Direkte Aktionen",
+                            color = secondaryTextColor,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        IconActionButton(
+                            title = "Lucide-Icon auswählen",
+                            subtitle = "Weise dieser App direkt ein eigenes Icon zu",
+                            testTag = "icon_action_pick_lucide",
+                            onClick = onPickLucide,
+                            isPrimary = true,
+                            isLiquidGlassEnabled = isLiquidGlassEnabled,
+                            isDarkTextEnabled = isDarkTextEnabled
+                        )
+                        IconActionButton(
+                            title = "Auto neu analysieren",
+                            subtitle = "Prüft Original, Form und Lesbarkeit erneut",
+                            testTag = "icon_action_reanalyze",
+                            onClick = onReanalyze,
+                            isLiquidGlassEnabled = isLiquidGlassEnabled,
+                            isDarkTextEnabled = isDarkTextEnabled
+                        )
+                    }
+
+                    HorizontalDivider(color = mainTextColor.copy(alpha = 0.08f))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Automatische Regeln",
+                            color = secondaryTextColor,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        IconActionButton(
+                            title = "Original immer behalten",
+                            subtitle = "Überschreibt die Heuristik und zeigt das echte App-Icon",
+                            testTag = "icon_action_keep_original",
+                            onClick = { onSelectRule(AutoIconRuleMode.KEEP_ORIGINAL) },
+                            isSelected = explicitRule?.mode == AutoIconRuleMode.KEEP_ORIGINAL,
+                            isLiquidGlassEnabled = isLiquidGlassEnabled,
+                            isDarkTextEnabled = isDarkTextEnabled
+                        )
+                        IconActionButton(
+                            title = "Automatischen Fallback bevorzugen",
+                            subtitle = "Erzwingt Lucide oder neutralen Container",
+                            testTag = "icon_action_force_fallback",
+                            onClick = { onSelectRule(AutoIconRuleMode.FORCE_FALLBACK) },
+                            isSelected = explicitRule?.mode == AutoIconRuleMode.FORCE_FALLBACK,
+                            isLiquidGlassEnabled = isLiquidGlassEnabled,
+                            isDarkTextEnabled = isDarkTextEnabled
+                        )
+                        IconActionButton(
+                            title = "Nur Heuristik verwenden",
+                            subtitle = "Entscheidung wieder automatisch treffen lassen",
+                            testTag = "icon_action_follow_heuristic",
+                            onClick = { onSelectRule(AutoIconRuleMode.FOLLOW_HEURISTIC) },
+                            isSelected = explicitRule?.mode == AutoIconRuleMode.FOLLOW_HEURISTIC,
+                            isLiquidGlassEnabled = isLiquidGlassEnabled,
+                            isDarkTextEnabled = isDarkTextEnabled
+                        )
+                        if (explicitRule != null) {
+                            IconActionButton(
+                                title = "Gespeicherte Regel entfernen",
+                                subtitle = "Fällt auf die Standardlogik des Launchers zurück",
+                                testTag = "icon_action_clear_rule",
+                                onClick = { onSelectRule(null) },
+                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                isDarkTextEnabled = isDarkTextEnabled
+                            )
+                        }
+                    }
+
+                    if (customIconName != null) {
+                        HorizontalDivider(color = mainTextColor.copy(alpha = 0.08f))
+                        IconActionButton(
+                            title = "Manuellen Override entfernen",
+                            subtitle = "Nutzt wieder die automatische Entscheidung des Launchers",
+                            testTag = "icon_action_reset_manual",
+                            onClick = onResetManual,
+                            isDestructive = true,
+                            isLiquidGlassEnabled = isLiquidGlassEnabled,
+                            isDarkTextEnabled = isDarkTextEnabled
+                        )
+                    }
                 }
             }
         }
@@ -316,22 +471,69 @@ private fun IconActionDialog(
 
 @Composable
 private fun IconActionButton(
-    text: String,
+    title: String,
+    subtitle: String,
     testTag: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isPrimary: Boolean = false,
+    isDestructive: Boolean = false,
+    isSelected: Boolean = false,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean
 ) {
-    Surface(
+    val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
+    val secondaryTextColor = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
+    val accentColor = when {
+        isDestructive -> Color(0xFFEF5350)
+        isPrimary -> mainTextColor
+        else -> mainTextColor
+    }
+    val shape = RoundedCornerShape(18.dp)
+    val containerModifier = if (isSelected) {
+        Modifier
+            .background(accentColor.copy(alpha = if (isDarkTextEnabled) 0.10f else 0.16f), shape)
+            .border(BorderStroke(1.dp, accentColor.copy(alpha = 0.38f)), shape)
+    } else {
+        Modifier.conditionalGlass(shape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.05f)
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(testTag)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+            .clip(shape)
+            .then(containerModifier)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(accentColor.copy(alpha = if (isSelected || isPrimary || isDestructive) 0.95f else 0.4f))
         )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = accentColor,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                color = secondaryTextColor,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        if (isSelected) {
+            Text(
+                text = "Aktiv",
+                color = accentColor,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
     }
 }
 
