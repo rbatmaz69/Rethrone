@@ -5,9 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -19,14 +17,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -139,24 +135,17 @@ fun FolderConfigMenu(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .clickable { focusRequester.requestFocus() }
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = grayTone, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
-                    cursorBrush = SolidColor(mainTextColor),
-                    singleLine = true,
-                    decorationBox = {
-                        if (searchQuery.isEmpty()) {
-                            Text("Apps suchen...", color = grayTone, fontSize = 15.sp)
-                        }
-                        it()
-                    }
-                )
-            }
+            StableSearchFieldContent(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = "Apps suchen...",
+                textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
+                textColor = mainTextColor,
+                placeholderColor = grayTone,
+                focusRequester = focusRequester,
+                leadingIconTint = grayTone,
+                leadingIconSize = 18.dp
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))

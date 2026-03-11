@@ -58,10 +58,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-<<<<<<< HEAD
-import androidx.lifecycle.compose.LocalLifecycleOwner
-=======
->>>>>>> 92dc571 (#68: resolve return flow and foreground observation errors)
 import androidx.compose.ui.unit.IntSize
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
@@ -759,19 +755,19 @@ class MainActivity : ComponentActivity() {
                         targetState = isDrawerOpen,
                         transitionSpec = {
                             if (targetState) {
-                                (slideInVertically(
-                                    initialOffsetY = { it },
-                                    animationSpec = tween(300, easing = EaseOutCubic)
-                                ) + fadeIn(animationSpec = tween(200)))
-                                    .togetherWith(fadeOut(animationSpec = tween(200)))
+                                (
+                                    slideInVertically(
+                                        initialOffsetY = { it },
+                                        animationSpec = tween(300, easing = EaseOutCubic)
+                                    ) + fadeIn(animationSpec = tween(200))
+                                ).togetherWith(fadeOut(animationSpec = tween(200)))
                             } else {
-                                fadeIn(animationSpec = tween(200))
-                                    .togetherWith(
-                                        slideOutVertically(
-                                            targetOffsetY = { it },
-                                            animationSpec = tween(300, easing = EaseInCubic)
-                                        ) + fadeOut(animationSpec = tween(200))
-                                    )
+                                fadeIn(animationSpec = tween(200)).togetherWith(
+                                    slideOutVertically(
+                                        targetOffsetY = { it },
+                                        animationSpec = tween(300, easing = EaseInCubic)
+                                    ) + fadeOut(animationSpec = tween(200))
+                                )
                             }
                         },
                         label = "DrawerTransition"
@@ -825,8 +821,12 @@ class MainActivity : ComponentActivity() {
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
                                 onOpenSystemSettings = { isEditConfigOpen = true },
                                 onOpenInfo = { isInfoOpen = true },
-                                onSaveFavoritesOffset = { x, y -> scope.launch { themeManager.setFavoritesOffset(x, y) } },
-                                onSaveClockOffset = { y -> scope.launch { themeManager.setClockOffset(y) } },
+                                onSaveFavoritesOffset = { x, y ->
+                                    scope.launch { themeManager.setFavoritesOffset(x, y) }
+                                },
+                                onSaveClockOffset = { y ->
+                                    scope.launch { themeManager.setClockOffset(y) }
+                                },
                                 onLaunchApp = { pkg, intent, bounds ->
                                     requestLauncherLaunch(
                                         packageName = pkg,
@@ -839,12 +839,18 @@ class MainActivity : ComponentActivity() {
                                 },
                                 returnIconPackage = returnIconPackage,
                                 searchButtonBounceToken = searchButtonBounceToken,
-                                onSearchButtonBoundsChanged = { bounds -> homeSearchButtonBounds = bounds }
+                                onSearchButtonBoundsChanged = { bounds ->
+                                    homeSearchButtonBounds = bounds
+                                }
                             )
                         }
-                     }
+                    }
 
-                    MenuOverlay(visible = isFavoritesConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isFavoritesConfigOpen = false }) {
+                    MenuOverlay(
+                        visible = isFavoritesConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isFavoritesConfigOpen = false }
+                    ) {
                         @Suppress("DEPRECATION")
                         FavoritesConfigMenu(
                             apps = allApps,
@@ -861,7 +867,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = selectedFolderForConfig != null, backgroundColor = menuBackgroundColor, onClose = { selectedFolderForConfig = null }) {
+                    MenuOverlay(
+                        visible = selectedFolderForConfig != null,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { selectedFolderForConfig = null }
+                    ) {
                         selectedFolderForConfig?.let { folder ->
                             FolderConfigMenu(
                                 folder = folder,
@@ -872,7 +882,9 @@ class MainActivity : ComponentActivity() {
                                     val newFolders = if (updatedFolder.appPackageNames.isEmpty()) {
                                         folders.filter { it.id != updatedFolder.id }
                                     } else if (folderExists) {
-                                        folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                        folders.map { currentFolder ->
+                                            if (currentFolder.id == updatedFolder.id) updatedFolder else currentFolder
+                                        }
                                     } else {
                                         folders + updatedFolder
                                     }
@@ -889,7 +901,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    MenuOverlay(visible = isColorConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isColorConfigOpen = false }) {
+                    MenuOverlay(
+                        visible = isColorConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isColorConfigOpen = false }
+                    ) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
                             onThemeSelected = { scope.launch { themeManager.setTheme(it) } },
@@ -902,7 +918,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isSizeConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isSizeConfigOpen = false }) {
+                    MenuOverlay(
+                        visible = isSizeConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isSizeConfigOpen = false }
+                    ) {
                         SizeConfigMenu(
                             currentFontSize = currentFontSize,
                             onFontSizeSelected = { scope.launch { themeManager.setFontSize(it) } },
@@ -917,7 +937,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isFontSelectionOpen, backgroundColor = menuBackgroundColor, onClose = { isFontSelectionOpen = false }) {
+                    MenuOverlay(
+                        visible = isFontSelectionOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isFontSelectionOpen = false }
+                    ) {
                         FontSelectionMenu(
                             currentAppFont = currentAppFont,
                             onAppFontSelected = { scope.launch { themeManager.setAppFont(it) } },
@@ -925,7 +949,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isEditConfigOpen && !isWallpaperCropOpen, backgroundColor = menuBackgroundColor, onClose = { isEditConfigOpen = false }) {
+                    MenuOverlay(
+                        visible = isEditConfigOpen && !isWallpaperCropOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isEditConfigOpen = false }
+                    ) {
                         EditConfigMenu(
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onChangeWallpaper = {
@@ -964,12 +992,16 @@ class MainActivity : ComponentActivity() {
                                     if (Settings.System.canWrite(context)) {
                                         themeManager.setHapticFeedbackEnabled(enabled)
                                     } else {
-                                        val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                                        val writeSettingsIntent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
                                             data = ("package:" + context.packageName).toUri()
                                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         }
-                                        context.startActivity(intent)
-                                        Toast.makeText(context, "Bitte erlauben Sie dem Launcher, Systemeinstellungen zu ändern", Toast.LENGTH_LONG).show()
+                                        context.startActivity(writeSettingsIntent)
+                                        Toast.makeText(
+                                            context,
+                                            "Bitte erlauben Sie dem Launcher, Systemeinstellungen zu ändern",
+                                            Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 }
                             },
@@ -977,7 +1009,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isWallpaperConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isWallpaperConfigOpen = false }) {
+                    MenuOverlay(
+                        visible = isWallpaperConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isWallpaperConfigOpen = false }
+                    ) {
                         WallpaperConfigMenu(
                             blurLevel = wallpaperBlur,
                             onBlurChange = { scope.launch { themeManager.setWallpaperBlur(it) } },
@@ -990,7 +1026,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isIconConfigOpen, backgroundColor = menuBackgroundColor, onClose = { isIconConfigOpen = false }) {
+                    MenuOverlay(
+                        visible = isIconConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isIconConfigOpen = false }
+                    ) {
                         IconConfigMenu(
                             apps = allApps,
                             customIcons = customIcons,
@@ -1016,18 +1056,18 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isInfoOpen, backgroundColor = menuBackgroundColor, onClose = { isInfoOpen = false }) {
+                    MenuOverlay(
+                        visible = isInfoOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isInfoOpen = false }
+                    ) {
                         InfoDialog(
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isInfoOpen = false }
                         )
                     }
 
-                    AnimatedVisibility(
-                        visible = isSearchOpen && !isSearchLaunching,
-                        enter = fadeIn(animationSpec = tween(200)),
-                        exit = if (shouldSkipSearchExitAnimation) ExitTransition.None else fadeOut(animationSpec = tween(200))
-                    ) {
+                    if (isSearchOpen && !isSearchLaunching) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1045,7 +1085,8 @@ class MainActivity : ComponentActivity() {
                                     isSearchOpen = false
                                 },
                                 onAppLaunch = { app, bounds ->
-                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@BottomSearch
+                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                        ?: return@BottomSearch
                                     requestSearchLaunch(intent, bounds)
                                 },
                                 onWebLaunch = { intent, bounds, query ->
@@ -1058,8 +1099,7 @@ class MainActivity : ComponentActivity() {
                                 onRemoveHistorySuggestion = { queryToRemove ->
                                     scope.launch { searchSuggestionsManager.removeWebSearch(queryToRemove) }
                                 }
-                             )
-
+                            )
                         }
                     }
 
@@ -1070,28 +1110,27 @@ class MainActivity : ComponentActivity() {
                         backgroundBrush = activeLaunchBackgroundBrush,
                         durationMillis = searchLaunchDurationMs.toInt(),
                         scrimColor = Color.Transparent
-                     )
+                    )
 
-                     activeReturnAnimation?.let { animation ->
-                         ReturnAnimationOverlay(
-                             bounds = animation.bounds,
-                             rootSize = rootSize,
-                             background = currentTheme.menuSurfaceColor(isDarkTextEnabled),
-                             backgroundBrush = returnOverlayBrush,
-                             onFinished = {
-                                 Log.d(RETURN_TAG, "returnOverlayFinished launched=${animation.launchedPackageName} target=${animation.packageName}")
-                                 activeReturnAnimation = null
-                             },
-                             durationMillis = returnOverlayDurationMs.toInt(),
-                             targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
-                         )
-                     }
+                    activeReturnAnimation?.let { animation ->
+                        ReturnAnimationOverlay(
+                            bounds = animation.bounds,
+                            rootSize = rootSize,
+                            background = currentTheme.menuSurfaceColor(isDarkTextEnabled),
+                            backgroundBrush = returnOverlayBrush,
+                            onFinished = {
+                                Log.d(
+                                    RETURN_TAG,
+                                    "returnOverlayFinished launched=${animation.launchedPackageName} target=${animation.packageName}"
+                                )
+                                activeReturnAnimation = null
+                            },
+                            durationMillis = returnOverlayDurationMs.toInt(),
+                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
+                        )
+                    }
 
-                    AnimatedVisibility(
-                        visible = isWallpaperCropOpen && pendingWallpaperUri != null,
-                        enter = fadeIn(animationSpec = tween(220)),
-                        exit = fadeOut(animationSpec = tween(280))
-                    ) {
+                    if (isWallpaperCropOpen) {
                         pendingWallpaperUri?.let { selectedUri ->
                             WallpaperCropScreen(
                                 sourceUri = selectedUri,
@@ -1146,7 +1185,9 @@ class MainActivity : ComponentActivity() {
                             onDismissRequest = { showUsageAccessPrompt = false },
                             title = { Text("Nutzungszugriff aktivieren") },
                             text = {
-                                Text("Damit die Rückkehranimation nach dem Öffnen über Recents exakt zur richtigen App-Position zurückgeht, aktiviere bitte den Nutzungszugriff für den Launcher.")
+                                Text(
+                                    "Damit die Rückkehranimation nach dem Öffnen über Recents exakt zur richtigen App-Position zurückgeht, aktiviere bitte den Nutzungszugriff für den Launcher."
+                                )
                             },
                             confirmButton = {
                                 TextButton(onClick = {
@@ -1163,9 +1204,9 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                 }
-             }
-         }
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {

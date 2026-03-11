@@ -19,18 +19,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -38,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.composables.icons.lucide.*
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.AutoIconRuleMode
@@ -122,19 +118,16 @@ fun IconConfigMenu(
         }
 
         Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
-                    cursorBrush = SolidColor(mainTextColor),
-                    singleLine = true,
-                    decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = secondaryTextColor, fontSize = 16.sp); it() }
-                )
-            }
+            StableSearchFieldContent(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = "Apps durchsuchen...",
+                textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
+                textColor = mainTextColor,
+                placeholderColor = mainTextColor.copy(alpha = 0.4f),
+                leadingIconTint = mainTextColor.copy(alpha = 0.4f),
+                leadingIconSize = 20.dp
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -704,23 +697,19 @@ fun LucideIconPicker(
                 }
 
                 Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).then(searchBarModifier)) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Icons suchen...", color = mainTextColor.copy(alpha = 0.4f)) },
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f)) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = mainTextColor,
-                            unfocusedTextColor = mainTextColor,
-                            cursorColor = mainTextColor,
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        StableSearchFieldContent(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = "Icons suchen...",
+                            textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
+                            textColor = mainTextColor,
+                            placeholderColor = mainTextColor.copy(alpha = 0.4f),
+                            leadingIconTint = mainTextColor.copy(alpha = 0.4f),
+                            leadingIconSize = 20.dp
                         )
-                    )
-                }
+                    }
+                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

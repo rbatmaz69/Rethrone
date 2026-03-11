@@ -31,7 +31,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -355,19 +353,22 @@ fun AppDrawer(
                 interactionSource = searchIntSrc,
                 indication = null
             ) { focusRequester.requestFocus() }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    BasicTextField(
-                        value = searchQuery, onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp * fontSize.scale),
-                        cursorBrush = SolidColor(mainTextColor), singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
-                    )
-                }
+                StableSearchFieldContent(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = "Apps durchsuchen...",
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = mainTextColor,
+                        fontSize = 16.sp * fontSize.scale
+                    ),
+                    textColor = mainTextColor,
+                    placeholderColor = mainTextColor.copy(alpha = 0.4f),
+                    focusRequester = focusRequester,
+                    leadingIconTint = mainTextColor.copy(alpha = 0.4f),
+                    leadingIconSize = 20.dp,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
+                )
             }
             Spacer(modifier = Modifier.height(24.dp))
 

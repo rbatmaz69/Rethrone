@@ -182,26 +182,17 @@ fun FavoritesConfigMenu(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .clickable { focusRequester.requestFocus() }
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = grayTone, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
-                    cursorBrush = SolidColor(mainTextColor),
-                    singleLine = true,
-                    decorationBox = { inner ->
-                        if (searchQuery.isEmpty()) {
-                            Text(stringResource(R.string.search_apps), color = grayTone, fontSize = 15.sp)
-                        }
-                        inner()
-                    }
-                )
-            }
+            StableSearchFieldContent(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = stringResource(R.string.search_apps),
+                textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
+                textColor = mainTextColor,
+                placeholderColor = grayTone,
+                focusRequester = focusRequester,
+                leadingIconTint = grayTone,
+                leadingIconSize = 18.dp
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
