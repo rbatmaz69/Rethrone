@@ -64,6 +64,7 @@ Hier ist ein Überblick über die wichtigsten Verzeichnisse und Dateien des Proj
 ### Voraussetzungen
 - Android Studio (aktuelle stabile Version)
 - JDK 17
+- Gradle-Wrapper/Daemon ebenfalls mit JDK 17
 
 ### Projekt bauen
 ```bash

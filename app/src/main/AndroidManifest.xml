@@ -27,7 +27,7 @@
             <category android:name="android.intent.category.APP_CLOCK" />
         </intent>
         <intent>
-            <action android:provider.AlarmClock.ACTION_SHOW_ALARMS" />
+            <action android:name="android.intent.action.SHOW_ALARMS" />
         </intent>
     </queries>
 
