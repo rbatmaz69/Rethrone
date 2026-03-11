@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -193,7 +194,7 @@ fun AppDrawer(
     var showFolderSelection by remember { mutableStateOf(false) }
     var folderSelectionApp by remember { mutableStateOf<AppInfo?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { drawerSize = it.size }) {
+    Box(modifier = Modifier.fillMaxSize().testTag("app_drawer").onGloballyPositioned { drawerSize = it.size }) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -336,7 +337,7 @@ fun AppDrawer(
                 Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             }
 
-            Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
+            Box(modifier = Modifier.fillMaxWidth().testTag("app_drawer_search_field").then(searchBarModifier).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
                 interactionSource = searchIntSrc,
                 indication = null
             ) { focusRequester.requestFocus() }) {
@@ -356,11 +357,7 @@ fun AppDrawer(
             }
             Spacer(modifier = Modifier.height(24.dp))
 
-            val adaptiveColumns = when (iconSize) {
-                IconSize.SMALL -> 5
-                IconSize.STANDARD -> 4
-                IconSize.LARGE -> 3
-            }
+            val adaptiveColumns = 4
 
             val gridState = rememberLazyGridState()
             var swipeDragY by remember { mutableStateOf(0f) }
@@ -555,8 +552,34 @@ fun AppDrawer(
                                 }
                             }
                             
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
+                            val folderTitleSpacing = when (iconSize) {
+                                IconSize.SMALL -> 5.dp
+                                IconSize.STANDARD -> 8.dp
+                                IconSize.LARGE -> 12.dp
+                            }
+                            val folderGridTopPadding = when (iconSize) {
+                                IconSize.SMALL -> 3.dp
+                                IconSize.STANDARD -> 5.dp
+                                IconSize.LARGE -> 8.dp
+                            }
+                            val folderItemTopPadding = when (iconSize) {
+                                IconSize.SMALL -> 2.dp
+                                IconSize.STANDARD -> 3.dp
+                                IconSize.LARGE -> 4.dp
+                            }
+                            val folderContentHeight = when (iconSize) {
+                                IconSize.SMALL -> 292.dp
+                                IconSize.STANDARD -> 316.dp
+                                IconSize.LARGE -> 340.dp
+                            }
+                            val folderPagerIndicatorTopPadding = when (iconSize) {
+                                IconSize.SMALL -> 8.dp
+                                IconSize.STANDARD -> 12.dp
+                                IconSize.LARGE -> 16.dp
+                            }
+
+                            Spacer(modifier = Modifier.height(folderTitleSpacing))
+
                             val folderApps = remember(currentActiveFolder.appPackageNames, apps) { currentActiveFolder.appPackageNames.mapNotNull { pkg -> apps.find { it.packageName == pkg } } }
                             val currentFolderApps by rememberUpdatedState(folderApps)
                             
@@ -589,7 +612,7 @@ fun AppDrawer(
                                 }
                             }
 
-                            Box(modifier = Modifier.height(340.dp)) {
+                            Box(modifier = Modifier.height(folderContentHeight)) {
                                 val currentFolderState by rememberUpdatedState(currentActiveFolder)
                                 val currentFoldersState by rememberUpdatedState(folders)
 
@@ -668,7 +691,7 @@ fun AppDrawer(
                                             val startIdx = page * itemsPerPage
                                             val endIdx = (startIdx + itemsPerPage).coerceAtMost(folderApps.size)
                                             val pageApps = folderApps.subList(startIdx, endIdx)
-                                            LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), userScrollEnabled = false, contentPadding = PaddingValues(top = 20.dp, start = 8.dp, end = 8.dp)) {
+                                            LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), userScrollEnabled = false, contentPadding = PaddingValues(top = folderGridTopPadding, start = 8.dp, end = 8.dp)) {
                                                 itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
                                                     val globalIndex = startIdx + indexInPage
                                                     val isDragging = draggingItemPkg == app.packageName
@@ -676,10 +699,17 @@ fun AppDrawer(
                                                     val minusWidth = LocalIconSize.current.size * 0.14f
                                                     val minusHeight = 1.5.dp
 
-                                                    Box(modifier = Modifier.let { if (isDragging) it else Modifier.animateItem() }.zIndex(if (isDragging) 0f else 1f).graphicsLayer { rotationZ = if (isEditMode && !isDragging) { if (globalIndex % 2 == 0) wiggleAngle else -wiggleAngle } else 0f; alpha = if (isDragging) 0f else 1f }.padding(top = 12.dp, start = 2.dp, end = 2.dp)) {
+                                                    Box(modifier = Modifier.let { if (isDragging) it else Modifier.animateItem() }.zIndex(if (isDragging) 0f else 1f).graphicsLayer { rotationZ = if (isEditMode && !isDragging) { if (globalIndex % 2 == 0) wiggleAngle else -wiggleAngle } else 0f; alpha = if (isDragging) 0f else 1f }.padding(top = folderItemTopPadding, start = 2.dp, end = 2.dp)) {
                                                         AppItem(
-                                                            app = app, adaptiveColumns = 3, isFavorite = isFavorite(app.packageName), onToggleFavorite = onToggleFavorite, folders = folders, onUpdateFolders = onUpdateFolders,
-                                                            isInFolder = true, currentFolderId = currentActiveFolder.id, isEditMode = isEditMode, bouncePackage = returnIconPackage,
+                                                            app = app,
+                                                            adaptiveColumns = 3,
+                                                            isFavorite = isFavorite(app.packageName),
+                                                            onToggleFavorite = onToggleFavorite,
+                                                            folders = folders,
+                                                            onUpdateFolders = onUpdateFolders,
+                                                            isInFolder = true,
+                                                            currentFolderId = currentActiveFolder.id,
+                                                            isEditMode = isEditMode,
                                                             onLongPress = { appInfo, bounds -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); menuApp = appInfo; menuAppBounds = bounds },
                                                             onAppLaunchRequested = { requestedApp, bounds ->
                                                                 context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
@@ -721,7 +751,7 @@ fun AppDrawer(
                             }
                             
                             if (pages > 1) {
-                                Row(Modifier.wrapContentHeight().fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.Center) {
+                                Row(Modifier.wrapContentHeight().fillMaxWidth().padding(top = folderPagerIndicatorTopPadding), horizontalArrangement = Arrangement.Center) {
                                     repeat(pages) { iteration ->
                                         val color = if (pagerState.currentPage == iteration) mainTextColor else mainTextColor.copy(alpha = 0.3f)
                                         Box(modifier = Modifier.padding(horizontal = 4.dp).clip(CircleShape).background(color).size(6.dp))

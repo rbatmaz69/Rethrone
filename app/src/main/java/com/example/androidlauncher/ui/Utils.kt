@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,9 +49,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -61,29 +60,12 @@ import androidx.compose.ui.zIndex
 import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.NotificationService
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.data.AutoIconFallbackType
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import kotlin.math.max
 import kotlin.math.roundToInt
-
-/**
- * Default system-side mapping for app icons to Lucide icons.
- */
-val DEFAULT_ICON_MAPPINGS: Map<String, String> = mapOf(
-    "com.android.chrome" to "Chrome",
-    "com.android.vending" to "Play",
-    "com.google.android.youtube" to "Youtube",
-    "com.google.android.apps.youtube.music" to "Music",
-    "com.google.android.calendar" to "Calendar",
-    "com.android.calendar" to "Calendar",
-    "com.android.camera" to "Camera",
-    "com.google.android.GoogleCamera" to "Camera",
-    "com.google.android.calculator" to "Calculator",
-    "com.google.android.googlequicksearchbox" to "Mic",
-    "com.google.android.apps.nbu.files" to "FolderOpen",
-    "com.example.androidlauncher" to "Crown"
-)
 
 fun Context.findActivity(): Activity? {
     var context = this
@@ -106,11 +88,11 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
 
 /**
  * Composable das ein App-Icon rendert.
- * Zeigt Lucide-Icons oder App-eigene Bitmap-Icons an.
+ * Priorität: manueller Override > automatischer Lucide-Fallback > automatischer Container > Original.
  */
 @Composable
 fun AppIconView(
-    app: AppInfo, 
+    app: AppInfo,
     modifier: Modifier = Modifier,
     showBadge: Boolean = false,
     customIcons: Map<String, String>? = null
@@ -133,31 +115,53 @@ fun AppIconView(
     }
     val hasNotification = showBadge && app.packageName in activeNotifications
 
-    val customIconName = resolvedCustomIcons[app.packageName] ?: DEFAULT_ICON_MAPPINGS[app.packageName]
-    val lucideIcon = if (customIconName != null) getLucideIconByName(customIconName) else app.lucideIcon
+    val manualLucideIcon = resolvedCustomIcons[app.packageName]?.let(::getLucideIconByName)
+    val autoFallback = app.autoIconFallback
+    val autoLucideIcon = autoFallback?.lucideIconName?.let(::getLucideIconByName)
 
     Box(
         modifier = modifier.size(iconSize),
         contentAlignment = Alignment.Center
     ) {
         when {
-            lucideIcon != null -> {
+            manualLucideIcon != null -> {
                 Icon(
-                    imageVector = lucideIcon,
+                    imageVector = manualLucideIcon,
                     contentDescription = null,
                     modifier = Modifier.size(iconSize * 0.65f),
                     tint = tintColor
                 )
             }
+            autoFallback?.type == AutoIconFallbackType.LUCIDE && autoLucideIcon != null -> {
+                Icon(
+                    imageVector = autoLucideIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(iconSize * 0.65f),
+                    tint = tintColor
+                )
+            }
+            autoFallback?.type == AutoIconFallbackType.NEUTRAL -> {
+                NeutralIconFallback(
+                    label = app.label,
+                    tintColor = tintColor,
+                    iconSize = iconSize
+                )
+            }
             app.iconBitmap != null -> {
                 Image(
-                    bitmap = app.iconBitmap, 
-                    contentDescription = null, 
+                    bitmap = app.iconBitmap,
+                    contentDescription = null,
                     modifier = Modifier.size(iconSize),
                     colorFilter = ColorFilter.tint(tintColor)
                 )
             }
-            else -> Box(modifier = Modifier.size(iconSize).background(tintColor.copy(alpha = 0.05f), CircleShape))
+            else -> {
+                NeutralIconFallback(
+                    label = app.label,
+                    tintColor = tintColor,
+                    iconSize = iconSize
+                )
+            }
         }
 
         if (hasNotification) {
@@ -171,6 +175,30 @@ fun AppIconView(
                     .border(1.dp, Color.Black.copy(alpha = 0.1f), CircleShape)
             )
         }
+    }
+}
+
+@Composable
+private fun NeutralIconFallback(
+    label: String,
+    tintColor: Color,
+    iconSize: androidx.compose.ui.unit.Dp
+) {
+    val initial = remember(label) {
+        label.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "•"
+    }
+
+    Box(
+        modifier = Modifier
+            .size(iconSize * 0.82f)
+            .background(tintColor.copy(alpha = 0.04f), CircleShape)
+            .border(1.dp, tintColor.copy(alpha = 0.45f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = initial,
+            color = tintColor.copy(alpha = 0.92f)
+        )
     }
 }
 
