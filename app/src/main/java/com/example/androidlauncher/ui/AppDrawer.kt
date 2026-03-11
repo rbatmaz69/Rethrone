@@ -73,7 +73,6 @@ import androidx.compose.ui.zIndex
 import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
-import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -105,7 +104,6 @@ fun AppDrawer(
     val colorTheme = LocalColorTheme.current
     val fontSize = LocalFontSize.current
     val fontWeight = LocalFontWeight.current
-    val iconSize = LocalIconSize.current
     val appFont = LocalAppFont.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
@@ -357,11 +355,7 @@ fun AppDrawer(
             }
             Spacer(modifier = Modifier.height(24.dp))
 
-            val adaptiveColumns = when (iconSize) {
-                IconSize.SMALL -> 5
-                IconSize.STANDARD -> 4
-                IconSize.LARGE -> 3
-            }
+            val adaptiveColumns = 4
 
             val gridState = rememberLazyGridState()
             var swipeDragY by remember { mutableStateOf(0f) }
