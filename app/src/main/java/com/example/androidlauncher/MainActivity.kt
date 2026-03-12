@@ -178,6 +178,8 @@ class MainActivity : ComponentActivity() {
             // UI Offset States
             val favoritesOffsetX by themeManager.favoritesOffsetX.collectAsState(initial = 0f)
             val favoritesOffsetY by themeManager.favoritesOffsetY.collectAsState(initial = 0f)
+            // Uhrbereich (Uhr + Datum) wird als gemeinsame Einheit auf X/Y gehalten.
+            val clockOffsetX by themeManager.clockOffsetX.collectAsState(initial = 0f)
             val clockOffsetY by themeManager.clockOffsetY.collectAsState(initial = 0f)
 
             val folders by folderManager.folders.collectAsState(initial = emptyList())
@@ -801,6 +803,7 @@ class MainActivity : ComponentActivity() {
                                 isEditMode = isHomeEditMode,
                                 favoritesOffsetX = favoritesOffsetX,
                                 favoritesOffsetY = favoritesOffsetY,
+                                clockOffsetX = clockOffsetX,
                                 clockOffsetY = clockOffsetY,
                                 onOpenDrawer = { isDrawerOpen = true },
                                 onOpenSearch = { isSearchOpen = true },
@@ -814,8 +817,8 @@ class MainActivity : ComponentActivity() {
                                 onSaveFavoritesOffset = { x, y ->
                                     scope.launch { themeManager.setFavoritesOffset(x, y) }
                                 },
-                                onSaveClockOffset = { y ->
-                                    scope.launch { themeManager.setClockOffset(y) }
+                                onSaveClockOffset = { x, y ->
+                                    scope.launch { themeManager.setClockOffset(x, y) }
                                 },
                                 onLaunchApp = { pkg, intent, bounds ->
                                     requestLauncherLaunch(
@@ -1145,6 +1148,7 @@ class MainActivity : ComponentActivity() {
                                         isEditMode = false,
                                         favoritesOffsetX = 0f,
                                         favoritesOffsetY = 0f,
+                                        clockOffsetX = 0f,
                                         clockOffsetY = 0f,
                                         onOpenDrawer = {},
                                         onOpenSearch = {},
@@ -1156,7 +1160,7 @@ class MainActivity : ComponentActivity() {
                                         onOpenSystemSettings = {},
                                         onOpenInfo = {},
                                         onSaveFavoritesOffset = { _, _ -> },
-                                        onSaveClockOffset = { _ -> },
+                                        onSaveClockOffset = { _, _ -> },
                                         onLaunchApp = { _, _, _ -> },
                                         returnIconPackage = null,
                                         searchButtonBounceToken = 0,

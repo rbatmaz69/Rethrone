@@ -44,6 +44,8 @@ class ThemeManager(private val context: Context) {
         // Offset for UI elements (Relative to default position)
         private val FAVORITES_OFFSET_X_KEY = floatPreferencesKey("favorites_offset_x")
         private val FAVORITES_OFFSET_Y_KEY = floatPreferencesKey("favorites_offset_y")
+        // Uhrbereich kann als Einheit (Uhr + Datum) auf X/Y verschoben werden.
+        private val CLOCK_OFFSET_X_KEY = floatPreferencesKey("clock_offset_x")
         private val CLOCK_OFFSET_Y_KEY = floatPreferencesKey("clock_offset_y")
     }
 
@@ -104,6 +106,11 @@ class ThemeManager(private val context: Context) {
     val favoritesOffsetY: Flow<Float> = context.dataStore.data
         .map { it[FAVORITES_OFFSET_Y_KEY] ?: 0f }
 
+    // X-Offset für die Uhr-/Datums-Einheit im Home-Edit-Modus.
+    val clockOffsetX: Flow<Float> = context.dataStore.data
+        .map { it[CLOCK_OFFSET_X_KEY] ?: 0f }
+
+    // Y-Offset für die Uhr-/Datums-Einheit im Home-Edit-Modus.
     val clockOffsetY: Flow<Float> = context.dataStore.data
         .map { it[CLOCK_OFFSET_Y_KEY] ?: 0f }
 
@@ -168,8 +175,10 @@ class ThemeManager(private val context: Context) {
         }
     }
 
-    suspend fun setClockOffset(y: Float) {
+    // Persistiert die Uhr-/Datums-Einheit gemeinsam auf X/Y.
+    suspend fun setClockOffset(x: Float, y: Float) {
         context.dataStore.edit {
+            it[CLOCK_OFFSET_X_KEY] = x
             it[CLOCK_OFFSET_Y_KEY] = y
         }
     }

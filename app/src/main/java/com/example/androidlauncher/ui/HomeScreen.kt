@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.AlarmClock
 import android.provider.CalendarContract
-import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -42,10 +41,13 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,6 +87,7 @@ fun HomeScreen(
     isEditMode: Boolean = false,
     favoritesOffsetX: Float = 0f,
     favoritesOffsetY: Float = 0f,
+    clockOffsetX: Float = 0f,
     clockOffsetY: Float = 0f,
     onOpenDrawer: () -> Unit,
     onOpenSearch: () -> Unit,
@@ -96,7 +99,7 @@ fun HomeScreen(
     onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit,
     onSaveFavoritesOffset: (Float, Float) -> Unit,
-    onSaveClockOffset: (Float) -> Unit,
+    onSaveClockOffset: (Float, Float) -> Unit,
     onLaunchApp: (String, Intent, Rect?) -> Unit,
     returnIconPackage: String?,
     searchButtonBounceToken: Int = 0,
@@ -109,13 +112,38 @@ fun HomeScreen(
     val showLabels = LocalShowFavoriteLabels.current
     val fontSize = LocalFontSize.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val density = LocalDensity.current
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
 
     // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
+    // Favoriten-Offset wird lokal gehalten und erst bei "Speichern" persistiert.
     var currentFavOffsetX by remember(favoritesOffsetX, isEditMode) { mutableStateOf(favoritesOffsetX) }
     var currentFavOffsetY by remember(favoritesOffsetY, isEditMode) { mutableStateOf(favoritesOffsetY) }
+    // Uhrbereich (Uhr + Datum) ist eine Einheit und wird frei auf X/Y verschoben.
+    var currentClockOffsetX by remember(clockOffsetX, isEditMode) { mutableStateOf(clockOffsetX) }
     var currentClockOffsetY by remember(clockOffsetY, isEditMode) { mutableStateOf(clockOffsetY) }
+
+    // Letzte gültige Positionen: Bei Kollision wird darauf zurückgesetzt.
+    var lastValidFavOffsetX by remember(favoritesOffsetX, isEditMode) { mutableStateOf(favoritesOffsetX) }
+    var lastValidFavOffsetY by remember(favoritesOffsetY, isEditMode) { mutableStateOf(favoritesOffsetY) }
+    var lastValidClockOffsetX by remember(clockOffsetX, isEditMode) { mutableStateOf(clockOffsetX) }
+    var lastValidClockOffsetY by remember(clockOffsetY, isEditMode) { mutableStateOf(clockOffsetY) }
+
+    // Neutral-Bounds sind Layout-Bounds ohne aktuelle Offsets; damit können wir sauber Kandidaten prüfen.
+    var clockNeutralBounds by remember { mutableStateOf<Rect?>(null) }
+    var favoritesNeutralBounds by remember { mutableStateOf<Rect?>(null) }
+
+    // Visuelles Kollision-Feedback (Option A) + einmaliges Haptic pro Blockadephase.
+    var isClockCollisionBlocked by remember { mutableStateOf(false) }
+    var isFavoritesCollisionBlocked by remember { mutableStateOf(false) }
+    var collisionHapticWasTriggered by remember { mutableStateOf(false) }
+
+    // Snap-to-Grid ist standardmäßig aktiv; "soft" vermeidet hakelige Sprünge.
+    val gridStepPx = with(density) { 12.dp.toPx() }
+    val snapThresholdPx = with(density) { 4.dp.toPx() }
     
     // Launch Request State
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -123,6 +151,59 @@ fun HomeScreen(
 
     var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
     var shortcutMenuBounds by remember { mutableStateOf<Rect?>(null) }
+
+    // Lokale Hilfsfunktion: Verschiebt ein Rechteck um X/Y-Pixel.
+    fun translateRect(rect: Rect, x: Float, y: Float): Rect {
+        return Rect(
+            left = rect.left + x,
+            top = rect.top + y,
+            right = rect.right + x,
+            bottom = rect.bottom + y
+        )
+    }
+
+    // Lokale Hilfsfunktion: Rechteck-Überlappung ohne Sonderlogik.
+    fun intersects(first: Rect, second: Rect): Boolean {
+        return first.left < second.right &&
+            first.right > second.left &&
+            first.top < second.bottom &&
+            first.bottom > second.top
+    }
+
+    // Lokale Hilfsfunktion: "Magnetisches" Snap-to-Grid für flüssiges Live-Dragging.
+    fun softSnap(value: Float): Float {
+        if (gridStepPx <= 0f) return value
+        val nearestGrid = (value / gridStepPx).roundToInt() * gridStepPx
+        return if (kotlin.math.abs(value - nearestGrid) <= snapThresholdPx) nearestGrid else value
+    }
+
+    // Lokale Hilfsfunktion: Kandidat innerhalb des sichtbaren Screens halten.
+    fun clampToRoot(candidateX: Float, candidateY: Float, neutralBounds: Rect?): Pair<Float, Float> {
+        val bounds = neutralBounds ?: return candidateX to candidateY
+        if (rootSize.width <= 0 || rootSize.height <= 0) return candidateX to candidateY
+
+        val minX = -bounds.left
+        val maxX = rootSize.width.toFloat() - bounds.right
+        val minY = -bounds.top
+        val maxY = rootSize.height.toFloat() - bounds.bottom
+
+        return candidateX.coerceIn(minX, maxX) to candidateY.coerceIn(minY, maxY)
+    }
+
+    // Lokale Hilfsfunktion: Kollisionstint/Haptic steuern, ohne dauerhaft zu triggern.
+    fun updateCollisionFeedback(clockBlocked: Boolean, favoritesBlocked: Boolean) {
+        isClockCollisionBlocked = clockBlocked
+        isFavoritesCollisionBlocked = favoritesBlocked
+
+        val anyBlocked = clockBlocked || favoritesBlocked
+        if (anyBlocked && !collisionHapticWasTriggered && hapticEnabled) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            collisionHapticWasTriggered = true
+        }
+        if (!anyBlocked) {
+            collisionHapticWasTriggered = false
+        }
+    }
 
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
@@ -183,15 +264,60 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset { IntOffset(0, currentClockOffsetY.roundToInt()) }
+                    // Uhrbereich wird als Einheit auf X/Y verschoben.
+                    .offset { IntOffset(currentClockOffsetX.roundToInt(), currentClockOffsetY.roundToInt()) }
+                    // Neutral-Bounds aus aktuellen Bounds ableiten, damit Kandidatenberechnung stabil bleibt.
+                    .onGloballyPositioned { coordinates ->
+                        val currentBounds = coordinates.boundsInRoot()
+                        clockNeutralBounds = translateRect(
+                            rect = currentBounds,
+                            x = -currentClockOffsetX,
+                            y = -currentClockOffsetY
+                        )
+                    }
                     .then(if (isEditMode) {
+                        // Beim Blockieren färben wir den Rahmen warm ein, damit klar ist: nicht erlaubt.
+                        val borderTint = if (isClockCollisionBlocked) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
+                        val fillTint = if (isClockCollisionBlocked) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
                         Modifier
-                            .border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
-                            .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                            .border(BorderStroke(1.dp, borderTint), RoundedCornerShape(16.dp))
+                            .background(fillTint, RoundedCornerShape(16.dp))
                             .pointerInput(Unit) {
                                 detectDragGestures { change, dragAmount ->
                                     change.consume()
-                                    currentClockOffsetY += dragAmount.y
+
+                                    // Kandidat mit Live-Snap berechnen, damit das Raster sofort fühlbar ist.
+                                    val snappedX = softSnap(currentClockOffsetX + dragAmount.x)
+                                    val snappedY = softSnap(currentClockOffsetY + dragAmount.y)
+
+                                    // Kandidat im sichtbaren Bereich halten.
+                                    val (candidateX, candidateY) = clampToRoot(
+                                        candidateX = snappedX,
+                                        candidateY = snappedY,
+                                        neutralBounds = clockNeutralBounds
+                                    )
+
+                                    // Kandidat-Rect gegen aktuelle Favoriten-Position prüfen.
+                                    val candidateClockRect = clockNeutralBounds?.let { translateRect(it, candidateX, candidateY) }
+                                    val currentFavoritesRect = favoritesNeutralBounds?.let {
+                                        translateRect(it, currentFavOffsetX, currentFavOffsetY)
+                                    }
+
+                                    val blocked = candidateClockRect != null && currentFavoritesRect != null && intersects(candidateClockRect, currentFavoritesRect)
+
+                                    if (!blocked) {
+                                        // Gültiger Move: live anwenden und als "letzte gültige" Position merken.
+                                        currentClockOffsetX = candidateX
+                                        currentClockOffsetY = candidateY
+                                        lastValidClockOffsetX = candidateX
+                                        lastValidClockOffsetY = candidateY
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = isFavoritesCollisionBlocked)
+                                    } else {
+                                        // Ungültiger Move: auf letzte gültige Position zurückfallen.
+                                        currentClockOffsetX = lastValidClockOffsetX
+                                        currentClockOffsetY = lastValidClockOffsetY
+                                        updateCollisionFeedback(clockBlocked = true, favoritesBlocked = isFavoritesCollisionBlocked)
+                                    }
                                 }
                             }
                     } else Modifier)
@@ -210,22 +336,69 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .offset { IntOffset(currentFavOffsetX.roundToInt(), currentFavOffsetY.roundToInt()) }
+                    // Neutral-Bounds für Favoriten als Referenz ohne aktuelle Offsets pflegen.
+                    .onGloballyPositioned { coordinates ->
+                        val currentBounds = coordinates.boundsInRoot()
+                        favoritesNeutralBounds = translateRect(
+                            rect = currentBounds,
+                            x = -currentFavOffsetX,
+                            y = -currentFavOffsetY
+                        )
+                    }
                     .then(if (isEditMode) {
+                        // Gleiche Rückmeldung wie beim Uhrbereich: warmes Tinting bei Blockade.
+                        val borderTint = if (isFavoritesCollisionBlocked) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
+                        val fillTint = if (isFavoritesCollisionBlocked) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
                         Modifier
-                            .border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
-                            .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                            .border(BorderStroke(1.dp, borderTint), RoundedCornerShape(16.dp))
+                            .background(fillTint, RoundedCornerShape(16.dp))
                             .pointerInput(Unit) {
                                 detectDragGestures { change, dragAmount ->
                                     change.consume()
-                                    currentFavOffsetX += dragAmount.x
-                                    currentFavOffsetY += dragAmount.y
+
+                                    // Kandidat mit Live-Snap berechnen, damit das Raster sofort greift.
+                                    val snappedX = softSnap(currentFavOffsetX + dragAmount.x)
+                                    val snappedY = softSnap(currentFavOffsetY + dragAmount.y)
+
+                                    // Kandidat im sichtbaren Bereich halten.
+                                    val (candidateX, candidateY) = clampToRoot(
+                                        candidateX = snappedX,
+                                        candidateY = snappedY,
+                                        neutralBounds = favoritesNeutralBounds
+                                    )
+
+                                    // Kandidat-Rect gegen aktuelle Uhrposition prüfen.
+                                    val candidateFavoritesRect = favoritesNeutralBounds?.let {
+                                        translateRect(it, candidateX, candidateY)
+                                    }
+                                    val currentClockRect = clockNeutralBounds?.let {
+                                        translateRect(it, currentClockOffsetX, currentClockOffsetY)
+                                    }
+
+                                    val blocked = candidateFavoritesRect != null && currentClockRect != null && intersects(candidateFavoritesRect, currentClockRect)
+
+                                    if (!blocked) {
+                                        // Gültiger Move: live anwenden und als "letzte gültige" Position merken.
+                                        currentFavOffsetX = candidateX
+                                        currentFavOffsetY = candidateY
+                                        lastValidFavOffsetX = candidateX
+                                        lastValidFavOffsetY = candidateY
+                                        updateCollisionFeedback(clockBlocked = isClockCollisionBlocked, favoritesBlocked = false)
+                                    } else {
+                                        // Ungültiger Move: auf letzte gültige Position zurückfallen.
+                                        currentFavOffsetX = lastValidFavOffsetX
+                                        currentFavOffsetY = lastValidFavOffsetY
+                                        updateCollisionFeedback(clockBlocked = isClockCollisionBlocked, favoritesBlocked = true)
+                                    }
                                 }
                             }
                     } else Modifier)
-                    .padding(if (isEditMode) 12.dp else 0.dp)
+                    // Symmetrischer Innenabstand behebt das bisher links/rechts unausgewogene Erscheinungsbild.
+                    .padding(if (isEditMode) 10.dp else 0.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(start = 12.dp),
+                    // Kein einseitiger Start-Padding mehr, damit der Container visuell zentriert wirkt.
+                    modifier = Modifier,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (favorites.isEmpty()) {
@@ -295,6 +468,13 @@ fun HomeScreen(
                     )
                 }
 
+                // Micro-Hinweis für klare Erwartung: Elemente dürfen sich im Edit-Modus nicht schneiden.
+                Text(
+                    text = "Elemente dürfen sich nicht überlappen",
+                    color = mainTextColor.copy(alpha = 0.6f),
+                    fontSize = 11.sp
+                )
+
                 // Kontroll-Buttons (Abbrechen, Zurücksetzen, Speichern)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -314,9 +494,16 @@ fun HomeScreen(
                     EditControlButton(
                         icon = Icons.Default.Refresh,
                         onClick = {
+                            // Reset setzt beide Einheiten (Favoriten + Uhrbereich) auf den Standard zurück.
                             currentFavOffsetX = 0f
                             currentFavOffsetY = 0f
+                            currentClockOffsetX = 0f
                             currentClockOffsetY = 0f
+                            lastValidFavOffsetX = 0f
+                            lastValidFavOffsetY = 0f
+                            lastValidClockOffsetX = 0f
+                            lastValidClockOffsetY = 0f
+                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
                         },
                         tint = mainTextColor
                     )
@@ -327,8 +514,9 @@ fun HomeScreen(
                     EditControlButton(
                         icon = Icons.Default.Check,
                         onClick = {
+                            // Persistenz wird nur bei "Speichern" geschrieben.
                             onSaveFavoritesOffset(currentFavOffsetX, currentFavOffsetY)
-                            onSaveClockOffset(currentClockOffsetY)
+                            onSaveClockOffset(currentClockOffsetX, currentClockOffsetY)
                             onToggleEditMode()
                             Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
                         },
