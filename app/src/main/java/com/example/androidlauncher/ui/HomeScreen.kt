@@ -263,7 +263,8 @@ fun HomeScreen(
             // 1. Uhr / Widget Bereich (Verschiebbar im Edit-Mode)
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    // Im Edit-Modus bleibt der Drag-Container kompakt, damit X-Verschiebung spürbar möglich ist.
+                    .then(if (isEditMode) Modifier.wrapContentWidth(Alignment.Start) else Modifier.fillMaxWidth())
                     // Uhrbereich wird als Einheit auf X/Y verschoben.
                     .offset { IntOffset(currentClockOffsetX.roundToInt(), currentClockOffsetY.roundToInt()) }
                     // Neutral-Bounds aus aktuellen Bounds ableiten, damit Kandidatenberechnung stabil bleibt.
@@ -326,6 +327,8 @@ fun HomeScreen(
                     onAppLaunchForReturn = { pkg, bounds -> onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds) },
                     onLaunchRequest = { launchRequest = it },
                     returnIconPackage = returnIconPackage,
+                    // Kompaktmodus hält Uhr+Datum als gemeinsamen Block ohne volle Breite.
+                    isCompact = isEditMode,
                     isPreview = isPreview || isEditMode
                 )
             }
@@ -779,6 +782,7 @@ fun ClockHeader(
     onAppLaunchForReturn: (String, Rect?) -> Unit,
     onLaunchRequest: (HomeLaunchRequest) -> Unit,
     returnIconPackage: String?,
+    isCompact: Boolean = false,
     isPreview: Boolean = false
 ) {
     val context = LocalContext.current
@@ -802,7 +806,10 @@ fun ClockHeader(
     val bounceScaleTime by animateFloatAsState(targetValue = if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "ClockReturnBounce")
     val bounceScaleDate by animateFloatAsState(targetValue = if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "CalendarReturnBounce")
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    // Kompaktmodus nutzt Inhaltsbreite, damit der Edit-Container nicht unnötig breit wird.
+    val headerModifier = if (isCompact) Modifier.wrapContentWidth(Alignment.Start) else Modifier.fillMaxWidth()
+
+    Column(modifier = headerModifier) {
         Text(
             text = timeFormat.format(currentTime),
             fontSize = 72.sp * fontSize.scale,
