@@ -35,12 +35,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -436,8 +440,33 @@ fun HomeScreen(
                         val borderTint = if (isFavoritesCollisionBlocked) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
                         val fillTint = if (isFavoritesCollisionBlocked) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
                         Modifier
-                            .border(BorderStroke(1.dp, borderTint), RoundedCornerShape(16.dp))
-                            .background(fillTint, RoundedCornerShape(16.dp))
+                            // Der Edit-Rahmen wird nur gezeichnet und verändert nicht mehr das Layout.
+                            .drawBehind {
+                                val framePadding = 10.dp.toPx()
+                                val cornerRadius = 16.dp.toPx()
+                                val frameTopLeft = Offset(-framePadding, -framePadding)
+                                val frameSize = Size(
+                                    width = size.width + framePadding * 2,
+                                    height = size.height + framePadding * 2
+                                )
+
+                                // Füllung des Edit-Frames außerhalb des eigentlichen Content-Bounds zeichnen.
+                                drawRoundRect(
+                                    color = fillTint,
+                                    topLeft = frameTopLeft,
+                                    size = frameSize,
+                                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                                )
+
+                                // Rahmen separat zeichnen, damit die Position stabil bleibt.
+                                drawRoundRect(
+                                    color = borderTint,
+                                    topLeft = frameTopLeft,
+                                    size = frameSize,
+                                    cornerRadius = CornerRadius(cornerRadius, cornerRadius),
+                                    style = Stroke(width = 1.dp.toPx())
+                                )
+                            }
                             .pointerInput(Unit) {
                                 detectDragGestures(
                                     onDragStart = {
@@ -529,8 +558,6 @@ fun HomeScreen(
                                 }
                             }
                     } else Modifier)
-                    // Symmetrischer Innenabstand behebt das bisher links/rechts unausgewogene Erscheinungsbild.
-                    .padding(if (isEditMode) 10.dp else 0.dp)
             ) {
                 Column(
                     // Kein einseitiger Start-Padding mehr, damit der Container visuell zentriert wirkt.
