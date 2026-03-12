@@ -141,9 +141,29 @@ fun HomeScreen(
     var isFavoritesCollisionBlocked by remember { mutableStateOf(false) }
     var collisionHapticWasTriggered by remember { mutableStateOf(false) }
 
+    // Drag-Session-Daten: stabilisieren die Fingerbindung und verhindern Sprünge bei Blockaden.
+    var clockDragBaseX by remember { mutableStateOf(0f) }
+    var clockDragBaseY by remember { mutableStateOf(0f) }
+    var clockDragAccumX by remember { mutableStateOf(0f) }
+    var clockDragAccumY by remember { mutableStateOf(0f) }
+    var favoritesDragBaseX by remember { mutableStateOf(0f) }
+    var favoritesDragBaseY by remember { mutableStateOf(0f) }
+    var favoritesDragAccumX by remember { mutableStateOf(0f) }
+    var favoritesDragAccumY by remember { mutableStateOf(0f) }
+
+    // Sobald der Finger den Container verlässt, pausieren wir die Session bis zum Loslassen.
+    var isClockDragSuspended by remember { mutableStateOf(false) }
+    var isFavoritesDragSuspended by remember { mutableStateOf(false) }
+
+    // Containergrößen für präzise Pointer-Grenzprüfung in lokalen Koordinaten.
+    var clockDragContainerSize by remember { mutableStateOf(IntSize.Zero) }
+    var favoritesDragContainerSize by remember { mutableStateOf(IntSize.Zero) }
+
     // Snap-to-Grid ist standardmäßig aktiv; "soft" vermeidet hakelige Sprünge.
     val gridStepPx = with(density) { 12.dp.toPx() }
     val snapThresholdPx = with(density) { 4.dp.toPx() }
+    // Kleine Toleranz vermeidet ungewollte Pausen bei minimalem Finger-Jitter an Kanten.
+    val pointerBoundaryTolerancePx = with(density) { 10.dp.toPx() }
     
     // Launch Request State
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -203,6 +223,15 @@ fun HomeScreen(
         if (!anyBlocked) {
             collisionHapticWasTriggered = false
         }
+    }
+
+    // Lokale Hilfsfunktion: Prüft, ob Pointer noch im Container liegt (lokale Pointer-Koordinaten).
+    fun isPointerInsideContainer(position: Offset, size: IntSize, tolerancePx: Float): Boolean {
+        if (size.width <= 0 || size.height <= 0) return false
+        return position.x >= -tolerancePx &&
+            position.x <= size.width + tolerancePx &&
+            position.y >= -tolerancePx &&
+            position.y <= size.height + tolerancePx
     }
 
     val rotation by animateFloatAsState(
@@ -270,6 +299,8 @@ fun HomeScreen(
                     // Neutral-Bounds aus aktuellen Bounds ableiten, damit Kandidatenberechnung stabil bleibt.
                     .onGloballyPositioned { coordinates ->
                         val currentBounds = coordinates.boundsInRoot()
+                        // Größe des Draggable-Containers für lokale Pointer-Prüfung übernehmen.
+                        clockDragContainerSize = coordinates.size
                         clockNeutralBounds = translateRect(
                             rect = currentBounds,
                             x = -currentClockOffsetX,
@@ -284,12 +315,47 @@ fun HomeScreen(
                             .border(BorderStroke(1.dp, borderTint), RoundedCornerShape(16.dp))
                             .background(fillTint, RoundedCornerShape(16.dp))
                             .pointerInput(Unit) {
-                                detectDragGestures { change, dragAmount ->
+                                detectDragGestures(
+                                    onDragStart = {
+                                        // Drag startet relativ zur aktuellen Position; dadurch bleibt der Finger "gekoppelt".
+                                        clockDragBaseX = currentClockOffsetX
+                                        clockDragBaseY = currentClockOffsetY
+                                        clockDragAccumX = 0f
+                                        clockDragAccumY = 0f
+                                        // Neue Session startet immer aktiv.
+                                        isClockDragSuspended = false
+                                    },
+                                    onDragEnd = {
+                                        // Session sauber abschließen, damit die nächste Geste frisch startet.
+                                        clockDragAccumX = 0f
+                                        clockDragAccumY = 0f
+                                        isClockDragSuspended = false
+                                    },
+                                    onDragCancel = {
+                                        // Bei Abbruch identisches Reset-Verhalten für konsistente Gesten.
+                                        clockDragAccumX = 0f
+                                        clockDragAccumY = 0f
+                                        isClockDragSuspended = false
+                                    }
+                                ) { change, dragAmount ->
                                     change.consume()
 
-                                    // Kandidat mit Live-Snap berechnen, damit das Raster sofort fühlbar ist.
-                                    val snappedX = softSnap(currentClockOffsetX + dragAmount.x)
-                                    val snappedY = softSnap(currentClockOffsetY + dragAmount.y)
+                                    // Wenn Finger den Container verlässt, wird diese Session bis zum Loslassen pausiert.
+                                    if (!isPointerInsideContainer(change.position, clockDragContainerSize, pointerBoundaryTolerancePx)) {
+                                        isClockDragSuspended = true
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = isFavoritesCollisionBlocked)
+                                    }
+                                    if (isClockDragSuspended) {
+                                        return@detectDragGestures
+                                    }
+
+                                    // Delta in der aktuellen Session akkumulieren statt direkt Offsets zu addieren.
+                                    clockDragAccumX += dragAmount.x
+                                    clockDragAccumY += dragAmount.y
+
+                                    // Kandidat relativ zur Session-Basis erzeugen und live auf Raster ziehen.
+                                    val snappedX = softSnap(clockDragBaseX + clockDragAccumX)
+                                    val snappedY = softSnap(clockDragBaseY + clockDragAccumY)
 
                                     // Kandidat im sichtbaren Bereich halten.
                                     val (candidateX, candidateY) = clampToRoot(
@@ -313,11 +379,26 @@ fun HomeScreen(
                                         lastValidClockOffsetX = candidateX
                                         lastValidClockOffsetY = candidateY
                                         updateCollisionFeedback(clockBlocked = false, favoritesBlocked = isFavoritesCollisionBlocked)
+
+                                        // Bei Hard-Limit (Screenrand) Session neu ankern, damit kein Nachziehen entsteht.
+                                        val wasClamped = candidateX != snappedX || candidateY != snappedY
+                                        if (wasClamped) {
+                                            clockDragBaseX = currentClockOffsetX
+                                            clockDragBaseY = currentClockOffsetY
+                                            clockDragAccumX = 0f
+                                            clockDragAccumY = 0f
+                                        }
                                     } else {
                                         // Ungültiger Move: auf letzte gültige Position zurückfallen.
                                         currentClockOffsetX = lastValidClockOffsetX
                                         currentClockOffsetY = lastValidClockOffsetY
                                         updateCollisionFeedback(clockBlocked = true, favoritesBlocked = isFavoritesCollisionBlocked)
+
+                                        // Bei Kollision Session neu ankern, damit der Finger nicht "driften" kann.
+                                        clockDragBaseX = currentClockOffsetX
+                                        clockDragBaseY = currentClockOffsetY
+                                        clockDragAccumX = 0f
+                                        clockDragAccumY = 0f
                                     }
                                 }
                             }
@@ -342,6 +423,8 @@ fun HomeScreen(
                     // Neutral-Bounds für Favoriten als Referenz ohne aktuelle Offsets pflegen.
                     .onGloballyPositioned { coordinates ->
                         val currentBounds = coordinates.boundsInRoot()
+                        // Größe des Draggable-Containers für lokale Pointer-Prüfung übernehmen.
+                        favoritesDragContainerSize = coordinates.size
                         favoritesNeutralBounds = translateRect(
                             rect = currentBounds,
                             x = -currentFavOffsetX,
@@ -356,12 +439,47 @@ fun HomeScreen(
                             .border(BorderStroke(1.dp, borderTint), RoundedCornerShape(16.dp))
                             .background(fillTint, RoundedCornerShape(16.dp))
                             .pointerInput(Unit) {
-                                detectDragGestures { change, dragAmount ->
+                                detectDragGestures(
+                                    onDragStart = {
+                                        // Drag startet relativ zur aktuellen Position; dadurch bleibt der Finger "gekoppelt".
+                                        favoritesDragBaseX = currentFavOffsetX
+                                        favoritesDragBaseY = currentFavOffsetY
+                                        favoritesDragAccumX = 0f
+                                        favoritesDragAccumY = 0f
+                                        // Neue Session startet immer aktiv.
+                                        isFavoritesDragSuspended = false
+                                    },
+                                    onDragEnd = {
+                                        // Session sauber abschließen, damit die nächste Geste frisch startet.
+                                        favoritesDragAccumX = 0f
+                                        favoritesDragAccumY = 0f
+                                        isFavoritesDragSuspended = false
+                                    },
+                                    onDragCancel = {
+                                        // Bei Abbruch identisches Reset-Verhalten für konsistente Gesten.
+                                        favoritesDragAccumX = 0f
+                                        favoritesDragAccumY = 0f
+                                        isFavoritesDragSuspended = false
+                                    }
+                                ) { change, dragAmount ->
                                     change.consume()
 
-                                    // Kandidat mit Live-Snap berechnen, damit das Raster sofort greift.
-                                    val snappedX = softSnap(currentFavOffsetX + dragAmount.x)
-                                    val snappedY = softSnap(currentFavOffsetY + dragAmount.y)
+                                    // Wenn Finger den Container verlässt, wird diese Session bis zum Loslassen pausiert.
+                                    if (!isPointerInsideContainer(change.position, favoritesDragContainerSize, pointerBoundaryTolerancePx)) {
+                                        isFavoritesDragSuspended = true
+                                        updateCollisionFeedback(clockBlocked = isClockCollisionBlocked, favoritesBlocked = false)
+                                    }
+                                    if (isFavoritesDragSuspended) {
+                                        return@detectDragGestures
+                                    }
+
+                                    // Delta in der aktuellen Session akkumulieren statt direkt Offsets zu addieren.
+                                    favoritesDragAccumX += dragAmount.x
+                                    favoritesDragAccumY += dragAmount.y
+
+                                    // Kandidat relativ zur Session-Basis erzeugen und live auf Raster ziehen.
+                                    val snappedX = softSnap(favoritesDragBaseX + favoritesDragAccumX)
+                                    val snappedY = softSnap(favoritesDragBaseY + favoritesDragAccumY)
 
                                     // Kandidat im sichtbaren Bereich halten.
                                     val (candidateX, candidateY) = clampToRoot(
@@ -387,11 +505,26 @@ fun HomeScreen(
                                         lastValidFavOffsetX = candidateX
                                         lastValidFavOffsetY = candidateY
                                         updateCollisionFeedback(clockBlocked = isClockCollisionBlocked, favoritesBlocked = false)
+
+                                        // Bei Hard-Limit (Screenrand) Session neu ankern, damit kein Nachziehen entsteht.
+                                        val wasClamped = candidateX != snappedX || candidateY != snappedY
+                                        if (wasClamped) {
+                                            favoritesDragBaseX = currentFavOffsetX
+                                            favoritesDragBaseY = currentFavOffsetY
+                                            favoritesDragAccumX = 0f
+                                            favoritesDragAccumY = 0f
+                                        }
                                     } else {
                                         // Ungültiger Move: auf letzte gültige Position zurückfallen.
                                         currentFavOffsetX = lastValidFavOffsetX
                                         currentFavOffsetY = lastValidFavOffsetY
                                         updateCollisionFeedback(clockBlocked = isClockCollisionBlocked, favoritesBlocked = true)
+
+                                        // Bei Kollision Session neu ankern, damit der Finger nicht "driften" kann.
+                                        favoritesDragBaseX = currentFavOffsetX
+                                        favoritesDragBaseY = currentFavOffsetY
+                                        favoritesDragAccumX = 0f
+                                        favoritesDragAccumY = 0f
                                     }
                                 }
                             }
@@ -506,6 +639,17 @@ fun HomeScreen(
                             lastValidFavOffsetY = 0f
                             lastValidClockOffsetX = 0f
                             lastValidClockOffsetY = 0f
+                            // Drag-Session ebenfalls zurücksetzen, damit der nächste Touch sauber startet.
+                            clockDragBaseX = 0f
+                            clockDragBaseY = 0f
+                            clockDragAccumX = 0f
+                            clockDragAccumY = 0f
+                            favoritesDragBaseX = 0f
+                            favoritesDragBaseY = 0f
+                            favoritesDragAccumX = 0f
+                            favoritesDragAccumY = 0f
+                            isClockDragSuspended = false
+                            isFavoritesDragSuspended = false
                             updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
                         },
                         tint = mainTextColor
