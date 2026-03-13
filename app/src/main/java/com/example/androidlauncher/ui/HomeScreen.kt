@@ -21,6 +21,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -144,6 +145,8 @@ fun HomeScreen(
     // Visuelles Kollision-Feedback (Option A) + einmaliges Haptic pro Blockadephase.
     var isClockCollisionBlocked by remember { mutableStateOf(false) }
     var isFavoritesCollisionBlocked by remember { mutableStateOf(false) }
+    var isClockNavigationBarBlocked by remember { mutableStateOf(false) }
+    var isFavoritesNavigationBarBlocked by remember { mutableStateOf(false) }
     var collisionHapticWasTriggered by remember { mutableStateOf(false) }
 
     // Drag-Session-Daten: stabilisieren die Fingerbindung und verhindern Sprünge bei Blockaden.
@@ -171,6 +174,10 @@ fun HomeScreen(
     val pointerBoundaryTolerancePx = with(density) { 10.dp.toPx() }
     // Die Favoriten-Markierung wird visuell um diesen Wert nach außen gezeichnet.
     val favoritesFramePaddingPx = with(density) { 10.dp.toPx() }
+    
+    // Systemnavigation Bar Höhe ermitteln, um eine Sperrzone am unteren Bildschirmrand zu definieren.
+    // Die Navigationgleiste darf nicht überlagert werden.
+    val navigationBarHeightPx = with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
     
     // Launch Request State
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -214,7 +221,7 @@ fun HomeScreen(
         return if (kotlin.math.abs(value - nearestGrid) <= snapThresholdPx) nearestGrid else value
     }
 
-    // Lokale Hilfsfunktion: Kandidat innerhalb des sichtbaren Screens halten.
+    // Lokale Hilfsfunktion: Kandidat innerhalb des sichtbaren Screens halten und Systemnavigation nicht überlagern.
     fun clampToRoot(candidateX: Float, candidateY: Float, neutralBounds: Rect?): Pair<Float, Float> {
         val bounds = neutralBounds ?: return candidateX to candidateY
         if (rootSize.width <= 0 || rootSize.height <= 0) return candidateX to candidateY
@@ -222,9 +229,23 @@ fun HomeScreen(
         val minX = -bounds.left
         val maxX = rootSize.width.toFloat() - bounds.right
         val minY = -bounds.top
-        val maxY = rootSize.height.toFloat() - bounds.bottom
+        // Max Y wird reduziert, um Überlappung mit der Systemnavigation (unten) zu verhindern.
+        val maxY = (rootSize.height.toFloat() - bounds.bottom - navigationBarHeightPx).coerceAtLeast(-bounds.top)
 
         return candidateX.coerceIn(minX, maxX) to candidateY.coerceIn(minY, maxY)
+    }
+
+    // Lokale Hilfsfunktion: Erstellt die Sperrzone der Systemnavigation unten am Bildschirm.
+    fun getNavigationBarForbiddenZone(): Rect {
+        if (rootSize.width <= 0 || rootSize.height <= 0) {
+            return Rect(0f, 0f, 0f, 0f)
+        }
+        return Rect(
+            left = 0f,
+            top = rootSize.height.toFloat() - navigationBarHeightPx,
+            right = rootSize.width.toFloat(),
+            bottom = rootSize.height.toFloat()
+        )
     }
 
     // Lokale Hilfsfunktion: Kollisionstint/Haptic steuern, ohne dauerhaft zu triggern.
@@ -280,7 +301,14 @@ fun HomeScreen(
         // Solange Bounds fehlen, blockieren wir Speichern nicht unnötig.
         if (favoritesRect == null || clockRect == null) return true
 
-        return !intersects(favoritesRect, clockRect)
+        // Prüfe auf Überlappung zwischen Container
+        if (intersects(favoritesRect, clockRect)) return false
+
+        // Prüfe auf Überlappung mit der Systemnavigation
+        val navigationBarZone = getNavigationBarForbiddenZone()
+        if (intersects(favoritesRect, navigationBarZone) || intersects(clockRect, navigationBarZone)) return false
+
+        return true
     }
 
     // Lokale Hilfsfunktion: Liefert garantiert speicherbare Offsets, notfalls als letzten gültigen Zustand.
@@ -311,7 +339,7 @@ fun HomeScreen(
         )
     }
 
-    // Persistenter Überlappungsstatus: hält die Rahmen eingefärbt, solange die Container aktuell kollidieren.
+    // Persistenter Überlappungsstatus: hält die Rahmen eingefärbt, solange die Container aktuell kollidieren oder sich mit der Systemnavigation überlagern.
     val hasActiveContainerOverlap by remember(
         isEditMode,
         currentFavOffsetX,
@@ -319,7 +347,8 @@ fun HomeScreen(
         currentClockOffsetX,
         currentClockOffsetY,
         favoritesNeutralBounds,
-        clockNeutralBounds
+        clockNeutralBounds,
+        rootSize
     ) {
         derivedStateOf {
             if (!isEditMode) return@derivedStateOf false
@@ -334,7 +363,16 @@ fun HomeScreen(
                 translateRect(it, currentClockOffsetX, currentClockOffsetY)
             }
 
-            currentFavoritesRect != null && currentClockRect != null && intersects(currentFavoritesRect, currentClockRect)
+            if (currentFavoritesRect == null || currentClockRect == null) return@derivedStateOf false
+
+            // Prüfe auf Überlappung zwischen den beiden Container
+            val containerOverlap = intersects(currentFavoritesRect, currentClockRect)
+
+            // Prüfe auf Überlappung mit der Systemnavigation
+            val navigationBarZone = getNavigationBarForbiddenZone()
+            val navigationOverlap = intersects(currentFavoritesRect, navigationBarZone) || intersects(currentClockRect, navigationBarZone)
+
+            containerOverlap || navigationOverlap
         }
     }
 
@@ -413,7 +451,7 @@ fun HomeScreen(
                     }
                     .then(if (isEditMode) {
                         // Beim Blockieren färben wir den Rahmen warm ein, damit klar ist: nicht erlaubt.
-                        val isClockHighlighted = isClockCollisionBlocked || hasActiveContainerOverlap
+                        val isClockHighlighted = isClockCollisionBlocked || isClockNavigationBarBlocked || hasActiveContainerOverlap
                         val borderTint = if (isClockHighlighted) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
                         val fillTint = if (isClockHighlighted) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
                         Modifier
@@ -429,18 +467,21 @@ fun HomeScreen(
                                         clockDragAccumY = 0f
                                         // Neue Session startet immer aktiv.
                                         isClockDragSuspended = false
+                                        isClockNavigationBarBlocked = false
                                     },
                                     onDragEnd = {
                                         // Session sauber abschließen, damit die nächste Geste frisch startet.
                                         clockDragAccumX = 0f
                                         clockDragAccumY = 0f
                                         isClockDragSuspended = false
+                                        isClockNavigationBarBlocked = false
                                     },
                                     onDragCancel = {
                                         // Bei Abbruch identisches Reset-Verhalten für konsistente Gesten.
                                         clockDragAccumX = 0f
                                         clockDragAccumY = 0f
                                         isClockDragSuspended = false
+                                        isClockNavigationBarBlocked = false
                                     }
                                 ) { change, dragAmount ->
                                     change.consume()
@@ -478,7 +519,10 @@ fun HomeScreen(
                                         )
                                     }
 
-                                    val blocked = candidateClockRect != null && currentFavoritesRect != null && intersects(candidateClockRect, currentFavoritesRect)
+                                    val blockedByFavorites = candidateClockRect != null && currentFavoritesRect != null && intersects(candidateClockRect, currentFavoritesRect)
+                                    // Prüfe auch, ob der Kandidat die Systemnavigation überlagern würde.
+                                    val blockedByNavigation = candidateClockRect != null && intersects(candidateClockRect, getNavigationBarForbiddenZone())
+                                    val blocked = blockedByFavorites || blockedByNavigation
 
                                     if (!blocked) {
                                         // Gültiger Move: live anwenden und als "letzte gültige" Position merken.
@@ -487,6 +531,7 @@ fun HomeScreen(
                                         lastValidClockOffsetX = candidateX
                                         lastValidClockOffsetY = candidateY
                                         updateCollisionFeedback(clockBlocked = false, favoritesBlocked = isFavoritesCollisionBlocked)
+                                        isClockNavigationBarBlocked = false
 
                                         // Bei Hard-Limit (Screenrand) Session neu ankern, damit kein Nachziehen entsteht.
                                         val wasClamped = candidateX != snappedX || candidateY != snappedY
@@ -500,7 +545,11 @@ fun HomeScreen(
                                         // Ungültiger Move: auf letzte gültige Position zurückfallen.
                                         currentClockOffsetX = lastValidClockOffsetX
                                         currentClockOffsetY = lastValidClockOffsetY
+                                        // Setze clockBlocked = true für JEDE Art von Blockade (Favoriten ODER Navigation Bar)
+                                        // damit das haptische Feedback triggert wird.
                                         updateCollisionFeedback(clockBlocked = true, favoritesBlocked = isFavoritesCollisionBlocked)
+                                        // Unterscheide zwischen Favoriten-Kollision und Navigation Bar-Kollision für visuelle Rückmeldung
+                                        isClockNavigationBarBlocked = blockedByNavigation
 
                                         // Bei Kollision Session neu ankern, damit der Finger nicht "driften" kann.
                                         clockDragBaseX = currentClockOffsetX
@@ -540,8 +589,8 @@ fun HomeScreen(
                         )
                     }
                     .then(if (isEditMode) {
-                        // Gleiche Rückmeldung wie beim Uhrbereich: warmes Tinting bei Blockade.
-                        val isFavoritesHighlighted = isFavoritesCollisionBlocked || hasActiveContainerOverlap
+                        // Gleiche Rückmeldung wie beim Uhrbereich: warmes Tinting bei Blockade (Favoriten oder Navigation Bar).
+                        val isFavoritesHighlighted = isFavoritesCollisionBlocked || isFavoritesNavigationBarBlocked || hasActiveContainerOverlap
                         val borderTint = if (isFavoritesHighlighted) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
                         val fillTint = if (isFavoritesHighlighted) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
                         Modifier
@@ -582,18 +631,21 @@ fun HomeScreen(
                                         favoritesDragAccumY = 0f
                                         // Neue Session startet immer aktiv.
                                         isFavoritesDragSuspended = false
+                                        isFavoritesNavigationBarBlocked = false
                                     },
                                     onDragEnd = {
                                         // Session sauber abschließen, damit die nächste Geste frisch startet.
                                         favoritesDragAccumX = 0f
                                         favoritesDragAccumY = 0f
                                         isFavoritesDragSuspended = false
+                                        isFavoritesNavigationBarBlocked = false
                                     },
                                     onDragCancel = {
                                         // Bei Abbruch identisches Reset-Verhalten für konsistente Gesten.
                                         favoritesDragAccumX = 0f
                                         favoritesDragAccumY = 0f
                                         isFavoritesDragSuspended = false
+                                        isFavoritesNavigationBarBlocked = false
                                     }
                                 ) { change, dragAmount ->
                                     change.consume()
@@ -633,7 +685,10 @@ fun HomeScreen(
                                         translateRect(it, currentClockOffsetX, currentClockOffsetY)
                                     }
 
-                                    val blocked = candidateFavoritesRect != null && currentClockRect != null && intersects(candidateFavoritesRect, currentClockRect)
+                                    val blockedByClock = candidateFavoritesRect != null && currentClockRect != null && intersects(candidateFavoritesRect, currentClockRect)
+                                    // Prüfe auch, ob der Kandidat die Systemnavigation überlagern würde.
+                                    val blockedByNavigation = candidateFavoritesRect != null && intersects(candidateFavoritesRect, getNavigationBarForbiddenZone())
+                                    val blocked = blockedByClock || blockedByNavigation
 
                                     if (!blocked) {
                                         // Gültiger Move: live anwenden und als "letzte gültige" Position merken.
@@ -642,6 +697,7 @@ fun HomeScreen(
                                         lastValidFavOffsetX = candidateX
                                         lastValidFavOffsetY = candidateY
                                         updateCollisionFeedback(clockBlocked = isClockCollisionBlocked, favoritesBlocked = false)
+                                        isFavoritesNavigationBarBlocked = false
 
                                         // Bei Hard-Limit (Screenrand) Session neu ankern, damit kein Nachziehen entsteht.
                                         val wasClamped = candidateX != snappedX || candidateY != snappedY
@@ -656,6 +712,8 @@ fun HomeScreen(
                                         currentFavOffsetX = lastValidFavOffsetX
                                         currentFavOffsetY = lastValidFavOffsetY
                                         updateCollisionFeedback(clockBlocked = isClockCollisionBlocked, favoritesBlocked = true)
+                                        // Unterscheide zwischen Clock-Kollision und Navigation Bar-Kollision für visuelle Rückmeldung
+                                        isFavoritesNavigationBarBlocked = blockedByNavigation
 
                                         // Bei Kollision Session neu ankern, damit der Finger nicht "driften" kann.
                                         favoritesDragBaseX = currentFavOffsetX
@@ -778,6 +836,8 @@ fun HomeScreen(
                             favoritesDragAccumY = 0f
                             isClockDragSuspended = false
                             isFavoritesDragSuspended = false
+                            isClockNavigationBarBlocked = false
+                            isFavoritesNavigationBarBlocked = false
                             updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
                         },
                         tint = mainTextColor
@@ -803,6 +863,8 @@ fun HomeScreen(
                             lastValidFavOffsetY = resolvedFavorites.second
                             lastValidClockOffsetX = resolvedClock.first
                             lastValidClockOffsetY = resolvedClock.second
+                            isClockNavigationBarBlocked = false
+                            isFavoritesNavigationBarBlocked = false
                             updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
 
                             // Persistenz wird nur mit garantiert validen Offsets geschrieben.
