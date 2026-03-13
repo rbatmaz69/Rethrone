@@ -738,13 +738,6 @@ fun HomeScreen(
                     )
                 }
 
-                // Micro-Hinweis für klare Erwartung: Elemente dürfen sich im Edit-Modus nicht schneiden.
-                Text(
-                    text = "Elemente dürfen sich nicht überlappen",
-                    color = mainTextColor.copy(alpha = 0.6f),
-                    fontSize = 11.sp
-                )
-
                 // Kontroll-Buttons (Abbrechen, Zurücksetzen, Speichern)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
