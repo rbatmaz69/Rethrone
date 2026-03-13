@@ -174,6 +174,8 @@ fun HomeScreen(
     val pointerBoundaryTolerancePx = with(density) { 10.dp.toPx() }
     // Die Favoriten-Markierung wird visuell um diesen Wert nach außen gezeichnet.
     val favoritesFramePaddingPx = with(density) { 10.dp.toPx() }
+    // Für Nav-Bar-Kollision soll die Uhr den gleichen "gefühlten" Abstand haben wie die Favoriten.
+    val clockNavCollisionPaddingPx = favoritesFramePaddingPx
     
     // Systemnavigation Bar Höhe ermitteln, um eine Sperrzone am unteren Bildschirmrand zu definieren.
     // Die Navigationgleiste darf nicht überlagert werden.
@@ -297,6 +299,9 @@ fun HomeScreen(
         val clockRect = clockNeutralBounds?.let {
             translateRect(it, clockX, clockY)
         }
+        val clockNavRect = clockRect?.let {
+            expandRect(it, clockNavCollisionPaddingPx)
+        }
 
         // Solange Bounds fehlen, blockieren wir Speichern nicht unnötig.
         if (favoritesRect == null || clockRect == null) return true
@@ -306,7 +311,7 @@ fun HomeScreen(
 
         // Prüfe auf Überlappung mit der Systemnavigation
         val navigationBarZone = getNavigationBarForbiddenZone()
-        if (intersects(favoritesRect, navigationBarZone) || intersects(clockRect, navigationBarZone)) return false
+        if (intersects(favoritesRect, navigationBarZone) || (clockNavRect != null && intersects(clockNavRect, navigationBarZone))) return false
 
         return true
     }
@@ -362,6 +367,9 @@ fun HomeScreen(
             val currentClockRect = clockNeutralBounds?.let {
                 translateRect(it, currentClockOffsetX, currentClockOffsetY)
             }
+            val currentClockNavRect = currentClockRect?.let {
+                expandRect(it, clockNavCollisionPaddingPx)
+            }
 
             if (currentFavoritesRect == null || currentClockRect == null) return@derivedStateOf false
 
@@ -370,7 +378,8 @@ fun HomeScreen(
 
             // Prüfe auf Überlappung mit der Systemnavigation
             val navigationBarZone = getNavigationBarForbiddenZone()
-            val navigationOverlap = intersects(currentFavoritesRect, navigationBarZone) || intersects(currentClockRect, navigationBarZone)
+            val navigationOverlap = intersects(currentFavoritesRect, navigationBarZone) ||
+                (currentClockNavRect != null && intersects(currentClockNavRect, navigationBarZone))
 
             containerOverlap || navigationOverlap
         }
@@ -520,8 +529,11 @@ fun HomeScreen(
                                     }
 
                                     val blockedByFavorites = candidateClockRect != null && currentFavoritesRect != null && intersects(candidateClockRect, currentFavoritesRect)
+                                    val candidateClockNavRect = candidateClockRect?.let {
+                                        expandRect(it, clockNavCollisionPaddingPx)
+                                    }
                                     // Prüfe auch, ob der Kandidat die Systemnavigation überlagern würde.
-                                    val blockedByNavigation = candidateClockRect != null && intersects(candidateClockRect, getNavigationBarForbiddenZone())
+                                    val blockedByNavigation = candidateClockNavRect != null && intersects(candidateClockNavRect, getNavigationBarForbiddenZone())
                                     val blocked = blockedByFavorites || blockedByNavigation
 
                                     if (!blocked) {
