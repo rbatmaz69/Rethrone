@@ -124,17 +124,18 @@ fun HomeScreen(
 
     // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
     // Favoriten-Offset wird lokal gehalten und erst bei "Speichern" persistiert.
-    var currentFavOffsetX by remember(favoritesOffsetX, isEditMode) { mutableStateOf(favoritesOffsetX) }
-    var currentFavOffsetY by remember(favoritesOffsetY, isEditMode) { mutableStateOf(favoritesOffsetY) }
+    // Keine isEditMode Abhängigkeit: States sollten nur neu initialisiert werden, wenn sich die persistierten Werte ändern, nicht wenn der Edit-Modus wechselt.
+    var currentFavOffsetX by remember(favoritesOffsetX) { mutableStateOf(favoritesOffsetX) }
+    var currentFavOffsetY by remember(favoritesOffsetY) { mutableStateOf(favoritesOffsetY) }
     // Uhrbereich (Uhr + Datum) ist eine Einheit und wird frei auf X/Y verschoben.
-    var currentClockOffsetX by remember(clockOffsetX, isEditMode) { mutableStateOf(clockOffsetX) }
-    var currentClockOffsetY by remember(clockOffsetY, isEditMode) { mutableStateOf(clockOffsetY) }
+    var currentClockOffsetX by remember(clockOffsetX) { mutableStateOf(clockOffsetX) }
+    var currentClockOffsetY by remember(clockOffsetY) { mutableStateOf(clockOffsetY) }
 
     // Letzte gültige Positionen: Bei Kollision wird darauf zurückgesetzt.
-    var lastValidFavOffsetX by remember(favoritesOffsetX, isEditMode) { mutableStateOf(favoritesOffsetX) }
-    var lastValidFavOffsetY by remember(favoritesOffsetY, isEditMode) { mutableStateOf(favoritesOffsetY) }
-    var lastValidClockOffsetX by remember(clockOffsetX, isEditMode) { mutableStateOf(clockOffsetX) }
-    var lastValidClockOffsetY by remember(clockOffsetY, isEditMode) { mutableStateOf(clockOffsetY) }
+    var lastValidFavOffsetX by remember(favoritesOffsetX) { mutableStateOf(favoritesOffsetX) }
+    var lastValidFavOffsetY by remember(favoritesOffsetY) { mutableStateOf(favoritesOffsetY) }
+    var lastValidClockOffsetX by remember(clockOffsetX) { mutableStateOf(clockOffsetX) }
+    var lastValidClockOffsetY by remember(clockOffsetY) { mutableStateOf(clockOffsetY) }
 
     // Neutral-Bounds sind Layout-Bounds ohne aktuelle Offsets; damit können wir sauber Kandidaten prüfen.
     var clockNeutralBounds by remember { mutableStateOf<Rect?>(null) }
@@ -805,10 +806,12 @@ fun HomeScreen(
                             updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
 
                             // Persistenz wird nur mit garantiert validen Offsets geschrieben.
+                            // Die Mode wird NACH den Save-Callbacks toggled, damit die DataStore Updates
+                            // die UI States aktualisiert haben, bevor wir den Edit Mode ausschalten.
                             onSaveFavoritesOffset(resolvedFavorites.first, resolvedFavorites.second)
                             onSaveClockOffset(resolvedClock.first, resolvedClock.second)
-                            onToggleEditMode()
                             Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
+                            onToggleEditMode()
                         },
                         containerColor = mainTextColor,
                         tint = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
