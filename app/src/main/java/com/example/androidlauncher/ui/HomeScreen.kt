@@ -168,6 +168,8 @@ fun HomeScreen(
     val snapThresholdPx = with(density) { 4.dp.toPx() }
     // Kleine Toleranz vermeidet ungewollte Pausen bei minimalem Finger-Jitter an Kanten.
     val pointerBoundaryTolerancePx = with(density) { 10.dp.toPx() }
+    // Die Favoriten-Markierung wird visuell um diesen Wert nach außen gezeichnet.
+    val favoritesFramePaddingPx = with(density) { 10.dp.toPx() }
     
     // Launch Request State
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -183,6 +185,16 @@ fun HomeScreen(
             top = rect.top + y,
             right = rect.right + x,
             bottom = rect.bottom + y
+        )
+    }
+
+    // Lokale Hilfsfunktion: Erweitert ein Rechteck um eine visuelle Außenkante.
+    fun expandRect(rect: Rect, padding: Float): Rect {
+        return Rect(
+            left = rect.left - padding,
+            top = rect.top - padding,
+            right = rect.right + padding,
+            bottom = rect.bottom + padding
         )
     }
 
@@ -236,6 +248,93 @@ fun HomeScreen(
             position.x <= size.width + tolerancePx &&
             position.y >= -tolerancePx &&
             position.y <= size.height + tolerancePx
+    }
+
+    // Lokale Hilfsfunktion: Prüft einen vollständigen Layoutzustand auf Screen-Grenzen und Kollisionen.
+    fun isValidLayoutState(
+        favoritesX: Float,
+        favoritesY: Float,
+        clockX: Float,
+        clockY: Float
+    ): Boolean {
+        val adjustedFavorites = clampToRoot(favoritesX, favoritesY, favoritesNeutralBounds)
+        val adjustedClock = clampToRoot(clockX, clockY, clockNeutralBounds)
+
+        // Bereits geklemmte Werte gelten als ungültig für Speichern, weil nicht exakt der gewünschte Zustand vorliegt.
+        val favoritesWereClamped = adjustedFavorites.first != favoritesX || adjustedFavorites.second != favoritesY
+        val clockWereClamped = adjustedClock.first != clockX || adjustedClock.second != clockY
+        if (favoritesWereClamped || clockWereClamped) return false
+
+        val favoritesRect = favoritesNeutralBounds?.let {
+            // Für Kollisionen zählen die sichtbaren Container-Kanten, nicht nur der nackte Content.
+            expandRect(
+                rect = translateRect(it, favoritesX, favoritesY),
+                padding = favoritesFramePaddingPx
+            )
+        }
+        val clockRect = clockNeutralBounds?.let {
+            translateRect(it, clockX, clockY)
+        }
+
+        // Solange Bounds fehlen, blockieren wir Speichern nicht unnötig.
+        if (favoritesRect == null || clockRect == null) return true
+
+        return !intersects(favoritesRect, clockRect)
+    }
+
+    // Lokale Hilfsfunktion: Liefert garantiert speicherbare Offsets, notfalls als letzten gültigen Zustand.
+    fun resolveSavableOffsets(): Pair<Pair<Float, Float>, Pair<Float, Float>> {
+        val candidates = listOf(
+            // Bevorzugt wird der aktuelle sichtbare Zustand.
+            Pair(currentFavOffsetX to currentFavOffsetY, currentClockOffsetX to currentClockOffsetY),
+            // Falls die Uhr die blockierte Einheit war, nehmen wir deren letzten gültigen Zustand.
+            Pair(currentFavOffsetX to currentFavOffsetY, lastValidClockOffsetX to lastValidClockOffsetY),
+            // Falls die Favoriten die blockierte Einheit waren, nehmen wir deren letzten gültigen Zustand.
+            Pair(lastValidFavOffsetX to lastValidFavOffsetY, currentClockOffsetX to currentClockOffsetY),
+            // Letzter gemeinsamer Fallback: beide Einheiten auf zuletzt bekannte gültige Werte.
+            Pair(lastValidFavOffsetX to lastValidFavOffsetY, lastValidClockOffsetX to lastValidClockOffsetY),
+            // Sicherheitsnetz: persistierte Eingangspositionen bleiben immer verfügbar.
+            Pair(favoritesOffsetX to favoritesOffsetY, clockOffsetX to clockOffsetY)
+        )
+
+        return candidates.firstOrNull { candidate ->
+            isValidLayoutState(
+                favoritesX = candidate.first.first,
+                favoritesY = candidate.first.second,
+                clockX = candidate.second.first,
+                clockY = candidate.second.second
+            )
+        } ?: Pair(
+            favoritesOffsetX to favoritesOffsetY,
+            clockOffsetX to clockOffsetY
+        )
+    }
+
+    // Persistenter Überlappungsstatus: hält die Rahmen eingefärbt, solange die Container aktuell kollidieren.
+    val hasActiveContainerOverlap by remember(
+        isEditMode,
+        currentFavOffsetX,
+        currentFavOffsetY,
+        currentClockOffsetX,
+        currentClockOffsetY,
+        favoritesNeutralBounds,
+        clockNeutralBounds
+    ) {
+        derivedStateOf {
+            if (!isEditMode) return@derivedStateOf false
+
+            val currentFavoritesRect = favoritesNeutralBounds?.let {
+                expandRect(
+                    rect = translateRect(it, currentFavOffsetX, currentFavOffsetY),
+                    padding = favoritesFramePaddingPx
+                )
+            }
+            val currentClockRect = clockNeutralBounds?.let {
+                translateRect(it, currentClockOffsetX, currentClockOffsetY)
+            }
+
+            currentFavoritesRect != null && currentClockRect != null && intersects(currentFavoritesRect, currentClockRect)
+        }
     }
 
     val rotation by animateFloatAsState(
@@ -313,8 +412,9 @@ fun HomeScreen(
                     }
                     .then(if (isEditMode) {
                         // Beim Blockieren färben wir den Rahmen warm ein, damit klar ist: nicht erlaubt.
-                        val borderTint = if (isClockCollisionBlocked) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
-                        val fillTint = if (isClockCollisionBlocked) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
+                        val isClockHighlighted = isClockCollisionBlocked || hasActiveContainerOverlap
+                        val borderTint = if (isClockHighlighted) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
+                        val fillTint = if (isClockHighlighted) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
                         Modifier
                             .border(BorderStroke(1.dp, borderTint), RoundedCornerShape(16.dp))
                             .background(fillTint, RoundedCornerShape(16.dp))
@@ -371,7 +471,10 @@ fun HomeScreen(
                                     // Kandidat-Rect gegen aktuelle Favoriten-Position prüfen.
                                     val candidateClockRect = clockNeutralBounds?.let { translateRect(it, candidateX, candidateY) }
                                     val currentFavoritesRect = favoritesNeutralBounds?.let {
-                                        translateRect(it, currentFavOffsetX, currentFavOffsetY)
+                                        expandRect(
+                                            rect = translateRect(it, currentFavOffsetX, currentFavOffsetY),
+                                            padding = favoritesFramePaddingPx
+                                        )
                                     }
 
                                     val blocked = candidateClockRect != null && currentFavoritesRect != null && intersects(candidateClockRect, currentFavoritesRect)
@@ -437,8 +540,9 @@ fun HomeScreen(
                     }
                     .then(if (isEditMode) {
                         // Gleiche Rückmeldung wie beim Uhrbereich: warmes Tinting bei Blockade.
-                        val borderTint = if (isFavoritesCollisionBlocked) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
-                        val fillTint = if (isFavoritesCollisionBlocked) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
+                        val isFavoritesHighlighted = isFavoritesCollisionBlocked || hasActiveContainerOverlap
+                        val borderTint = if (isFavoritesHighlighted) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
+                        val fillTint = if (isFavoritesHighlighted) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
                         Modifier
                             // Der Edit-Rahmen wird nur gezeichnet und verändert nicht mehr das Layout.
                             .drawBehind {
@@ -519,7 +623,10 @@ fun HomeScreen(
 
                                     // Kandidat-Rect gegen aktuelle Uhrposition prüfen.
                                     val candidateFavoritesRect = favoritesNeutralBounds?.let {
-                                        translateRect(it, candidateX, candidateY)
+                                        expandRect(
+                                            rect = translateRect(it, candidateX, candidateY),
+                                            padding = favoritesFramePaddingPx
+                                        )
                                     }
                                     val currentClockRect = clockNeutralBounds?.let {
                                         translateRect(it, currentClockOffsetX, currentClockOffsetY)
@@ -688,9 +795,25 @@ fun HomeScreen(
                     EditControlButton(
                         icon = Icons.Default.Check,
                         onClick = {
-                            // Persistenz wird nur bei "Speichern" geschrieben.
-                            onSaveFavoritesOffset(currentFavOffsetX, currentFavOffsetY)
-                            onSaveClockOffset(currentClockOffsetX, currentClockOffsetY)
+                            // Vor dem Persistieren wird immer ein final gültiger Zustand ermittelt.
+                            val resolvedOffsets = resolveSavableOffsets()
+                            val resolvedFavorites = resolvedOffsets.first
+                            val resolvedClock = resolvedOffsets.second
+
+                            // UI aktiv auf den akzeptierten Zustand zurücksetzen, damit nichts Inkonsistentes bleibt.
+                            currentFavOffsetX = resolvedFavorites.first
+                            currentFavOffsetY = resolvedFavorites.second
+                            currentClockOffsetX = resolvedClock.first
+                            currentClockOffsetY = resolvedClock.second
+                            lastValidFavOffsetX = resolvedFavorites.first
+                            lastValidFavOffsetY = resolvedFavorites.second
+                            lastValidClockOffsetX = resolvedClock.first
+                            lastValidClockOffsetY = resolvedClock.second
+                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+
+                            // Persistenz wird nur mit garantiert validen Offsets geschrieben.
+                            onSaveFavoritesOffset(resolvedFavorites.first, resolvedFavorites.second)
+                            onSaveClockOffset(resolvedClock.first, resolvedClock.second)
                             onToggleEditMode()
                             Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
                         },
