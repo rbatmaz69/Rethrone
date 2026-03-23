@@ -894,8 +894,8 @@ fun HomeScreen(
             }
         }
 
-        // --- Standard UI (Settings & Search) - nur sichtbar wenn nicht im Edit-Mode ---
-        if (!isPreview && !isEditMode) {
+        // --- Standard UI (Settings & Search) - im Echtbetrieb immer sichtbar, auch im Edit-Mode ---
+        if (!isPreview) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
