@@ -29,6 +29,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Image
+import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Shield
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.Smartphone
@@ -43,6 +44,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
  */
 @Composable
 fun EditConfigMenu(
+    onOpenHomeLayoutEdit: () -> Unit,
     onOpenIconConfig: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onResetWallpaper: () -> Unit,
@@ -123,6 +125,18 @@ fun EditConfigMenu(
                     isLiquidGlassEnabled = isLiquidGlassEnabled,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "haptic_feedback_switch"
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.Pencil,
+                    label = "Startbildschirm-Layout anpassen",
+                    onClick = onOpenHomeLayoutEdit,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "edit_home_layout_item"
                 )
             }
 
@@ -307,7 +321,8 @@ fun EditMenuItem(
     isLiquidGlassEnabled: Boolean,
     isDarkTextEnabled: Boolean,
     statusLabel: String? = null,
-    trailingContent: @Composable (() -> Unit)? = null
+    trailingContent: @Composable (() -> Unit)? = null,
+    testTag: String? = null
 ) {
     val backgroundModifier = if (isLiquidGlassEnabled) {
         val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
@@ -318,7 +333,12 @@ fun EditMenuItem(
     }
 
     Surface(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).then(backgroundModifier).clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .then(backgroundModifier)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
+            .clickable { onClick() },
         color = Color.Transparent
     ) {
         Row(

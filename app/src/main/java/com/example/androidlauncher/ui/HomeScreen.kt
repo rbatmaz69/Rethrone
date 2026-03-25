@@ -141,9 +141,10 @@ fun HomeScreen(
     // Neutral-Bounds sind Layout-Bounds ohne aktuelle Offsets; damit können wir sauber Kandidaten prüfen.
     var clockNeutralBounds by remember { mutableStateOf<Rect?>(null) }
     var favoritesNeutralBounds by remember { mutableStateOf<Rect?>(null) }
-    // Live-Bounds der Bottom-Right-Controls (Lupe/Zahnrad) für Kollisionserkennung im Edit-Mode.
+    // Live-Bounds der UI-Controls, die im Edit-Mode nicht überlappt werden dürfen.
     var searchButtonBounds by remember { mutableStateOf<Rect?>(null) }
     var settingsButtonBounds by remember { mutableStateOf<Rect?>(null) }
+    var editControlsBounds by remember { mutableStateOf<Rect?>(null) }
 
     // Visuelles Kollision-Feedback (Option A) + einmaliges Haptic pro Blockadephase.
     var isClockCollisionBlocked by remember { mutableStateOf(false) }
@@ -179,7 +180,7 @@ fun HomeScreen(
     val favoritesFramePaddingPx = with(density) { 10.dp.toPx() }
     // Für Nav-Bar-Kollision soll die Uhr den gleichen "gefühlten" Abstand haben wie die Favoriten.
     val clockNavCollisionPaddingPx = favoritesFramePaddingPx
-    // Kleine Schutzkante um Search/Settings, damit die Container visuell nicht "ankleben".
+    // Kleine Schutzkante um UI-Controls, damit die Container visuell nicht "ankleben".
     val bottomControlsPaddingPx = with(density) { 8.dp.toPx() }
     
     // Systemnavigation Bar Höhe ermitteln, um eine Sperrzone am unteren Bildschirmrand zu definieren.
@@ -255,15 +256,30 @@ fun HomeScreen(
         )
     }
 
-    // Lokale Hilfsfunktion: Sperrzonen für unten rechts sichtbare Controls (Lupe/Zahnrad) erzeugen.
-    fun getBottomControlsForbiddenZones(): List<Rect> {
-        val searchZone = if (!isSettingsOpen) {
-            searchButtonBounds?.let { expandRect(it, bottomControlsPaddingPx) }
-        } else {
-            null
+    // Reaktive Sperrzonen für sichtbar platzierte Controls (Lupe/Zahnrad + Edit-Buttons).
+    // Wichtig: Als State geführt, damit pointerInput bei Bounds-Änderung neu gestartet wird.
+    val bottomControlsForbiddenZones by remember(
+        searchButtonBounds,
+        settingsButtonBounds,
+        editControlsBounds,
+        isEditMode,
+        isSettingsOpen,
+        bottomControlsPaddingPx
+    ) {
+        derivedStateOf {
+            val searchZone = if (!isSettingsOpen) {
+                searchButtonBounds?.let { expandRect(it, bottomControlsPaddingPx) }
+            } else {
+                null
+            }
+            val settingsZone = settingsButtonBounds?.let { expandRect(it, bottomControlsPaddingPx) }
+            val editControlsZone = if (isEditMode) {
+                editControlsBounds?.let { expandRect(it, bottomControlsPaddingPx) }
+            } else {
+                null
+            }
+            listOfNotNull(searchZone, settingsZone, editControlsZone)
         }
-        val settingsZone = settingsButtonBounds?.let { expandRect(it, bottomControlsPaddingPx) }
-        return listOfNotNull(searchZone, settingsZone)
     }
 
     // Lokale Hilfsfunktion: Kollisionstint/Haptic steuern, ohne dauerhaft zu triggern.
@@ -318,7 +334,7 @@ fun HomeScreen(
         val clockNavRect = clockRect?.let {
             expandRect(it, clockNavCollisionPaddingPx)
         }
-        val bottomControlsZones = getBottomControlsForbiddenZones()
+        val bottomControlsZones = bottomControlsForbiddenZones
 
         // Solange Bounds fehlen, blockieren wir Speichern nicht unnötig.
         if (favoritesRect == null || clockRect == null) return true
@@ -330,7 +346,7 @@ fun HomeScreen(
         val navigationBarZone = getNavigationBarForbiddenZone()
         if (intersects(favoritesRect, navigationBarZone) || (clockNavRect != null && intersects(clockNavRect, navigationBarZone))) return false
 
-        // Prüfe auf Überlappung mit den unten rechts sichtbaren Controls.
+        // Prüfe auf Überlappung mit sichtbaren UI-Controls.
         if (bottomControlsZones.any { zone ->
                 intersects(favoritesRect, zone) || (clockNavRect != null && intersects(clockNavRect, zone))
             }) return false
@@ -400,8 +416,8 @@ fun HomeScreen(
             val navigationOverlap = intersects(currentFavoritesRect, navigationBarZone) ||
                 (currentClockNavRect != null && intersects(currentClockNavRect, navigationBarZone))
 
-            // Prüfe auf Überlappung mit den unten rechts sichtbaren Controls.
-            val bottomControlsOverlap = getBottomControlsForbiddenZones().any { zone ->
+            // Prüfe auf Überlappung mit sichtbaren UI-Controls.
+            val bottomControlsOverlap = bottomControlsForbiddenZones.any { zone ->
                 intersects(currentFavoritesRect, zone) ||
                     (currentClockNavRect != null && intersects(currentClockNavRect, zone))
             }
@@ -415,6 +431,13 @@ fun HomeScreen(
         if (isSettingsOpen) {
             searchButtonBounds = null
             onSearchButtonBoundsChanged(null)
+        }
+    }
+
+    // Wenn Edit-Mode endet, die Sperrzone der Edit-Buttons sofort entfernen.
+    LaunchedEffect(isEditMode) {
+        if (!isEditMode) {
+            editControlsBounds = null
         }
     }
 
@@ -455,9 +478,6 @@ fun HomeScreen(
                                 } else {
                                     Toast.makeText(context, "Accessibility Service erforderlich", Toast.LENGTH_SHORT).show()
                                 }
-                            },
-                            onLongPress = {
-                                if (!isEditMode) onToggleEditMode()
                             }
                         )
                     }
@@ -499,7 +519,7 @@ fun HomeScreen(
                         Modifier
                             .border(BorderStroke(1.dp, borderTint), RoundedCornerShape(16.dp))
                             .background(fillTint, RoundedCornerShape(16.dp))
-                            .pointerInput(Unit) {
+                            .pointerInput(bottomControlsForbiddenZones) {
                                 detectDragGestures(
                                     onDragStart = {
                                         // Drag startet relativ zur aktuellen Position; dadurch bleibt der Finger "gekoppelt".
@@ -574,9 +594,9 @@ fun HomeScreen(
                                     }
                                     // Prüfe auch, ob der Kandidat die Systemnavigation überlagern würde.
                                     val blockedByNavigation = candidateClockNavRect != null && intersects(candidateClockNavRect, getNavigationBarForbiddenZone())
-                                    // Prüfe zusätzlich auf Überlappung mit unten rechts sichtbaren Controls.
+                                    // Prüfe zusätzlich auf Überlappung mit sichtbaren UI-Controls.
                                     val blockedByBottomControls = candidateClockNavRect != null &&
-                                        getBottomControlsForbiddenZones().any { zone -> intersects(candidateClockNavRect, zone) }
+                                        bottomControlsForbiddenZones.any { zone -> intersects(candidateClockNavRect, zone) }
                                     val blocked = blockedByFavorites || blockedByNavigation || blockedByBottomControls
 
                                     if (!blocked) {
@@ -678,7 +698,7 @@ fun HomeScreen(
                                     style = Stroke(width = 1.dp.toPx())
                                 )
                             }
-                            .pointerInput(Unit) {
+                            .pointerInput(bottomControlsForbiddenZones) {
                                 detectDragGestures(
                                     onDragStart = {
                                         // Drag startet relativ zur aktuellen Position; dadurch bleibt der Finger "gekoppelt".
@@ -752,9 +772,9 @@ fun HomeScreen(
                                     val blockedByClock = candidateFavoritesRect != null && currentClockRect != null && intersects(candidateFavoritesRect, currentClockRect)
                                     // Prüfe auch, ob der Kandidat die Systemnavigation überlagern würde.
                                     val blockedByNavigation = candidateFavoritesRect != null && intersects(candidateFavoritesRect, getNavigationBarForbiddenZone())
-                                    // Prüfe zusätzlich auf Überlappung mit unten rechts sichtbaren Controls.
+                                    // Prüfe zusätzlich auf Überlappung mit sichtbaren UI-Controls.
                                     val blockedByBottomControls = candidateFavoritesRect != null &&
-                                        getBottomControlsForbiddenZones().any { zone -> intersects(candidateFavoritesRect, zone) }
+                                        bottomControlsForbiddenZones.any { zone -> intersects(candidateFavoritesRect, zone) }
                                     val blocked = blockedByClock || blockedByNavigation || blockedByBottomControls
 
                                     if (!blocked) {
@@ -847,6 +867,7 @@ fun HomeScreen(
         ) {
             Column(
                 modifier = Modifier
+                    .testTag("home_edit_controls")
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(24.dp),
@@ -870,7 +891,12 @@ fun HomeScreen(
 
                 // Kontroll-Buttons (Abbrechen, Zurücksetzen, Speichern)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .wrapContentWidth()
+                        .onGloballyPositioned {
+                            // Sichtbare Bounds der Edit-Buttons als zusätzliche Sperrzone erfassen.
+                            editControlsBounds = it.boundsInRoot()
+                        },
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -958,6 +984,7 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    // Fixe Position bleibt unten rechts, auch im Edit-Mode.
                     .navigationBarsPadding()
                     .padding(24.dp),
                 contentAlignment = Alignment.BottomEnd

@@ -98,4 +98,24 @@ class LauncherUiTest {
 
         composeTestRule.onNodeWithTag("shake_gestures_switch").assertIsDisplayed()
     }
+
+    @Test
+    fun homeEditModeOpensOnlyThroughEditSubmenuGeneralOption() {
+        composeTestRule.onNodeWithTag("settings_button").assertIsDisplayed().performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("settings_palette_item_edit").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("settings_palette_item_edit").performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("edit_home_layout_item").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("edit_home_layout_item").performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("home_edit_controls").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("home_edit_controls").assertIsDisplayed()
+    }
 }

@@ -950,6 +950,10 @@ class MainActivity : ComponentActivity() {
                         onClose = { isEditConfigOpen = false }
                     ) {
                         EditConfigMenu(
+                            onOpenHomeLayoutEdit = {
+                                isEditConfigOpen = false
+                                isHomeEditMode = true
+                            },
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onChangeWallpaper = {
                                 isEditConfigOpen = false
