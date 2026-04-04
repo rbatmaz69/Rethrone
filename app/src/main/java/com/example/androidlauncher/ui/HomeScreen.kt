@@ -14,7 +14,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -36,16 +37,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -80,6 +77,11 @@ data class HomeLaunchRequest(
     val bounds: Rect?,
     val intent: Intent?
 )
+
+private enum class HomeEditTarget {
+    CLOCK,
+    FAVORITES
+}
 
 /**
  * Homescreen des Launchers mit intuitivem Bearbeitungsmodus für Element-Positionen.
@@ -191,6 +193,9 @@ fun HomeScreen(
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
     var launchRequest by launchRequestState
 
+    var selectedEditTarget by remember { mutableStateOf<HomeEditTarget?>(null) }
+    val verticalStepPx = with(density) { 12.dp.toPx() }
+
     var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
     var shortcutMenuBounds by remember { mutableStateOf<Rect?>(null) }
 
@@ -220,6 +225,14 @@ fun HomeScreen(
             first.right > second.left &&
             first.top < second.bottom &&
             first.bottom > second.top
+    }
+
+    // Lokale Hilfsfunktion: Punkt innerhalb eines Rechtecks prüfen.
+    fun rectContains(rect: Rect, point: Offset): Boolean {
+        return point.x >= rect.left &&
+            point.x <= rect.right &&
+            point.y >= rect.top &&
+            point.y <= rect.bottom
     }
 
     // Lokale Hilfsfunktion: "Magnetisches" Snap-to-Grid für flüssiges Live-Dragging.
@@ -261,7 +274,6 @@ fun HomeScreen(
     val bottomControlsForbiddenZones by remember(
         searchButtonBounds,
         settingsButtonBounds,
-        editControlsBounds,
         isEditMode,
         isSettingsOpen,
         bottomControlsPaddingPx
@@ -273,12 +285,8 @@ fun HomeScreen(
                 null
             }
             val settingsZone = settingsButtonBounds?.let { expandRect(it, bottomControlsPaddingPx) }
-            val editControlsZone = if (isEditMode) {
-                editControlsBounds?.let { expandRect(it, bottomControlsPaddingPx) }
-            } else {
-                null
-            }
-            listOfNotNull(searchZone, settingsZone, editControlsZone)
+            // Edit-Controls sind temporär und dürfen die Positionsbearbeitung nicht blockieren.
+            listOfNotNull(searchZone, settingsZone)
         }
     }
 
@@ -379,6 +387,52 @@ fun HomeScreen(
         } ?: Pair(0f to 0f, 0f to 0f)
     }
 
+    fun moveSelectedTargetBy(deltaY: Float) {
+        if (deltaY == 0f) return
+
+        when (selectedEditTarget ?: return) {
+            HomeEditTarget.CLOCK -> {
+                val snappedY = softSnap(currentClockOffsetY + deltaY)
+                val (_, candidateY) = clampToRoot(currentClockOffsetX, snappedY, clockNeutralBounds)
+                val canApply = isValidLayoutState(
+                    favoritesX = currentFavOffsetX,
+                    favoritesY = currentFavOffsetY,
+                    clockX = currentClockOffsetX,
+                    clockY = candidateY
+                )
+                if (canApply) {
+                    currentClockOffsetY = candidateY
+                    lastValidClockOffsetX = currentClockOffsetX
+                    lastValidClockOffsetY = candidateY
+                    isClockNavigationBarBlocked = false
+                    updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                } else {
+                    updateCollisionFeedback(clockBlocked = true, favoritesBlocked = false)
+                }
+            }
+
+            HomeEditTarget.FAVORITES -> {
+                val snappedY = softSnap(currentFavOffsetY + deltaY)
+                val (_, candidateY) = clampToRoot(currentFavOffsetX, snappedY, favoritesNeutralBounds)
+                val canApply = isValidLayoutState(
+                    favoritesX = currentFavOffsetX,
+                    favoritesY = candidateY,
+                    clockX = currentClockOffsetX,
+                    clockY = currentClockOffsetY
+                )
+                if (canApply) {
+                    currentFavOffsetY = candidateY
+                    lastValidFavOffsetX = currentFavOffsetX
+                    lastValidFavOffsetY = candidateY
+                    isFavoritesNavigationBarBlocked = false
+                    updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                } else {
+                    updateCollisionFeedback(clockBlocked = false, favoritesBlocked = true)
+                }
+            }
+        }
+    }
+
     // Persistenter Überlappungsstatus: hält die Rahmen eingefärbt, solange die Container aktuell kollidieren oder sich mit der Systemnavigation überlagern.
     val hasActiveContainerOverlap by remember(
         isEditMode,
@@ -438,6 +492,14 @@ fun HomeScreen(
     LaunchedEffect(isEditMode) {
         if (!isEditMode) {
             editControlsBounds = null
+            selectedEditTarget = null
+        } else {
+            // Vertikalmodus: bestehende Legacy-X-Verschiebungen beim Einstieg neutralisieren.
+            currentFavOffsetX = 0f
+            currentClockOffsetX = 0f
+            lastValidFavOffsetX = 0f
+            lastValidClockOffsetX = 0f
+            selectedEditTarget = null
         }
     }
 
@@ -470,8 +532,36 @@ fun HomeScreen(
                             }
                         }
                     }
-                    .pointerInput(Unit) {
+                    .pointerInput(
+                        isEditMode,
+                        selectedEditTarget,
+                        clockNeutralBounds,
+                        favoritesNeutralBounds,
+                        currentClockOffsetX,
+                        currentClockOffsetY,
+                        currentFavOffsetX,
+                        currentFavOffsetY,
+                        editControlsBounds
+                    ) {
                         detectTapGestures(
+                            onTap = { tapOffset ->
+                                if (!isEditMode || selectedEditTarget == null) return@detectTapGestures
+
+                                val clockRect = clockNeutralBounds?.let {
+                                    translateRect(it, currentClockOffsetX, currentClockOffsetY)
+                                }
+                                val favoritesRect = favoritesNeutralBounds?.let {
+                                    translateRect(it, currentFavOffsetX, currentFavOffsetY)
+                                }
+
+                                val hitClock = clockRect?.let { rectContains(it, tapOffset) } == true
+                                val hitFavorites = favoritesRect?.let { rectContains(it, tapOffset) } == true
+                                val hitEditControls = editControlsBounds?.let { rectContains(it, tapOffset) } == true
+
+                                if (!hitClock && !hitFavorites && !hitEditControls) {
+                                    selectedEditTarget = null
+                                }
+                            },
                             onDoubleTap = {
                                 if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
                                     LauncherAccessibilityService.requestLockScreen(context)
@@ -498,6 +588,7 @@ fun HomeScreen(
                 modifier = Modifier
                     // Im Edit-Modus bleibt der Drag-Container kompakt, damit X-Verschiebung spürbar möglich ist.
                     .then(if (isEditMode) Modifier.wrapContentWidth(Alignment.Start) else Modifier.fillMaxWidth())
+                    .zIndex(if (isEditMode) 1500f else 0f)
                     // Uhrbereich wird als Einheit auf X/Y verschoben.
                     .offset { IntOffset(currentClockOffsetX.roundToInt(), currentClockOffsetY.roundToInt()) }
                     // Neutral-Bounds aus aktuellen Bounds ableiten, damit Kandidatenberechnung stabil bleibt.
@@ -512,129 +603,21 @@ fun HomeScreen(
                         )
                     }
                     .then(if (isEditMode) {
-                        // Beim Blockieren färben wir den Rahmen warm ein, damit klar ist: nicht erlaubt.
-                        val isClockHighlighted = isClockCollisionBlocked || isClockNavigationBarBlocked || hasActiveContainerOverlap
-                        val borderTint = if (isClockHighlighted) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
-                        val fillTint = if (isClockHighlighted) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
+                        val isClockSelected = selectedEditTarget == HomeEditTarget.CLOCK
                         Modifier
-                            .border(BorderStroke(1.dp, borderTint), RoundedCornerShape(16.dp))
-                            .background(fillTint, RoundedCornerShape(16.dp))
-                            .pointerInput(bottomControlsForbiddenZones) {
-                                detectDragGestures(
-                                    onDragStart = {
-                                        // Drag startet relativ zur aktuellen Position; dadurch bleibt der Finger "gekoppelt".
-                                        clockDragBaseX = currentClockOffsetX
-                                        clockDragBaseY = currentClockOffsetY
-                                        clockDragAccumX = 0f
-                                        clockDragAccumY = 0f
-                                        // Neue Session startet immer aktiv.
-                                        isClockDragSuspended = false
-                                        isClockNavigationBarBlocked = false
-                                        // Startet ohne aktiven Blockadezustand, damit Feedback pro Session klar ist.
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    },
-                                    onDragEnd = {
-                                        // Session sauber abschließen, damit die nächste Geste frisch startet.
-                                        clockDragAccumX = 0f
-                                        clockDragAccumY = 0f
-                                        isClockDragSuspended = false
-                                        isClockNavigationBarBlocked = false
-                                        // Nach Drag-Ende Blockadefeedback zurücksetzen.
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    },
-                                    onDragCancel = {
-                                        // Bei Abbruch identisches Reset-Verhalten für konsistente Gesten.
-                                        clockDragAccumX = 0f
-                                        clockDragAccumY = 0f
-                                        isClockDragSuspended = false
-                                        isClockNavigationBarBlocked = false
-                                        // Auch bei Abbruch keine hängenden Highlight-States behalten.
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    }
-                                ) { change, dragAmount ->
-                                    change.consume()
-
-                                    // Wenn Finger den Container verlässt, wird diese Session bis zum Loslassen pausiert.
-                                    if (!isPointerInsideContainer(change.position, clockDragContainerSize, pointerBoundaryTolerancePx)) {
-                                        isClockDragSuspended = true
-                                        // Finger außerhalb: Session pausieren und aktives Blockade-Feedback beenden.
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    }
-                                    if (isClockDragSuspended) {
-                                        return@detectDragGestures
-                                    }
-
-                                    // Delta in der aktuellen Session akkumulieren statt direkt Offsets zu addieren.
-                                    clockDragAccumX += dragAmount.x
-                                    clockDragAccumY += dragAmount.y
-
-                                    // Kandidat relativ zur Session-Basis erzeugen und live auf Raster ziehen.
-                                    val snappedX = softSnap(clockDragBaseX + clockDragAccumX)
-                                    val snappedY = softSnap(clockDragBaseY + clockDragAccumY)
-
-                                    // Kandidat im sichtbaren Bereich halten.
-                                    val (candidateX, candidateY) = clampToRoot(
-                                        candidateX = snappedX,
-                                        candidateY = snappedY,
-                                        neutralBounds = clockNeutralBounds
+                            .then(
+                                if (isClockSelected) {
+                                    Modifier.border(
+                                        BorderStroke(1.dp, mainTextColor.copy(alpha = 0.35f)),
+                                        RoundedCornerShape(16.dp)
                                     )
-
-                                    // Kandidat-Rect gegen aktuelle Favoriten-Position prüfen.
-                                    val candidateClockRect = clockNeutralBounds?.let { translateRect(it, candidateX, candidateY) }
-                                    val currentFavoritesRect = favoritesNeutralBounds?.let {
-                                        expandRect(
-                                            rect = translateRect(it, currentFavOffsetX, currentFavOffsetY),
-                                            padding = favoritesFramePaddingPx
-                                        )
-                                    }
-
-                                    val blockedByFavorites = candidateClockRect != null && currentFavoritesRect != null && intersects(candidateClockRect, currentFavoritesRect)
-                                    val candidateClockNavRect = candidateClockRect?.let {
-                                        expandRect(it, clockNavCollisionPaddingPx)
-                                    }
-                                    // Prüfe auch, ob der Kandidat die Systemnavigation überlagern würde.
-                                    val blockedByNavigation = candidateClockNavRect != null && intersects(candidateClockNavRect, getNavigationBarForbiddenZone())
-                                    // Prüfe zusätzlich auf Überlappung mit sichtbaren UI-Controls.
-                                    val blockedByBottomControls = candidateClockNavRect != null &&
-                                        bottomControlsForbiddenZones.any { zone -> intersects(candidateClockNavRect, zone) }
-                                    val blocked = blockedByFavorites || blockedByNavigation || blockedByBottomControls
-
-                                    if (!blocked) {
-                                        // Gültiger Move: live anwenden und als "letzte gültige" Position merken.
-                                        currentClockOffsetX = candidateX
-                                        currentClockOffsetY = candidateY
-                                        lastValidClockOffsetX = candidateX
-                                        lastValidClockOffsetY = candidateY
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                        isClockNavigationBarBlocked = false
-
-                                        // Bei Hard-Limit (Screenrand) Session neu ankern, damit kein Nachziehen entsteht.
-                                        val wasClamped = candidateX != snappedX || candidateY != snappedY
-                                        if (wasClamped) {
-                                            clockDragBaseX = currentClockOffsetX
-                                            clockDragBaseY = currentClockOffsetY
-                                            clockDragAccumX = 0f
-                                            clockDragAccumY = 0f
-                                        }
-                                    } else {
-                                        // Ungültiger Move: auf letzte gültige Position zurückfallen.
-                                        currentClockOffsetX = lastValidClockOffsetX
-                                        currentClockOffsetY = lastValidClockOffsetY
-                                        // Bei Container-Kollision beide Einheiten markieren; bei Nav-Kollision nur die Uhr.
-                                        updateCollisionFeedback(
-                                            clockBlocked = true,
-                                            favoritesBlocked = blockedByFavorites
-                                        )
-                                        // Für Clock-Hervorhebung teilen sich Nav-Bar und Bottom-Controls denselben "System-Block"-Kanal.
-                                        isClockNavigationBarBlocked = blockedByNavigation || blockedByBottomControls
-
-                                        // Bei Kollision Session neu ankern, damit der Finger nicht "driften" kann.
-                                        clockDragBaseX = currentClockOffsetX
-                                        clockDragBaseY = currentClockOffsetY
-                                        clockDragAccumX = 0f
-                                        clockDragAccumY = 0f
-                                    }
+                                } else {
+                                    Modifier
                                 }
+                            )
+                            .testTag("home_edit_target_clock")
+                            .pointerInput(Unit) {
+                                detectTapGestures { selectedEditTarget = HomeEditTarget.CLOCK }
                             }
                     } else Modifier)
             ) {
@@ -653,6 +636,7 @@ fun HomeScreen(
             // 2. Favoriten-Liste (Verschiebbar im Edit-Mode)
             Box(
                 modifier = Modifier
+                    .zIndex(if (isEditMode) 1500f else 0f)
                     .offset { IntOffset(currentFavOffsetX.roundToInt(), currentFavOffsetY.roundToInt()) }
                     // Neutral-Bounds für Favoriten als Referenz ohne aktuelle Offsets pflegen.
                     .onGloballyPositioned { coordinates ->
@@ -666,153 +650,21 @@ fun HomeScreen(
                         )
                     }
                     .then(if (isEditMode) {
-                        // Gleiche Rückmeldung wie beim Uhrbereich: warmes Tinting bei Blockade (Favoriten oder Navigation Bar).
-                        val isFavoritesHighlighted = isFavoritesCollisionBlocked || isFavoritesNavigationBarBlocked || hasActiveContainerOverlap
-                        val borderTint = if (isFavoritesHighlighted) Color(0xFFFF7043) else mainTextColor.copy(alpha = 0.2f)
-                        val fillTint = if (isFavoritesHighlighted) Color(0xFFFF7043).copy(alpha = 0.12f) else mainTextColor.copy(alpha = 0.05f)
+                        val isFavoritesSelected = selectedEditTarget == HomeEditTarget.FAVORITES
                         Modifier
-                            // Der Edit-Rahmen wird nur gezeichnet und verändert nicht mehr das Layout.
-                            .drawBehind {
-                                val framePadding = 10.dp.toPx()
-                                val cornerRadius = 16.dp.toPx()
-                                val frameTopLeft = Offset(-framePadding, -framePadding)
-                                val frameSize = Size(
-                                    width = size.width + framePadding * 2,
-                                    height = size.height + framePadding * 2
-                                )
-
-                                // Füllung des Edit-Frames außerhalb des eigentlichen Content-Bounds zeichnen.
-                                drawRoundRect(
-                                    color = fillTint,
-                                    topLeft = frameTopLeft,
-                                    size = frameSize,
-                                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
-                                )
-
-                                // Rahmen separat zeichnen, damit die Position stabil bleibt.
-                                drawRoundRect(
-                                    color = borderTint,
-                                    topLeft = frameTopLeft,
-                                    size = frameSize,
-                                    cornerRadius = CornerRadius(cornerRadius, cornerRadius),
-                                    style = Stroke(width = 1.dp.toPx())
-                                )
-                            }
-                            .pointerInput(bottomControlsForbiddenZones) {
-                                detectDragGestures(
-                                    onDragStart = {
-                                        // Drag startet relativ zur aktuellen Position; dadurch bleibt der Finger "gekoppelt".
-                                        favoritesDragBaseX = currentFavOffsetX
-                                        favoritesDragBaseY = currentFavOffsetY
-                                        favoritesDragAccumX = 0f
-                                        favoritesDragAccumY = 0f
-                                        // Neue Session startet immer aktiv.
-                                        isFavoritesDragSuspended = false
-                                        isFavoritesNavigationBarBlocked = false
-                                        // Startet ohne aktiven Blockadezustand, damit Feedback pro Session klar ist.
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    },
-                                    onDragEnd = {
-                                        // Session sauber abschließen, damit die nächste Geste frisch startet.
-                                        favoritesDragAccumX = 0f
-                                        favoritesDragAccumY = 0f
-                                        isFavoritesDragSuspended = false
-                                        isFavoritesNavigationBarBlocked = false
-                                        // Nach Drag-Ende Blockadefeedback zurücksetzen.
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    },
-                                    onDragCancel = {
-                                        // Bei Abbruch identisches Reset-Verhalten für konsistente Gesten.
-                                        favoritesDragAccumX = 0f
-                                        favoritesDragAccumY = 0f
-                                        isFavoritesDragSuspended = false
-                                        isFavoritesNavigationBarBlocked = false
-                                        // Auch bei Abbruch keine hängenden Highlight-States behalten.
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    }
-                                ) { change, dragAmount ->
-                                    change.consume()
-
-                                    // Wenn Finger den Container verlässt, wird diese Session bis zum Loslassen pausiert.
-                                    if (!isPointerInsideContainer(change.position, favoritesDragContainerSize, pointerBoundaryTolerancePx)) {
-                                        isFavoritesDragSuspended = true
-                                        // Finger außerhalb: Session pausieren und aktives Blockade-Feedback beenden.
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    }
-                                    if (isFavoritesDragSuspended) {
-                                        return@detectDragGestures
-                                    }
-
-                                    // Delta in der aktuellen Session akkumulieren statt direkt Offsets zu addieren.
-                                    favoritesDragAccumX += dragAmount.x
-                                    favoritesDragAccumY += dragAmount.y
-
-                                    // Kandidat relativ zur Session-Basis erzeugen und live auf Raster ziehen.
-                                    val snappedX = softSnap(favoritesDragBaseX + favoritesDragAccumX)
-                                    val snappedY = softSnap(favoritesDragBaseY + favoritesDragAccumY)
-
-                                    // Kandidat im sichtbaren Bereich halten.
-                                    val (candidateX, candidateY) = clampToRoot(
-                                        candidateX = snappedX,
-                                        candidateY = snappedY,
-                                        neutralBounds = favoritesNeutralBounds
+                            .then(
+                                if (isFavoritesSelected) {
+                                    Modifier.border(
+                                        BorderStroke(1.dp, mainTextColor.copy(alpha = 0.35f)),
+                                        RoundedCornerShape(16.dp)
                                     )
-
-                                    // Kandidat-Rect gegen aktuelle Uhrposition prüfen.
-                                    val candidateFavoritesRect = favoritesNeutralBounds?.let {
-                                        expandRect(
-                                            rect = translateRect(it, candidateX, candidateY),
-                                            padding = favoritesFramePaddingPx
-                                        )
-                                    }
-                                    val currentClockRect = clockNeutralBounds?.let {
-                                        translateRect(it, currentClockOffsetX, currentClockOffsetY)
-                                    }
-
-                                    val blockedByClock = candidateFavoritesRect != null && currentClockRect != null && intersects(candidateFavoritesRect, currentClockRect)
-                                    // Prüfe auch, ob der Kandidat die Systemnavigation überlagern würde.
-                                    val blockedByNavigation = candidateFavoritesRect != null && intersects(candidateFavoritesRect, getNavigationBarForbiddenZone())
-                                    // Prüfe zusätzlich auf Überlappung mit sichtbaren UI-Controls.
-                                    val blockedByBottomControls = candidateFavoritesRect != null &&
-                                        bottomControlsForbiddenZones.any { zone -> intersects(candidateFavoritesRect, zone) }
-                                    val blocked = blockedByClock || blockedByNavigation || blockedByBottomControls
-
-                                    if (!blocked) {
-                                        // Gültiger Move: live anwenden und als "letzte gültige" Position merken.
-                                        currentFavOffsetX = candidateX
-                                        currentFavOffsetY = candidateY
-                                        lastValidFavOffsetX = candidateX
-                                        lastValidFavOffsetY = candidateY
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                        isFavoritesNavigationBarBlocked = false
-
-                                        // Bei Hard-Limit (Screenrand) Session neu ankern, damit kein Nachziehen entsteht.
-                                        val wasClamped = candidateX != snappedX || candidateY != snappedY
-                                        if (wasClamped) {
-                                            favoritesDragBaseX = currentFavOffsetX
-                                            favoritesDragBaseY = currentFavOffsetY
-                                            favoritesDragAccumX = 0f
-                                            favoritesDragAccumY = 0f
-                                        }
-                                    } else {
-                                        // Ungültiger Move: auf letzte gültige Position zurückfallen.
-                                        currentFavOffsetX = lastValidFavOffsetX
-                                        currentFavOffsetY = lastValidFavOffsetY
-                                        // Bei Container-Kollision beide Einheiten markieren; bei Nav-Kollision nur Favoriten.
-                                        updateCollisionFeedback(
-                                            clockBlocked = blockedByClock,
-                                            favoritesBlocked = true
-                                        )
-                                        // Für Favoriten-Hervorhebung teilen sich Nav-Bar und Bottom-Controls denselben "System-Block"-Kanal.
-                                        isFavoritesNavigationBarBlocked = blockedByNavigation || blockedByBottomControls
-
-                                        // Bei Kollision Session neu ankern, damit der Finger nicht "driften" kann.
-                                        favoritesDragBaseX = currentFavOffsetX
-                                        favoritesDragBaseY = currentFavOffsetY
-                                        favoritesDragAccumX = 0f
-                                        favoritesDragAccumY = 0f
-                                    }
+                                } else {
+                                    Modifier
                                 }
+                            )
+                            .testTag("home_edit_target_favorites")
+                            .pointerInput(Unit) {
+                                detectTapGestures { selectedEditTarget = HomeEditTarget.FAVORITES }
                             }
                     } else Modifier)
             ) {
@@ -868,47 +720,69 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .testTag("home_edit_controls")
-                    .fillMaxWidth()
+                    .wrapContentWidth()
                     .navigationBarsPadding()
-                    .padding(24.dp),
+                    .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 176.dp)
+                    .onGloballyPositioned {
+                        // Gesamte Edit-Controls (inkl. Pfeile) als Sperrzone erfassen.
+                        editControlsBounds = it.boundsInRoot()
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Info-Badge
-                Surface(
-                    color = mainTextColor.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, mainTextColor.copy(alpha = 0.2f))
-                ) {
-                    Text(
-                        "Position anpassen",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                        color = mainTextColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                AnimatedVisibility(visible = selectedEditTarget != null) {
+                    Row(
+                        modifier = Modifier.wrapContentWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        EditControlButton(
+                            icon = Icons.Default.KeyboardArrowUp,
+                            onClick = { moveSelectedTargetBy(-verticalStepPx) },
+                            tint = mainTextColor,
+                            sizeDp = 46.dp,
+                            testTag = "home_edit_move_up"
+                        )
+
+                        EditControlButton(
+                            icon = Icons.Default.KeyboardArrowDown,
+                            onClick = { moveSelectedTargetBy(verticalStepPx) },
+                            tint = mainTextColor,
+                            sizeDp = 46.dp,
+                            testTag = "home_edit_move_down"
+                        )
+                    }
                 }
 
                 // Kontroll-Buttons (Abbrechen, Zurücksetzen, Speichern)
                 Row(
-                    modifier = Modifier
-                        .wrapContentWidth()
-                        .onGloballyPositioned {
-                            // Sichtbare Bounds der Edit-Buttons als zusätzliche Sperrzone erfassen.
-                            editControlsBounds = it.boundsInRoot()
-                        },
-                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.wrapContentWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Abbrechen
                     EditControlButton(
                         icon = Icons.Default.Close,
-                        onClick = { onToggleEditMode() }, // Beendet Modus ohne Speichern (lokaler State verworfen)
+                        onClick = {
+                            // Abbrechen: lokalen Bearbeitungszustand auf persistierten Stand zurücksetzen.
+                            currentFavOffsetX = favoritesOffsetX
+                            currentFavOffsetY = favoritesOffsetY
+                            currentClockOffsetX = clockOffsetX
+                            currentClockOffsetY = clockOffsetY
+                            lastValidFavOffsetX = favoritesOffsetX
+                            lastValidFavOffsetY = favoritesOffsetY
+                            lastValidClockOffsetX = clockOffsetX
+                            lastValidClockOffsetY = clockOffsetY
+                            selectedEditTarget = null
+                            isClockNavigationBarBlocked = false
+                            isFavoritesNavigationBarBlocked = false
+                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                            onToggleEditMode()
+                        },
+                        sizeDp = 48.dp,
                         tint = mainTextColor.copy(alpha = 0.6f)
                     )
                     
-                    Spacer(modifier = Modifier.width(20.dp))
-
                     // Zurücksetzen auf Standard
                     EditControlButton(
                         icon = Icons.Default.Refresh,
@@ -933,14 +807,14 @@ fun HomeScreen(
                             favoritesDragAccumY = 0f
                             isClockDragSuspended = false
                             isFavoritesDragSuspended = false
+                            selectedEditTarget = null
                             isClockNavigationBarBlocked = false
                             isFavoritesNavigationBarBlocked = false
                             updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
                         },
+                        sizeDp = 48.dp,
                         tint = mainTextColor
                     )
-
-                    Spacer(modifier = Modifier.width(20.dp))
 
                     // Speichern
                     EditControlButton(
@@ -950,15 +824,17 @@ fun HomeScreen(
                             val resolvedOffsets = resolveSavableOffsets()
                             val resolvedFavorites = resolvedOffsets.first
                             val resolvedClock = resolvedOffsets.second
+                            val resolvedFavoritesX = 0f
+                            val resolvedClockX = 0f
 
                             // UI aktiv auf den akzeptierten Zustand zurücksetzen, damit nichts Inkonsistentes bleibt.
-                            currentFavOffsetX = resolvedFavorites.first
+                            currentFavOffsetX = resolvedFavoritesX
                             currentFavOffsetY = resolvedFavorites.second
-                            currentClockOffsetX = resolvedClock.first
+                            currentClockOffsetX = resolvedClockX
                             currentClockOffsetY = resolvedClock.second
-                            lastValidFavOffsetX = resolvedFavorites.first
+                            lastValidFavOffsetX = resolvedFavoritesX
                             lastValidFavOffsetY = resolvedFavorites.second
-                            lastValidClockOffsetX = resolvedClock.first
+                            lastValidClockOffsetX = resolvedClockX
                             lastValidClockOffsetY = resolvedClock.second
                             isClockNavigationBarBlocked = false
                             isFavoritesNavigationBarBlocked = false
@@ -967,11 +843,12 @@ fun HomeScreen(
                             // Persistenz wird nur mit garantiert validen Offsets geschrieben.
                             // Die Mode wird NACH den Save-Callbacks toggled, damit die DataStore Updates
                             // die UI States aktualisiert haben, bevor wir den Edit Mode ausschalten.
-                            onSaveFavoritesOffset(resolvedFavorites.first, resolvedFavorites.second)
-                            onSaveClockOffset(resolvedClock.first, resolvedClock.second)
+                            onSaveFavoritesOffset(resolvedFavoritesX, resolvedFavorites.second)
+                            onSaveClockOffset(resolvedClockX, resolvedClock.second)
                             Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
                             onToggleEditMode()
                         },
+                        sizeDp = 48.dp,
                         containerColor = mainTextColor,
                         tint = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
                     )
@@ -1106,7 +983,9 @@ private fun EditControlButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
     tint: Color,
-    containerColor: Color = Color.Transparent
+    sizeDp: androidx.compose.ui.unit.Dp = 56.dp,
+    containerColor: Color = Color.Transparent,
+    testTag: String? = null
 ) {
     val intSrc = remember { MutableInteractionSource() }
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
@@ -1114,13 +993,14 @@ private fun EditControlButton(
 
     Box(
         modifier = Modifier
-            .size(56.dp)
+            .size(sizeDp)
             .then(if (containerColor == Color.Transparent) {
                 Modifier.conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.1f)
             } else {
                 Modifier.background(containerColor, CircleShape)
             })
             .clip(CircleShape)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
             .bounceClick(intSrc)
             .clickable(interactionSource = intSrc, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
