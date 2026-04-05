@@ -954,6 +954,13 @@ class MainActivity : ComponentActivity() {
                                 isEditConfigOpen = false
                                 isHomeEditMode = true
                             },
+                            onResetHomeLayout = {
+                                scope.launch {
+                                    themeManager.setFavoritesOffset(0f, 0f)
+                                    themeManager.setClockOffset(0f, 0f)
+                                }
+                                Toast.makeText(context, "Startbildschirm-Layout zurückgesetzt", Toast.LENGTH_SHORT).show()
+                            },
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onChangeWallpaper = {
                                 isEditConfigOpen = false
@@ -972,6 +979,7 @@ class MainActivity : ComponentActivity() {
                                 Toast.makeText(context, "Hintergrund entfernt", Toast.LENGTH_SHORT).show()
                             },
                             onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
+                            isCustomHomeLayoutSet = favoritesOffsetX != 0f || favoritesOffsetY != 0f || clockOffsetX != 0f || clockOffsetY != 0f,
                             isCustomWallpaperSet = customWallpaperUri != null,
                             isShakeGesturesEnabled = isShakeGesturesEnabled,
                             onShakeGesturesToggled = { enabled ->

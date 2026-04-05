@@ -45,10 +45,12 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 @Composable
 fun EditConfigMenu(
     onOpenHomeLayoutEdit: () -> Unit,
+    onResetHomeLayout: () -> Unit,
     onOpenIconConfig: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onResetWallpaper: () -> Unit,
     onOpenWallpaperAdjust: () -> Unit,
+    isCustomHomeLayoutSet: Boolean,
     isCustomWallpaperSet: Boolean,
     isShakeGesturesEnabled: Boolean,
     onShakeGesturesToggled: (Boolean) -> Unit,
@@ -136,7 +138,28 @@ fun EditConfigMenu(
                     mainTextColor = mainTextColor,
                     isLiquidGlassEnabled = isLiquidGlassEnabled,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "edit_home_layout_item"
+                    testTag = "edit_home_layout_item",
+                    trailingContent = {
+                        if (isCustomHomeLayoutSet) {
+                            IconButton(
+                                onClick = onResetHomeLayout,
+                                modifier = Modifier.testTag("edit_home_layout_reset")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Reset Home Layout",
+                                    tint = mainTextColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = mainTextColor.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
                 )
             }
 

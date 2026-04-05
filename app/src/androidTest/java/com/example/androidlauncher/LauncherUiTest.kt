@@ -118,23 +118,23 @@ class LauncherUiTest {
             composeTestRule.onAllNodesWithTag("home_edit_controls").fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithTag("home_edit_controls").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_edit_cancel").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_edit_save").assertIsDisplayed()
         composeTestRule.onNodeWithTag("home_edit_move_up").assertDoesNotExist()
         composeTestRule.onNodeWithTag("home_edit_move_down").assertDoesNotExist()
 
         composeTestRule.onNodeWithTag("home_edit_target_clock").performTouchInput { click() }
-        composeTestRule.onNodeWithTag("home_edit_move_up").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("home_edit_move_down").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_edit_move_up").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_edit_move_down").assertDoesNotExist()
 
         composeTestRule.onNodeWithTag("home_edit_target_favorites").performTouchInput { click() }
-        composeTestRule.onNodeWithTag("home_edit_move_up").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("home_edit_move_down").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_edit_move_up").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_edit_move_down").assertDoesNotExist()
 
         composeTestRule.onNodeWithTag("home_screen").performTouchInput {
             click(Offset(x = width - 8f, y = 8f))
         }
 
-        composeTestRule.waitUntil(3_000) {
-            composeTestRule.onAllNodesWithTag("home_edit_move_up").fetchSemanticsNodes().isEmpty()
-        }
+        composeTestRule.onNodeWithTag("home_edit_move_up").assertDoesNotExist()
     }
 }

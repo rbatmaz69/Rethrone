@@ -25,9 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -128,16 +125,16 @@ fun HomeScreen(
     // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
     // Favoriten-Offset wird lokal gehalten und erst bei "Speichern" persistiert.
     // Keine isEditMode Abhängigkeit: States sollten nur neu initialisiert werden, wenn sich die persistierten Werte ändern, nicht wenn der Edit-Modus wechselt.
-    var currentFavOffsetX by remember(favoritesOffsetX) { mutableStateOf(favoritesOffsetX) }
+    var currentFavOffsetX by remember { mutableStateOf(0f) }
     var currentFavOffsetY by remember(favoritesOffsetY) { mutableStateOf(favoritesOffsetY) }
     // Uhrbereich (Uhr + Datum) ist eine Einheit und wird frei auf X/Y verschoben.
-    var currentClockOffsetX by remember(clockOffsetX) { mutableStateOf(clockOffsetX) }
+    var currentClockOffsetX by remember { mutableStateOf(0f) }
     var currentClockOffsetY by remember(clockOffsetY) { mutableStateOf(clockOffsetY) }
 
     // Letzte gültige Positionen: Bei Kollision wird darauf zurückgesetzt.
-    var lastValidFavOffsetX by remember(favoritesOffsetX) { mutableStateOf(favoritesOffsetX) }
+    var lastValidFavOffsetX by remember { mutableStateOf(0f) }
     var lastValidFavOffsetY by remember(favoritesOffsetY) { mutableStateOf(favoritesOffsetY) }
-    var lastValidClockOffsetX by remember(clockOffsetX) { mutableStateOf(clockOffsetX) }
+    var lastValidClockOffsetX by remember { mutableStateOf(0f) }
     var lastValidClockOffsetY by remember(clockOffsetY) { mutableStateOf(clockOffsetY) }
 
     // Neutral-Bounds sind Layout-Bounds ohne aktuelle Offsets; damit können wir sauber Kandidaten prüfen.
@@ -155,29 +152,6 @@ fun HomeScreen(
     var isFavoritesNavigationBarBlocked by remember { mutableStateOf(false) }
     var collisionHapticWasTriggered by remember { mutableStateOf(false) }
 
-    // Drag-Session-Daten: stabilisieren die Fingerbindung und verhindern Sprünge bei Blockaden.
-    var clockDragBaseX by remember { mutableStateOf(0f) }
-    var clockDragBaseY by remember { mutableStateOf(0f) }
-    var clockDragAccumX by remember { mutableStateOf(0f) }
-    var clockDragAccumY by remember { mutableStateOf(0f) }
-    var favoritesDragBaseX by remember { mutableStateOf(0f) }
-    var favoritesDragBaseY by remember { mutableStateOf(0f) }
-    var favoritesDragAccumX by remember { mutableStateOf(0f) }
-    var favoritesDragAccumY by remember { mutableStateOf(0f) }
-
-    // Sobald der Finger den Container verlässt, pausieren wir die Session bis zum Loslassen.
-    var isClockDragSuspended by remember { mutableStateOf(false) }
-    var isFavoritesDragSuspended by remember { mutableStateOf(false) }
-
-    // Containergrößen für präzise Pointer-Grenzprüfung in lokalen Koordinaten.
-    var clockDragContainerSize by remember { mutableStateOf(IntSize.Zero) }
-    var favoritesDragContainerSize by remember { mutableStateOf(IntSize.Zero) }
-
-    // Snap-to-Grid ist standardmäßig aktiv; "soft" vermeidet hakelige Sprünge.
-    val gridStepPx = with(density) { 12.dp.toPx() }
-    val snapThresholdPx = with(density) { 4.dp.toPx() }
-    // Kleine Toleranz vermeidet ungewollte Pausen bei minimalem Finger-Jitter an Kanten.
-    val pointerBoundaryTolerancePx = with(density) { 10.dp.toPx() }
     // Die Favoriten-Markierung wird visuell um diesen Wert nach außen gezeichnet.
     val favoritesFramePaddingPx = with(density) { 10.dp.toPx() }
     // Für Nav-Bar-Kollision soll die Uhr den gleichen "gefühlten" Abstand haben wie die Favoriten.
@@ -194,8 +168,6 @@ fun HomeScreen(
     var launchRequest by launchRequestState
 
     var selectedEditTarget by remember { mutableStateOf<HomeEditTarget?>(null) }
-    val verticalStepPx = with(density) { 12.dp.toPx() }
-
     var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
     var shortcutMenuBounds by remember { mutableStateOf<Rect?>(null) }
 
@@ -233,13 +205,6 @@ fun HomeScreen(
             point.x <= rect.right &&
             point.y >= rect.top &&
             point.y <= rect.bottom
-    }
-
-    // Lokale Hilfsfunktion: "Magnetisches" Snap-to-Grid für flüssiges Live-Dragging.
-    fun softSnap(value: Float): Float {
-        if (gridStepPx <= 0f) return value
-        val nearestGrid = (value / gridStepPx).roundToInt() * gridStepPx
-        return if (kotlin.math.abs(value - nearestGrid) <= snapThresholdPx) nearestGrid else value
     }
 
     // Lokale Hilfsfunktion: Kandidat innerhalb des sichtbaren Screens halten und Systemnavigation nicht überlagern.
@@ -303,15 +268,6 @@ fun HomeScreen(
         if (!anyBlocked) {
             collisionHapticWasTriggered = false
         }
-    }
-
-    // Lokale Hilfsfunktion: Prüft, ob Pointer noch im Container liegt (lokale Pointer-Koordinaten).
-    fun isPointerInsideContainer(position: Offset, size: IntSize, tolerancePx: Float): Boolean {
-        if (size.width <= 0 || size.height <= 0) return false
-        return position.x >= -tolerancePx &&
-            position.x <= size.width + tolerancePx &&
-            position.y >= -tolerancePx &&
-            position.y <= size.height + tolerancePx
     }
 
     // Lokale Hilfsfunktion: Prüft einen vollständigen Layoutzustand auf Screen-Grenzen und Kollisionen.
@@ -385,52 +341,6 @@ fun HomeScreen(
                 clockY = candidate.second.second
             )
         } ?: Pair(0f to 0f, 0f to 0f)
-    }
-
-    fun moveSelectedTargetBy(deltaY: Float) {
-        if (deltaY == 0f) return
-
-        when (selectedEditTarget ?: return) {
-            HomeEditTarget.CLOCK -> {
-                val snappedY = softSnap(currentClockOffsetY + deltaY)
-                val (_, candidateY) = clampToRoot(currentClockOffsetX, snappedY, clockNeutralBounds)
-                val canApply = isValidLayoutState(
-                    favoritesX = currentFavOffsetX,
-                    favoritesY = currentFavOffsetY,
-                    clockX = currentClockOffsetX,
-                    clockY = candidateY
-                )
-                if (canApply) {
-                    currentClockOffsetY = candidateY
-                    lastValidClockOffsetX = currentClockOffsetX
-                    lastValidClockOffsetY = candidateY
-                    isClockNavigationBarBlocked = false
-                    updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                } else {
-                    updateCollisionFeedback(clockBlocked = true, favoritesBlocked = false)
-                }
-            }
-
-            HomeEditTarget.FAVORITES -> {
-                val snappedY = softSnap(currentFavOffsetY + deltaY)
-                val (_, candidateY) = clampToRoot(currentFavOffsetX, snappedY, favoritesNeutralBounds)
-                val canApply = isValidLayoutState(
-                    favoritesX = currentFavOffsetX,
-                    favoritesY = candidateY,
-                    clockX = currentClockOffsetX,
-                    clockY = currentClockOffsetY
-                )
-                if (canApply) {
-                    currentFavOffsetY = candidateY
-                    lastValidFavOffsetX = currentFavOffsetX
-                    lastValidFavOffsetY = candidateY
-                    isFavoritesNavigationBarBlocked = false
-                    updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                } else {
-                    updateCollisionFeedback(clockBlocked = false, favoritesBlocked = true)
-                }
-            }
-        }
     }
 
     // Persistenter Überlappungsstatus: hält die Rahmen eingefärbt, solange die Container aktuell kollidieren oder sich mit der Systemnavigation überlagern.
@@ -586,16 +496,14 @@ fun HomeScreen(
             // 1. Uhr / Widget Bereich (Verschiebbar im Edit-Mode)
             Box(
                 modifier = Modifier
-                    // Im Edit-Modus bleibt der Drag-Container kompakt, damit X-Verschiebung spürbar möglich ist.
+                    // Im Edit-Modus bleibt der Drag-Container kompakt für präzises vertikales Draggen.
                     .then(if (isEditMode) Modifier.wrapContentWidth(Alignment.Start) else Modifier.fillMaxWidth())
                     .zIndex(if (isEditMode) 1500f else 0f)
                     // Uhrbereich wird als Einheit auf X/Y verschoben.
-                    .offset { IntOffset(currentClockOffsetX.roundToInt(), currentClockOffsetY.roundToInt()) }
+                    .offset { IntOffset(0, currentClockOffsetY.roundToInt()) }
                     // Neutral-Bounds aus aktuellen Bounds ableiten, damit Kandidatenberechnung stabil bleibt.
                     .onGloballyPositioned { coordinates ->
                         val currentBounds = coordinates.boundsInRoot()
-                        // Größe des Draggable-Containers für lokale Pointer-Prüfung übernehmen.
-                        clockDragContainerSize = coordinates.size
                         clockNeutralBounds = translateRect(
                             rect = currentBounds,
                             x = -currentClockOffsetX,
@@ -616,8 +524,47 @@ fun HomeScreen(
                                 }
                             )
                             .testTag("home_edit_target_clock")
-                            .pointerInput(Unit) {
-                                detectTapGestures { selectedEditTarget = HomeEditTarget.CLOCK }
+                            .pointerInput(
+                                isEditMode,
+                                currentFavOffsetY,
+                                currentClockOffsetY,
+                                favoritesNeutralBounds,
+                                clockNeutralBounds,
+                                rootSize,
+                                bottomControlsForbiddenZones
+                            ) {
+                                if (!isEditMode) return@pointerInput
+                                detectVerticalDragGestures(
+                                    onDragStart = {
+                                        selectedEditTarget = HomeEditTarget.CLOCK
+                                    },
+                                    onDragEnd = {
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                                    },
+                                    onDragCancel = {
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                                    }
+                                ) { change, dragAmount ->
+                                    change.consume()
+                                    val (_, candidateY) = clampToRoot(0f, currentClockOffsetY + dragAmount, clockNeutralBounds)
+                                    val canApply = isValidLayoutState(
+                                        favoritesX = 0f,
+                                        favoritesY = currentFavOffsetY,
+                                        clockX = 0f,
+                                        clockY = candidateY
+                                    )
+
+                                    if (canApply) {
+                                        currentClockOffsetX = 0f
+                                        currentClockOffsetY = candidateY
+                                        lastValidClockOffsetX = 0f
+                                        lastValidClockOffsetY = candidateY
+                                        isClockNavigationBarBlocked = false
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                                    } else {
+                                        updateCollisionFeedback(clockBlocked = true, favoritesBlocked = false)
+                                    }
+                                }
                             }
                     } else Modifier)
             ) {
@@ -637,12 +584,10 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .zIndex(if (isEditMode) 1500f else 0f)
-                    .offset { IntOffset(currentFavOffsetX.roundToInt(), currentFavOffsetY.roundToInt()) }
+                    .offset { IntOffset(0, currentFavOffsetY.roundToInt()) }
                     // Neutral-Bounds für Favoriten als Referenz ohne aktuelle Offsets pflegen.
                     .onGloballyPositioned { coordinates ->
                         val currentBounds = coordinates.boundsInRoot()
-                        // Größe des Draggable-Containers für lokale Pointer-Prüfung übernehmen.
-                        favoritesDragContainerSize = coordinates.size
                         favoritesNeutralBounds = translateRect(
                             rect = currentBounds,
                             x = -currentFavOffsetX,
@@ -663,8 +608,47 @@ fun HomeScreen(
                                 }
                             )
                             .testTag("home_edit_target_favorites")
-                            .pointerInput(Unit) {
-                                detectTapGestures { selectedEditTarget = HomeEditTarget.FAVORITES }
+                            .pointerInput(
+                                isEditMode,
+                                currentFavOffsetY,
+                                currentClockOffsetY,
+                                favoritesNeutralBounds,
+                                clockNeutralBounds,
+                                rootSize,
+                                bottomControlsForbiddenZones
+                            ) {
+                                if (!isEditMode) return@pointerInput
+                                detectVerticalDragGestures(
+                                    onDragStart = {
+                                        selectedEditTarget = HomeEditTarget.FAVORITES
+                                    },
+                                    onDragEnd = {
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                                    },
+                                    onDragCancel = {
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                                    }
+                                ) { change, dragAmount ->
+                                    change.consume()
+                                    val (_, candidateY) = clampToRoot(0f, currentFavOffsetY + dragAmount, favoritesNeutralBounds)
+                                    val canApply = isValidLayoutState(
+                                        favoritesX = 0f,
+                                        favoritesY = candidateY,
+                                        clockX = 0f,
+                                        clockY = currentClockOffsetY
+                                    )
+
+                                    if (canApply) {
+                                        currentFavOffsetX = 0f
+                                        currentFavOffsetY = candidateY
+                                        lastValidFavOffsetX = 0f
+                                        lastValidFavOffsetY = candidateY
+                                        isFavoritesNavigationBarBlocked = false
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                                    } else {
+                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = true)
+                                    }
+                                }
                             }
                     } else Modifier)
             ) {
@@ -724,37 +708,13 @@ fun HomeScreen(
                     .navigationBarsPadding()
                     .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 176.dp)
                     .onGloballyPositioned {
-                        // Gesamte Edit-Controls (inkl. Pfeile) als Sperrzone erfassen.
+                        // Gesamte Edit-Controls als Sperrzone erfassen.
                         editControlsBounds = it.boundsInRoot()
                     },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                AnimatedVisibility(visible = selectedEditTarget != null) {
-                    Row(
-                        modifier = Modifier.wrapContentWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        EditControlButton(
-                            icon = Icons.Default.KeyboardArrowUp,
-                            onClick = { moveSelectedTargetBy(-verticalStepPx) },
-                            tint = mainTextColor,
-                            sizeDp = 46.dp,
-                            testTag = "home_edit_move_up"
-                        )
-
-                        EditControlButton(
-                            icon = Icons.Default.KeyboardArrowDown,
-                            onClick = { moveSelectedTargetBy(verticalStepPx) },
-                            tint = mainTextColor,
-                            sizeDp = 46.dp,
-                            testTag = "home_edit_move_down"
-                        )
-                    }
-                }
-
-                // Kontroll-Buttons (Abbrechen, Zurücksetzen, Speichern)
+                // Kontroll-Buttons (Abbrechen, Speichern)
                 Row(
                     modifier = Modifier.wrapContentWidth(),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -765,13 +725,13 @@ fun HomeScreen(
                         icon = Icons.Default.Close,
                         onClick = {
                             // Abbrechen: lokalen Bearbeitungszustand auf persistierten Stand zurücksetzen.
-                            currentFavOffsetX = favoritesOffsetX
+                            currentFavOffsetX = 0f
                             currentFavOffsetY = favoritesOffsetY
-                            currentClockOffsetX = clockOffsetX
+                            currentClockOffsetX = 0f
                             currentClockOffsetY = clockOffsetY
-                            lastValidFavOffsetX = favoritesOffsetX
+                            lastValidFavOffsetX = 0f
                             lastValidFavOffsetY = favoritesOffsetY
-                            lastValidClockOffsetX = clockOffsetX
+                            lastValidClockOffsetX = 0f
                             lastValidClockOffsetY = clockOffsetY
                             selectedEditTarget = null
                             isClockNavigationBarBlocked = false
@@ -780,41 +740,10 @@ fun HomeScreen(
                             onToggleEditMode()
                         },
                         sizeDp = 48.dp,
-                        tint = mainTextColor.copy(alpha = 0.6f)
+                        tint = mainTextColor.copy(alpha = 0.6f),
+                        testTag = "home_edit_cancel"
                     )
-                    
-                    // Zurücksetzen auf Standard
-                    EditControlButton(
-                        icon = Icons.Default.Refresh,
-                        onClick = {
-                            // Reset setzt beide Einheiten (Favoriten + Uhrbereich) auf den Standard zurück.
-                            currentFavOffsetX = 0f
-                            currentFavOffsetY = 0f
-                            currentClockOffsetX = 0f
-                            currentClockOffsetY = 0f
-                            lastValidFavOffsetX = 0f
-                            lastValidFavOffsetY = 0f
-                            lastValidClockOffsetX = 0f
-                            lastValidClockOffsetY = 0f
-                            // Drag-Session ebenfalls zurücksetzen, damit der nächste Touch sauber startet.
-                            clockDragBaseX = 0f
-                            clockDragBaseY = 0f
-                            clockDragAccumX = 0f
-                            clockDragAccumY = 0f
-                            favoritesDragBaseX = 0f
-                            favoritesDragBaseY = 0f
-                            favoritesDragAccumX = 0f
-                            favoritesDragAccumY = 0f
-                            isClockDragSuspended = false
-                            isFavoritesDragSuspended = false
-                            selectedEditTarget = null
-                            isClockNavigationBarBlocked = false
-                            isFavoritesNavigationBarBlocked = false
-                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                        },
-                        sizeDp = 48.dp,
-                        tint = mainTextColor
-                    )
+
 
                     // Speichern
                     EditControlButton(
@@ -850,7 +779,8 @@ fun HomeScreen(
                         },
                         sizeDp = 48.dp,
                         containerColor = mainTextColor,
-                        tint = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
+                        tint = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
+                        testTag = "home_edit_save"
                     )
                 }
             }

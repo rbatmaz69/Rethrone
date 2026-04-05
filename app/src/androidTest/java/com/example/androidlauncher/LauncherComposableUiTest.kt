@@ -2,12 +2,14 @@ package com.example.androidlauncher
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.ui.AppDrawer
+import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
@@ -30,6 +32,7 @@ class LauncherComposableUiTest {
                     favorites = emptyList(),
                     isSettingsOpen = false,
                     isSearchOpen = false,
+                    onToggleEditMode = {},
                     onOpenDrawer = {},
                     onOpenSearch = {},
                     onToggleSettings = {},
@@ -38,6 +41,8 @@ class LauncherComposableUiTest {
                     onOpenSizeConfig = {},
                     onOpenSystemSettings = {},
                     onOpenInfo = {},
+                    onSaveFavoritesOffset = { _, _ -> },
+                    onSaveClockOffset = { _, _ -> },
                     onLaunchApp = { _, _, _ -> },
                     returnIconPackage = null
                 )
@@ -100,5 +105,66 @@ class LauncherComposableUiTest {
         composeRule.onNodeWithTag("icon_action_reanalyze").assertIsDisplayed().performClick()
 
         assertEquals("org.mozilla.firefox", reanalyzedPackage)
+    }
+
+    @Test
+    fun editConfigMenu_showsHomeLayoutResetWhenCustomLayoutIsSet() {
+        var wasHomeLayoutReset = false
+
+        composeRule.setContent {
+            AndroidLauncherTheme {
+                EditConfigMenu(
+                    onOpenHomeLayoutEdit = {},
+                    onResetHomeLayout = { wasHomeLayoutReset = true },
+                    onOpenIconConfig = {},
+                    onChangeWallpaper = {},
+                    onResetWallpaper = {},
+                    onOpenWallpaperAdjust = {},
+                    isCustomHomeLayoutSet = true,
+                    isCustomWallpaperSet = false,
+                    isShakeGesturesEnabled = false,
+                    onShakeGesturesToggled = {},
+                    isSmartSuggestionsEnabled = false,
+                    onSmartSuggestionsToggled = {},
+                    onClearSearchHistory = {},
+                    isHapticFeedbackEnabled = true,
+                    onHapticFeedbackToggled = {},
+                    onClose = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("edit_home_layout_reset").assertIsDisplayed().performClick()
+        assertEquals(true, wasHomeLayoutReset)
+    }
+
+    @Test
+    fun editConfigMenu_hidesHomeLayoutResetWhenLayoutIsDefault() {
+        composeRule.setContent {
+            AndroidLauncherTheme {
+                EditConfigMenu(
+                    onOpenHomeLayoutEdit = {},
+                    onResetHomeLayout = {},
+                    onOpenIconConfig = {},
+                    onChangeWallpaper = {},
+                    onResetWallpaper = {},
+                    onOpenWallpaperAdjust = {},
+                    isCustomHomeLayoutSet = false,
+                    isCustomWallpaperSet = false,
+                    isShakeGesturesEnabled = false,
+                    onShakeGesturesToggled = {},
+                    isSmartSuggestionsEnabled = false,
+                    onSmartSuggestionsToggled = {},
+                    onClearSearchHistory = {},
+                    isHapticFeedbackEnabled = true,
+                    onHapticFeedbackToggled = {},
+                    onClose = {}
+                )
+            }
+        }
+
+        composeRule.waitUntil(3_000) {
+            composeRule.onAllNodesWithTag("edit_home_layout_reset").fetchSemanticsNodes().isEmpty()
+        }
     }
 }
