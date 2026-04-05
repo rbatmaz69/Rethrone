@@ -524,10 +524,14 @@ fun HomeScreen(
                                 }
                             )
                             .testTag("home_edit_target_clock")
+                            .pointerInput(isEditMode) {
+                                if (!isEditMode) return@pointerInput
+                                detectTapGestures(
+                                    onTap = { selectedEditTarget = HomeEditTarget.CLOCK }
+                                )
+                            }
                             .pointerInput(
                                 isEditMode,
-                                currentFavOffsetY,
-                                currentClockOffsetY,
                                 favoritesNeutralBounds,
                                 clockNeutralBounds,
                                 rootSize,
@@ -608,10 +612,14 @@ fun HomeScreen(
                                 }
                             )
                             .testTag("home_edit_target_favorites")
+                            .pointerInput(isEditMode) {
+                                if (!isEditMode) return@pointerInput
+                                detectTapGestures(
+                                    onTap = { selectedEditTarget = HomeEditTarget.FAVORITES }
+                                )
+                            }
                             .pointerInput(
                                 isEditMode,
-                                currentFavOffsetY,
-                                currentClockOffsetY,
                                 favoritesNeutralBounds,
                                 clockNeutralBounds,
                                 rootSize,
@@ -706,7 +714,7 @@ fun HomeScreen(
                     .testTag("home_edit_controls")
                     .wrapContentWidth()
                     .navigationBarsPadding()
-                    .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 176.dp)
+                    .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 24.dp)
                     .onGloballyPositioned {
                         // Gesamte Edit-Controls als Sperrzone erfassen.
                         editControlsBounds = it.boundsInRoot()
@@ -717,7 +725,7 @@ fun HomeScreen(
                 // Kontroll-Buttons (Abbrechen, Speichern)
                 Row(
                     modifier = Modifier.wrapContentWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Abbrechen
@@ -739,7 +747,7 @@ fun HomeScreen(
                             updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
                             onToggleEditMode()
                         },
-                        sizeDp = 48.dp,
+                        sizeDp = 56.dp,
                         tint = mainTextColor.copy(alpha = 0.6f),
                         testTag = "home_edit_cancel"
                     )
@@ -777,7 +785,7 @@ fun HomeScreen(
                             Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
                             onToggleEditMode()
                         },
-                        sizeDp = 48.dp,
+                        sizeDp = 56.dp,
                         containerColor = mainTextColor,
                         tint = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
                         testTag = "home_edit_save"
