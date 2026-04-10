@@ -13,7 +13,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -171,6 +170,7 @@ fun HomeScreen(
     val editHintArrowSize = 18.dp
     val editHintClockDownInset = 2.dp
     val editHintContentPaddingPx = with(density) { editHintContentPadding.toPx() }
+    val clockTopLimitPx = with(density) { 32.dp.toPx() }
     
     // Launch Request State
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -226,6 +226,19 @@ fun HomeScreen(
         val minY = -bounds.top
         // Max Y wird reduziert, um Überlappung mit der Systemnavigation (unten) zu verhindern.
         val maxY = (rootSize.height.toFloat() - bounds.bottom - navigationBarHeightPx).coerceAtLeast(-bounds.top)
+
+        return candidateX.coerceIn(minX, maxX) to candidateY.coerceIn(minY, maxY)
+    }
+
+    // Clock hat ein eigenes Top-Limit, damit der Bereich nicht zu hoch geschoben werden kann.
+    fun clampClockToRoot(candidateX: Float, candidateY: Float): Pair<Float, Float> {
+        val bounds = clockNeutralBounds ?: return candidateX to candidateY
+        if (rootSize.width <= 0 || rootSize.height <= 0) return candidateX to candidateY
+
+        val minX = -bounds.left
+        val maxX = rootSize.width.toFloat() - bounds.right
+        val minY = -bounds.top + clockTopLimitPx
+        val maxY = (rootSize.height.toFloat() - bounds.bottom - navigationBarHeightPx).coerceAtLeast(minY)
 
         return candidateX.coerceIn(minX, maxX) to candidateY.coerceIn(minY, maxY)
     }
@@ -287,7 +300,7 @@ fun HomeScreen(
         clockY: Float
     ): Boolean {
         val adjustedFavorites = clampToRoot(favoritesX, favoritesY, favoritesNeutralBounds)
-        val adjustedClock = clampToRoot(clockX, clockY, clockNeutralBounds)
+        val adjustedClock = clampClockToRoot(clockX, clockY)
 
         // Bereits geklemmte Werte gelten als ungültig für Speichern, weil nicht exakt der gewünschte Zustand vorliegt.
         val favoritesWereClamped = adjustedFavorites.first != favoritesX || adjustedFavorites.second != favoritesY
@@ -330,7 +343,7 @@ fun HomeScreen(
     // Prüft, ob die Uhr-Einheit in die gewünschte Richtung real verschoben werden kann.
     fun canMoveClockBy(deltaY: Float): Boolean {
         if (deltaY == 0f) return false
-        val (_, candidateY) = clampToRoot(0f, currentClockOffsetY + deltaY, clockNeutralBounds)
+        val (_, candidateY) = clampClockToRoot(0f, currentClockOffsetY + deltaY)
         if (candidateY == currentClockOffsetY) return false
         return isValidLayoutState(
             favoritesX = 0f,
@@ -541,46 +554,9 @@ fun HomeScreen(
                                     onTap = { selectedEditTarget = HomeEditTarget.CLOCK }
                                 )
                             }
-                            .pointerInput(isEditMode, selectedEditTarget) {
-                                if (!isEditMode) return@pointerInput
-                                detectVerticalDragGestures(
-                                    onDragEnd = {
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    },
-                                    onDragCancel = {
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    }
-                                ) { change, dragAmount ->
-                                    if (selectedEditTarget != HomeEditTarget.CLOCK) return@detectVerticalDragGestures
-                                    change.consume()
-                                    val (_, candidateY) = clampToRoot(0f, currentClockOffsetY + dragAmount, clockNeutralBounds)
-                                    val isBlockedAtTopEdge = dragAmount < 0f && candidateY == currentClockOffsetY
-                                    if (isBlockedAtTopEdge) {
-                                        updateCollisionFeedback(clockBlocked = true, favoritesBlocked = false)
-                                        return@detectVerticalDragGestures
-                                    }
-                                    val canApply = isValidLayoutState(
-                                        favoritesX = 0f,
-                                        favoritesY = currentFavOffsetY,
-                                        clockX = 0f,
-                                        clockY = candidateY
-                                    )
-
-                                    if (canApply) {
-                                        currentClockOffsetX = 0f
-                                        currentClockOffsetY = candidateY
-                                        lastValidClockOffsetX = 0f
-                                        lastValidClockOffsetY = candidateY
-                                        isClockNavigationBarBlocked = false
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    } else {
-                                        updateCollisionFeedback(clockBlocked = true, favoritesBlocked = false)
-                                    }
-                                }
-                            }
                             .pointerInput(isEditMode) {
                                 if (!isEditMode) return@pointerInput
-                                detectDragGesturesAfterLongPress(
+                                detectVerticalDragGestures(
                                     onDragStart = {
                                         selectedEditTarget = HomeEditTarget.CLOCK
                                     },
@@ -592,11 +568,11 @@ fun HomeScreen(
                                     }
                                 ) { change, dragAmount ->
                                     change.consume()
-                                    val (_, candidateY) = clampToRoot(0f, currentClockOffsetY + dragAmount.y, clockNeutralBounds)
-                                    val isBlockedAtTopEdge = dragAmount.y < 0f && candidateY == currentClockOffsetY
+                                    val (_, candidateY) = clampClockToRoot(0f, currentClockOffsetY + dragAmount)
+                                    val isBlockedAtTopEdge = dragAmount < 0f && candidateY == currentClockOffsetY
                                     if (isBlockedAtTopEdge) {
                                         updateCollisionFeedback(clockBlocked = true, favoritesBlocked = false)
-                                        return@detectDragGesturesAfterLongPress
+                                        return@detectVerticalDragGestures
                                     }
                                     val canApply = isValidLayoutState(
                                         favoritesX = 0f,
@@ -709,41 +685,9 @@ fun HomeScreen(
                                     onTap = { selectedEditTarget = HomeEditTarget.FAVORITES }
                                 )
                             }
-                            .pointerInput(isEditMode, selectedEditTarget) {
-                                if (!isEditMode) return@pointerInput
-                                detectVerticalDragGestures(
-                                    onDragEnd = {
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    },
-                                    onDragCancel = {
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    }
-                                ) { change, dragAmount ->
-                                    if (selectedEditTarget != HomeEditTarget.FAVORITES) return@detectVerticalDragGestures
-                                    change.consume()
-                                    val (_, candidateY) = clampToRoot(0f, currentFavOffsetY + dragAmount, favoritesNeutralBounds)
-                                    val canApply = isValidLayoutState(
-                                        favoritesX = 0f,
-                                        favoritesY = candidateY,
-                                        clockX = 0f,
-                                        clockY = currentClockOffsetY
-                                    )
-
-                                    if (canApply) {
-                                        currentFavOffsetX = 0f
-                                        currentFavOffsetY = candidateY
-                                        lastValidFavOffsetX = 0f
-                                        lastValidFavOffsetY = candidateY
-                                        isFavoritesNavigationBarBlocked = false
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    } else {
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = true)
-                                    }
-                                }
-                            }
                             .pointerInput(isEditMode) {
                                 if (!isEditMode) return@pointerInput
-                                detectDragGesturesAfterLongPress(
+                                detectVerticalDragGestures(
                                     onDragStart = {
                                         selectedEditTarget = HomeEditTarget.FAVORITES
                                     },
@@ -755,7 +699,7 @@ fun HomeScreen(
                                     }
                                 ) { change, dragAmount ->
                                     change.consume()
-                                    val (_, candidateY) = clampToRoot(0f, currentFavOffsetY + dragAmount.y, favoritesNeutralBounds)
+                                    val (_, candidateY) = clampToRoot(0f, currentFavOffsetY + dragAmount, favoritesNeutralBounds)
                                     val canApply = isValidLayoutState(
                                         favoritesX = 0f,
                                         favoritesY = candidateY,
