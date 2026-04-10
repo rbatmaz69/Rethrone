@@ -26,6 +26,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -163,6 +165,7 @@ fun HomeScreen(
     // Systemnavigation Bar Höhe ermitteln, um eine Sperrzone am unteren Bildschirmrand zu definieren.
     // Die Navigationgleiste darf nicht überlagert werden.
     val navigationBarHeightPx = with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
+    val arrowProbeStepPx = with(density) { 8.dp.toPx() }
     
     // Launch Request State
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -319,29 +322,30 @@ fun HomeScreen(
         return true
     }
 
-    // Lokale Hilfsfunktion: Liefert garantiert speicherbare Offsets, niemals mit Überlappung.
-    fun resolveSavableOffsets(): Pair<Pair<Float, Float>, Pair<Float, Float>> {
-        val candidates = listOf(
-            // Bevorzugt wird der aktuelle sichtbare Zustand.
-            Pair(currentFavOffsetX to currentFavOffsetY, currentClockOffsetX to currentClockOffsetY),
-            // Falls die Uhr die blockierte Einheit war, nehmen wir deren letzten gültigen Zustand.
-            Pair(currentFavOffsetX to currentFavOffsetY, lastValidClockOffsetX to lastValidClockOffsetY),
-            // Falls die Favoriten die blockierte Einheit waren, nehmen wir deren letzten gültigen Zustand.
-            Pair(lastValidFavOffsetX to lastValidFavOffsetY, currentClockOffsetX to currentClockOffsetY),
-            // Letzter gemeinsamer Fallback: beide Einheiten auf zuletzt bekannte gültige Werte.
-            Pair(lastValidFavOffsetX to lastValidFavOffsetY, lastValidClockOffsetX to lastValidClockOffsetY),
-            // Sicherheitsnetz: neutrale Standardposition ist als gültiger Basispunkt immer verfügbar.
-            Pair(0f to 0f, 0f to 0f)
+    // Prüft, ob die Uhr-Einheit in die gewünschte Richtung real verschoben werden kann.
+    fun canMoveClockBy(deltaY: Float): Boolean {
+        if (deltaY == 0f) return false
+        val (_, candidateY) = clampToRoot(0f, currentClockOffsetY + deltaY, clockNeutralBounds)
+        if (candidateY == currentClockOffsetY) return false
+        return isValidLayoutState(
+            favoritesX = 0f,
+            favoritesY = currentFavOffsetY,
+            clockX = 0f,
+            clockY = candidateY
         )
+    }
 
-        return candidates.firstOrNull { candidate ->
-            isValidLayoutState(
-                favoritesX = candidate.first.first,
-                favoritesY = candidate.first.second,
-                clockX = candidate.second.first,
-                clockY = candidate.second.second
-            )
-        } ?: Pair(0f to 0f, 0f to 0f)
+    // Prüft, ob die Favoriten-Einheit in die gewünschte Richtung real verschoben werden kann.
+    fun canMoveFavoritesBy(deltaY: Float): Boolean {
+        if (deltaY == 0f) return false
+        val (_, candidateY) = clampToRoot(0f, currentFavOffsetY + deltaY, favoritesNeutralBounds)
+        if (candidateY == currentFavOffsetY) return false
+        return isValidLayoutState(
+            favoritesX = 0f,
+            favoritesY = candidateY,
+            clockX = 0f,
+            clockY = currentClockOffsetY
+        )
     }
 
     // Persistenter Überlappungsstatus: hält die Rahmen eingefärbt, solange die Container aktuell kollidieren oder sich mit der Systemnavigation überlagern.
@@ -503,11 +507,15 @@ fun HomeScreen(
                     }
                     .then(if (isEditMode) {
                         val isClockSelected = selectedEditTarget == HomeEditTarget.CLOCK
+                        val showClockFrame = selectedEditTarget == null || isClockSelected
                         Modifier
                             .then(
-                                if (isClockSelected) {
+                                if (showClockFrame) {
                                     Modifier.border(
-                                        BorderStroke(1.dp, mainTextColor.copy(alpha = 0.35f)),
+                                        BorderStroke(
+                                            1.dp,
+                                            mainTextColor.copy(alpha = if (isClockSelected) 0.35f else 0.2f)
+                                        ),
                                         RoundedCornerShape(16.dp)
                                     )
                                 } else {
@@ -589,6 +597,10 @@ fun HomeScreen(
                             }
                     } else Modifier)
             ) {
+                val isClockSelected = isEditMode && selectedEditTarget == HomeEditTarget.CLOCK
+                val canMoveClockUp = isClockSelected && canMoveClockBy(-arrowProbeStepPx)
+                val canMoveClockDown = isClockSelected && canMoveClockBy(arrowProbeStepPx)
+
                 ClockHeader(
                     onAppLaunchForReturn = { pkg, bounds -> onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds) },
                     onLaunchRequest = { launchRequest = it },
@@ -597,6 +609,37 @@ fun HomeScreen(
                     isCompact = isEditMode,
                     isPreview = isPreview || isEditMode
                 )
+
+                if (isClockSelected) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .padding(vertical = 2.dp)
+                    ) {
+                        if (canMoveClockUp) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = null,
+                                tint = mainTextColor.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .size(20.dp)
+                                    .testTag("home_edit_hint_clock_up")
+                            )
+                        }
+                        if (canMoveClockDown) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = mainTextColor.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .size(20.dp)
+                                    .testTag("home_edit_hint_clock_down")
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -617,11 +660,15 @@ fun HomeScreen(
                     }
                     .then(if (isEditMode) {
                         val isFavoritesSelected = selectedEditTarget == HomeEditTarget.FAVORITES
+                        val showFavoritesFrame = selectedEditTarget == null || isFavoritesSelected
                         Modifier
                             .then(
-                                if (isFavoritesSelected) {
+                                if (showFavoritesFrame) {
                                     Modifier.border(
-                                        BorderStroke(1.dp, mainTextColor.copy(alpha = 0.35f)),
+                                        BorderStroke(
+                                            1.dp,
+                                            mainTextColor.copy(alpha = if (isFavoritesSelected) 0.35f else 0.2f)
+                                        ),
                                         RoundedCornerShape(16.dp)
                                     )
                                 } else {
@@ -703,6 +750,10 @@ fun HomeScreen(
                             }
                     } else Modifier)
             ) {
+                val isFavoritesSelected = isEditMode && selectedEditTarget == HomeEditTarget.FAVORITES
+                val canMoveFavoritesUp = isFavoritesSelected && canMoveFavoritesBy(-arrowProbeStepPx)
+                val canMoveFavoritesDown = isFavoritesSelected && canMoveFavoritesBy(arrowProbeStepPx)
+
                 Column(
                     // Kein einseitiger Start-Padding mehr, damit der Container visuell zentriert wirkt.
                     modifier = Modifier,
@@ -736,6 +787,37 @@ fun HomeScreen(
                                 },
                                 launchRequest = launchRequest,
                                 isPreview = isPreview || isEditMode
+                            )
+                        }
+                    }
+                }
+
+                if (isFavoritesSelected) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .padding(vertical = 2.dp)
+                    ) {
+                        if (canMoveFavoritesUp) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = null,
+                                tint = mainTextColor.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .size(20.dp)
+                                    .testTag("home_edit_hint_favorites_up")
+                            )
+                        }
+                        if (canMoveFavoritesDown) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = mainTextColor.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .size(20.dp)
+                                    .testTag("home_edit_hint_favorites_down")
                             )
                         }
                     }
@@ -800,31 +882,27 @@ fun HomeScreen(
                     EditControlButton(
                         icon = Icons.Default.Check,
                         onClick = {
-                            // Vor dem Persistieren wird immer ein final gültiger Zustand ermittelt.
-                            val resolvedOffsets = resolveSavableOffsets()
-                            val resolvedFavorites = resolvedOffsets.first
-                            val resolvedClock = resolvedOffsets.second
-                            val resolvedFavoritesX = 0f
-                            val resolvedClockX = 0f
+                            // WYSIWYG-Speichern: Es wird immer der aktuell sichtbare Zustand persistiert.
+                            val savedFavoritesX = 0f
+                            val savedFavoritesY = currentFavOffsetY
+                            val savedClockX = 0f
+                            val savedClockY = currentClockOffsetY
 
-                            // UI aktiv auf den akzeptierten Zustand zurücksetzen, damit nichts Inkonsistentes bleibt.
-                            currentFavOffsetX = resolvedFavoritesX
-                            currentFavOffsetY = resolvedFavorites.second
-                            currentClockOffsetX = resolvedClockX
-                            currentClockOffsetY = resolvedClock.second
-                            lastValidFavOffsetX = resolvedFavoritesX
-                            lastValidFavOffsetY = resolvedFavorites.second
-                            lastValidClockOffsetX = resolvedClockX
-                            lastValidClockOffsetY = resolvedClock.second
+                            // UI auf die gespeicherten Werte synchronisieren.
+                            currentFavOffsetX = savedFavoritesX
+                            currentFavOffsetY = savedFavoritesY
+                            currentClockOffsetX = savedClockX
+                            currentClockOffsetY = savedClockY
+                            lastValidFavOffsetX = savedFavoritesX
+                            lastValidFavOffsetY = savedFavoritesY
+                            lastValidClockOffsetX = savedClockX
+                            lastValidClockOffsetY = savedClockY
                             isClockNavigationBarBlocked = false
                             isFavoritesNavigationBarBlocked = false
                             updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
 
-                            // Persistenz wird nur mit garantiert validen Offsets geschrieben.
-                            // Die Mode wird NACH den Save-Callbacks toggled, damit die DataStore Updates
-                            // die UI States aktualisiert haben, bevor wir den Edit Mode ausschalten.
-                            onSaveFavoritesOffset(resolvedFavoritesX, resolvedFavorites.second)
-                            onSaveClockOffset(resolvedClockX, resolvedClock.second)
+                            onSaveFavoritesOffset(savedFavoritesX, savedFavoritesY)
+                            onSaveClockOffset(savedClockX, savedClockY)
                             Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
                             onToggleEditMode()
                         },
@@ -904,7 +982,11 @@ fun HomeScreen(
                                     onSearchButtonBoundsChanged(bounds)
                                 }
                                 .bounceClick(searchIntSrc)
-                                .clickable(interactionSource = searchIntSrc, indication = null) { onOpenSearch() },
+                                .clickable(
+                                    interactionSource = searchIntSrc,
+                                    indication = null,
+                                    enabled = !isEditMode
+                                ) { onOpenSearch() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = mainTextColor, modifier = Modifier.size(28.dp))
@@ -928,7 +1010,19 @@ fun HomeScreen(
                                 // Settings-Bounds lokal halten, damit die Sperrzone im Edit-Mode aktiv ist.
                                 settingsButtonBounds = it.boundsInRoot()
                             }
-                            .then(if (!isPreview) Modifier.bounceClick(intSrc).clickable(interactionSource = intSrc, indication = null) { onToggleSettings() } else Modifier),
+                            .then(
+                                if (!isPreview) {
+                                    Modifier
+                                        .bounceClick(intSrc)
+                                        .clickable(
+                                            interactionSource = intSrc,
+                                            indication = null,
+                                            enabled = !isEditMode
+                                        ) { onToggleSettings() }
+                                } else {
+                                    Modifier
+                                }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
