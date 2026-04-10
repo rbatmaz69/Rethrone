@@ -166,6 +166,11 @@ fun HomeScreen(
     // Die Navigationgleiste darf nicht überlagert werden.
     val navigationBarHeightPx = with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
     val arrowProbeStepPx = with(density) { 8.dp.toPx() }
+    val editHintContentPadding = 14.dp
+    val editHintArrowInset = 4.dp
+    val editHintArrowSize = 18.dp
+    val editHintClockDownInset = 2.dp
+    val editHintContentPaddingPx = with(density) { editHintContentPadding.toPx() }
     
     // Launch Request State
     val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
@@ -414,6 +419,11 @@ fun HomeScreen(
             currentClockOffsetX = 0f
             lastValidFavOffsetX = 0f
             lastValidClockOffsetX = 0f
+            // Beim Einstieg in den Edit-Mode wird Content vertikal gepolstert; Y daher lokal kompensieren.
+            currentFavOffsetY = favoritesOffsetY - editHintContentPaddingPx
+            currentClockOffsetY = clockOffsetY - editHintContentPaddingPx
+            lastValidFavOffsetY = currentFavOffsetY
+            lastValidClockOffsetY = currentClockOffsetY
             selectedEditTarget = null
         }
     }
@@ -449,25 +459,27 @@ fun HomeScreen(
                     }
                     .pointerInput(isEditMode) {
                         detectTapGestures(
-                            onTap = { tapOffset ->
-                                if (!isEditMode || selectedEditTarget == null) return@detectTapGestures
+                            onPress = { tapOffset ->
+                                if (isEditMode && selectedEditTarget != null) {
+                                    val clockRect = clockNeutralBounds?.let {
+                                        translateRect(it, currentClockOffsetX, currentClockOffsetY)
+                                    }
+                                    val favoritesRect = favoritesNeutralBounds?.let {
+                                        translateRect(it, currentFavOffsetX, currentFavOffsetY)
+                                    }
 
-                                val clockRect = clockNeutralBounds?.let {
-                                    translateRect(it, currentClockOffsetX, currentClockOffsetY)
-                                }
-                                val favoritesRect = favoritesNeutralBounds?.let {
-                                    translateRect(it, currentFavOffsetX, currentFavOffsetY)
-                                }
+                                    val hitClock = clockRect?.let { rectContains(it, tapOffset) } == true
+                                    val hitFavorites = favoritesRect?.let { rectContains(it, tapOffset) } == true
+                                    val hitEditControls = editControlsBounds?.let { rectContains(it, tapOffset) } == true
 
-                                val hitClock = clockRect?.let { rectContains(it, tapOffset) } == true
-                                val hitFavorites = favoritesRect?.let { rectContains(it, tapOffset) } == true
-                                val hitEditControls = editControlsBounds?.let { rectContains(it, tapOffset) } == true
-
-                                if (!hitClock && !hitFavorites && !hitEditControls) {
-                                    selectedEditTarget = null
+                                    if (!hitClock && !hitFavorites && !hitEditControls) {
+                                        selectedEditTarget = null
+                                    }
                                 }
+                                tryAwaitRelease()
                             },
                             onDoubleTap = {
+                                if (isEditMode) return@detectTapGestures
                                 if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
                                     LauncherAccessibilityService.requestLockScreen(context)
                                 } else {
@@ -542,6 +554,11 @@ fun HomeScreen(
                                     if (selectedEditTarget != HomeEditTarget.CLOCK) return@detectVerticalDragGestures
                                     change.consume()
                                     val (_, candidateY) = clampToRoot(0f, currentClockOffsetY + dragAmount, clockNeutralBounds)
+                                    val isBlockedAtTopEdge = dragAmount < 0f && candidateY == currentClockOffsetY
+                                    if (isBlockedAtTopEdge) {
+                                        updateCollisionFeedback(clockBlocked = true, favoritesBlocked = false)
+                                        return@detectVerticalDragGestures
+                                    }
                                     val canApply = isValidLayoutState(
                                         favoritesX = 0f,
                                         favoritesY = currentFavOffsetY,
@@ -576,6 +593,11 @@ fun HomeScreen(
                                 ) { change, dragAmount ->
                                     change.consume()
                                     val (_, candidateY) = clampToRoot(0f, currentClockOffsetY + dragAmount.y, clockNeutralBounds)
+                                    val isBlockedAtTopEdge = dragAmount.y < 0f && candidateY == currentClockOffsetY
+                                    if (isBlockedAtTopEdge) {
+                                        updateCollisionFeedback(clockBlocked = true, favoritesBlocked = false)
+                                        return@detectDragGesturesAfterLongPress
+                                    }
                                     val canApply = isValidLayoutState(
                                         favoritesX = 0f,
                                         favoritesY = currentFavOffsetY,
@@ -601,20 +623,23 @@ fun HomeScreen(
                 val canMoveClockUp = isClockSelected && canMoveClockBy(-arrowProbeStepPx)
                 val canMoveClockDown = isClockSelected && canMoveClockBy(arrowProbeStepPx)
 
-                ClockHeader(
-                    onAppLaunchForReturn = { pkg, bounds -> onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds) },
-                    onLaunchRequest = { launchRequest = it },
-                    returnIconPackage = returnIconPackage,
-                    // Kompaktmodus hält Uhr+Datum als gemeinsamen Block ohne volle Breite.
-                    isCompact = isEditMode,
-                    isPreview = isPreview || isEditMode
-                )
+                Box(
+                    modifier = if (isEditMode) Modifier.padding(vertical = editHintContentPadding) else Modifier
+                ) {
+                    ClockHeader(
+                        onAppLaunchForReturn = { pkg, bounds -> onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds) },
+                        onLaunchRequest = { launchRequest = it },
+                        returnIconPackage = returnIconPackage,
+                        // Kompaktmodus hält Uhr+Datum als gemeinsamen Block ohne volle Breite.
+                        isCompact = isEditMode,
+                        isPreview = isPreview || isEditMode
+                    )
+                }
 
                 if (isClockSelected) {
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .padding(vertical = 2.dp)
                     ) {
                         if (canMoveClockUp) {
                             Icon(
@@ -623,7 +648,8 @@ fun HomeScreen(
                                 tint = mainTextColor.copy(alpha = 0.35f),
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
-                                    .size(20.dp)
+                                    .padding(top = editHintArrowInset)
+                                    .size(editHintArrowSize)
                                     .testTag("home_edit_hint_clock_up")
                             )
                         }
@@ -634,7 +660,8 @@ fun HomeScreen(
                                 tint = mainTextColor.copy(alpha = 0.35f),
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .size(20.dp)
+                                    .padding(bottom = editHintClockDownInset)
+                                    .size(editHintArrowSize)
                                     .testTag("home_edit_hint_clock_down")
                             )
                         }
@@ -756,7 +783,7 @@ fun HomeScreen(
 
                 Column(
                     // Kein einseitiger Start-Padding mehr, damit der Container visuell zentriert wirkt.
-                    modifier = Modifier,
+                    modifier = if (isEditMode) Modifier.padding(vertical = editHintContentPadding) else Modifier,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (favorites.isEmpty()) {
@@ -796,7 +823,6 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .padding(vertical = 2.dp)
                     ) {
                         if (canMoveFavoritesUp) {
                             Icon(
@@ -805,7 +831,8 @@ fun HomeScreen(
                                 tint = mainTextColor.copy(alpha = 0.35f),
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
-                                    .size(20.dp)
+                                    .padding(top = editHintArrowInset)
+                                    .size(editHintArrowSize)
                                     .testTag("home_edit_hint_favorites_up")
                             )
                         }
@@ -816,7 +843,8 @@ fun HomeScreen(
                                 tint = mainTextColor.copy(alpha = 0.35f),
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .size(20.dp)
+                                    .padding(bottom = editHintArrowInset)
+                                    .size(editHintArrowSize)
                                     .testTag("home_edit_hint_favorites_down")
                             )
                         }
@@ -882,11 +910,12 @@ fun HomeScreen(
                     EditControlButton(
                         icon = Icons.Default.Check,
                         onClick = {
-                            // WYSIWYG-Speichern: Es wird immer der aktuell sichtbare Zustand persistiert.
+                            // WYSIWYG-Speichern: Sichtbare Edit-Position 1:1 in den Normalmodus uebertragen.
+                            // Im Edit-Mode wird der Content vertikal gepolstert, daher Y um diesen Betrag kompensieren.
                             val savedFavoritesX = 0f
-                            val savedFavoritesY = currentFavOffsetY
+                            val savedFavoritesY = currentFavOffsetY + editHintContentPaddingPx
                             val savedClockX = 0f
-                            val savedClockY = currentClockOffsetY
+                            val savedClockY = currentClockOffsetY + editHintContentPaddingPx
 
                             // UI auf die gespeicherten Werte synchronisieren.
                             currentFavOffsetX = savedFavoritesX

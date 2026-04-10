@@ -99,6 +99,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 /**
  * Haupt-Activity des Launchers.
@@ -979,7 +980,11 @@ class MainActivity : ComponentActivity() {
                                 Toast.makeText(context, "Hintergrund entfernt", Toast.LENGTH_SHORT).show()
                             },
                             onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
-                            isCustomHomeLayoutSet = favoritesOffsetX != 0f || favoritesOffsetY != 0f || clockOffsetX != 0f || clockOffsetY != 0f,
+                            isCustomHomeLayoutSet =
+                                abs(favoritesOffsetX) > 0.5f ||
+                                abs(favoritesOffsetY) > 0.5f ||
+                                abs(clockOffsetX) > 0.5f ||
+                                abs(clockOffsetY) > 0.5f,
                             isCustomWallpaperSet = customWallpaperUri != null,
                             isShakeGesturesEnabled = isShakeGesturesEnabled,
                             onShakeGesturesToggled = { enabled ->
