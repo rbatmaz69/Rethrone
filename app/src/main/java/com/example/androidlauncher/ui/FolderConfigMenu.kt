@@ -96,7 +96,7 @@ fun FolderConfigMenu(
 
     val focusRequester = remember { FocusRequester() }
     val folderListState = rememberLazyListState()
-    val swipeToCloseConnection = rememberBottomBoundarySwipeToCloseConnection(
+    val swipeToCloseConnection = rememberTopBoundarySwipeToCloseConnection(
         listState = folderListState,
         enabled = !showDeleteConfirm,
         onClose = onClose

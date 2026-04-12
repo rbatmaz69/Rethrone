@@ -107,7 +107,7 @@ fun FavoritesConfigMenu(
     val filteredApps = remember(apps, searchQuery) { LauncherLogic.filterApps(apps, searchQuery) }
     val focusRequester = remember { FocusRequester() }
     val favoritesListState = rememberLazyListState()
-    val swipeToCloseConnection = rememberBottomBoundarySwipeToCloseConnection(
+    val swipeToCloseConnection = rememberTopBoundarySwipeToCloseConnection(
         listState = favoritesListState,
         onClose = onClose
     )

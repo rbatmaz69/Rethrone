@@ -27,6 +27,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -328,9 +330,22 @@ class MainActivity : ComponentActivity() {
                 var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
+                var selectedFolderForConfigSnapshot by remember { mutableStateOf<FolderInfo?>(null) }
+                val folderConfigExitHoldMs = 320L
                 var isLauncherResumed by remember { mutableStateOf(false) }
                 var returnResumeGuardState by remember {
                     mutableStateOf(ReturnResumeGuardState())
+                }
+
+                LaunchedEffect(selectedFolderForConfig) {
+                    val selected = selectedFolderForConfig
+                    if (selected != null) {
+                        selectedFolderForConfigSnapshot = selected
+                    } else {
+                        // Keep content alive briefly so AnimatedVisibility can render the exit smoothly.
+                        delay(folderConfigExitHoldMs)
+                        selectedFolderForConfigSnapshot = null
+                    }
                 }
 
                 DisposableEffect(lifecycleOwner) {
@@ -868,7 +883,8 @@ class MainActivity : ComponentActivity() {
                         enableDragToClose = false,
                         onClose = { selectedFolderForConfig = null }
                     ) {
-                        selectedFolderForConfig?.let { folder ->
+                        val folderForConfig = selectedFolderForConfig ?: selectedFolderForConfigSnapshot
+                        folderForConfig?.let { folder ->
                             FolderConfigMenu(
                                 folder = folder,
                                 allApps = allApps,
@@ -1308,6 +1324,12 @@ private fun MenuOverlay(
     visible: Boolean,
     backgroundColor: Color,
     enableDragToClose: Boolean = true,
+    enterSlideDuration: Int = 300,
+    enterFadeDuration: Int = 200,
+    exitSlideDuration: Int = 300,
+    exitFadeDuration: Int = 200,
+    enterSlideEasing: Easing = EaseOutCubic,
+    exitSlideEasing: Easing = EaseInCubic,
     onClose: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -1315,12 +1337,12 @@ private fun MenuOverlay(
         visible = visible,
         enter = slideInVertically(
             initialOffsetY = { it },
-            animationSpec = tween(300, easing = EaseOutCubic)
-        ) + fadeIn(),
+            animationSpec = tween(enterSlideDuration, easing = enterSlideEasing)
+        ) + fadeIn(animationSpec = tween(enterFadeDuration)),
         exit = slideOutVertically(
             targetOffsetY = { it },
-            animationSpec = tween(300, easing = EaseInCubic)
-        ) + fadeOut()
+            animationSpec = tween(exitSlideDuration, easing = exitSlideEasing)
+        ) + fadeOut(animationSpec = tween(exitFadeDuration))
     ) {
         var totalDragY by remember { mutableStateOf(0f) }
         

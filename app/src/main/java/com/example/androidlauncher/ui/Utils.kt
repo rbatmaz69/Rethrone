@@ -162,6 +162,63 @@ fun rememberBottomBoundarySwipeToCloseConnection(
 }
 
 @Composable
+fun rememberTopBoundarySwipeToCloseConnection(
+    listState: LazyListState,
+    enabled: Boolean = true,
+    onClose: () -> Unit
+): NestedScrollConnection {
+    val density = LocalDensity.current
+    val swipeCloseThresholdPx = with(density) { 64.dp.toPx() }
+    var swipeDragDistance by remember(listState, enabled) { mutableStateOf(0f) }
+
+    return remember(listState, enabled, swipeCloseThresholdPx, onClose) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!enabled) {
+                    swipeDragDistance = 0f
+                    return Offset.Zero
+                }
+
+                val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                if (source == NestedScrollSource.UserInput && atTop && available.y > 0f) {
+                    swipeDragDistance += available.y
+                    if (swipeDragDistance >= swipeCloseThresholdPx) {
+                        swipeDragDistance = 0f
+                        onClose()
+                    }
+                    return Offset(0f, available.y)
+                }
+
+                if (!atTop || available.y < 0f) {
+                    swipeDragDistance = 0f
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (!enabled) {
+                    swipeDragDistance = 0f
+                    return Velocity.Zero
+                }
+
+                val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                if (atTop && available.y > 1500f) {
+                    swipeDragDistance = 0f
+                    onClose()
+                    return available
+                }
+                return Velocity.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                swipeDragDistance = 0f
+                return Velocity.Zero
+            }
+        }
+    }
+}
+
+@Composable
 fun StableSearchFieldContent(
     value: String,
     onValueChange: (String) -> Unit,
