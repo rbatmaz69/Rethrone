@@ -71,6 +71,11 @@ Hier ist ein Überblick über die wichtigsten Verzeichnisse und Dateien des Proj
 ./gradlew assembleDebug
 ```
 
+### App auf Geraet/Emulator installieren
+```bash
+./gradlew run
+```
+
 ### Tests ausführen
 ```bash
 ./gradlew :app:testDebugUnitTest
@@ -85,6 +90,16 @@ Hier ist ein Überblick über die wichtigsten Verzeichnisse und Dateien des Proj
 Um den Linter lokal auszuführen, nutze folgenden Befehl:
 ```bash
 ./gradlew detekt
+```
+
+## Troubleshooting
+- `./gradlew clean build` ist erfolgreich, auch wenn `stripDebugDebugSymbols`/`stripReleaseDebugSymbols` meldet, dass bestimmte `.so`-Dateien nicht gestript werden koennen. Das sind in diesem Kontext Warnungen.
+- Wenn `./gradlew clean run` vorher mit `Task 'run' not found` abgebrochen ist: der Root-Task `run` ist nun als Alias fuer `:app:installDebug` vorhanden.
+- Nutze immer den Wrapper (`./gradlew`) statt `gradle`, damit die im Projekt festgelegte Version aus `gradle/wrapper/gradle-wrapper.properties` verwendet wird.
+- Die Warnung zu `HAPTIC_FEEDBACK_ENABLED` in `ThemeManager.kt` ist eine Deprecation-Warnung und kein Build-Blocker.
+- Fuer detailierte Plugin-/Gradle-Warnungen:
+```bash
+./gradlew --warning-mode all help
 ```
 
 ## 🤖 CI (GitHub Actions)

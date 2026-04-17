@@ -24,3 +24,10 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         md.required.set(true)
     }
 }
+
+tasks.register("run") {
+    group = "application"
+    description = "Installiert die Debug-APK auf einem verbundenen Geraet/Emulator (Alias fuer :app:installDebug)."
+    dependsOn(":app:installDebug")
+}
+
