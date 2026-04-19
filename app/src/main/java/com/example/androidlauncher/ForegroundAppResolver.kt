@@ -23,12 +23,12 @@ object ForegroundAppResolver {
         context.startActivity(intent)
     }
 
+    @Suppress("DEPRECATION")
     fun hasUsageAccess(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
         val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
         } else {
-            @Suppress("DEPRECATION")
             appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
         }
         val granted = mode == AppOpsManager.MODE_ALLOWED
@@ -36,13 +36,10 @@ object ForegroundAppResolver {
         return granted
     }
 
-    fun getRecentForegroundPackage(context: Context, allowedPackages: Set<String> = emptySet()): String? {
-        val observation = getRecentForegroundObservation(context, allowedPackages)
-        Log.d(TAG, "recentForegroundCandidate=${observation?.packageName} source=${observation?.source} observedAt=${observation?.observedAtMs}")
-        return observation?.packageName
-    }
-
-    fun getRecentForegroundObservation(context: Context, allowedPackages: Set<String> = emptySet()): ForegroundAppObservation? {
+    fun getRecentForegroundObservation(
+        context: Context,
+        allowedPackages: Set<String> = emptySet()
+    ): com.example.androidlauncher.ForegroundAppObservation? {
         if (!hasUsageAccess(context)) return null
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return null
         val eventCandidate = getEventCandidate(context, usageStatsManager, allowedPackages)
@@ -52,18 +49,21 @@ object ForegroundAppResolver {
         return resolved
     }
 
-    private fun getEventCandidate(context: Context, usageStatsManager: UsageStatsManager, allowedPackages: Set<String>): ForegroundAppObservation? {
+    private fun getEventCandidate(context: Context, usageStatsManager: UsageStatsManager, allowedPackages: Set<String>): com.example.androidlauncher.ForegroundAppObservation? {
         val now = System.currentTimeMillis()
         val begin = now - EVENT_LOOKBACK_MS
         val events = usageStatsManager.queryEvents(begin, now)
         val event = UsageEvents.Event()
-        var candidate: ForegroundAppObservation? = null
+        var candidate: com.example.androidlauncher.ForegroundAppObservation? = null
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             val packageName = event.packageName?.takeIf { it.isNotBlank() } ?: continue
             if (shouldIgnorePackage(context, packageName, allowedPackages)) continue
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                candidate = ForegroundAppObservation(
+            @Suppress("DEPRECATION")
+            val isForegroundEvent = event.eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
+                event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
+            if (isForegroundEvent) {
+                candidate = com.example.androidlauncher.ForegroundAppObservation(
                     packageName = packageName,
                     observedAtMs = event.timeStamp,
                     source = "usage-events"
@@ -74,7 +74,7 @@ object ForegroundAppResolver {
         return candidate
     }
 
-    private fun getUsageStatsCandidate(context: Context, usageStatsManager: UsageStatsManager, allowedPackages: Set<String>): ForegroundAppObservation? {
+    private fun getUsageStatsCandidate(context: Context, usageStatsManager: UsageStatsManager, allowedPackages: Set<String>): com.example.androidlauncher.ForegroundAppObservation? {
         val now = System.currentTimeMillis()
         val stats = usageStatsManager.queryUsageStats(
             UsageStatsManager.INTERVAL_DAILY,
@@ -82,15 +82,15 @@ object ForegroundAppResolver {
             now
         ) ?: return null
 
-        val candidate = stats
+        val candidate: com.example.androidlauncher.ForegroundAppObservation? = stats
             .asSequence()
             .filter { !shouldIgnorePackage(context, it.packageName, allowedPackages) }
             .maxByOrNull { it.lastTimeUsed }
             ?.takeIf { it.lastTimeUsed > 0L }
-            ?.let {
-                ForegroundAppObservation(
-                    packageName = it.packageName,
-                    observedAtMs = it.lastTimeUsed,
+            ?.let { usageStat ->
+                com.example.androidlauncher.ForegroundAppObservation(
+                    packageName = usageStat.packageName,
+                    observedAtMs = usageStat.lastTimeUsed,
                     source = "usage-stats"
                 )
             }

@@ -31,7 +31,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -80,6 +78,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalFontWeight
+import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import com.composables.icons.lucide.*
@@ -119,6 +118,7 @@ fun AppDrawer(
     val appFont = LocalAppFont.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val drawerBackgroundBrush = remember(colorTheme, isDarkTextEnabled) {
         colorTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.88f)
@@ -307,9 +307,11 @@ fun AppDrawer(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.End
                                         ) {
+                                            @Suppress("DEPRECATION")
                                             TextButton(onClick = { isCreateFolderDialogOpen = false }) {
                                                 Text("Abbrechen", color = Color.Gray)
                                             }
+                                            @Suppress("DEPRECATION")
                                             TextButton(onClick = {
                                                 if (folderNameInput.isNotBlank()) {
                                                     val nameExists = folders.any { it.name == folderNameInput }
@@ -351,19 +353,22 @@ fun AppDrawer(
                 interactionSource = searchIntSrc,
                 indication = null
             ) { focusRequester.requestFocus() }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    BasicTextField(
-                        value = searchQuery, onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                        textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp * fontSize.scale),
-                        cursorBrush = SolidColor(mainTextColor), singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                        decorationBox = { if (searchQuery.isEmpty()) Text("Apps durchsuchen...", color = mainTextColor.copy(alpha = 0.4f), fontSize = 16.sp * fontSize.scale); it() }
-                    )
-                }
+                StableSearchFieldContent(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = "Apps durchsuchen...",
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = mainTextColor,
+                        fontSize = 16.sp * fontSize.scale
+                    ),
+                    textColor = mainTextColor,
+                    placeholderColor = mainTextColor.copy(alpha = 0.4f),
+                    focusRequester = focusRequester,
+                    leadingIconTint = mainTextColor.copy(alpha = 0.4f),
+                    leadingIconSize = 20.dp,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
+                )
             }
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -457,7 +462,7 @@ fun AppDrawer(
                                     onUpdateFolders = onUpdateFolders,
                                     bouncePackage = returnIconPackage,
                                     onLongPress = { appInfo, bounds ->
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         menuApp = appInfo
                                         menuAppBounds = bounds
                                     },
@@ -665,7 +670,7 @@ fun AppDrawer(
                                         newList.removeAt(fromIdx)
                                         newList.add(targetIdx, pkg)
                                         onUpdateFolders(currentFoldersState.map { if (it.id == currentFolderState.id) it.copy(appPackageNames = newList) else it })
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     }
                                 }
 
@@ -707,7 +712,7 @@ fun AppDrawer(
                                                         draggingItemPkg = currentApps[globalIdx].packageName
                                                         touchPosition = offset
                                                         initialTouchOffsetInItem = Offset(offset.x % cellW, offset.y % cellH)
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     }
                                                 },
                                                 onDragEnd = { draggingItemPkg = null },
@@ -744,20 +749,25 @@ fun AppDrawer(
                                                             isInFolder = true,
                                                             currentFolderId = currentActiveFolder.id,
                                                             isEditMode = isEditMode,
-                                                            onLongPress = { appInfo, bounds -> haptic.performHapticFeedback(HapticFeedbackType.LongPress); menuApp = appInfo; menuAppBounds = bounds },
+                                                            bouncePackage = returnIconPackage,
+                                                            onLongPress = { appInfo, bounds ->
+                                                                if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                menuApp = appInfo
+                                                                menuAppBounds = bounds
+                                                            },
                                                             onAppLaunchRequested = { requestedApp, bounds ->
                                                                 context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
                                                                     onLaunchApp(requestedApp.packageName, intent, bounds)
                                                                 }
                                                             }
-                                                         )
+                                                        )
 
                                                         if (isEditMode && !isDragging) {
                                                             val view = androidx.compose.ui.platform.LocalView.current
                                                             Box(
                                                                 modifier = Modifier.align(Alignment.TopEnd).offset(x = (-2).dp, y = (-2).dp).zIndex(10f).size(badgeSize).background(mainTextColor.copy(alpha = 0.85f), CircleShape)
                                                                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                        if (hapticEnabled) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                                                         val updatedFolders = LauncherLogic.removeAppFromFolder(folders, currentActiveFolder.id, app.packageName)
                                                                         onUpdateFolders(updatedFolders)
                                                                         if (updatedFolders.none { it.id == currentActiveFolder.id }) activeFolderId = null
@@ -823,6 +833,7 @@ fun AppDrawer(
                                 Text(folder.name, fontSize = 16.sp * fontSize.scale, color = mainTextColor)
                             }
                         }
+                        @Suppress("DEPRECATION")
                         TextButton(onClick = { showFolderSelection = false }, modifier = Modifier.align(Alignment.End).padding(top = 8.dp)) { Text("Abbrechen", color = Color.Gray) }
                     }
                 }

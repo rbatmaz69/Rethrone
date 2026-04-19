@@ -15,79 +15,81 @@ class ReturnAnimationGateTest {
 
     @Test
     fun `returns animation when observation matches launched package and is fresh`() {
+        val pendingLaunchStartedAtMs = System.currentTimeMillis() - 2_000L
         val decision = ReturnAnimationGate.resolve(
             pendingReturnAnimation = pendingAnimation,
-            pendingLaunchStartedAtMs = 1_000L,
+            pendingLaunchStartedAtMs = pendingLaunchStartedAtMs,
             observations = listOf(
                 ForegroundAppObservation(
                     packageName = "com.example.target",
-                    observedAtMs = 2_000L,
+                    observedAtMs = pendingLaunchStartedAtMs + 500L,
                     source = "accessibility-before-launcher"
                 )
-            ),
-            nowMs = 2_500L
+            )
         )
 
-        assertEquals("confirmed-return", decision.reason)
+        assertEquals("matched-observation", decision.reason)
         assertEquals(pendingAnimation, decision.returnAnimation)
         assertEquals("com.example.target", decision.matchedObservation?.packageName)
     }
 
     @Test
-    fun `does not return animation for stale observation from old recents session`() {
+    fun `does not return animation for stale pending launch session`() {
+        val nowMs = System.currentTimeMillis()
         val decision = ReturnAnimationGate.resolve(
             pendingReturnAnimation = pendingAnimation,
-            pendingLaunchStartedAtMs = 1_000L,
+            pendingLaunchStartedAtMs = nowMs - (15 * 60 * 1000L) - 1L,
             observations = listOf(
                 ForegroundAppObservation(
                     packageName = "com.example.target",
-                    observedAtMs = 2_000L,
+                    observedAtMs = nowMs - 1_000L,
                     source = "accessibility-before-launcher"
                 )
-            ),
-            nowMs = 5_000L
+            )
         )
 
-        assertEquals("no-confirmed-return", decision.reason)
+        assertEquals("stale-pending-animation", decision.reason)
         assertNull(decision.returnAnimation)
+        assertNull(decision.matchedObservation)
     }
 
     @Test
-    fun `does not return animation when observation happened before the launch session`() {
+    fun `returns animation when observation happened before the launch session`() {
+        val pendingLaunchStartedAtMs = System.currentTimeMillis() - 1_000L
         val decision = ReturnAnimationGate.resolve(
             pendingReturnAnimation = pendingAnimation,
-            pendingLaunchStartedAtMs = 3_000L,
+            pendingLaunchStartedAtMs = pendingLaunchStartedAtMs,
             observations = listOf(
                 ForegroundAppObservation(
                     packageName = "com.example.target",
-                    observedAtMs = 2_000L,
+                    observedAtMs = pendingLaunchStartedAtMs - 6_000L,
                     source = "usage-events"
                 )
-            ),
-            nowMs = 3_100L
+            )
         )
 
-        assertEquals("no-confirmed-return", decision.reason)
-        assertNull(decision.returnAnimation)
+        assertEquals("matched-observation-precedes-launch", decision.reason)
+        assertEquals(pendingAnimation, decision.returnAnimation)
+        assertEquals("com.example.target", decision.matchedObservation?.packageName)
     }
 
     @Test
     fun `does not return animation when only a different package was seen before launcher`() {
+        val pendingLaunchStartedAtMs = System.currentTimeMillis() - 1_000L
         val decision = ReturnAnimationGate.resolve(
             pendingReturnAnimation = pendingAnimation,
-            pendingLaunchStartedAtMs = 1_000L,
+            pendingLaunchStartedAtMs = pendingLaunchStartedAtMs,
             observations = listOf(
                 ForegroundAppObservation(
                     packageName = "com.example.other",
-                    observedAtMs = 2_000L,
+                    observedAtMs = pendingLaunchStartedAtMs + 200L,
                     source = "usage-events"
                 )
-            ),
-            nowMs = 2_100L
+            )
         )
 
-        assertEquals("no-confirmed-return", decision.reason)
+        assertEquals("no-matching-observation", decision.reason)
         assertNull(decision.returnAnimation)
+        assertNull(decision.matchedObservation)
     }
 }
-

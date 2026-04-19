@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +56,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -104,6 +106,11 @@ fun FavoritesConfigMenu(
     var selectedPackages by remember { mutableStateOf(initialFavoritePackages) }
     val filteredApps = remember(apps, searchQuery) { LauncherLogic.filterApps(apps, searchQuery) }
     val focusRequester = remember { FocusRequester() }
+    val favoritesListState = rememberLazyListState()
+    val swipeToCloseConnection = rememberTopBoundarySwipeToCloseConnection(
+        listState = favoritesListState,
+        onClose = onClose
+    )
 
     Column(
         modifier = Modifier
@@ -182,33 +189,27 @@ fun FavoritesConfigMenu(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .clickable { focusRequester.requestFocus() }
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = grayTone, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
-                    cursorBrush = SolidColor(mainTextColor),
-                    singleLine = true,
-                    decorationBox = { inner ->
-                        if (searchQuery.isEmpty()) {
-                            Text(stringResource(R.string.search_apps), color = grayTone, fontSize = 15.sp)
-                        }
-                        inner()
-                    }
-                )
-            }
+            StableSearchFieldContent(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = stringResource(R.string.search_apps),
+                textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
+                textColor = mainTextColor,
+                placeholderColor = grayTone,
+                focusRequester = focusRequester,
+                leadingIconTint = grayTone,
+                leadingIconSize = 18.dp
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // App-Liste
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            state = favoritesListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(swipeToCloseConnection),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {

@@ -2,6 +2,7 @@ package com.example.androidlauncher
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.geometry.Offset
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -97,5 +98,43 @@ class LauncherUiTest {
         }
 
         composeTestRule.onNodeWithTag("shake_gestures_switch").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeEditModeOpensOnlyThroughEditSubmenuGeneralOption() {
+        composeTestRule.onNodeWithTag("settings_button").assertIsDisplayed().performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("settings_palette_item_edit").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("settings_palette_item_edit").performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("edit_home_layout_item").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("edit_home_layout_item").performClick()
+
+        composeTestRule.waitUntil(3_000) {
+            composeTestRule.onAllNodesWithTag("home_edit_controls").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("home_edit_controls").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_edit_cancel").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_edit_save").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_edit_move_up").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_edit_move_down").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("home_edit_target_clock").performTouchInput { click() }
+        composeTestRule.onNodeWithTag("home_edit_move_up").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_edit_move_down").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("home_edit_target_favorites").performTouchInput { click() }
+        composeTestRule.onNodeWithTag("home_edit_move_up").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_edit_move_down").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("home_screen").performTouchInput {
+            click(Offset(x = width - 8f, y = 8f))
+        }
+
+        composeTestRule.onNodeWithTag("home_edit_move_up").assertDoesNotExist()
     }
 }

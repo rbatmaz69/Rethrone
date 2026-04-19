@@ -1,55 +1,46 @@
 package com.example.androidlauncher
 
-private const val RETURN_CANDIDATE_FRESHNESS_WINDOW_MS = 2_500L
-
-data class ForegroundAppObservation(
-    val packageName: String,
-    val observedAtMs: Long,
-    val source: String
-)
+private const val MAX_PENDING_RETURN_AGE_MS = 15 * 60 * 1000L
+private const val OBSERVATION_CLOCK_SKEW_MS = 5_000L
 
 data class ReturnAnimationGateDecision(
     val returnAnimation: ReturnAnimation?,
-    val matchedObservation: ForegroundAppObservation?,
-    val reason: String
+    val reason: String,
+    val matchedObservation: ForegroundAppObservation?
 )
 
 object ReturnAnimationGate {
     fun resolve(
         pendingReturnAnimation: ReturnAnimation?,
         pendingLaunchStartedAtMs: Long,
-        observations: List<ForegroundAppObservation>,
-        nowMs: Long = System.currentTimeMillis()
+        observations: List<ForegroundAppObservation>
     ): ReturnAnimationGateDecision {
-        if (pendingReturnAnimation == null) {
-            return ReturnAnimationGateDecision(null, null, "no-pending-animation")
-        }
+        val animation = pendingReturnAnimation
+            ?: return ReturnAnimationGateDecision(null, "no-pending-animation", null)
+
         if (pendingLaunchStartedAtMs <= 0L) {
-            return ReturnAnimationGateDecision(null, null, "missing-launch-timestamp")
+            return ReturnAnimationGateDecision(null, "invalid-pending-launch-time", null)
         }
+
+        if (System.currentTimeMillis() - pendingLaunchStartedAtMs > MAX_PENDING_RETURN_AGE_MS) {
+            return ReturnAnimationGateDecision(null, "stale-pending-animation", null)
+        }
+
         if (observations.isEmpty()) {
-            return ReturnAnimationGateDecision(null, null, "no-foreground-observation")
+            return ReturnAnimationGateDecision(null, "no-foreground-observations", null)
         }
 
-        observations.forEach { observation ->
-            if (observation.packageName != pendingReturnAnimation.launchedPackageName) {
-                return@forEach
-            }
-            if (observation.observedAtMs < pendingLaunchStartedAtMs) {
-                return@forEach
-            }
-            val ageMs = nowMs - observation.observedAtMs
-            if (ageMs !in 0..RETURN_CANDIDATE_FRESHNESS_WINDOW_MS) {
-                return@forEach
-            }
-            return ReturnAnimationGateDecision(
-                returnAnimation = pendingReturnAnimation,
-                matchedObservation = observation,
-                reason = "confirmed-return"
-            )
+        val matchedObservation = observations
+            .asSequence()
+            .filter { it.packageName == animation.launchedPackageName }
+            .filter { it.observedAtMs > 0L }
+            .maxByOrNull { it.observedAtMs }
+            ?: return ReturnAnimationGateDecision(null, "no-matching-observation", null)
+
+        if (matchedObservation.observedAtMs + OBSERVATION_CLOCK_SKEW_MS < pendingLaunchStartedAtMs) {
+            return ReturnAnimationGateDecision(animation, "matched-observation-precedes-launch", matchedObservation)
         }
 
-        return ReturnAnimationGateDecision(null, null, "no-confirmed-return")
+        return ReturnAnimationGateDecision(animation, "matched-observation", matchedObservation)
     }
 }
-

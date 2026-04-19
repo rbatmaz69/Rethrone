@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -24,9 +25,10 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -34,6 +36,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,10 +59,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
@@ -97,6 +102,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 /**
  * Haupt-Activity des Launchers.
@@ -164,6 +170,7 @@ class MainActivity : ComponentActivity() {
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
+            val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
@@ -171,6 +178,13 @@ class MainActivity : ComponentActivity() {
             val wallpaperZoom by themeManager.wallpaperZoom.collectAsState(initial = 1.0f)
             val searchHistory by searchSuggestionsManager.webHistory.collectAsState(initial = emptyList())
             val appUsageStats by searchSuggestionsManager.appUsageStats.collectAsState(initial = emptyMap())
+
+            // UI Offset States
+            val favoritesOffsetX by themeManager.favoritesOffsetX.collectAsState(initial = 0f)
+            val favoritesOffsetY by themeManager.favoritesOffsetY.collectAsState(initial = 0f)
+            // Uhrbereich (Uhr + Datum) wird als gemeinsame Einheit auf X/Y gehalten.
+            val clockOffsetX by themeManager.clockOffsetX.collectAsState(initial = 0f)
+            val clockOffsetY by themeManager.clockOffsetY.collectAsState(initial = 0f)
 
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
@@ -208,7 +222,7 @@ class MainActivity : ComponentActivity() {
                 if (!isGranted) {
                     Toast.makeText(
                         context,
-                        "Kamerazugriff wird für die Taschenlampe benötigt",
+                        context.getString(R.string.flashlight_permission_required),
                         Toast.LENGTH_LONG
                     ).show()
                     return@rememberLauncherForActivityResult
@@ -219,17 +233,17 @@ class MainActivity : ComponentActivity() {
                         launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
                     }
                     FlashlightToggleResult.Unsupported -> {
-                        Toast.makeText(context, "Keine Taschenlampe verfügbar", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.flashlight_unsupported), Toast.LENGTH_SHORT).show()
                     }
                     FlashlightToggleResult.MissingPermission -> {
                         Toast.makeText(
                             context,
-                            "Kamerazugriff wird für die Taschenlampe benötigt",
+                            context.getString(R.string.flashlight_permission_required),
                             Toast.LENGTH_LONG
                         ).show()
                     }
                     FlashlightToggleResult.Error -> {
-                        Toast.makeText(context, "Taschenlampe konnte nicht geändert werden", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.flashlight_error), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -242,14 +256,14 @@ class MainActivity : ComponentActivity() {
                                 launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
                             }
                             FlashlightToggleResult.Unsupported -> {
-                                Toast.makeText(context, "Keine Taschenlampe verfügbar", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.flashlight_unsupported), Toast.LENGTH_SHORT).show()
                             }
                             FlashlightToggleResult.MissingPermission -> {
                                 pendingPermissionGestureAction = gestureAction
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                             FlashlightToggleResult.Error -> {
-                                Toast.makeText(context, "Taschenlampe konnte nicht geändert werden", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.flashlight_error), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -258,7 +272,7 @@ class MainActivity : ComponentActivity() {
                         if (didOpenCamera) {
                             launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
                         } else {
-                            Toast.makeText(context, "Keine Kamera-App gefunden", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.camera_app_not_found), Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -272,8 +286,10 @@ class MainActivity : ComponentActivity() {
                 darkTextEnabled = isDarkTextEnabled,
                 showFavoriteLabels = showFavoriteLabels,
                 liquidGlassEnabled = isLiquidGlassEnabled,
-                appFont = currentAppFont
+                appFont = currentAppFont,
+                hapticFeedbackEnabled = isHapticFeedbackEnabled
             ) {
+                @Suppress("DEPRECATION")
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val menuBackgroundColor = currentTheme.menuSurfaceColor(isDarkTextEnabled)
                 val searchLaunchOverlayColor = currentTheme.searchSurfaceColor(isDarkTextEnabled).copy(
@@ -297,7 +313,7 @@ class MainActivity : ComponentActivity() {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
-                var shouldSkipSearchExitAnimation by remember { mutableStateOf(false) }
+                var isHomeEditMode by remember { mutableStateOf(false) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
                 var isAppLaunchAnimating by remember { mutableStateOf(false) }
@@ -315,8 +331,23 @@ class MainActivity : ComponentActivity() {
                 var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
+                var selectedFolderForConfigSnapshot by remember { mutableStateOf<FolderInfo?>(null) }
+                val folderConfigExitHoldMs = 320L
                 var isLauncherResumed by remember { mutableStateOf(false) }
-                var returnResumeGuardState by remember { mutableStateOf(ReturnResumeGuardState()) }
+                var returnResumeGuardState by remember {
+                    mutableStateOf(ReturnResumeGuardState())
+                }
+
+                LaunchedEffect(selectedFolderForConfig) {
+                    val selected = selectedFolderForConfig
+                    if (selected != null) {
+                        selectedFolderForConfigSnapshot = selected
+                    } else {
+                        // Keep content alive briefly so AnimatedVisibility can render the exit smoothly.
+                        delay(folderConfigExitHoldMs)
+                        selectedFolderForConfigSnapshot = null
+                    }
+                }
 
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
@@ -330,12 +361,14 @@ class MainActivity : ComponentActivity() {
                             val resumeDecision = ReturnResumeGuard.onResume(returnResumeGuardState)
                             returnResumeGuardState = resumeDecision.nextState
                             if (resumeDecision.shouldSuppress) {
-                                Log.d(
-                                    RETURN_TAG,
-                                    "skip return animation on launcher resume caused by lockscreen state awaitingUserPresent=${returnResumeGuardState.awaitingUserPresent} skipNextResume=${returnResumeGuardState.skipNextResume}"
-                                )
-                                return@LifecycleEventObserver
-                            }
+                                val awaitingUserPresent = returnResumeGuardState.awaitingUserPresent
+                                val skipNextResume = returnResumeGuardState.skipNextResume
+                                 Log.d(
+                                     RETURN_TAG,
+                                    "skip return animation on launcher resume caused by lockscreen state awaitingUserPresent=$awaitingUserPresent skipNextResume=$skipNextResume"
+                                 )
+                                 return@LifecycleEventObserver
+                             }
                             val accessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
                             val usageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
                             val storedPackages = ReturnOriginStore.getStoredPackageNames(context)
@@ -366,15 +399,21 @@ class MainActivity : ComponentActivity() {
                                 pendingLaunchStartedAtMs = pendingReturnAnimationStartedWallClockMs,
                                 observations = listOfNotNull(beforeLauncherObservation, usageObservation)
                             )
-                            val returnAnimation = gateDecision.returnAnimation
+                            val selectedReturnAnimation = gateDecision.returnAnimation
+                             val gateReason = gateDecision.reason
+                             val gateMatchedObservation = gateDecision.matchedObservation
+                            val chosenPackage = selectedReturnAnimation?.launchedPackageName
+                            val targetPackage = selectedReturnAnimation?.packageName
+                            val source = selectedReturnAnimation?.source
+                            val hasBounds = selectedReturnAnimation?.bounds != null
 
-                            Log.d(
-                                RETURN_TAG,
-                                "resume gateReason=${gateDecision.reason} matchedObservation=${gateDecision.matchedObservation} chosen=${returnAnimation?.launchedPackageName} target=${returnAnimation?.packageName} source=${returnAnimation?.source} bounds=${returnAnimation?.bounds != null}"
-                            )
+                             Log.d(
+                                 RETURN_TAG,
+                                 "resume gateReason=$gateReason matchedObservation=$gateMatchedObservation chosen=$chosenPackage target=$targetPackage source=$source bounds=$hasBounds"
+                             )
 
-                            returnAnimation?.let {
-                                isDrawerOpen = it.source == LaunchSource.DRAWER
+                            selectedReturnAnimation?.let { animation ->
+                                isDrawerOpen = animation.source == LaunchSource.DRAWER
                                 if (!isDrawerOpen) {
                                     isSettingsOpen = false
                                     isFavoritesConfigOpen = false
@@ -386,13 +425,13 @@ class MainActivity : ComponentActivity() {
                                     isWallpaperConfigOpen = false
                                     isInfoOpen = false
                                     selectedFolderForConfig = null
-                                }
-                                activeReturnAnimation = it
+                                 }
+                                activeReturnAnimation = animation
                                 returnIconPackage = null
                                 pendingReturnAnimation = null
                                 pendingReturnAnimationStartedWallClockMs = 0L
-                                ReturnOriginStore.clear(context, it.launchedPackageName)
-                                Log.d(RETURN_TAG, "activateReturn launched=${it.launchedPackageName} target=${it.packageName} source=${it.source}")
+                                ReturnOriginStore.clear(context, animation.launchedPackageName)
+                                Log.d(RETURN_TAG, "activateReturn launched=${animation.launchedPackageName} target=${animation.packageName} source=${animation.source}")
                             }
                         }
                     }
@@ -567,7 +606,6 @@ class MainActivity : ComponentActivity() {
                 ) {
                     if (isSearchLaunching || isAppLaunchAnimating) return
                     isSearchLaunching = true
-                    shouldSkipSearchExitAnimation = true
                     isSearchOpen = false
                     if (!webQuery.isNullOrBlank() && isSmartSuggestionsEnabled) {
                         scope.launch {
@@ -593,7 +631,6 @@ class MainActivity : ComponentActivity() {
                         trackAppLaunch = webQuery.isNullOrBlank(),
                         onCompleted = {
                             isSearchLaunching = false
-                            shouldSkipSearchExitAnimation = false
                         }
                     )
                 }
@@ -620,9 +657,9 @@ class MainActivity : ComponentActivity() {
                             when (intent?.action) {
                                 Intent.ACTION_SCREEN_OFF -> {
                                     returnResumeGuardState = ReturnResumeGuard.onScreenOff(
-                                        state = returnResumeGuardState,
-                                        launcherWasForeground = isLauncherResumed
-                                    )
+                                         state = returnResumeGuardState,
+                                         launcherWasForeground = isLauncherResumed
+                                     )
                                     if (isLauncherResumed) {
                                         Log.d(RETURN_TAG, "screen off while launcher foreground -> suppress return during lockscreen cycle")
                                     }
@@ -674,6 +711,7 @@ class MainActivity : ComponentActivity() {
                         isIconConfigOpen = false
                         isWallpaperConfigOpen = false
                         isInfoOpen = false
+                        isHomeEditMode = false
                         selectedFolderForConfig = null
                     }
                 }
@@ -682,12 +720,12 @@ class MainActivity : ComponentActivity() {
                     isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
                     isIconConfigOpen, isWallpaperConfigOpen, isInfoOpen,
-                    selectedFolderForConfig, isSearchOpen
+                    selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
                         isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen ||
                         isEditConfigOpen || isIconConfigOpen || isWallpaperConfigOpen ||
-                        isInfoOpen || selectedFolderForConfig != null || isSearchOpen
+                        isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
 
@@ -695,14 +733,12 @@ class MainActivity : ComponentActivity() {
                     enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
                         isIconConfigOpen || isWallpaperConfigOpen || isInfoOpen ||
-                        selectedFolderForConfig != null || isSearchOpen
+                        selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                 ) {
                     when {
                         selectedFolderForConfig != null -> selectedFolderForConfig = null
-                        isSearchOpen -> {
-                            shouldSkipSearchExitAnimation = false
-                            isSearchOpen = false
-                        }
+                        isHomeEditMode -> isHomeEditMode = false
+                        isSearchOpen -> isSearchOpen = false
                         isFontSelectionOpen -> isFontSelectionOpen = false
                         isWallpaperConfigOpen -> isWallpaperConfigOpen = false
                         isIconConfigOpen -> isIconConfigOpen = false
@@ -731,19 +767,19 @@ class MainActivity : ComponentActivity() {
                         targetState = isDrawerOpen,
                         transitionSpec = {
                             if (targetState) {
-                                (slideInVertically(
-                                    initialOffsetY = { it },
-                                    animationSpec = tween(300, easing = EaseOutCubic)
-                                ) + fadeIn(animationSpec = tween(200)))
-                                    .togetherWith(fadeOut(animationSpec = tween(200)))
+                                (
+                                    slideInVertically(
+                                        initialOffsetY = { it },
+                                        animationSpec = tween(300, easing = EaseOutCubic)
+                                    ) + fadeIn(animationSpec = tween(200))
+                                ).togetherWith(fadeOut(animationSpec = tween(200)))
                             } else {
-                                fadeIn(animationSpec = tween(200))
-                                    .togetherWith(
-                                        slideOutVertically(
-                                            targetOffsetY = { it },
-                                            animationSpec = tween(300, easing = EaseInCubic)
-                                        ) + fadeOut(animationSpec = tween(200))
-                                    )
+                                fadeIn(animationSpec = tween(200)).togetherWith(
+                                    slideOutVertically(
+                                        targetOffsetY = { it },
+                                        animationSpec = tween(300, easing = EaseInCubic)
+                                    ) + fadeOut(animationSpec = tween(200))
+                                )
                             }
                         },
                         label = "DrawerTransition"
@@ -781,17 +817,26 @@ class MainActivity : ComponentActivity() {
                                 favorites = favorites,
                                 isSettingsOpen = isSettingsOpen,
                                 isSearchOpen = isSearchOpen,
+                                isEditMode = isHomeEditMode,
+                                favoritesOffsetX = favoritesOffsetX,
+                                favoritesOffsetY = favoritesOffsetY,
+                                clockOffsetX = clockOffsetX,
+                                clockOffsetY = clockOffsetY,
                                 onOpenDrawer = { isDrawerOpen = true },
-                                onOpenSearch = {
-                                    shouldSkipSearchExitAnimation = false
-                                    isSearchOpen = true
-                                },
+                                onOpenSearch = { isSearchOpen = true },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
+                                onToggleEditMode = { isHomeEditMode = !isHomeEditMode },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
                                 onOpenColorConfig = { isColorConfigOpen = true },
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
                                 onOpenSystemSettings = { isEditConfigOpen = true },
                                 onOpenInfo = { isInfoOpen = true },
+                                onSaveFavoritesOffset = { x, y ->
+                                    scope.launch { themeManager.setFavoritesOffset(x, y) }
+                                },
+                                onSaveClockOffset = { x, y ->
+                                    scope.launch { themeManager.setClockOffset(x, y) }
+                                },
                                 onLaunchApp = { pkg, intent, bounds ->
                                     requestLauncherLaunch(
                                         packageName = pkg,
@@ -804,12 +849,20 @@ class MainActivity : ComponentActivity() {
                                 },
                                 returnIconPackage = returnIconPackage,
                                 searchButtonBounceToken = searchButtonBounceToken,
-                                onSearchButtonBoundsChanged = { bounds -> homeSearchButtonBounds = bounds }
+                                onSearchButtonBoundsChanged = { bounds ->
+                                    homeSearchButtonBounds = bounds
+                                }
                             )
                         }
-                     }
+                    }
 
-                    MenuOverlay(visible = isFavoritesConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(
+                        visible = isFavoritesConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        enableDragToClose = false,
+                        onClose = { isFavoritesConfigOpen = false }
+                    ) {
+                        @Suppress("DEPRECATION")
                         FavoritesConfigMenu(
                             apps = allApps,
                             initialFavoritePackages = favoritePackages,
@@ -825,8 +878,14 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = selectedFolderForConfig != null, backgroundColor = menuBackgroundColor) {
-                        selectedFolderForConfig?.let { folder ->
+                    MenuOverlay(
+                        visible = selectedFolderForConfig != null,
+                        backgroundColor = menuBackgroundColor,
+                        enableDragToClose = false,
+                        onClose = { selectedFolderForConfig = null }
+                    ) {
+                        val folderForConfig = selectedFolderForConfig ?: selectedFolderForConfigSnapshot
+                        folderForConfig?.let { folder ->
                             FolderConfigMenu(
                                 folder = folder,
                                 allApps = allApps,
@@ -834,10 +893,11 @@ class MainActivity : ComponentActivity() {
                                 onConfirm = { updatedFolder ->
                                     val folderExists = folders.any { it.id == updatedFolder.id }
                                     val newFolders = if (updatedFolder.appPackageNames.isEmpty()) {
-                                        // CUSTOM: Delete folder if empty on confirm
                                         folders.filter { it.id != updatedFolder.id }
                                     } else if (folderExists) {
-                                        folders.map { if (it.id == updatedFolder.id) updatedFolder else it }
+                                        folders.map { currentFolder ->
+                                            if (currentFolder.id == updatedFolder.id) updatedFolder else currentFolder
+                                        }
                                     } else {
                                         folders + updatedFolder
                                     }
@@ -854,7 +914,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    MenuOverlay(visible = isColorConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(
+                        visible = isColorConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isColorConfigOpen = false }
+                    ) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
                             onThemeSelected = { scope.launch { themeManager.setTheme(it) } },
@@ -867,7 +931,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isSizeConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(
+                        visible = isSizeConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isSizeConfigOpen = false }
+                    ) {
                         SizeConfigMenu(
                             currentFontSize = currentFontSize,
                             onFontSizeSelected = { scope.launch { themeManager.setFontSize(it) } },
@@ -882,7 +950,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isFontSelectionOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(
+                        visible = isFontSelectionOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isFontSelectionOpen = false }
+                    ) {
                         FontSelectionMenu(
                             currentAppFont = currentAppFont,
                             onAppFontSelected = { scope.launch { themeManager.setAppFont(it) } },
@@ -890,8 +962,23 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isEditConfigOpen && !isWallpaperCropOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(
+                        visible = isEditConfigOpen && !isWallpaperCropOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isEditConfigOpen = false }
+                    ) {
                         EditConfigMenu(
+                            onOpenHomeLayoutEdit = {
+                                isEditConfigOpen = false
+                                isHomeEditMode = true
+                            },
+                            onResetHomeLayout = {
+                                scope.launch {
+                                    themeManager.setFavoritesOffset(0f, 0f)
+                                    themeManager.setClockOffset(0f, 0f)
+                                }
+                                Toast.makeText(context, context.getString(R.string.home_layout_reset), Toast.LENGTH_SHORT).show()
+                            },
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onChangeWallpaper = {
                                 isEditConfigOpen = false
@@ -907,9 +994,14 @@ class MainActivity : ComponentActivity() {
                                     themeManager.setWallpaperDim(0.1f)
                                     themeManager.setWallpaperZoom(1.0f)
                                 }
-                                Toast.makeText(context, "Hintergrund entfernt", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.wallpaper_removed), Toast.LENGTH_SHORT).show()
                             },
                             onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
+                            isCustomHomeLayoutSet =
+                                abs(favoritesOffsetX) > 0.5f ||
+                                abs(favoritesOffsetY) > 0.5f ||
+                                abs(clockOffsetX) > 0.5f ||
+                                abs(clockOffsetY) > 0.5f,
                             isCustomWallpaperSet = customWallpaperUri != null,
                             isShakeGesturesEnabled = isShakeGesturesEnabled,
                             onShakeGesturesToggled = { enabled ->
@@ -921,13 +1013,36 @@ class MainActivity : ComponentActivity() {
                             },
                             onClearSearchHistory = {
                                 scope.launch { searchSuggestionsManager.clearWebHistory() }
-                                Toast.makeText(context, "Suchverlauf gelöscht", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.search_history_cleared), Toast.LENGTH_SHORT).show()
+                            },
+                            isHapticFeedbackEnabled = isHapticFeedbackEnabled,
+                            onHapticFeedbackToggled = { enabled ->
+                                scope.launch {
+                                    if (Settings.System.canWrite(context)) {
+                                        themeManager.setHapticFeedbackEnabled(enabled)
+                                    } else {
+                                        val writeSettingsIntent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                                            data = ("package:" + context.packageName).toUri()
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(writeSettingsIntent)
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.write_settings_permission_required),
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
                             },
                             onClose = { isEditConfigOpen = false }
                         )
                     }
 
-                    MenuOverlay(visible = isWallpaperConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(
+                        visible = isWallpaperConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isWallpaperConfigOpen = false }
+                    ) {
                         WallpaperConfigMenu(
                             blurLevel = wallpaperBlur,
                             onBlurChange = { scope.launch { themeManager.setWallpaperBlur(it) } },
@@ -940,7 +1055,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isIconConfigOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(
+                        visible = isIconConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isIconConfigOpen = false }
+                    ) {
                         IconConfigMenu(
                             apps = allApps,
                             customIcons = customIcons,
@@ -966,36 +1085,33 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MenuOverlay(visible = isInfoOpen, backgroundColor = menuBackgroundColor) {
+                    MenuOverlay(
+                        visible = isInfoOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isInfoOpen = false }
+                    ) {
                         InfoDialog(
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isInfoOpen = false }
                         )
                     }
 
-                    AnimatedVisibility(
-                        visible = isSearchOpen && !isSearchLaunching,
-                        enter = fadeIn(animationSpec = tween(200)),
-                        exit = if (shouldSkipSearchExitAnimation) ExitTransition.None else fadeOut(animationSpec = tween(200))
-                    ) {
+                    if (isSearchOpen && !isSearchLaunching) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .pointerInput(Unit) {
                                     detectTapGestures {
-                                        shouldSkipSearchExitAnimation = false
                                         isSearchOpen = false
                                     }
                                 }
                         ) {
                             BottomSearch(
                                 apps = allApps,
-                                onClose = {
-                                    shouldSkipSearchExitAnimation = false
-                                    isSearchOpen = false
-                                },
+                                onClose = { isSearchOpen = false },
                                 onAppLaunch = { app, bounds ->
-                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return@BottomSearch
+                                    val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                                        ?: return@BottomSearch
                                     requestSearchLaunch(intent, bounds)
                                 },
                                 onWebLaunch = { intent, bounds, query ->
@@ -1008,8 +1124,7 @@ class MainActivity : ComponentActivity() {
                                 onRemoveHistorySuggestion = { queryToRemove ->
                                     scope.launch { searchSuggestionsManager.removeWebSearch(queryToRemove) }
                                 }
-                             )
-
+                            )
                         }
                     }
 
@@ -1020,28 +1135,27 @@ class MainActivity : ComponentActivity() {
                         backgroundBrush = activeLaunchBackgroundBrush,
                         durationMillis = searchLaunchDurationMs.toInt(),
                         scrimColor = Color.Transparent
-                     )
+                    )
 
-                     activeReturnAnimation?.let { animation ->
-                         ReturnAnimationOverlay(
-                             bounds = animation.bounds,
-                             rootSize = rootSize,
-                             background = currentTheme.menuSurfaceColor(isDarkTextEnabled),
-                             backgroundBrush = returnOverlayBrush,
-                             onFinished = {
-                                 Log.d(RETURN_TAG, "returnOverlayFinished launched=${animation.launchedPackageName} target=${animation.packageName}")
-                                 activeReturnAnimation = null
-                             },
-                             durationMillis = returnOverlayDurationMs.toInt(),
-                             targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
-                         )
-                     }
+                    activeReturnAnimation?.let { animation ->
+                        ReturnAnimationOverlay(
+                            bounds = animation.bounds,
+                            rootSize = rootSize,
+                            background = currentTheme.menuSurfaceColor(isDarkTextEnabled),
+                            backgroundBrush = returnOverlayBrush,
+                            onFinished = {
+                                Log.d(
+                                    RETURN_TAG,
+                                    "returnOverlayFinished launched=${animation.launchedPackageName} target=${animation.packageName}"
+                                )
+                                activeReturnAnimation = null
+                            },
+                            durationMillis = returnOverlayDurationMs.toInt(),
+                            targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
+                        )
+                    }
 
-                    AnimatedVisibility(
-                        visible = isWallpaperCropOpen && pendingWallpaperUri != null,
-                        enter = fadeIn(animationSpec = tween(220)),
-                        exit = fadeOut(animationSpec = tween(280))
-                    ) {
+                    if (isWallpaperCropOpen) {
                         pendingWallpaperUri?.let { selectedUri ->
                             WallpaperCropScreen(
                                 sourceUri = selectedUri,
@@ -1049,30 +1163,38 @@ class MainActivity : ComponentActivity() {
                                     scope.launch {
                                         themeManager.setCustomWallpaperUri(uri.toString())
                                         isWallpaperCropOpen = false
-                                        delay(280) // Exit-Animation sichtbar zu Ende laufen lassen
+                                        delay(280)
                                         pendingWallpaperUri = null
                                     }
                                 },
                                 onCancel = {
                                     isWallpaperCropOpen = false
                                     scope.launch {
-                                        delay(280) // Exit-Animation sichtbar zu Ende laufen lassen
+                                        delay(280)
                                         pendingWallpaperUri = null
                                     }
                                 },
                                 homeScreenPreview = {
                                     HomeScreen(
                                         favorites = favorites,
-                                        isSettingsOpen = false, // Clean state for preview
+                                        isSettingsOpen = false,
                                         isSearchOpen = false,
+                                        isEditMode = false,
+                                        favoritesOffsetX = 0f,
+                                        favoritesOffsetY = 0f,
+                                        clockOffsetX = 0f,
+                                        clockOffsetY = 0f,
                                         onOpenDrawer = {},
                                         onOpenSearch = {},
                                         onToggleSettings = {},
+                                        onToggleEditMode = {},
                                         onOpenFavoritesConfig = {},
                                         onOpenColorConfig = {},
                                         onOpenSizeConfig = {},
                                         onOpenSystemSettings = {},
                                         onOpenInfo = {},
+                                        onSaveFavoritesOffset = { _, _ -> },
+                                        onSaveClockOffset = { _, _ -> },
                                         onLaunchApp = { _, _, _ -> },
                                         returnIconPackage = null,
                                         searchButtonBounceToken = 0,
@@ -1087,28 +1209,28 @@ class MainActivity : ComponentActivity() {
                     if (showUsageAccessPrompt) {
                         AlertDialog(
                             onDismissRequest = { showUsageAccessPrompt = false },
-                            title = { Text("Nutzungszugriff aktivieren") },
+                            title = { Text(stringResource(R.string.usage_access_title)) },
                             text = {
-                                Text("Damit die Rückkehranimation nach dem Öffnen über Recents exakt zur richtigen App-Position zurückgeht, aktiviere bitte den Nutzungszugriff für den Launcher.")
+                                Text(stringResource(R.string.usage_access_description))
                             },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showUsageAccessPrompt = false
                                     ForegroundAppResolver.openUsageAccessSettings(context)
                                 }) {
-                                    Text("Öffnen")
+                                    Text(stringResource(R.string.open))
                                 }
                             },
                             dismissButton = {
                                 TextButton(onClick = { showUsageAccessPrompt = false }) {
-                                    Text("Später")
+                                    Text(stringResource(R.string.later))
                                 }
                             }
                         )
                     }
-                 }
-             }
-         }
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -1193,29 +1315,61 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Ein Overlay für Menüs mit Ein-/Ausblend-Animation und optionalem Drag-to-close.
+ */
 @Composable
 private fun MenuOverlay(
     visible: Boolean,
     backgroundColor: Color,
+    enableDragToClose: Boolean = true,
+    enterSlideDuration: Int = 300,
+    enterFadeDuration: Int = 200,
+    exitSlideDuration: Int = 300,
+    exitFadeDuration: Int = 200,
+    enterSlideEasing: Easing = EaseOutCubic,
+    exitSlideEasing: Easing = EaseInCubic,
+    onClose: () -> Unit,
     content: @Composable () -> Unit
 ) {
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(
             initialOffsetY = { it },
-            animationSpec = tween(300, easing = EaseOutCubic)
-        ) + fadeIn(),
+            animationSpec = tween(enterSlideDuration, easing = enterSlideEasing)
+        ) + fadeIn(animationSpec = tween(enterFadeDuration)),
         exit = slideOutVertically(
             targetOffsetY = { it },
-            animationSpec = tween(300, easing = EaseInCubic)
-        ) + fadeOut()
+            animationSpec = tween(exitSlideDuration, easing = exitSlideEasing)
+        ) + fadeOut(animationSpec = tween(exitFadeDuration))
     ) {
+        var totalDragY by remember { mutableStateOf(0f) }
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectTapGestures { }
+                    detectTapGestures { } // Verhindert Klicks durch das Overlay hindurch
                 }
+                .then(
+                    if (enableDragToClose) {
+                        Modifier.pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    if (totalDragY > 300f) onClose()
+                                    totalDragY = 0f
+                                },
+                                onDragCancel = { totalDragY = 0f },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    totalDragY += dragAmount
+                                }
+                            )
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
                 .background(backgroundColor)
         ) {
             content()
