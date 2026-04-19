@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
@@ -221,7 +222,7 @@ class MainActivity : ComponentActivity() {
                 if (!isGranted) {
                     Toast.makeText(
                         context,
-                        "Kamerazugriff wird für die Taschenlampe benötigt",
+                        context.getString(R.string.flashlight_permission_required),
                         Toast.LENGTH_LONG
                     ).show()
                     return@rememberLauncherForActivityResult
@@ -232,17 +233,17 @@ class MainActivity : ComponentActivity() {
                         launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
                     }
                     FlashlightToggleResult.Unsupported -> {
-                        Toast.makeText(context, "Keine Taschenlampe verfügbar", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.flashlight_unsupported), Toast.LENGTH_SHORT).show()
                     }
                     FlashlightToggleResult.MissingPermission -> {
                         Toast.makeText(
                             context,
-                            "Kamerazugriff wird für die Taschenlampe benötigt",
+                            context.getString(R.string.flashlight_permission_required),
                             Toast.LENGTH_LONG
                         ).show()
                     }
                     FlashlightToggleResult.Error -> {
-                        Toast.makeText(context, "Taschenlampe konnte nicht geändert werden", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.flashlight_error), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -255,14 +256,14 @@ class MainActivity : ComponentActivity() {
                                 launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
                             }
                             FlashlightToggleResult.Unsupported -> {
-                                Toast.makeText(context, "Keine Taschenlampe verfügbar", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.flashlight_unsupported), Toast.LENGTH_SHORT).show()
                             }
                             FlashlightToggleResult.MissingPermission -> {
                                 pendingPermissionGestureAction = gestureAction
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                             FlashlightToggleResult.Error -> {
-                                Toast.makeText(context, "Taschenlampe konnte nicht geändert werden", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.flashlight_error), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -271,7 +272,7 @@ class MainActivity : ComponentActivity() {
                         if (didOpenCamera) {
                             launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
                         } else {
-                            Toast.makeText(context, "Keine Kamera-App gefunden", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.camera_app_not_found), Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -976,7 +977,7 @@ class MainActivity : ComponentActivity() {
                                     themeManager.setFavoritesOffset(0f, 0f)
                                     themeManager.setClockOffset(0f, 0f)
                                 }
-                                Toast.makeText(context, "Startbildschirm-Layout zurückgesetzt", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.home_layout_reset), Toast.LENGTH_SHORT).show()
                             },
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onChangeWallpaper = {
@@ -993,7 +994,7 @@ class MainActivity : ComponentActivity() {
                                     themeManager.setWallpaperDim(0.1f)
                                     themeManager.setWallpaperZoom(1.0f)
                                 }
-                                Toast.makeText(context, "Hintergrund entfernt", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.wallpaper_removed), Toast.LENGTH_SHORT).show()
                             },
                             onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
                             isCustomHomeLayoutSet =
@@ -1012,7 +1013,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onClearSearchHistory = {
                                 scope.launch { searchSuggestionsManager.clearWebHistory() }
-                                Toast.makeText(context, "Suchverlauf gelöscht", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.search_history_cleared), Toast.LENGTH_SHORT).show()
                             },
                             isHapticFeedbackEnabled = isHapticFeedbackEnabled,
                             onHapticFeedbackToggled = { enabled ->
@@ -1027,7 +1028,7 @@ class MainActivity : ComponentActivity() {
                                         context.startActivity(writeSettingsIntent)
                                         Toast.makeText(
                                             context,
-                                            "Bitte erlauben Sie dem Launcher, Systemeinstellungen zu ändern",
+                                            context.getString(R.string.write_settings_permission_required),
                                             Toast.LENGTH_LONG
                                         ).show()
                                     }
@@ -1208,23 +1209,21 @@ class MainActivity : ComponentActivity() {
                     if (showUsageAccessPrompt) {
                         AlertDialog(
                             onDismissRequest = { showUsageAccessPrompt = false },
-                            title = { Text("Nutzungszugriff aktivieren") },
+                            title = { Text(stringResource(R.string.usage_access_title)) },
                             text = {
-                                Text(
-                                    "Damit die Rückkehranimation nach dem Öffnen über Recents exakt zur richtigen App-Position zurückgeht, aktiviere bitte den Nutzungszugriff für den Launcher."
-                                )
+                                Text(stringResource(R.string.usage_access_description))
                             },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showUsageAccessPrompt = false
                                     ForegroundAppResolver.openUsageAccessSettings(context)
                                 }) {
-                                    Text("Öffnen")
+                                    Text(stringResource(R.string.open))
                                 }
                             },
                             dismissButton = {
                                 TextButton(onClick = { showUsageAccessPrompt = false }) {
-                                    Text("Später")
+                                    Text(stringResource(R.string.later))
                                 }
                             }
                         )

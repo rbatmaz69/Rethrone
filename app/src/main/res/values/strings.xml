@@ -23,4 +23,18 @@
     <string name="close">Schließen</string>
     <string name="accessibility_description">Ermöglicht Gesten wie Doppelklick zum Sperren des Bildschirms.</string>
     <string name="default_launcher_warning">Bitte setze Rethrone als Standard-Launcher, damit Home-Intents zuverlässig ankommen.</string>
+
+    <!-- Toast & Dialog Strings -->
+    <string name="flashlight_permission_required">Kamerazugriff wird für die Taschenlampe benötigt</string>
+    <string name="flashlight_unsupported">Keine Taschenlampe verfügbar</string>
+    <string name="flashlight_error">Taschenlampe konnte nicht geändert werden</string>
+    <string name="camera_app_not_found">Keine Kamera-App gefunden</string>
+    <string name="home_layout_reset">Startbildschirm-Layout zurückgesetzt</string>
+    <string name="wallpaper_removed">Hintergrund entfernt</string>
+    <string name="search_history_cleared">Suchverlauf gelöscht</string>
+    <string name="write_settings_permission_required">Bitte erlauben Sie dem Launcher, Systemeinstellungen zu ändern</string>
+    <string name="usage_access_title">Nutzungszugriff aktivieren</string>
+    <string name="usage_access_description">Damit die Rückkehranimation nach dem Öffnen über Recents exakt zur richtigen App-Position zurückgeht, aktiviere bitte den Nutzungszugriff für den Launcher.</string>
+    <string name="open">Öffnen</string>
+    <string name="later">Später</string>
 </resources>
