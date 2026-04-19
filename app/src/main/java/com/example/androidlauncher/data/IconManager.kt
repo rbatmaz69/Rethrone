@@ -15,12 +15,15 @@ private const val AUTO_RULE_PREFIX = "auto_rule__"
  * Manages custom app icons mapping.
  * packageName -> lucideIconName
  */
-class IconManager(private val context: Context) {
+class IconManager(
+    private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
+) {
+    constructor(context: Context) : this(context.iconDataStore)
 
     /**
      * Returns a flow of the current manual icon mappings.
      */
-    val customIcons: Flow<Map<String, String>> = context.iconDataStore.data
+    val customIcons: Flow<Map<String, String>> = dataStore.data
         .map { preferences ->
             preferences.asMap()
                 .filterKeys {
@@ -33,7 +36,7 @@ class IconManager(private val context: Context) {
     /**
      * Returns a flow of the automatic fallback analysis results.
      */
-    val autoIconFallbacks: Flow<Map<String, AutoIconFallback>> = context.iconDataStore.data
+    val autoIconFallbacks: Flow<Map<String, AutoIconFallback>> = dataStore.data
         .map { preferences ->
             preferences.asMap()
                 .filterKeys { it.name.startsWith(AUTO_FALLBACK_PREFIX) }
@@ -48,7 +51,7 @@ class IconManager(private val context: Context) {
     /**
      * Returns a flow of the automatic icon rules.
      */
-    val autoIconRules: Flow<Map<String, AutoIconRule>> = context.iconDataStore.data
+    val autoIconRules: Flow<Map<String, AutoIconRule>> = dataStore.data
         .map { preferences ->
             preferences.asMap()
                 .filterKeys { it.name.startsWith(AUTO_RULE_PREFIX) }
@@ -65,7 +68,7 @@ class IconManager(private val context: Context) {
      * If iconName is null, the custom icon is removed (reverts to automatic/default).
      */
     suspend fun setCustomIcon(packageName: String, iconName: String?) {
-        context.iconDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val key = stringPreferencesKey(packageName)
             if (iconName != null) {
                 preferences[key] = iconName
@@ -79,7 +82,7 @@ class IconManager(private val context: Context) {
      * Persists or removes the automatic fallback decision for a package.
      */
     suspend fun setAutoIconFallback(packageName: String, fallback: AutoIconFallback?) {
-        context.iconDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val key = stringPreferencesKey("$AUTO_FALLBACK_PREFIX$packageName")
             if (fallback != null) {
                 preferences[key] = fallback.serialize()
@@ -93,7 +96,7 @@ class IconManager(private val context: Context) {
      * Persists or removes the automatic icon rule for a package.
      */
     suspend fun setAutoIconRule(packageName: String, rule: AutoIconRule?) {
-        context.iconDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val key = stringPreferencesKey("$AUTO_RULE_PREFIX$packageName")
             if (rule != null) {
                 preferences[key] = rule.serialize()
@@ -107,7 +110,7 @@ class IconManager(private val context: Context) {
      * Removes persisted automatic analysis for a package and optionally the user override.
      */
     suspend fun invalidatePackage(packageName: String, removeUserOverride: Boolean = false) {
-        context.iconDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences.remove(stringPreferencesKey("$AUTO_FALLBACK_PREFIX$packageName"))
             if (removeUserOverride) {
                 preferences.remove(stringPreferencesKey(packageName))
