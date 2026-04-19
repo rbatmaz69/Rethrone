@@ -82,12 +82,6 @@ kover {
                 classes("com.example.androidlauncher.ui.ComposableSingletons*")
                 classes("com.example.androidlauncher.ComposableSingletons*")
                 classes("com.example.androidlauncher.ui.PaletteMenuItem")
-                classes("com.example.androidlauncher.data.FolderManager")
-                classes("com.example.androidlauncher.data.FolderManager\$*")
-                classes("com.example.androidlauncher.data.FolderManagerKt")
-                classes("com.example.androidlauncher.data.ThemeManager")
-                classes("com.example.androidlauncher.data.ThemeManager\$*")
-                classes("com.example.androidlauncher.data.ThemeManagerKt")
                 // Neue extrahierte UI-Dateien
                 classes("com.example.androidlauncher.ui.HomeScreenKt")
                 classes("com.example.androidlauncher.ui.HomeScreenKt\$*")
