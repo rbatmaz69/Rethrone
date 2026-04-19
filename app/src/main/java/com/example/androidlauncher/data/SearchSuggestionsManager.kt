@@ -23,7 +23,11 @@ data class AppUsageStats(
     val lastLaunchedAt: Long
 )
 
-class SearchSuggestionsManager(private val context: Context) {
+class SearchSuggestionsManager(
+    private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
+) {
+    constructor(context: Context) : this(context.searchSuggestionsDataStore)
+
     companion object {
         private val WEB_HISTORY_KEY = stringPreferencesKey("web_history_entries")
         private val APP_USAGE_KEY = stringPreferencesKey("app_usage_entries")
@@ -33,12 +37,12 @@ class SearchSuggestionsManager(private val context: Context) {
         private const val EMPTY_JSON_ARRAY = "[]"
     }
 
-    val webHistory: Flow<List<SearchHistoryEntry>> = context.searchSuggestionsDataStore.data
+    val webHistory: Flow<List<SearchHistoryEntry>> = dataStore.data
         .map { preferences ->
             parseHistoryEntries(preferences[WEB_HISTORY_KEY] ?: EMPTY_JSON_ARRAY)
         }
 
-    val appUsageStats: Flow<Map<String, AppUsageStats>> = context.searchSuggestionsDataStore.data
+    val appUsageStats: Flow<Map<String, AppUsageStats>> = dataStore.data
         .map { preferences ->
             parseAppUsageEntries(preferences[APP_USAGE_KEY] ?: EMPTY_JSON_ARRAY)
                 .associateBy { it.packageName }
@@ -48,7 +52,7 @@ class SearchSuggestionsManager(private val context: Context) {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isEmpty()) return
 
-        context.searchSuggestionsDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentEntries = parseHistoryEntries(preferences[WEB_HISTORY_KEY] ?: EMPTY_JSON_ARRAY)
             val updatedEntries = upsertHistoryEntry(currentEntries, trimmedQuery, timestamp)
             preferences[WEB_HISTORY_KEY] = serializeHistoryEntries(updatedEntries)
@@ -58,7 +62,7 @@ class SearchSuggestionsManager(private val context: Context) {
     suspend fun recordAppLaunch(packageName: String, timestamp: Long = System.currentTimeMillis()) {
         if (packageName.isBlank()) return
 
-        context.searchSuggestionsDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentEntries = parseAppUsageEntries(preferences[APP_USAGE_KEY] ?: EMPTY_JSON_ARRAY)
             val updatedEntries = upsertAppUsageEntry(currentEntries, packageName, timestamp)
             preferences[APP_USAGE_KEY] = serializeAppUsageEntries(updatedEntries)
@@ -69,7 +73,7 @@ class SearchSuggestionsManager(private val context: Context) {
         val normalizedQuery = normalize(query)
         if (normalizedQuery.isEmpty()) return
 
-        context.searchSuggestionsDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentEntries = parseHistoryEntries(preferences[WEB_HISTORY_KEY] ?: EMPTY_JSON_ARRAY)
             val updatedEntries = currentEntries.filterNot { normalize(it.query) == normalizedQuery }
             preferences[WEB_HISTORY_KEY] = serializeHistoryEntries(updatedEntries)
@@ -77,7 +81,7 @@ class SearchSuggestionsManager(private val context: Context) {
     }
 
     suspend fun clearWebHistory() {
-        context.searchSuggestionsDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences.remove(WEB_HISTORY_KEY)
         }
     }
@@ -193,4 +197,3 @@ class SearchSuggestionsManager(private val context: Context) {
 
     private fun normalize(value: String): String = value.trim().lowercase()
 }
-
