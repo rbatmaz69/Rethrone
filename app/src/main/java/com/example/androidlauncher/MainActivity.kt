@@ -80,7 +80,7 @@ import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
-import com.example.androidlauncher.ui.BottomSearch
+import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.FavoritesConfigMenu
@@ -1106,12 +1106,12 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                         ) {
-                            BottomSearch(
+                            HybridSearch(
                                 apps = allApps,
                                 onClose = { isSearchOpen = false },
                                 onAppLaunch = { app, bounds ->
                                     val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                        ?: return@BottomSearch
+                                        ?: return@HybridSearch
                                     requestSearchLaunch(intent, bounds)
                                 },
                                 onWebLaunch = { intent, bounds, query ->

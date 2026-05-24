@@ -64,7 +64,7 @@ import kotlin.math.min
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun BottomSearch(
+fun HybridSearch(
     apps: List<AppInfo>,
     onClose: () -> Unit,
     onAppLaunch: (AppInfo, Rect?) -> Unit,
@@ -244,9 +244,16 @@ fun BottomSearch(
                                 stiffness = Spring.StiffnessMediumLow
                             )
                         )
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Text(
+                        text = "Apps",
+                        color = mainTextColor.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 8.dp, bottom = 2.dp, top = 4.dp)
+                    )
                     appSuggestions.forEach { app ->
                         AppSearchItem(
                             app = app,
@@ -269,13 +276,20 @@ fun BottomSearch(
                     .fillMaxWidth()
                     .padding(bottom = historyWebBottomPadding)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(searchContainerModifier)
                         .onGloballyPositioned { historyWebContainerHeightPx = it.size.height.toFloat() }
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
+                    Text(
+                        text = "Websuche",
+                        color = mainTextColor.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 8.dp, bottom = 6.dp, top = 4.dp)
+                    )
                     when {
                         historySuggestion != null -> {
                             SearchHistoryItem(
@@ -346,7 +360,7 @@ fun BottomSearch(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester)
-                            .testTag("bottom_search_field")
+                            .testTag("hybrid_search_field")
                             .onGloballyPositioned {
                                 if (!hasRequestedInitialFocus) {
                                     hasRequestedInitialFocus = true
@@ -518,17 +532,12 @@ fun AppSearchItem(
         ) { AppIconView(app = app) }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "App",
-                color = mainTextColor.copy(alpha = 0.46f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
-            )
             HighlightedSuggestionText(
                 text = app.label,
                 query = query,
                 color = mainTextColor,
-                fontSize = 16.sp * fontSizeScale
+                fontSize = 16.sp * fontSizeScale,
+                fontWeight = FontWeight.Medium
             )
         }
     }
@@ -560,7 +569,7 @@ private fun SearchHistoryItem(
             .background(backgroundColor)
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .clickable { onClick(iconBounds ?: rowBounds) }
-            .padding(vertical = 11.dp, horizontal = 12.dp),
+            .padding(vertical = 8.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -579,17 +588,12 @@ private fun SearchHistoryItem(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Verlauf",
-                color = mainTextColor.copy(alpha = 0.46f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
-            )
             HighlightedSuggestionText(
                 text = entry.query,
                 query = query,
                 color = mainTextColor,
-                fontSize = 15.sp
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
             )
         }
         IconButton(
@@ -672,7 +676,7 @@ fun WebSearchItem(
                     onClick(launchBounds)
                 }
             }
-            .padding(vertical = 11.dp, horizontal = 12.dp),
+            .padding(vertical = 8.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -691,12 +695,6 @@ fun WebSearchItem(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Jetzt im Web suchen",
-                color = mainTextColor.copy(alpha = 0.52f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
-            )
             HighlightedSuggestionText(
                 text = query,
                 query = query,
