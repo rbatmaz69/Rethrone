@@ -68,6 +68,7 @@ import kotlin.math.min
 fun HybridSearch(
     apps: List<AppInfo>,
     onClose: () -> Unit,
+    onClosingStart: () -> Unit = {},
     onAppLaunch: (AppInfo, Rect?) -> Unit,
     onWebLaunch: (Intent, Rect?, String) -> Unit,
     preferredImeWebLaunchBounds: Rect? = null,
@@ -94,7 +95,10 @@ fun HybridSearch(
             isClosing = false
         }
         if (maxImeBottom > 0 && imeBottom < maxImeBottom - 20) {
-            isClosing = true
+            if (!isClosing) {
+                isClosing = true
+                onClosingStart()
+            }
         }
         if (imeBottom == 0 && maxImeBottom > 0) {
             onClose()
@@ -225,7 +229,10 @@ fun HybridSearch(
 
     BackHandler {
         keyboardController?.hide()
-        isClosing = true
+        if (!isClosing) {
+            isClosing = true
+            onClosingStart()
+        }
         if (maxImeBottom == 0) {
             onClose()
         }
@@ -240,7 +247,10 @@ fun HybridSearch(
             .background(overlayColor)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 keyboardController?.hide()
-                isClosing = true
+                if (!isClosing) {
+                    isClosing = true
+                    onClosingStart()
+                }
                 if (maxImeBottom == 0) {
                     onClose()
                 }
@@ -403,7 +413,13 @@ fun HybridSearch(
                             .onPreInterceptKeyBeforeSoftKeyboard { event ->
                                 if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
                                     keyboardController?.hide()
-                                    onClose()
+                                    if (!isClosing) {
+                                        isClosing = true
+                                        onClosingStart()
+                                    }
+                                    if (maxImeBottom == 0) {
+                                        onClose()
+                                    }
                                     true
                                 } else false
                             },
