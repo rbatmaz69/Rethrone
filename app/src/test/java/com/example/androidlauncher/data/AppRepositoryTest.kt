@@ -26,6 +26,12 @@ class AppRepositoryTest {
 
         every { context.packageManager } returns packageManager
 
+        val intentB = mockk<Intent>()
+        every { packageManager.getLaunchIntentForPackage("com.app.b") } returns intentB
+
+        val intentA = mockk<Intent>()
+        every { packageManager.getLaunchIntentForPackage("com.app.a") } returns intentA
+
         val resolveInfo1 = mockk<ResolveInfo>()
         every { resolveInfo1.loadLabel(packageManager) } returns "App B"
         resolveInfo1.activityInfo = ActivityInfo().apply { packageName = "com.app.b" }
@@ -84,4 +90,3 @@ class AppRepositoryTest {
         dummyCacheDir.deleteRecursively()
     }
 }
-

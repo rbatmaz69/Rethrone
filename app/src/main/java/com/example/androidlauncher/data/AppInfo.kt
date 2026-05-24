@@ -3,6 +3,7 @@ package com.example.androidlauncher.data
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import android.content.Intent
 
 /**
  * Data class representing an application installed on the device.
@@ -15,5 +16,6 @@ data class AppInfo(
     val iconBitmap: ImageBitmap? = null, // The actual app icon as a bitmap
     val lucideIcon: ImageVector? = null, // Optional vector icon (if used)
     val autoIconFallback: AutoIconFallback? = null, // Optional auto icon fallback status
-    val autoIconRule: AutoIconRule? = null // Optional auto icon rule status
+    val autoIconRule: AutoIconRule? = null, // Optional auto icon rule status
+    val launchIntent: Intent? = null // Cached launch intent for faster startup
 )

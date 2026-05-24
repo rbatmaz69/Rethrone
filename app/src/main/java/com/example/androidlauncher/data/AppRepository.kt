@@ -58,9 +58,11 @@ class AppRepository(private val context: Context) {
         }
         pm.queryIntentActivities(intent, 0)
             .map { resolveInfo ->
+                val packageName = resolveInfo.activityInfo.packageName
                 AppInfo(
                     label = resolveInfo.loadLabel(pm).toString(),
-                    packageName = resolveInfo.activityInfo.packageName
+                    packageName = packageName,
+                    launchIntent = pm.getLaunchIntentForPackage(packageName)
                 )
             }
             .distinctBy { it.packageName }
