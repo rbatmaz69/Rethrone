@@ -73,14 +73,14 @@ class LauncherUiTest {
     }
 
     @Test
-    fun homeSearchButtonOpensBottomSearchField() {
+    fun homeSearchButtonOpensHybridSearchField() {
         composeTestRule.onNodeWithTag("home_search_button").assertIsDisplayed().performClick()
 
         composeTestRule.waitUntil(3_000) {
-            composeTestRule.onAllNodesWithTag("bottom_search_field").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithTag("hybrid_search_field").fetchSemanticsNodes().isNotEmpty()
         }
 
-        composeTestRule.onNodeWithTag("bottom_search_field").assertIsDisplayed().assertIsFocused()
+        composeTestRule.onNodeWithTag("hybrid_search_field").assertIsDisplayed().assertIsFocused()
     }
 
     @Test

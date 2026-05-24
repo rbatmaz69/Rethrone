@@ -80,7 +80,7 @@ import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
-import com.example.androidlauncher.ui.BottomSearch
+import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.FavoritesConfigMenu
@@ -313,6 +313,7 @@ class MainActivity : ComponentActivity() {
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
+                var isSearchClosingState by remember { mutableStateOf(false) }
                 var isHomeEditMode by remember { mutableStateOf(false) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
@@ -816,14 +817,17 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 favorites = favorites,
                                 isSettingsOpen = isSettingsOpen,
-                                isSearchOpen = isSearchOpen,
+                                isSearchOpen = isSearchOpen && !isSearchClosingState,
                                 isEditMode = isHomeEditMode,
                                 favoritesOffsetX = favoritesOffsetX,
                                 favoritesOffsetY = favoritesOffsetY,
                                 clockOffsetX = clockOffsetX,
                                 clockOffsetY = clockOffsetY,
                                 onOpenDrawer = { isDrawerOpen = true },
-                                onOpenSearch = { isSearchOpen = true },
+                                onOpenSearch = {
+                                    isSearchClosingState = false
+                                    isSearchOpen = true
+                                },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onToggleEditMode = { isHomeEditMode = !isHomeEditMode },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
@@ -1102,16 +1106,23 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxSize()
                                 .pointerInput(Unit) {
                                     detectTapGestures {
+                                        isSearchClosingState = false
                                         isSearchOpen = false
                                     }
                                 }
                         ) {
-                            BottomSearch(
+                            HybridSearch(
                                 apps = allApps,
-                                onClose = { isSearchOpen = false },
+                                onClose = {
+                                    isSearchClosingState = false
+                                    isSearchOpen = false
+                                },
+                                onClosingStart = {
+                                    isSearchClosingState = true
+                                },
                                 onAppLaunch = { app, bounds ->
                                     val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                        ?: return@BottomSearch
+                                        ?: return@HybridSearch
                                     requestSearchLaunch(intent, bounds)
                                 },
                                 onWebLaunch = { intent, bounds, query ->

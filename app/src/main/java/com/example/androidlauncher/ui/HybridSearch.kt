@@ -29,6 +29,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -62,11 +63,12 @@ import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlin.math.min
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
 @Composable
-fun BottomSearch(
+fun HybridSearch(
     apps: List<AppInfo>,
     onClose: () -> Unit,
+    onClosingStart: () -> Unit = {},
     onAppLaunch: (AppInfo, Rect?) -> Unit,
     onWebLaunch: (Intent, Rect?, String) -> Unit,
     preferredImeWebLaunchBounds: Rect? = null,
@@ -82,6 +84,32 @@ fun BottomSearch(
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontSize = LocalFontSize.current
     val density = LocalDensity.current
+
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    var maxImeBottom by remember { mutableIntStateOf(0) }
+    var isClosing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(imeBottom) {
+        if (imeBottom > maxImeBottom) {
+            maxImeBottom = imeBottom
+            isClosing = false
+        }
+        if (maxImeBottom > 0 && imeBottom < maxImeBottom - 20) {
+            if (!isClosing) {
+                isClosing = true
+                onClosingStart()
+            }
+        }
+        if (imeBottom == 0 && maxImeBottom > 0) {
+            onClose()
+        }
+    }
+
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (isClosing) 0f else 1f,
+        animationSpec = tween(durationMillis = 150, easing = LinearEasing),
+        label = "contentAlpha"
+    )
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val searchSurfaceBrush = remember(colorTheme, isDarkTextEnabled) {
@@ -149,7 +177,7 @@ fun BottomSearch(
     }
 
     val suggestionEnterTransition = remember {
-        fadeIn(animationSpec = tween(durationMillis = 220)) +
+        fadeIn(animationSpec = tween(durationMillis = 100)) +
             expandVertically(
                 expandFrom = Alignment.Bottom,
                 animationSpec = spring(
@@ -161,7 +189,7 @@ fun BottomSearch(
     val suggestionExitTransition = remember {
         fadeOut(
             animationSpec = tween(
-                durationMillis = 230,
+                durationMillis = 0,
                 easing = LinearOutSlowInEasing
             )
         ) +
@@ -169,12 +197,12 @@ fun BottomSearch(
                 shrinkTowards = Alignment.Bottom,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 140f
+                    stiffness = Spring.StiffnessMedium
                 )
             )
     }
     val singleSuggestionEnterTransition = remember {
-        fadeIn(animationSpec = tween(durationMillis = 180)) +
+        fadeIn(animationSpec = tween(durationMillis = 120)) +
             expandVertically(
                 expandFrom = Alignment.Bottom,
                 animationSpec = spring(
@@ -186,7 +214,7 @@ fun BottomSearch(
     val singleSuggestionExitTransition = remember {
         fadeOut(
             animationSpec = tween(
-                durationMillis = 210,
+                durationMillis = 90,
                 easing = LinearOutSlowInEasing
             )
         ) +
@@ -194,17 +222,24 @@ fun BottomSearch(
                 shrinkTowards = Alignment.Bottom,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 140f
+                    stiffness = Spring.StiffnessMedium
                 )
             )
     }
 
     BackHandler {
         keyboardController?.hide()
-        onClose()
+        if (!isClosing) {
+            isClosing = true
+            onClosingStart()
+        }
+        if (maxImeBottom == 0) {
+            onClose()
+        }
     }
 
-    val overlayColor = colorTheme.overlayScrimColor(isDarkTextEnabled)
+    val baseOverlayColor = colorTheme.overlayScrimColor(isDarkTextEnabled)
+    val overlayColor = baseOverlayColor.copy(alpha = baseOverlayColor.alpha * contentAlpha)
 
     Box(
         modifier = Modifier
@@ -212,7 +247,13 @@ fun BottomSearch(
             .background(overlayColor)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 keyboardController?.hide()
-                onClose()
+                if (!isClosing) {
+                    isClosing = true
+                    onClosingStart()
+                }
+                if (maxImeBottom == 0) {
+                    onClose()
+                }
             }
             .statusBarsPadding()
             .navigationBarsPadding()
@@ -223,10 +264,11 @@ fun BottomSearch(
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.ime)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
+                .alpha(contentAlpha)
                 .padding(16.dp)
         ) {
             AnimatedVisibility(
-                visible = query.isNotEmpty() && appSuggestions.isNotEmpty(),
+                visible = query.isNotEmpty() && appSuggestions.isNotEmpty() && !isClosing,
                 enter = suggestionEnterTransition,
                 exit = suggestionExitTransition,
                 modifier = Modifier
@@ -244,9 +286,16 @@ fun BottomSearch(
                                 stiffness = Spring.StiffnessMediumLow
                             )
                         )
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Text(
+                        text = "Apps",
+                        color = mainTextColor.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 8.dp, bottom = 2.dp, top = 4.dp)
+                    )
                     appSuggestions.forEach { app ->
                         AppSearchItem(
                             app = app,
@@ -261,7 +310,7 @@ fun BottomSearch(
             }
 
             AnimatedVisibility(
-                visible = query.isNotEmpty() && hasHistoryWebSuggestion,
+                visible = query.isNotEmpty() && hasHistoryWebSuggestion && !isClosing,
                 enter = singleSuggestionEnterTransition,
                 exit = singleSuggestionExitTransition,
                 modifier = Modifier
@@ -269,13 +318,20 @@ fun BottomSearch(
                     .fillMaxWidth()
                     .padding(bottom = historyWebBottomPadding)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(searchContainerModifier)
                         .onGloballyPositioned { historyWebContainerHeightPx = it.size.height.toFloat() }
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
+                    Text(
+                        text = "Websuche",
+                        color = mainTextColor.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 8.dp, bottom = 6.dp, top = 4.dp)
+                    )
                     when {
                         historySuggestion != null -> {
                             SearchHistoryItem(
@@ -346,7 +402,7 @@ fun BottomSearch(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester)
-                            .testTag("bottom_search_field")
+                            .testTag("hybrid_search_field")
                             .onGloballyPositioned {
                                 if (!hasRequestedInitialFocus) {
                                     hasRequestedInitialFocus = true
@@ -357,7 +413,13 @@ fun BottomSearch(
                             .onPreInterceptKeyBeforeSoftKeyboard { event ->
                                 if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
                                     keyboardController?.hide()
-                                    onClose()
+                                    if (!isClosing) {
+                                        isClosing = true
+                                        onClosingStart()
+                                    }
+                                    if (maxImeBottom == 0) {
+                                        onClose()
+                                    }
                                     true
                                 } else false
                             },
@@ -518,17 +580,12 @@ fun AppSearchItem(
         ) { AppIconView(app = app) }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "App",
-                color = mainTextColor.copy(alpha = 0.46f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
-            )
             HighlightedSuggestionText(
                 text = app.label,
                 query = query,
                 color = mainTextColor,
-                fontSize = 16.sp * fontSizeScale
+                fontSize = 16.sp * fontSizeScale,
+                fontWeight = FontWeight.Medium
             )
         }
     }
@@ -560,7 +617,7 @@ private fun SearchHistoryItem(
             .background(backgroundColor)
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .clickable { onClick(iconBounds ?: rowBounds) }
-            .padding(vertical = 11.dp, horizontal = 12.dp),
+            .padding(vertical = 8.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -579,17 +636,12 @@ private fun SearchHistoryItem(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Verlauf",
-                color = mainTextColor.copy(alpha = 0.46f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
-            )
             HighlightedSuggestionText(
                 text = entry.query,
                 query = query,
                 color = mainTextColor,
-                fontSize = 15.sp
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
             )
         }
         IconButton(
@@ -672,7 +724,7 @@ fun WebSearchItem(
                     onClick(launchBounds)
                 }
             }
-            .padding(vertical = 11.dp, horizontal = 12.dp),
+            .padding(vertical = 8.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -691,12 +743,6 @@ fun WebSearchItem(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Jetzt im Web suchen",
-                color = mainTextColor.copy(alpha = 0.52f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
-            )
             HighlightedSuggestionText(
                 text = query,
                 query = query,
