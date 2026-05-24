@@ -56,6 +56,18 @@ object ReturnOriginStore {
             .apply()
     }
 
+    fun getAll(context: Context): Map<String, ReturnAnimation> {
+        return prefs(context).all.keys
+            .asSequence()
+            .filter { it.startsWith(ENTRY_PREFIX) }
+            .map { key ->
+                val pkg = key.removePrefix(ENTRY_PREFIX)
+                pkg to get(context, pkg)
+            }
+            .filter { it.second != null }
+            .associate { it.first to it.second!! }
+    }
+
     private fun encode(animation: ReturnAnimation): String {
         val bounds = animation.bounds
         val boundsPart = if (bounds == null) {
@@ -67,13 +79,14 @@ object ReturnOriginStore {
             animation.source.name,
             escape(animation.packageName),
             escape(animation.launchedPackageName),
-            boundsPart
+            boundsPart,
+            animation.launchedAtMs.toString()
         ).joinToString("|")
     }
 
     private fun decode(encoded: String): ReturnAnimation? {
-        val parts = encoded.split("|", limit = 4)
-        if (parts.size != 4) {
+        val parts = encoded.split("|", limit = 5)
+        if (parts.size < 4) {
             Log.d(TAG, "decode failed invalid parts=$parts")
             return null
         }
@@ -82,11 +95,13 @@ object ReturnOriginStore {
             val packageName = unescape(parts[1])
             val launchedPackageName = unescape(parts[2])
             val bounds = decodeBounds(parts[3])
+            val launchedAtMs = if (parts.size >= 5) parts[4].toLong() else 0L
             ReturnAnimation(
                 bounds = bounds,
                 source = source,
                 packageName = packageName,
-                launchedPackageName = launchedPackageName
+                launchedPackageName = launchedPackageName,
+                launchedAtMs = launchedAtMs
             )
         } catch (_: Exception) {
             Log.d(TAG, "decode failed exception for=$encoded")

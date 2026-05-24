@@ -10,7 +10,8 @@ class ReturnAnimationGateTest {
         bounds = null,
         source = LaunchSource.HOME,
         packageName = "com.example.target",
-        launchedPackageName = "com.example.target"
+        launchedPackageName = "com.example.target",
+        launchedAtMs = System.currentTimeMillis()
     )
 
     @Test
@@ -19,6 +20,7 @@ class ReturnAnimationGateTest {
         val decision = ReturnAnimationGate.resolve(
             pendingReturnAnimation = pendingAnimation,
             pendingLaunchStartedAtMs = pendingLaunchStartedAtMs,
+            storedAnimations = emptyMap(),
             observations = listOf(
                 ForegroundAppObservation(
                     packageName = "com.example.target",
@@ -38,7 +40,8 @@ class ReturnAnimationGateTest {
         val nowMs = System.currentTimeMillis()
         val decision = ReturnAnimationGate.resolve(
             pendingReturnAnimation = pendingAnimation,
-            pendingLaunchStartedAtMs = nowMs - (15 * 60 * 1000L) - 1L,
+            pendingLaunchStartedAtMs = nowMs - (15 * 60 * 1000L) - 1000L,
+            storedAnimations = emptyMap(),
             observations = listOf(
                 ForegroundAppObservation(
                     packageName = "com.example.target",
@@ -48,29 +51,38 @@ class ReturnAnimationGateTest {
             )
         )
 
-        assertEquals("stale-pending-animation", decision.reason)
+        assertEquals("stale-animation", decision.reason)
         assertNull(decision.returnAnimation)
-        assertNull(decision.matchedObservation)
+        assertEquals("com.example.target", decision.matchedObservation?.packageName)
     }
 
     @Test
-    fun `returns animation when observation happened before the launch session`() {
-        val pendingLaunchStartedAtMs = System.currentTimeMillis() - 1_000L
+    fun `returns animation when observation matches stored animation instead of pending`() {
+        val nowMs = System.currentTimeMillis()
+        val storedAnimation = ReturnAnimation(
+            bounds = null,
+            source = LaunchSource.DRAWER,
+            packageName = "com.example.stored",
+            launchedPackageName = "com.example.stored",
+            launchedAtMs = nowMs - 5_000L
+        )
+
         val decision = ReturnAnimationGate.resolve(
             pendingReturnAnimation = pendingAnimation,
-            pendingLaunchStartedAtMs = pendingLaunchStartedAtMs,
+            pendingLaunchStartedAtMs = nowMs - 1_000L,
+            storedAnimations = mapOf("com.example.stored" to storedAnimation),
             observations = listOf(
                 ForegroundAppObservation(
-                    packageName = "com.example.target",
-                    observedAtMs = pendingLaunchStartedAtMs - 6_000L,
+                    packageName = "com.example.stored",
+                    observedAtMs = nowMs - 500L,
                     source = "usage-events"
                 )
             )
         )
 
-        assertEquals("matched-observation-precedes-launch", decision.reason)
-        assertEquals(pendingAnimation, decision.returnAnimation)
-        assertEquals("com.example.target", decision.matchedObservation?.packageName)
+        assertEquals("matched-observation", decision.reason)
+        assertEquals(storedAnimation, decision.returnAnimation)
+        assertEquals("com.example.stored", decision.matchedObservation?.packageName)
     }
 
     @Test
@@ -79,6 +91,7 @@ class ReturnAnimationGateTest {
         val decision = ReturnAnimationGate.resolve(
             pendingReturnAnimation = pendingAnimation,
             pendingLaunchStartedAtMs = pendingLaunchStartedAtMs,
+            storedAnimations = emptyMap(),
             observations = listOf(
                 ForegroundAppObservation(
                     packageName = "com.example.other",
@@ -88,8 +101,8 @@ class ReturnAnimationGateTest {
             )
         )
 
-        assertEquals("no-matching-observation", decision.reason)
+        assertEquals("no-matching-animation", decision.reason)
         assertNull(decision.returnAnimation)
-        assertNull(decision.matchedObservation)
+        assertEquals("com.example.other", decision.matchedObservation?.packageName)
     }
 }
