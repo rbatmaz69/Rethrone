@@ -70,15 +70,6 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/**
- * Datenklasse für einen App-Start-Request vom Homescreen.
- */
-data class HomeLaunchRequest(
-    val packageName: String,
-    val bounds: Rect?,
-    val intent: Intent?
-)
-
 private enum class HomeEditTarget {
     CLOCK,
     FAVORITES
@@ -127,29 +118,22 @@ fun HomeScreen(
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
 
     // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
-    // Favoriten-Offset wird lokal gehalten und erst bei "Speichern" persistiert.
-    // Keine isEditMode Abhängigkeit: States sollten nur neu initialisiert werden, wenn sich die persistierten Werte ändern, nicht wenn der Edit-Modus wechselt.
     var currentFavOffsetX by remember { mutableStateOf(0f) }
     var currentFavOffsetY by remember(favoritesOffsetY) { mutableStateOf(favoritesOffsetY) }
-    // Uhrbereich (Uhr + Datum) ist eine Einheit und wird frei auf X/Y verschoben.
     var currentClockOffsetX by remember { mutableStateOf(0f) }
     var currentClockOffsetY by remember(clockOffsetY) { mutableStateOf(clockOffsetY) }
 
-    // Letzte gültige Positionen: Bei Kollision wird darauf zurückgesetzt.
     var lastValidFavOffsetX by remember { mutableStateOf(0f) }
     var lastValidFavOffsetY by remember(favoritesOffsetY) { mutableStateOf(favoritesOffsetY) }
     var lastValidClockOffsetX by remember { mutableStateOf(0f) }
     var lastValidClockOffsetY by remember(clockOffsetY) { mutableStateOf(clockOffsetY) }
 
-    // Neutral-Bounds sind Layout-Bounds ohne aktuelle Offsets; damit können wir sauber Kandidaten prüfen.
     var clockNeutralBounds by remember { mutableStateOf<Rect?>(null) }
     var favoritesNeutralBounds by remember { mutableStateOf<Rect?>(null) }
-    // Live-Bounds der UI-Controls, die im Edit-Mode nicht überlappt werden dürfen.
     var searchButtonBounds by remember { mutableStateOf<Rect?>(null) }
     var settingsButtonBounds by remember { mutableStateOf<Rect?>(null) }
     var editControlsBounds by remember { mutableStateOf<Rect?>(null) }
 
-    // Visuelles Kollision-Feedback (Option A) + einmaliges Haptic pro Blockadephase.
     var isClockCollisionBlocked by remember { mutableStateOf(false) }
     var isFavoritesCollisionBlocked by remember { mutableStateOf(false) }
     var isClockNavigationBarBlocked by remember { mutableStateOf(false) }
@@ -158,15 +142,10 @@ fun HomeScreen(
     var lastBlockedClockHapticMs by remember { mutableLongStateOf(0L) }
     var lastBlockedFavoritesHapticMs by remember { mutableLongStateOf(0L) }
 
-    // Die Favoriten-Markierung wird visuell um diesen Wert nach außen gezeichnet.
     val favoritesFramePaddingPx = with(density) { 10.dp.toPx() }
-    // Für Nav-Bar-Kollision soll die Uhr den gleichen "gefühlten" Abstand haben wie die Favoriten.
     val clockNavCollisionPaddingPx = favoritesFramePaddingPx
-    // Kleine Schutzkante um UI-Controls, damit die Container visuell nicht "ankleben".
     val bottomControlsPaddingPx = with(density) { 8.dp.toPx() }
     
-    // Systemnavigation Bar Höhe ermitteln, um eine Sperrzone am unteren Bildschirmrand zu definieren.
-    // Die Navigationgleiste darf nicht überlagert werden.
     val navigationBarHeightPx = with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
     val arrowProbeStepPx = with(density) { 8.dp.toPx() }
     val editHintContentPadding = 14.dp
@@ -176,22 +155,16 @@ fun HomeScreen(
     val editHintContentPaddingPx = with(density) { editHintContentPadding.toPx() }
     val editSelectionHitPaddingPx = with(density) { 12.dp.toPx() }
     val dragVisualDeadzonePx = 1f
-    // 1px-Probe vermeidet, dass kleine aber valide Bewegungsfenster als "nicht bewegbar" erkannt werden.
     val reachabilityProbeStepPx = 1f
     val blockedDragHapticMinIntervalMs = 45L
     val blockedDragHapticMinDeltaPx = 0.25f
     val clockTopLimitPx = with(density) { 32.dp.toPx() }
     
-    // Launch Request State
-    val launchRequestState = remember { mutableStateOf<HomeLaunchRequest?>(null) }
-    var launchRequest by launchRequestState
-
     var selectedEditTarget by remember { mutableStateOf<HomeEditTarget?>(null) }
     var isEditTargetUserPinned by remember { mutableStateOf(false) }
     var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
     var shortcutMenuBounds by remember { mutableStateOf<Rect?>(null) }
 
-    // Lokale Hilfsfunktion: Verschiebt ein Rechteck um X/Y-Pixel.
     fun translateRect(rect: Rect, x: Float, y: Float): Rect {
         return Rect(
             left = rect.left + x,
@@ -201,7 +174,6 @@ fun HomeScreen(
         )
     }
 
-    // Lokale Hilfsfunktion: Erweitert ein Rechteck um eine visuelle Außenkante.
     fun expandRect(rect: Rect, padding: Float): Rect {
         return Rect(
             left = rect.left - padding,
@@ -211,7 +183,6 @@ fun HomeScreen(
         )
     }
 
-    // Lokale Hilfsfunktion: Rechteck-Überlappung ohne Sonderlogik.
     fun intersects(first: Rect, second: Rect): Boolean {
         return first.left < second.right &&
             first.right > second.left &&
@@ -219,7 +190,6 @@ fun HomeScreen(
             first.bottom > second.top
     }
 
-    // Lokale Hilfsfunktion: Punkt innerhalb eines Rechtecks prüfen.
     fun rectContains(rect: Rect, point: Offset): Boolean {
         return point.x >= rect.left &&
             point.x <= rect.right &&
@@ -227,7 +197,6 @@ fun HomeScreen(
             point.y <= rect.bottom
     }
 
-    // Lokale Hilfsfunktion: Kandidat innerhalb des sichtbaren Screens halten und Systemnavigation nicht überlagern.
     fun clampToRoot(candidateX: Float, candidateY: Float, neutralBounds: Rect?): Pair<Float, Float> {
         val bounds = neutralBounds ?: return candidateX to candidateY
         if (rootSize.width <= 0 || rootSize.height <= 0) return candidateX to candidateY
@@ -235,13 +204,11 @@ fun HomeScreen(
         val minX = -bounds.left
         val maxX = rootSize.width.toFloat() - bounds.right
         val minY = -bounds.top
-        // Max Y wird reduziert, um Überlappung mit der Systemnavigation (unten) zu verhindern.
         val maxY = (rootSize.height.toFloat() - bounds.bottom - navigationBarHeightPx).coerceAtLeast(-bounds.top)
 
         return candidateX.coerceIn(minX, maxX) to candidateY.coerceIn(minY, maxY)
     }
 
-    // Clock hat ein eigenes Top-Limit, damit der Bereich nicht zu hoch geschoben werden kann.
     fun clampClockToRoot(candidateX: Float, candidateY: Float): Pair<Float, Float> {
         val bounds = clockNeutralBounds ?: return candidateX to candidateY
         if (rootSize.width <= 0 || rootSize.height <= 0) return candidateX to candidateY
@@ -254,7 +221,6 @@ fun HomeScreen(
         return candidateX.coerceIn(minX, maxX) to candidateY.coerceIn(minY, maxY)
     }
 
-    // Lokale Hilfsfunktion: Erstellt die Sperrzone der Systemnavigation unten am Bildschirm.
     fun getNavigationBarForbiddenZone(): Rect {
         if (rootSize.width <= 0 || rootSize.height <= 0) {
             return Rect(0f, 0f, 0f, 0f)
@@ -267,8 +233,6 @@ fun HomeScreen(
         )
     }
 
-    // Reaktive Sperrzonen für sichtbar platzierte Controls (Lupe/Zahnrad + Edit-Buttons).
-    // Wichtig: Als State geführt, damit pointerInput bei Bounds-Änderung neu gestartet wird.
     val bottomControlsForbiddenZones by remember(
         searchButtonBounds,
         settingsButtonBounds,
@@ -283,12 +247,10 @@ fun HomeScreen(
                 null
             }
             val settingsZone = settingsButtonBounds?.let { expandRect(it, bottomControlsPaddingPx) }
-            // Edit-Controls sind temporär und dürfen die Positionsbearbeitung nicht blockieren.
             listOfNotNull(searchZone, settingsZone)
         }
     }
 
-    // Lokale Hilfsfunktion: Kollisionstint/Haptic steuern, ohne dauerhaft zu triggern.
     fun updateCollisionFeedback(clockBlocked: Boolean, favoritesBlocked: Boolean) {
         isClockCollisionBlocked = clockBlocked
         isFavoritesCollisionBlocked = favoritesBlocked
@@ -303,7 +265,6 @@ fun HomeScreen(
         }
     }
 
-    // Lokale Hilfsfunktion: Prüft einen vollständigen Layoutzustand auf Screen-Grenzen und Kollisionen.
     fun isValidLayoutState(
         favoritesX: Float,
         favoritesY: Float,
@@ -313,13 +274,11 @@ fun HomeScreen(
         val adjustedFavorites = clampToRoot(favoritesX, favoritesY, favoritesNeutralBounds)
         val adjustedClock = clampClockToRoot(clockX, clockY)
 
-        // Bereits geklemmte Werte gelten als ungültig für Speichern, weil nicht exakt der gewünschte Zustand vorliegt.
         val favoritesWereClamped = adjustedFavorites.first != favoritesX || adjustedFavorites.second != favoritesY
         val clockWereClamped = adjustedClock.first != clockX || adjustedClock.second != clockY
         if (favoritesWereClamped || clockWereClamped) return false
 
         val favoritesRect = favoritesNeutralBounds?.let {
-            // Für Kollisionen zählen die sichtbaren Container-Kanten, nicht nur der nackte Content.
             expandRect(
                 rect = translateRect(it, favoritesX, favoritesY),
                 padding = favoritesFramePaddingPx
@@ -333,17 +292,13 @@ fun HomeScreen(
         }
         val bottomControlsZones = bottomControlsForbiddenZones
 
-        // Solange Bounds fehlen, blockieren wir Speichern nicht unnötig.
         if (favoritesRect == null || clockRect == null) return true
 
-        // Prüfe auf Überlappung zwischen Container
         if (intersects(favoritesRect, clockRect)) return false
 
-        // Prüfe auf Überlappung mit der Systemnavigation
         val navigationBarZone = getNavigationBarForbiddenZone()
         if (intersects(favoritesRect, navigationBarZone) || (clockNavRect != null && intersects(clockNavRect, navigationBarZone))) return false
 
-        // Prüfe auf Überlappung mit sichtbaren UI-Controls.
         if (bottomControlsZones.any { zone ->
                 intersects(favoritesRect, zone) || (clockNavRect != null && intersects(clockNavRect, zone))
             }) return false
@@ -351,7 +306,6 @@ fun HomeScreen(
         return true
     }
 
-    // Sucht entlang einer Drag-Richtung den naechsten gueltigen Y-Zustand (strict: keine ungültigen Zustände anwenden).
     fun findReachableClockOffsetY(baseY: Float, desiredY: Float): Float? {
         if (abs(desiredY - baseY) < 0.5f) {
             return if (
@@ -393,7 +347,6 @@ fun HomeScreen(
         ) baseY else null
     }
 
-    // Analog zur Uhr: vom Wunschziel in Richtung Start zurücklaufen, bis ein gueltiger Zustand gefunden ist.
     fun findReachableFavoritesOffsetY(baseY: Float, desiredY: Float): Float? {
         if (abs(desiredY - baseY) < 0.5f) {
             return if (
@@ -435,7 +388,6 @@ fun HomeScreen(
         ) baseY else null
     }
 
-    // Prüft, ob die Uhr-Einheit in die gewünschte Richtung real verschoben werden kann.
     fun canMoveClockBy(deltaY: Float): Boolean {
         if (deltaY == 0f) return false
         val farProbe = max(rootSize.height.toFloat(), arrowProbeStepPx)
@@ -445,7 +397,6 @@ fun HomeScreen(
         return reachableY != null && reachableY != currentClockOffsetY
     }
 
-    // Prüft, ob die Favoriten-Einheit in die gewünschte Richtung real verschoben werden kann.
     fun canMoveFavoritesBy(deltaY: Float): Boolean {
         if (deltaY == 0f) return false
         val farProbe = max(rootSize.height.toFloat(), arrowProbeStepPx)
@@ -455,7 +406,6 @@ fun HomeScreen(
         return reachableY != null && reachableY != currentFavOffsetY
     }
 
-    // Persistenter Überlappungsstatus: hält die Rahmen eingefärbt, solange die Container aktuell kollidieren oder sich mit der Systemnavigation überlagern.
     val hasActiveContainerOverlap by remember(
         isEditMode,
         currentFavOffsetX,
@@ -484,15 +434,12 @@ fun HomeScreen(
 
             if (currentFavoritesRect == null || currentClockRect == null) return@derivedStateOf false
 
-            // Prüfe auf Überlappung zwischen den beiden Container
             val containerOverlap = intersects(currentFavoritesRect, currentClockRect)
 
-            // Prüfe auf Überlappung mit der Systemnavigation
             val navigationBarZone = getNavigationBarForbiddenZone()
             val navigationOverlap = intersects(currentFavoritesRect, navigationBarZone) ||
                 (currentClockNavRect != null && intersects(currentClockNavRect, navigationBarZone))
 
-            // Prüfe auf Überlappung mit sichtbaren UI-Controls.
             val bottomControlsOverlap = bottomControlsForbiddenZones.any { zone ->
                 intersects(currentFavoritesRect, zone) ||
                     (currentClockNavRect != null && intersects(currentClockNavRect, zone))
@@ -502,7 +449,6 @@ fun HomeScreen(
         }
     }
 
-    // Globale Bewegungs-Checks für stabile Pfeil-/Auto-Switch-Entscheidungen.
     val canMoveClockUpNow by remember(
         isEditMode,
         currentClockOffsetY,
@@ -548,9 +494,6 @@ fun HomeScreen(
         derivedStateOf { isEditMode && canMoveFavoritesBy(arrowProbeStepPx) }
     }
 
-    // Kein automatischer Target-Wechsel: Die Auswahl bleibt immer manuell steuerbar.
-
-    // Wenn die Lupe ausgeblendet ist (Settings offen), deren Sperrzone sofort entfernen.
     LaunchedEffect(isSettingsOpen) {
         if (isSettingsOpen) {
             searchButtonBounds = null
@@ -558,19 +501,16 @@ fun HomeScreen(
         }
     }
 
-    // Wenn Edit-Mode endet, die Sperrzone der Edit-Buttons sofort entfernen.
     LaunchedEffect(isEditMode) {
         if (!isEditMode) {
             editControlsBounds = null
             selectedEditTarget = null
             isEditTargetUserPinned = false
         } else {
-            // Vertikalmodus: bestehende Legacy-X-Verschiebungen beim Einstieg neutralisieren.
             currentFavOffsetX = 0f
             currentClockOffsetX = 0f
             lastValidFavOffsetX = 0f
             lastValidClockOffsetX = 0f
-            // Beim Einstieg in den Edit-Mode wird Content vertikal gepolstert; Y daher lokal kompensieren.
             currentFavOffsetY = favoritesOffsetY - editHintContentPaddingPx
             currentClockOffsetY = clockOffsetY - editHintContentPaddingPx
             lastValidFavOffsetY = currentFavOffsetY
@@ -584,15 +524,6 @@ fun HomeScreen(
         targetValue = if (isSettingsOpen) 180f else 0f,
         animationSpec = tween(300, easing = EaseInOutCubic), label = ""
     )
-
-    // App-Start verzögert ausführen für Animationen
-    LaunchedEffect(launchRequest) {
-        if (isPreview) return@LaunchedEffect
-        val request = launchRequest ?: return@LaunchedEffect
-        delay(280)
-        request.intent?.let { onLaunchApp(request.packageName, it, request.bounds) }
-        launchRequest = null
-    }
 
     Box(
         modifier = Modifier
@@ -661,7 +592,6 @@ fun HomeScreen(
             // 1. Uhr / Widget Bereich (Verschiebbar im Edit-Mode)
             Box(
                 modifier = Modifier
-                    // Im Edit-Modus bleibt der Drag-Container kompakt für präzises vertikales Draggen.
                     .then(if (isEditMode) Modifier.wrapContentWidth(Alignment.Start) else Modifier.fillMaxWidth())
                     .zIndex(
                         if (!isEditMode) {
@@ -672,9 +602,7 @@ fun HomeScreen(
                             null -> 1500f
                         }
                     )
-                    // Uhrbereich wird als Einheit auf X/Y verschoben.
                     .offset { IntOffset(0, currentClockOffsetY.roundToInt()) }
-                    // Neutral-Bounds aus aktuellen Bounds ableiten, damit Kandidatenberechnung stabil bleibt.
                     .onGloballyPositioned { coordinates ->
                         val currentBounds = coordinates.boundsInRoot()
                         clockNeutralBounds = translateRect(
@@ -789,9 +717,7 @@ fun HomeScreen(
                 ) {
                     ClockHeader(
                         onAppLaunchForReturn = { pkg, bounds -> onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds) },
-                        onLaunchRequest = { launchRequest = it },
                         returnIconPackage = returnIconPackage,
-                        // Kompaktmodus hält Uhr+Datum als gemeinsamen Block ohne volle Breite.
                         isCompact = isEditMode,
                         isPreview = isPreview || isEditMode
                     )
@@ -845,7 +771,6 @@ fun HomeScreen(
                         }
                     )
                     .offset { IntOffset(0, currentFavOffsetY.roundToInt()) }
-                    // Neutral-Bounds für Favoriten als Referenz ohne aktuelle Offsets pflegen.
                     .onGloballyPositioned { coordinates ->
                         val currentBounds = coordinates.boundsInRoot()
                         favoritesNeutralBounds = translateRect(
@@ -953,7 +878,6 @@ fun HomeScreen(
                 val canMoveFavoritesDown = isFavoritesSelected && canMoveFavoritesDownNow
 
                 Column(
-                    // Kein einseitiger Start-Padding mehr, damit der Container visuell zentriert wirkt.
                     modifier = if (isEditMode) Modifier.padding(vertical = editHintContentPadding) else Modifier,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -992,12 +916,10 @@ fun HomeScreen(
                                 onAppLaunchForReturn = { pkg, bounds ->
                                     onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds)
                                 },
-                                onLaunchRequest = { launchRequest = it },
                                 onShortcutRequested = { shortcutApp, bounds ->
                                     selectedShortcutApp = shortcutApp
                                     shortcutMenuBounds = bounds
                                 },
-                                launchRequest = launchRequest,
                                 isPreview = isPreview || isEditMode
                             )
                         }
@@ -1054,23 +976,19 @@ fun HomeScreen(
                     .navigationBarsPadding()
                     .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 24.dp)
                     .onGloballyPositioned {
-                        // Gesamte Edit-Controls als Sperrzone erfassen.
                         editControlsBounds = it.boundsInRoot()
                     },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Kontroll-Buttons (Abbrechen, Speichern)
                 Row(
                     modifier = Modifier.wrapContentWidth(),
                     horizontalArrangement = Arrangement.spacedBy(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Abbrechen
                     EditControlButton(
                         icon = Icons.Default.Close,
                         onClick = {
-                            // Abbrechen: lokalen Bearbeitungszustand auf persistierten Stand zurücksetzen.
                             currentFavOffsetX = 0f
                             currentFavOffsetY = favoritesOffsetY
                             currentClockOffsetX = 0f
@@ -1091,18 +1009,14 @@ fun HomeScreen(
                         testTag = "home_edit_cancel"
                     )
 
-                    // Speichern
                     EditControlButton(
                         icon = Icons.Default.Check,
                         onClick = {
-                            // WYSIWYG-Speichern: Sichtbare Edit-Position 1:1 in den Normalmodus uebertragen.
-                            // Im Edit-Mode wird der Content vertikal gepolstert, daher Y um diesen Betrag kompensieren.
                             val savedFavoritesX = 0f
                             val savedFavoritesY = currentFavOffsetY + editHintContentPaddingPx
                             val savedClockX = 0f
                             val savedClockY = currentClockOffsetY + editHintContentPaddingPx
 
-                            // UI auf die gespeicherten Werte synchronisieren.
                             currentFavOffsetX = savedFavoritesX
                             currentFavOffsetY = savedFavoritesY
                             currentClockOffsetX = savedClockX
@@ -1134,7 +1048,6 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // Fixe Position bleibt unten rechts, auch im Edit-Mode.
                     .navigationBarsPadding()
                     .padding(24.dp),
                 contentAlignment = Alignment.BottomEnd
@@ -1161,7 +1074,7 @@ fun HomeScreen(
                 }
 
                 val settingsBtnScale by animateFloatAsState(
-                    targetValue = if (isSettingsOpen) 1.2f else 1f,
+                    targetValue = if (isSettingsOpen) { 1.2f } else 1f,
                     animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                     label = "SettingsBtnScale"
                 )
@@ -1209,7 +1122,6 @@ fun HomeScreen(
                                 .testTag("home_search_button")
                                 .onGloballyPositioned {
                                     val bounds = it.boundsInRoot()
-                                    // Bounds lokal halten (Kollision) und zusätzlich an MainActivity melden (Return-Flow).
                                     searchButtonBounds = bounds
                                     onSearchButtonBoundsChanged(bounds)
                                 }
@@ -1282,12 +1194,6 @@ fun HomeScreen(
                 )
             }
         }
-
-        HomeLaunchOverlay(
-            launchRequest = launchRequest,
-            rootSize = rootSize,
-            backgroundColor = colorTheme.drawerBackground
-        )
     }
 }
 
@@ -1332,9 +1238,7 @@ private fun FavoriteItem(
     mainTextColor: Color,
     returnIconPackage: String?,
     onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit,
     onShortcutRequested: (AppInfo, Rect?) -> Unit,
-    launchRequest: HomeLaunchRequest?,
     isPreview: Boolean = false
 ) {
     val context = LocalContext.current
@@ -1377,12 +1281,8 @@ private fun FavoriteItem(
                         }
                         .bounceClick(intSrc)
                         .clickable(interactionSource = intSrc, indication = null) {
-                            if (launchRequest == null) {
-                                val targetBounds = iconBounds.value ?: itemBounds.value
-                                onAppLaunchForReturn(app.packageName, targetBounds)
-                                val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-                                onLaunchRequest(HomeLaunchRequest(app.packageName, targetBounds, intent))
-                            }
+                            val targetBounds = iconBounds.value ?: itemBounds.value
+                            onAppLaunchForReturn(app.packageName, targetBounds)
                         }
                 } else {
                     Modifier
@@ -1415,69 +1315,6 @@ private fun FavoriteItem(
     }
 }
 
-@Composable
-private fun HomeLaunchOverlay(
-    launchRequest: HomeLaunchRequest?,
-    rootSize: IntSize,
-    backgroundColor: Color
-) {
-    val launchTransition = updateTransition(targetState = launchRequest != null, label = "HomeLaunchTransition")
-    val launchProgress by launchTransition.animateFloat(
-        transitionSpec = { spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium) },
-        label = "HomeLaunchProgress"
-    ) { if (it) 1f else 0f }
-    val launchOverlayAlpha by launchTransition.animateFloat(
-        transitionSpec = { tween(durationMillis = 220, easing = LinearEasing) },
-        label = "HomeLaunchOverlayAlpha"
-    ) { if (it) 1f else 0f }
-
-    val launchBounds = launchRequest?.bounds
-    val launchTranslation = remember(launchBounds, rootSize) {
-        if (launchBounds != null && rootSize.width > 0 && rootSize.height > 0) {
-            val centerX = rootSize.width / 2f
-            val centerY = rootSize.height / 2f
-            Offset(launchBounds.center.x - centerX, launchBounds.center.y - centerY)
-        } else {
-            Offset.Zero
-        }
-    }
-    val launchStartScale = remember(launchBounds, rootSize) {
-        if (launchBounds != null && rootSize.width > 0 && rootSize.height > 0) {
-            val wScale = launchBounds.width / rootSize.width.toFloat()
-            val hScale = launchBounds.height / rootSize.height.toFloat()
-            max(wScale, hScale).coerceIn(0.06f, 0.35f)
-        } else {
-            0.08f
-        }
-    }
-
-    if (launchProgress > 0f) {
-        val scale = launchStartScale + (1f - launchStartScale) * launchProgress
-        val translationX = launchTranslation.x * (1f - launchProgress)
-        val translationY = launchTranslation.y * (1f - launchProgress)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(2000f)
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        this.scaleX = scale
-                        this.scaleY = scale
-                        this.translationX = translationX
-                        this.translationY = translationY
-                        this.transformOrigin = TransformOrigin.Center
-                        this.alpha = launchOverlayAlpha
-                    }
-                    .background(backgroundColor)
-            )
-        }
-    }
-}
-
 @SuppressLint("WrongConstant")
 internal fun expandNotifications(context: Context) {
     try {
@@ -1492,7 +1329,6 @@ internal fun expandNotifications(context: Context) {
 @Composable
 fun ClockHeader(
     onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit,
     returnIconPackage: String?,
     isCompact: Boolean = false,
     isPreview: Boolean = false
@@ -1549,7 +1385,7 @@ fun ClockHeader(
                         Modifier
                             .bounceClick(intSrcTime)
                             .clickable(interactionSource = intSrcTime, indication = null) {
-                                launchClockApp(context, clockBounds.value, onAppLaunchForReturn, onLaunchRequest) { clockPackage = it }
+                                launchClockApp(context, clockBounds.value, onAppLaunchForReturn) { clockPackage = it }
                             }
                     } else {
                         Modifier
@@ -1570,7 +1406,7 @@ fun ClockHeader(
                         Modifier
                             .bounceClick(intSrcDate)
                             .clickable(interactionSource = intSrcDate, indication = null) {
-                                launchCalendarApp(context, calendarBounds.value, onAppLaunchForReturn, onLaunchRequest) { calendarPackage = it }
+                                launchCalendarApp(context, calendarBounds.value, onAppLaunchForReturn) { calendarPackage = it }
                             }
                     } else {
                         Modifier
@@ -1585,7 +1421,6 @@ private fun launchClockApp(
     context: Context,
     bounds: Rect?,
     onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit,
     onPackageFound: (String) -> Unit
 ) {
     val pm = context.packageManager
@@ -1636,7 +1471,6 @@ private fun launchClockApp(
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
             onAppLaunchForReturn(foundPkg, bounds)
-            onLaunchRequest(HomeLaunchRequest(foundPkg, bounds, launchIntent))
             return
         }
     }
@@ -1656,7 +1490,6 @@ private fun launchCalendarApp(
     context: Context,
     bounds: Rect?,
     onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onLaunchRequest: (HomeLaunchRequest) -> Unit,
     onPackageFound: (String) -> Unit
 ) {
     val pm = context.packageManager
@@ -1678,11 +1511,9 @@ private fun launchCalendarApp(
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
             onAppLaunchForReturn(foundPkg, bounds)
-            onLaunchRequest(HomeLaunchRequest(foundPkg, bounds, launchIntent))
         } else {
             calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
             onAppLaunchForReturn(foundPkg, bounds)
-            onLaunchRequest(HomeLaunchRequest(foundPkg, bounds, calendarIntent))
         }
         return
     }
