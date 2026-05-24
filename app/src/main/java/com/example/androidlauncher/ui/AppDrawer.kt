@@ -135,13 +135,16 @@ fun AppDrawer(
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
 
+    val iconManager = remember(context) { com.example.androidlauncher.data.IconManager(context) }
+    val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
+
     var searchQuery by remember { mutableStateOf("") }
 
-    val visibleApps = remember(apps.toList(), folders, searchQuery) {
+    val visibleApps = remember(apps, folders, searchQuery) {
         if (searchQuery.isBlank()) {
-            LauncherLogic.getVisibleApps(apps.toList(), folders)
+            LauncherLogic.getVisibleApps(apps, folders)
         } else {
-            LauncherLogic.filterApps(apps.toList(), searchQuery)
+            LauncherLogic.filterApps(apps, searchQuery)
         }
     }
 
@@ -422,7 +425,7 @@ fun AppDrawer(
                     contentPadding = PaddingValues(bottom = 32.dp)
                 ) {
                     if (searchQuery.isBlank()) {
-                        itemsIndexed(items = folders, key = { _, folder -> folder.id }) { _, folder ->
+                        itemsIndexed(items = folders, key = { _, folder -> folder.id }, contentType = { _, _ -> "folder" }) { _, folder ->
                             FolderItem(
                                 folder = folder,
                                 onClick = { pos ->
@@ -434,45 +437,24 @@ fun AppDrawer(
                         }
                     }
 
-                    itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }) { index, app ->
-                        val isSearching = searchQuery.isNotBlank()
-                        var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
-                        
-                        LaunchedEffect(app.packageName, isSearching) {
-                            if (isSearching) {
-                                delay((index % 12) * 35L)
-                                isVisible = true
-                            }
-                        }
-
+                    itemsIndexed(items = visibleApps, key = { _, app -> app.packageName }, contentType = { _, _ -> "app" }) { _, app ->
                         Box(modifier = Modifier.animateItem()) {
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = isVisible,
-                                enter = fadeIn(animationSpec = tween(400)) + 
-                                        scaleIn(initialScale = 0.85f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) +
-                                        slideInVertically(initialOffsetY = { 30 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
-                                exit = fadeOut(animationSpec = tween(200))
-                            ) {
-                                AppItem(
-                                    app = app,
-                                    adaptiveColumns = adaptiveColumns,
-                                    isFavorite = isFavorite(app.packageName),
-                                    onToggleFavorite = onToggleFavorite,
-                                    folders = folders,
-                                    onUpdateFolders = onUpdateFolders,
-                                    bouncePackage = returnIconPackage,
-                                    onLongPress = { appInfo, bounds ->
-                                        if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        menuApp = appInfo
-                                        menuAppBounds = bounds
-                                    },
-                                    onAppLaunchRequested = { requestedApp, bounds ->
-                                        context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
-                                            onLaunchApp(requestedApp.packageName, intent, bounds)
-                                        }
+                            AppItem(
+                                app = app,
+                                adaptiveColumns = adaptiveColumns,
+                                customIcons = customIcons,
+                                bouncePackage = returnIconPackage,
+                                onLongPress = { appInfo, bounds ->
+                                    if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuApp = appInfo
+                                    menuAppBounds = bounds
+                                },
+                                onAppLaunchRequested = { requestedApp, bounds ->
+                                    context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
+                                        onLaunchApp(requestedApp.packageName, intent, bounds)
                                     }
-                                )
-                            }
+                                }
+                            )
                         }
                     }
                 }
@@ -731,7 +713,7 @@ fun AppDrawer(
                                             val endIdx = (startIdx + itemsPerPage).coerceAtMost(folderApps.size)
                                             val pageApps = folderApps.subList(startIdx, endIdx)
                                             LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), userScrollEnabled = false, contentPadding = PaddingValues(top = folderGridTopPadding, start = 8.dp, end = 8.dp)) {
-                                                itemsIndexed(pageApps, key = { _, app -> app.packageName }) { indexInPage, app ->
+                                                itemsIndexed(pageApps, key = { _, app -> app.packageName }, contentType = { _, _ -> "folder_app" }) { indexInPage, app ->
                                                     val globalIndex = startIdx + indexInPage
                                                     val isDragging = draggingItemPkg == app.packageName
                                                     val badgeSize = LocalIconSize.current.size * 0.28f
@@ -742,13 +724,10 @@ fun AppDrawer(
                                                         AppItem(
                                                             app = app,
                                                             adaptiveColumns = 3,
-                                                            isFavorite = isFavorite(app.packageName),
-                                                            onToggleFavorite = onToggleFavorite,
-                                                            folders = folders,
-                                                            onUpdateFolders = onUpdateFolders,
                                                             isInFolder = true,
                                                             currentFolderId = currentActiveFolder.id,
                                                             isEditMode = isEditMode,
+                                                            customIcons = customIcons,
                                                             bouncePackage = returnIconPackage,
                                                             onLongPress = { appInfo, bounds ->
                                                                 if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -787,7 +766,7 @@ fun AppDrawer(
                                         val draggedApp = currentFolderApps.find { it.packageName == draggingItemPkg }
                                         if (draggedApp != null) {
                                             Box(modifier = Modifier.size(80.dp).graphicsLayer { this.translationX = touchPosition.x - initialTouchOffsetInItem.x; this.translationY = touchPosition.y - initialTouchOffsetInItem.y; this.scaleX = 1.25f; this.scaleY = 1.25f; this.alpha = 0.95f }.zIndex(1000f).shadow(24.dp, RoundedCornerShape(16.dp))) {
-                                                AppItem(app = draggedApp, adaptiveColumns = 3, isFavorite = isFavorite(draggedApp.packageName), onToggleFavorite = onToggleFavorite, folders = folders, onUpdateFolders = onUpdateFolders, isInFolder = true, currentFolderId = currentActiveFolder.id, isEditMode = true, onLongPress = { _, _ -> }, onAppLaunchRequested = null)
+                                                AppItem(app = draggedApp, adaptiveColumns = 3, isInFolder = true, currentFolderId = currentActiveFolder.id, isEditMode = true, customIcons = customIcons, onLongPress = { _, _ -> }, onAppLaunchRequested = null)
                                             }
                                         }
                                     }
@@ -880,17 +859,13 @@ fun FolderItem(
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-@Suppress("UNUSED_PARAMETER")
 fun AppItem(
     app: AppInfo,
     adaptiveColumns: Int,
-    isFavorite: Boolean,
-    onToggleFavorite: (String) -> Unit,
-    folders: List<FolderInfo>,
-    onUpdateFolders: (List<FolderInfo>) -> Unit,
     isInFolder: Boolean = false,
     currentFolderId: String? = null,
     isEditMode: Boolean = false,
+    customIcons: Map<String, String>? = null,
     onLongPress: (AppInfo, Rect) -> Unit,
     onAppLaunchRequested: ((AppInfo, Rect?) -> Unit)? = null,
     bouncePackage: String? = null
@@ -918,7 +893,7 @@ fun AppItem(
     Box(modifier = Modifier.width(itemWidth), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.onGloballyPositioned { coordinates -> itemBounds = coordinates.boundsInRoot() }.graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }.bounceClick(intSrc, enabled = !isEditMode).combinedClickable(interactionSource = intSrc, indication = null, enabled = !isEditMode, onClick = { onAppLaunchRequested?.let { it(app, iconBounds ?: itemBounds) } ?: run { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } } }, onLongClick = { (iconBounds ?: itemBounds)?.let { onLongPress(app, it) } })) {
             Box(modifier = Modifier.onGloballyPositioned { coordinates -> iconBounds = coordinates.boundsInRoot() }) {
-                AppIconView(app)
+                AppIconView(app, customIcons = customIcons)
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = app.label, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), fontWeight = fontWeight.weight)
