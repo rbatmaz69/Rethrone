@@ -29,6 +29,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -62,7 +63,7 @@ import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlin.math.min
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun HybridSearch(
     apps: List<AppInfo>,
@@ -82,6 +83,29 @@ fun HybridSearch(
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontSize = LocalFontSize.current
     val density = LocalDensity.current
+
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    var maxImeBottom by remember { mutableIntStateOf(0) }
+    var isClosing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(imeBottom) {
+        if (imeBottom > maxImeBottom) {
+            maxImeBottom = imeBottom
+            isClosing = false
+        }
+        if (maxImeBottom > 0 && imeBottom < maxImeBottom - 20) {
+            isClosing = true
+        }
+        if (imeBottom == 0 && maxImeBottom > 0) {
+            onClose()
+        }
+    }
+
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (isClosing) 0f else 1f,
+        animationSpec = tween(durationMillis = 150, easing = LinearEasing),
+        label = "contentAlpha"
+    )
 
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val searchSurfaceBrush = remember(colorTheme, isDarkTextEnabled) {
@@ -149,7 +173,7 @@ fun HybridSearch(
     }
 
     val suggestionEnterTransition = remember {
-        fadeIn(animationSpec = tween(durationMillis = 220)) +
+        fadeIn(animationSpec = tween(durationMillis = 100)) +
             expandVertically(
                 expandFrom = Alignment.Bottom,
                 animationSpec = spring(
@@ -161,7 +185,7 @@ fun HybridSearch(
     val suggestionExitTransition = remember {
         fadeOut(
             animationSpec = tween(
-                durationMillis = 230,
+                durationMillis = 0,
                 easing = LinearOutSlowInEasing
             )
         ) +
@@ -169,12 +193,12 @@ fun HybridSearch(
                 shrinkTowards = Alignment.Bottom,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 140f
+                    stiffness = Spring.StiffnessMedium
                 )
             )
     }
     val singleSuggestionEnterTransition = remember {
-        fadeIn(animationSpec = tween(durationMillis = 180)) +
+        fadeIn(animationSpec = tween(durationMillis = 120)) +
             expandVertically(
                 expandFrom = Alignment.Bottom,
                 animationSpec = spring(
@@ -186,7 +210,7 @@ fun HybridSearch(
     val singleSuggestionExitTransition = remember {
         fadeOut(
             animationSpec = tween(
-                durationMillis = 210,
+                durationMillis = 90,
                 easing = LinearOutSlowInEasing
             )
         ) +
@@ -194,17 +218,21 @@ fun HybridSearch(
                 shrinkTowards = Alignment.Bottom,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 140f
+                    stiffness = Spring.StiffnessMedium
                 )
             )
     }
 
     BackHandler {
         keyboardController?.hide()
-        onClose()
+        isClosing = true
+        if (maxImeBottom == 0) {
+            onClose()
+        }
     }
 
-    val overlayColor = colorTheme.overlayScrimColor(isDarkTextEnabled)
+    val baseOverlayColor = colorTheme.overlayScrimColor(isDarkTextEnabled)
+    val overlayColor = baseOverlayColor.copy(alpha = baseOverlayColor.alpha * contentAlpha)
 
     Box(
         modifier = Modifier
@@ -212,7 +240,10 @@ fun HybridSearch(
             .background(overlayColor)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 keyboardController?.hide()
-                onClose()
+                isClosing = true
+                if (maxImeBottom == 0) {
+                    onClose()
+                }
             }
             .statusBarsPadding()
             .navigationBarsPadding()
@@ -223,10 +254,11 @@ fun HybridSearch(
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.ime)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
+                .alpha(contentAlpha)
                 .padding(16.dp)
         ) {
             AnimatedVisibility(
-                visible = query.isNotEmpty() && appSuggestions.isNotEmpty(),
+                visible = query.isNotEmpty() && appSuggestions.isNotEmpty() && !isClosing,
                 enter = suggestionEnterTransition,
                 exit = suggestionExitTransition,
                 modifier = Modifier
@@ -268,7 +300,7 @@ fun HybridSearch(
             }
 
             AnimatedVisibility(
-                visible = query.isNotEmpty() && hasHistoryWebSuggestion,
+                visible = query.isNotEmpty() && hasHistoryWebSuggestion && !isClosing,
                 enter = singleSuggestionEnterTransition,
                 exit = singleSuggestionExitTransition,
                 modifier = Modifier
