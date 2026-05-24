@@ -65,13 +65,14 @@ class ReturnOriginStoreTest {
             bounds = Rect(10f, 20f, 30f, 40f),
             source = LaunchSource.HOME,
             packageName = "com.source.app",
-            launchedPackageName = "com.target.app"
+            launchedPackageName = "com.target.app",
+            launchedAtMs = 123456789L
         )
 
         ReturnOriginStore.save(context, "com.target.app", animation)
 
         verify {
-            editor.putString("origin_com.target.app", "HOME|com.source.app|com.target.app|10.0,20.0,30.0,40.0")
+            editor.putString("origin_com.target.app", "HOME|com.source.app|com.target.app|10.0,20.0,30.0,40.0|123456789")
         }
         verify {
             editor.putString("last_launched_package", "com.target.app")
@@ -79,7 +80,7 @@ class ReturnOriginStoreTest {
         verify { editor.apply() }
 
         // test get
-        every { prefs.getString("origin_com.target.app", null) } returns "HOME|com.source.app|com.target.app|10.0,20.0,30.0,40.0"
+        every { prefs.getString("origin_com.target.app", null) } returns "HOME|com.source.app|com.target.app|10.0,20.0,30.0,40.0|123456789"
 
         val decoded = ReturnOriginStore.get(context, "com.target.app")
         assertNotNull(decoded)
@@ -87,6 +88,7 @@ class ReturnOriginStoreTest {
         assertEquals("com.source.app", decoded?.packageName)
         assertEquals("com.target.app", decoded?.launchedPackageName)
         assertEquals(Rect(10f, 20f, 30f, 40f), decoded?.bounds)
+        assertEquals(123456789L, decoded?.launchedAtMs)
     }
 
     @Test
@@ -95,21 +97,42 @@ class ReturnOriginStoreTest {
             bounds = null,
             source = LaunchSource.DRAWER,
             packageName = "com.source.app",
-            launchedPackageName = "com.target.app"
+            launchedPackageName = "com.target.app",
+            launchedAtMs = 987654321L
         )
 
         ReturnOriginStore.save(context, "com.target.app", animation)
 
         verify {
-            editor.putString("origin_com.target.app", "DRAWER|com.source.app|com.target.app|null")
+            editor.putString("origin_com.target.app", "DRAWER|com.source.app|com.target.app|null|987654321")
         }
 
-        every { prefs.getString("origin_com.target.app", null) } returns "DRAWER|com.source.app|com.target.app|null"
+        every { prefs.getString("origin_com.target.app", null) } returns "DRAWER|com.source.app|com.target.app|null|987654321"
 
         val decoded = ReturnOriginStore.get(context, "com.target.app")
         assertNotNull(decoded)
         assertNull(decoded?.bounds)
         assertEquals(LaunchSource.DRAWER, decoded?.source)
+        assertEquals(987654321L, decoded?.launchedAtMs)
+    }
+
+    @Test
+    fun testGetAll() {
+        val map = mapOf(
+            "origin_com.test.app" to "HOME|target1|com.test.app|null|100",
+            "origin_com.other.app" to "DRAWER|target2|com.other.app|null|200",
+            "last_launched_package" to "ignore"
+        )
+        every { prefs.all } returns map
+        every { prefs.getString("origin_com.test.app", null) } returns "HOME|target1|com.test.app|null|100"
+        every { prefs.getString("origin_com.other.app", null) } returns "DRAWER|target2|com.other.app|null|200"
+
+        val all = ReturnOriginStore.getAll(context)
+        assertEquals(2, all.size)
+        assertEquals("target1", all["com.test.app"]?.packageName)
+        assertEquals(100L, all["com.test.app"]?.launchedAtMs)
+        assertEquals("target2", all["com.other.app"]?.packageName)
+        assertEquals(200L, all["com.other.app"]?.launchedAtMs)
     }
 
     @Test

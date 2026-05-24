@@ -292,15 +292,9 @@ class MainActivity : ComponentActivity() {
                 @Suppress("DEPRECATION")
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val menuBackgroundColor = currentTheme.menuSurfaceColor(isDarkTextEnabled)
-                val searchLaunchOverlayColor = currentTheme.searchSurfaceColor(isDarkTextEnabled).copy(
-                    alpha = if (isDarkTextEnabled) 0.97f else 0.985f
-                )
-                val launchOverlayBrush = remember(currentTheme, isDarkTextEnabled) {
-                    currentTheme.animationBrush(isDarkTextEnabled, alpha = 0.98f)
-                }
-                val returnOverlayBrush = remember(currentTheme, isDarkTextEnabled) {
-                    currentTheme.animationBrush(isDarkTextEnabled, alpha = 0.92f)
-                }
+                val searchLaunchOverlayColor = Color.Black
+                val launchOverlayBrush: Brush? = null
+                val returnOverlayBrush: Brush? = null
 
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
                 var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
@@ -398,6 +392,7 @@ class MainActivity : ComponentActivity() {
                             val gateDecision = ReturnAnimationGate.resolve(
                                 pendingReturnAnimation = pendingReturnAnimation,
                                 pendingLaunchStartedAtMs = pendingReturnAnimationStartedWallClockMs,
+                                storedAnimations = ReturnOriginStore.getAll(context),
                                 observations = listOfNotNull(beforeLauncherObservation, usageObservation)
                             )
                             val selectedReturnAnimation = gateDecision.returnAnimation
@@ -570,7 +565,8 @@ class MainActivity : ComponentActivity() {
                         bounds = returnBounds,
                         source = source,
                         packageName = returnPackageName,
-                        launchedPackageName = packageName
+                        launchedPackageName = packageName,
+                        launchedAtMs = System.currentTimeMillis()
                     )
                     Log.d(
                         RETURN_TAG,
@@ -1152,8 +1148,8 @@ class MainActivity : ComponentActivity() {
                         ReturnAnimationOverlay(
                             bounds = animation.bounds,
                             rootSize = rootSize,
-                            background = currentTheme.menuSurfaceColor(isDarkTextEnabled),
-                            backgroundBrush = returnOverlayBrush,
+                            background = Color.Black,
+                            backgroundBrush = null,
                             onFinished = {
                                 Log.d(
                                     RETURN_TAG,
