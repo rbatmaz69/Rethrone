@@ -135,25 +135,13 @@ fun AppDrawer(
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
 
-    val iconManager = remember(context) { com.example.androidlauncher.data.IconManager(context) }
-    val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
+    val appDrawerVm: AppDrawerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val customIcons by appDrawerVm.customIcons.collectAsState()
+    val searchQuery by appDrawerVm.searchQuery.collectAsState()
+    val visibleApps by appDrawerVm.visibleApps.collectAsState()
 
-    var searchQuery by remember { mutableStateOf("") }
-
-    var visibleApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
-
-    LaunchedEffect(apps, folders, searchQuery) {
-        if (searchQuery.isNotBlank()) {
-            delay(150) // Debounce for search input
-        }
-        visibleApps = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            if (searchQuery.isBlank()) {
-                LauncherLogic.getVisibleApps(apps, folders)
-            } else {
-                LauncherLogic.filterApps(apps, searchQuery)
-            }
-        }
-    }
+    LaunchedEffect(apps) { appDrawerVm.updateApps(apps) }
+    LaunchedEffect(folders) { appDrawerVm.updateFolders(folders) }
 
     val focusRequester = remember { FocusRequester() }
 
@@ -185,9 +173,9 @@ fun AppDrawer(
         if (isEditMode) isEditMode = false else activeFolderId = null
     }
 
-    var draggingItemPkg by remember { mutableStateOf<String?>(null) }
-    var touchPosition by remember { mutableStateOf(Offset.Zero) }
-    var initialTouchOffsetInItem by remember { mutableStateOf(Offset.Zero) }
+    val draggingItemPkg by appDrawerVm.draggingItemPkg.collectAsState()
+    val touchPosition by appDrawerVm.touchPosition.collectAsState()
+    val initialTouchOffsetInItem by appDrawerVm.initialTouchOffset.collectAsState()
     var gridAreaSize by remember { mutableStateOf(IntSize.Zero) }
 
     LaunchedEffect(activeFolderId) {
@@ -196,15 +184,13 @@ fun AppDrawer(
         } else {
             isEditMode = false
             isFolderNameFocused = false
-            draggingItemPkg = null
+            appDrawerVm.onDragEnd()
         }
     }
 
     LaunchedEffect(isEditMode) {
         if (!isEditMode) {
-            draggingItemPkg = null
-            touchPosition = Offset.Zero
-            initialTouchOffsetInItem = Offset.Zero
+            appDrawerVm.onDragEnd()
             isFolderNameFocused = false
         }
     }
@@ -365,7 +351,7 @@ fun AppDrawer(
             ) { focusRequester.requestFocus() }) {
                 StableSearchFieldContent(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    onValueChange = { appDrawerVm.setSearchQuery(it) },
                     placeholder = "Apps durchsuchen...",
                     textStyle = androidx.compose.ui.text.TextStyle(
                         color = mainTextColor,
@@ -698,18 +684,20 @@ fun AppDrawer(
                                                     val globalIdx = pagerState.currentPage * itemsPerPage + idxInPage
                                                     val currentApps = currentFolderApps
                                                     if (globalIdx < currentApps.size) {
-                                                        draggingItemPkg = currentApps[globalIdx].packageName
-                                                        touchPosition = offset
-                                                        initialTouchOffsetInItem = Offset(offset.x % cellW, offset.y % cellH)
+                                                        appDrawerVm.onDragStart(
+                                                            currentApps[globalIdx].packageName,
+                                                            offset,
+                                                            Offset(offset.x % cellW, offset.y % cellH)
+                                                        )
                                                         if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     }
                                                 },
-                                                onDragEnd = { draggingItemPkg = null },
-                                                onDragCancel = { draggingItemPkg = null },
+                                                onDragEnd = { appDrawerVm.onDragEnd() },
+                                                onDragCancel = { appDrawerVm.onDragEnd() },
                                                 onDrag = { change, dragAmount ->
                                                     change.consume()
-                                                    touchPosition += dragAmount
-                                                    performReorder(touchPosition, pagerState.currentPage)
+                                                    appDrawerVm.onDragUpdate(dragAmount)
+                                                    performReorder(appDrawerVm.touchPosition.value, pagerState.currentPage)
                                                 }
                                             )
                                         }

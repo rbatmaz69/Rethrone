@@ -13,13 +13,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.geometry.Offset
+import android.util.LruCache
+import androidx.compose.ui.graphics.ImageBitmap
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class AppDrawerViewModel(application: Application) : AndroidViewModel(application) {
@@ -44,30 +44,22 @@ class AppDrawerViewModel(application: Application) : AndroidViewModel(applicatio
     fun updateFolders(folders: List<FolderInfo>) { _folders.value = folders }
     fun setSearchQuery(query: String) { _searchQuery.value = query }
 
-    // Debounce-Dauer (konfigurierbar)
-    private val searchDebounceMs: Long = 150L
-
-    // Visible apps: combine apps + folders + debounced searchQuery -> filtered list on Default dispatcher
+    // Visible apps: instantly filter on background thread to prevent UI flickering
     val visibleApps: StateFlow<List<AppInfo>> = combine(
         _apps,
         _folders,
         _searchQuery
-            .debounce(searchDebounceMs)
-            .distinctUntilChanged()
     ) { apps, folders, query ->
-        Triple(apps, folders, query)
-    }.flatMapLatest { (apps, folders, query) ->
-        kotlinx.coroutines.flow.flow {
-            val result = if (query.isBlank()) {
-                withContext(Dispatchers.Default) { LauncherLogic.getVisibleApps(apps, folders) }
-            } else {
-                withContext(Dispatchers.Default) { LauncherLogic.filterApps(apps, query) }
-            }
-            emit(result)
+        if (query.isBlank()) {
+            LauncherLogic.getVisibleApps(apps, folders)
+        } else {
+            LauncherLogic.filterApps(apps, query)
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Launch-Intent Cache (packageName -> Intent?)
+    // --- A: LRU Cache for Loaded Bitmaps & Intents ---
+    private val _iconBitmapCache = LruCache<String, ImageBitmap>(80)
+    
     private val _launchIntentCache = MutableStateFlow<Map<String, Intent?>>(emptyMap())
     val launchIntentCache: StateFlow<Map<String, Intent?>> = _launchIntentCache.asStateFlow()
 
@@ -107,6 +99,35 @@ class AppDrawerViewModel(application: Application) : AndroidViewModel(applicatio
             }
         }
     }
+
+    fun getCachedIcon(packageName: String): ImageBitmap? {
+        return _iconBitmapCache.get(packageName)
+    }
+    fun putCachedIcon(packageName: String, bitmap: ImageBitmap) {
+        _iconBitmapCache.put(packageName, bitmap)
+    }
+
+    // --- B: Folder Logic / Drag & Drop State Hoisting ---
+    private val _draggingItemPkg = MutableStateFlow<String?>(null)
+    val draggingItemPkg: StateFlow<String?> = _draggingItemPkg.asStateFlow()
+
+    private val _touchPosition = MutableStateFlow(Offset.Zero)
+    val touchPosition: StateFlow<Offset> = _touchPosition.asStateFlow()
+
+    private val _initialTouchOffset = MutableStateFlow(Offset.Zero)
+    val initialTouchOffset: StateFlow<Offset> = _initialTouchOffset.asStateFlow()
+
+    fun onDragStart(pkg: String, touchPos: Offset, initialOffset: Offset) {
+        _draggingItemPkg.value = pkg
+        _touchPosition.value = touchPos
+        _initialTouchOffset.value = initialOffset
+    }
+
+    fun onDragUpdate(dragAmount: Offset) {
+        _touchPosition.value = _touchPosition.value + dragAmount
+    }
+
+    fun onDragEnd() {
+        _draggingItemPkg.value = null
+    }
 }
-
-
