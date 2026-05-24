@@ -140,11 +140,18 @@ fun AppDrawer(
 
     var searchQuery by remember { mutableStateOf("") }
 
-    val visibleApps = remember(apps, folders, searchQuery) {
-        if (searchQuery.isBlank()) {
-            LauncherLogic.getVisibleApps(apps, folders)
-        } else {
-            LauncherLogic.filterApps(apps, searchQuery)
+    var visibleApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
+
+    LaunchedEffect(apps, folders, searchQuery) {
+        if (searchQuery.isNotBlank()) {
+            delay(150) // Debounce for search input
+        }
+        visibleApps = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            if (searchQuery.isBlank()) {
+                LauncherLogic.getVisibleApps(apps, folders)
+            } else {
+                LauncherLogic.filterApps(apps, searchQuery)
+            }
         }
     }
 
@@ -712,6 +719,25 @@ fun AppDrawer(
                                             val startIdx = page * itemsPerPage
                                             val endIdx = (startIdx + itemsPerPage).coerceAtMost(folderApps.size)
                                             val pageApps = folderApps.subList(startIdx, endIdx)
+                                            
+                                            val handleFolderLongPress: (AppInfo, Rect) -> Unit = remember(hapticEnabled) {
+                                                { appInfo, bounds ->
+                                                    if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    menuApp = appInfo
+                                                    menuAppBounds = bounds
+                                                }
+                                            }
+                                            
+                                            val handleFolderAppLaunch: (AppInfo, Rect?) -> Unit = remember(context, onLaunchApp) {
+                                                { requestedApp, bounds ->
+                                                    requestedApp.launchIntent?.let { intent ->
+                                                        onLaunchApp(requestedApp.packageName, intent, bounds)
+                                                    } ?: context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
+                                                        onLaunchApp(requestedApp.packageName, intent, bounds)
+                                                    }
+                                                }
+                                            }
+                                            
                                             LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), userScrollEnabled = false, contentPadding = PaddingValues(top = folderGridTopPadding, start = 8.dp, end = 8.dp)) {
                                                 itemsIndexed(pageApps, key = { _, app -> app.packageName }, contentType = { _, _ -> "folder_app" }) { indexInPage, app ->
                                                     val globalIndex = startIdx + indexInPage
@@ -729,16 +755,8 @@ fun AppDrawer(
                                                             isEditMode = isEditMode,
                                                             customIcons = customIcons,
                                                             bouncePackage = returnIconPackage,
-                                                            onLongPress = { appInfo, bounds ->
-                                                                if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                menuApp = appInfo
-                                                                menuAppBounds = bounds
-                                                            },
-                                                            onAppLaunchRequested = { requestedApp, bounds ->
-                                                                context.packageManager.getLaunchIntentForPackage(requestedApp.packageName)?.let { intent ->
-                                                                    onLaunchApp(requestedApp.packageName, intent, bounds)
-                                                                }
-                                                            }
+                                                            onLongPress = handleFolderLongPress,
+                                                            onAppLaunchRequested = handleFolderAppLaunch
                                                         )
 
                                                         if (isEditMode && !isDragging) {
@@ -891,7 +909,11 @@ fun AppItem(
     }
 
     Box(modifier = Modifier.width(itemWidth), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.onGloballyPositioned { coordinates -> itemBounds = coordinates.boundsInRoot() }.graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }.bounceClick(intSrc, enabled = !isEditMode).combinedClickable(interactionSource = intSrc, indication = null, enabled = !isEditMode, onClick = { onAppLaunchRequested?.let { it(app, iconBounds ?: itemBounds) } ?: run { context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) } } }, onLongClick = { (iconBounds ?: itemBounds)?.let { onLongPress(app, it) } })) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.onGloballyPositioned { coordinates -> itemBounds = coordinates.boundsInRoot() }.graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }.bounceClick(intSrc, enabled = !isEditMode).combinedClickable(interactionSource = intSrc, indication = null, enabled = !isEditMode, onClick = {
+            onAppLaunchRequested?.let { it(app, iconBounds ?: itemBounds) } ?: run {
+                app.launchIntent?.let { context.startActivity(it) } ?: context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
+            }
+        }, onLongClick = { (iconBounds ?: itemBounds)?.let { onLongPress(app, it) } })) {
             Box(modifier = Modifier.onGloballyPositioned { coordinates -> iconBounds = coordinates.boundsInRoot() }) {
                 AppIconView(app, customIcons = customIcons)
             }
