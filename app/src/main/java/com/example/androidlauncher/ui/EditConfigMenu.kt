@@ -56,6 +56,8 @@ fun EditConfigMenu(
     onShakeGesturesToggled: (Boolean) -> Unit,
     isSmartSuggestionsEnabled: Boolean,
     onSmartSuggestionsToggled: (Boolean) -> Unit,
+    isAnimationsEnabled: Boolean,
+    onAnimationsToggled: (Boolean) -> Unit,
     onClearSearchHistory: () -> Unit,
     isHapticFeedbackEnabled: Boolean,
     onHapticFeedbackToggled: (Boolean) -> Unit,
@@ -120,13 +122,27 @@ fun EditConfigMenu(
                 EditToggleItem(
                     icon = Lucide.Smartphone,
                     label = "Haptisches Feedback",
-                    description = "Vibration bei Interaktionen",
+                    description = "Vibration bei Interaktionen wie Favoritenbearbeitung",
                     checked = isHapticFeedbackEnabled,
-                    onCheckedChange = onHapticFeedbackToggled,
+                    onCheckedChange = { onHapticFeedbackToggled(it) },
                     mainTextColor = mainTextColor,
                     isLiquidGlassEnabled = isLiquidGlassEnabled,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "haptic_feedback_switch"
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.Smartphone, // Temporarily using Smartphone or something else, but we need an icon for animation
+                    label = "Animationen",
+                    description = "App-Start und sonstige Übergänge",
+                    checked = isAnimationsEnabled,
+                    onCheckedChange = { onAnimationsToggled(it) },
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "animations_switch"
                 )
             }
 

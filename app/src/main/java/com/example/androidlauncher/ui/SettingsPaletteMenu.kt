@@ -87,15 +87,17 @@ fun SettingsPaletteMenu(
         val total = settingsItems.size
         val animStates = List(total) { remember { Animatable(0f) } }
 
+        val animationsEnabled = com.example.androidlauncher.ui.theme.LocalAnimationsEnabled.current
+
         settingsItems.forEachIndexed { index, _ ->
             LaunchedEffect(isSettingsOpen) {
                 if (isSettingsOpen) {
-                    delay(index * 50L)
-                    animStates[index].animateTo(1f, spring(0.62f, 260f))
+                    if (animationsEnabled) delay(index * 50L)
+                    animStates[index].animateTo(1f, if (animationsEnabled) spring(0.62f, 260f) else snap())
                 } else {
                     val reverseIndex = total - 1 - index
-                    delay(reverseIndex * 30L)
-                    animStates[index].animateTo(0f, spring(0.7f, 300f))
+                    if (animationsEnabled) delay(reverseIndex * 30L)
+                    animStates[index].animateTo(0f, if (animationsEnabled) spring(0.7f, 300f) else snap())
                 }
             }
         }
@@ -110,7 +112,7 @@ fun SettingsPaletteMenu(
 
                 val pressScale by animateFloatAsState(
                     targetValue = if (isPressed) 0.92f else 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+                    animationSpec = if (animationsEnabled) spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow) else snap(),
                     label = "PressScale_${item.id}"
                 )
 

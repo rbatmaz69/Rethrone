@@ -98,6 +98,7 @@ import com.example.androidlauncher.ui.WallpaperCropScreen
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -171,6 +172,7 @@ class MainActivity : ComponentActivity() {
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
+            val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
@@ -287,9 +289,10 @@ class MainActivity : ComponentActivity() {
                 showFavoriteLabels = showFavoriteLabels,
                 liquidGlassEnabled = isLiquidGlassEnabled,
                 appFont = currentAppFont,
-                hapticFeedbackEnabled = isHapticFeedbackEnabled
+                hapticFeedbackEnabled = isHapticFeedbackEnabled,
+                animationsEnabled = isAnimationsEnabled
             ) {
-                @Suppress("DEPRECATION")
+                // Determine whether to use dark or light text/colors dynamically
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val menuBackgroundColor = currentTheme.menuSurfaceColor(isDarkTextEnabled)
                 val searchLaunchOverlayColor = Color.Black
@@ -760,6 +763,10 @@ class MainActivity : ComponentActivity() {
                         zoomLevel = wallpaperZoom
                     )
 
+                    val animationsEnabled = LocalAnimationsEnabled.current
+                    val slideTweenDuration = if (animationsEnabled) 300 else 0
+                    val fadeTweenDuration = if (animationsEnabled) 200 else 0
+
                     AnimatedContent(
                         targetState = isDrawerOpen,
                         transitionSpec = {
@@ -767,15 +774,15 @@ class MainActivity : ComponentActivity() {
                                 (
                                     slideInVertically(
                                         initialOffsetY = { it },
-                                        animationSpec = tween(300, easing = EaseOutCubic)
-                                    ) + fadeIn(animationSpec = tween(200))
-                                ).togetherWith(fadeOut(animationSpec = tween(200)))
+                                        animationSpec = tween(slideTweenDuration, easing = EaseOutCubic)
+                                    ) + fadeIn(animationSpec = tween(fadeTweenDuration))
+                                ).togetherWith(fadeOut(animationSpec = tween(fadeTweenDuration)))
                             } else {
-                                fadeIn(animationSpec = tween(200)).togetherWith(
+                                fadeIn(animationSpec = tween(fadeTweenDuration)).togetherWith(
                                     slideOutVertically(
                                         targetOffsetY = { it },
-                                        animationSpec = tween(300, easing = EaseInCubic)
-                                    ) + fadeOut(animationSpec = tween(200))
+                                        animationSpec = tween(slideTweenDuration, easing = EaseInCubic)
+                                    ) + fadeOut(animationSpec = tween(fadeTweenDuration))
                                 )
                             }
                         },
@@ -1011,6 +1018,10 @@ class MainActivity : ComponentActivity() {
                             onSmartSuggestionsToggled = { enabled ->
                                 scope.launch { themeManager.setSmartSuggestionsEnabled(enabled) }
                             },
+                            isAnimationsEnabled = isAnimationsEnabled,
+                            onAnimationsToggled = { enabled ->
+                                scope.launch { themeManager.setAnimationsEnabled(enabled) }
+                            },
                             onClearSearchHistory = {
                                 scope.launch { searchSuggestionsManager.clearWebHistory() }
                                 Toast.makeText(context, context.getString(R.string.search_history_cleared), Toast.LENGTH_SHORT).show()
@@ -1140,7 +1151,7 @@ class MainActivity : ComponentActivity() {
                         rootSize = rootSize,
                         background = activeLaunchBackground,
                         backgroundBrush = activeLaunchBackgroundBrush,
-                        durationMillis = searchLaunchDurationMs.toInt(),
+                        durationMillis = if (animationsEnabled) searchLaunchDurationMs.toInt() else 0,
                         scrimColor = Color.Transparent
                     )
 
@@ -1157,7 +1168,7 @@ class MainActivity : ComponentActivity() {
                                 )
                                 activeReturnAnimation = null
                             },
-                            durationMillis = returnOverlayDurationMs.toInt(),
+                            durationMillis = if (animationsEnabled) returnOverlayDurationMs.toInt() else 0,
                             targetScale = if (animation.source == LaunchSource.DRAWER) 0.78f else 0.84f
                         )
                     }
@@ -1339,16 +1350,22 @@ private fun MenuOverlay(
     onClose: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val actualEnterSlideDuration = if (animationsEnabled) enterSlideDuration else 0
+    val actualEnterFadeDuration = if (animationsEnabled) enterFadeDuration else 0
+    val actualExitSlideDuration = if (animationsEnabled) exitSlideDuration else 0
+    val actualExitFadeDuration = if (animationsEnabled) exitFadeDuration else 0
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(
             initialOffsetY = { it },
-            animationSpec = tween(enterSlideDuration, easing = enterSlideEasing)
-        ) + fadeIn(animationSpec = tween(enterFadeDuration)),
+            animationSpec = tween(actualEnterSlideDuration, easing = enterSlideEasing)
+        ) + fadeIn(animationSpec = tween(actualEnterFadeDuration)),
         exit = slideOutVertically(
             targetOffsetY = { it },
-            animationSpec = tween(exitSlideDuration, easing = exitSlideEasing)
-        ) + fadeOut(animationSpec = tween(exitFadeDuration))
+            animationSpec = tween(actualExitSlideDuration, easing = exitSlideEasing)
+        ) + fadeOut(animationSpec = tween(actualExitFadeDuration))
     ) {
         var totalDragY by remember { mutableStateOf(0f) }
         

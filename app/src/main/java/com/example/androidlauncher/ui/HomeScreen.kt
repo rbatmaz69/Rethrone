@@ -58,11 +58,14 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Settings2
 import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
 import com.example.androidlauncher.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -108,12 +111,9 @@ fun HomeScreen(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val showLabels = LocalShowFavoriteLabels.current
-    val fontSize = LocalFontSize.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
-    val haptic = LocalHapticFeedback.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
-    val density = LocalDensity.current
+    val animationsEnabled = LocalAnimationsEnabled.current
+
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
 
@@ -522,7 +522,7 @@ fun HomeScreen(
 
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
-        animationSpec = tween(300, easing = EaseInOutCubic), label = ""
+        animationSpec = tween(if (animationsEnabled) 300 else 0, easing = EaseInOutCubic), label = ""
     )
 
     Box(
@@ -1066,17 +1066,22 @@ fun HomeScreen(
                 val searchIntSrc = remember { MutableInteractionSource() }
 
                 var isSearchButtonBouncing by remember { mutableStateOf(false) }
+
+                val animSlideDuration = if (animationsEnabled) 300 else 0
+                val animFadeDuration = if (animationsEnabled) 150 else 0
+                val animTweenDuration = if (animationsEnabled) 300 else 0
+
                 LaunchedEffect(searchButtonBounceToken) {
-                    if (searchButtonBounceToken <= 0) return@LaunchedEffect
-                    isSearchButtonBouncing = true
-                    delay(240)
-                    isSearchButtonBouncing = false
+                    if (searchButtonBounceToken > 0) {
+                        isSearchButtonBouncing = true
+                        delay(240)
+                        isSearchButtonBouncing = false
+                    }
                 }
 
-                val settingsBtnScale by animateFloatAsState(
-                    targetValue = if (isSettingsOpen) { 1.2f } else 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                    label = "SettingsBtnScale"
+                val rotation by animateFloatAsState(
+                    targetValue = if (isSettingsOpen) 180f else 0f,
+                    animationSpec = tween(if (animationsEnabled) 300 else 0, easing = EaseInOutCubic), label = ""
                 )
 
                 Column(
@@ -1091,8 +1096,8 @@ fun HomeScreen(
                                 stiffness = Spring.StiffnessLow
                             ),
                             initialScale = 0.0f
-                        ) + fadeIn(animationSpec = tween(150)),
-                        exit = scaleOut(animationSpec = tween(150)) + fadeOut(animationSpec = tween(150))
+                        ) + fadeIn(animationSpec = tween(if (animationsEnabled) 150 else 0)),
+                        exit = scaleOut(animationSpec = tween(if (animationsEnabled) 150 else 0)) + fadeOut(animationSpec = tween(if (animationsEnabled) 150 else 0))
                     ) {
                         val searchButtonScale by animateFloatAsState(
                             targetValue = when {
@@ -1244,7 +1249,7 @@ private fun FavoriteItem(
     val context = LocalContext.current
     val intSrc = remember { MutableInteractionSource() }
     val bounceScale by animateFloatAsState(
-        targetValue = if (returnIconPackage == app.packageName) 1.12f else 1f,
+        targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage == app.packageName) 1.12f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "HomeReturnBounce"
     )
@@ -1253,7 +1258,7 @@ private fun FavoriteItem(
 
     var horizontalOffset by remember { mutableFloatStateOf(0f) }
     val animatedOffset by animateFloatAsState(
-        targetValue = horizontalOffset,
+        targetValue = if (!LocalAnimationsEnabled.current) 0f else horizontalOffset,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "SwipeOffset"
     )
@@ -1357,12 +1362,12 @@ fun ClockHeader(
     var calendarPackage by remember { mutableStateOf<String?>(null) }
 
     val bounceScaleTime by animateFloatAsState(
-        targetValue = if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f,
+        targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "ClockReturnBounce"
     )
     val bounceScaleDate by animateFloatAsState(
-        targetValue = if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f,
+        targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "CalendarReturnBounce"
     )
