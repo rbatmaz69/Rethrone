@@ -111,8 +111,13 @@ fun HomeScreen(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val showLabels = LocalShowFavoriteLabels.current
+    val fontSize = LocalFontSize.current
+    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     val animationsEnabled = LocalAnimationsEnabled.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
 
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
@@ -1146,6 +1151,12 @@ fun HomeScreen(
                             )
                         }
                     }
+                    val settingsBtnScale by animateFloatAsState(
+                        targetValue = if (isSettingsOpen) 1.2f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "SettingsBtnScale"
+                    )
+
 
                     Box(
                         modifier = Modifier

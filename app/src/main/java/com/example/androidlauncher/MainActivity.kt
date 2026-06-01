@@ -579,18 +579,25 @@ class MainActivity : ComponentActivity() {
                     pendingReturnAnimationStartedWallClockMs = System.currentTimeMillis()
                     ReturnOriginStore.save(context, packageName, returnAnimation)
                     isAppLaunchAnimating = true
-                    activeLaunchBackground = overlayColor
-                    activeLaunchBackgroundBrush = overlayBrush
-                    activeLaunchBounds = bounds
+                    
+                    if (isAnimationsEnabled) {
+                        activeLaunchBackground = overlayColor
+                        activeLaunchBackgroundBrush = overlayBrush
+                        activeLaunchBounds = bounds
+                    }
 
                     scope.launch {
                         try {
-                            delay(searchLaunchDurationMs)
+                            if (isAnimationsEnabled) {
+                                delay(searchLaunchDurationMs)
+                            }
                             launchAppNoTransition(context, Intent(intent))
                             if (trackAppLaunch && isSmartSuggestionsEnabled) {
                                 searchSuggestionsManager.recordAppLaunch(packageName)
                             }
-                            delay(searchLaunchSettleAfterStartMs)
+                            if (isAnimationsEnabled) {
+                                delay(searchLaunchSettleAfterStartMs)
+                            }
                         } finally {
                             activeLaunchBounds = null
                             isAppLaunchAnimating = false
