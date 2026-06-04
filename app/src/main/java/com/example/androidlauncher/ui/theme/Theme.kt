@@ -36,6 +36,10 @@ val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
  * CompositionLocal for haptic feedback enabled state.
  */
 val LocalHapticFeedbackEnabled = staticCompositionLocalOf { true }
+/**
+ * CompositionLocal for animations enabled state.
+ */
+val LocalAnimationsEnabled = staticCompositionLocalOf { true }
 
 @Composable
 fun AndroidLauncherTheme(
@@ -48,6 +52,7 @@ fun AndroidLauncherTheme(
     liquidGlassEnabled: Boolean = true,
     appFont: AppFont = AppFont.SYSTEM_DEFAULT,
     hapticFeedbackEnabled: Boolean = true,
+    animationsEnabled: Boolean = true,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -110,7 +115,8 @@ fun AndroidLauncherTheme(
         LocalShowFavoriteLabels provides showFavoriteLabels,
         LocalLiquidGlassEnabled provides liquidGlassEnabled,
         LocalAppFont provides appFont,
-        LocalHapticFeedbackEnabled provides hapticFeedbackEnabled
+        LocalHapticFeedbackEnabled provides hapticFeedbackEnabled,
+        LocalAnimationsEnabled provides animationsEnabled
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

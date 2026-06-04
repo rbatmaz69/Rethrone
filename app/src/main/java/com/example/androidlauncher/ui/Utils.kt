@@ -15,7 +15,6 @@ import android.view.View
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -96,8 +95,10 @@ fun Context.findActivity(): Activity? {
 
 fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: Boolean = true) = composed {
     val isPressed by interactionSource.collectIsPressedAsState()
+    val animationsEnabled = com.example.androidlauncher.ui.theme.LocalAnimationsEnabled.current
+    val targetScale = if (!animationsEnabled) 1f else if (isPressed && enabled) 0.90f else 1f
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled) 0.90f else 1f,
+        targetValue = targetScale,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "bounceScale"
     )
@@ -517,7 +518,7 @@ fun ReturnAnimationOverlay(
     val progress = remember { Animatable(0f) }
     LaunchedEffect(bounds, rootSize, targetScale, durationMillis) {
         progress.snapTo(0f)
-        progress.animateTo(1f, tween(durationMillis = durationMillis, easing = LinearOutSlowInEasing))
+        progress.animateTo(1f, tween(durationMillis = durationMillis, easing = FastOutSlowInEasing))
         onFinished()
     }
 
@@ -535,7 +536,7 @@ fun ReturnAnimationOverlay(
     val currentCenterY = centerY + translationY
     val topLeftX = (currentCenterX - currentWidthPx / 2f).toInt()
     val topLeftY = (currentCenterY - currentHeightPx / 2f).toInt()
-    val radiusProgress = ((easedProgress - 0.18f) / 0.82f).coerceIn(0f, 1f)
+    val radiusProgress = easedProgress
     val cornerRadiusDp = with(density) {
         val startRadiusPx = 6.dp.toPx()
         val endRadiusPx = 26.dp.toPx()
@@ -594,13 +595,14 @@ fun LaunchAnimationOverlay(
     val currentHeightPx = startHeightPx + (rootSize.height - startHeightPx) * progress.value
     val currentLeftPx = bounds.left * (1f - progress.value)
     val currentTopPx = bounds.top * (1f - progress.value)
-    val radiusProgress = ((progress.value - 0.82f) / 0.18f).coerceIn(0f, 1f)
+    val radiusProgress = progress.value
     val cornerRadiusDp = with(density) {
         val startRadiusPx = 28.dp.toPx()
         val endRadiusPx = 10.dp.toPx()
         (startRadiusPx + (endRadiusPx - startRadiusPx) * radiusProgress).toDp()
     }
     val animatedShape = RoundedCornerShape(cornerRadiusDp)
+    val overlayAlpha = (progress.value / 0.18f).coerceIn(0f, 1f)
 
     Box(
         modifier = modifier
@@ -625,6 +627,7 @@ fun LaunchAnimationOverlay(
                 .graphicsLayer {
                     this.shape = animatedShape
                     this.clip = true
+                    this.alpha = overlayAlpha
                 }
                 .then(
                     if (backgroundBrush != null) Modifier.background(backgroundBrush)

@@ -40,6 +40,7 @@ class ThemeManager(private val context: Context) {
         private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
+        private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
 
         // Offset for UI elements (Relative to default position)
         private val FAVORITES_OFFSET_X_KEY = floatPreferencesKey("favorites_offset_x")
@@ -113,6 +114,12 @@ class ThemeManager(private val context: Context) {
     // Y-Offset für die Uhr-/Datums-Einheit im Home-Edit-Modus.
     val clockOffsetY: Flow<Float> = context.dataStore.data
         .map { it[CLOCK_OFFSET_Y_KEY] ?: 0f }
+
+    /**
+     * Observable flow for animations toggle.
+     */
+    val isAnimationsEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[ANIMATIONS_ENABLED_KEY] ?: true }
 
     /**
      * Observable flow for shake gesture toggle.
@@ -215,6 +222,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setSmartSuggestionsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[SMART_SUGGESTIONS_KEY] = enabled
+        }
+    }
+
+    /**
+     * Toggles animations.
+     */
+    suspend fun setAnimationsEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[ANIMATIONS_ENABLED_KEY] = enabled
         }
     }
 }

@@ -1,0 +1,18 @@
+diff --git a/app/src/main/java/com/example/androidlauncher/ui/HomeScreen.kt b/app/src/main/java/com/example/androidlauncher/ui/HomeScreen.kt
+index e606242..9c765f0 100644
+--- a/app/src/main/java/com/example/androidlauncher/ui/HomeScreen.kt
++++ b/app/src/main/java/com/example/androidlauncher/ui/HomeScreen.kt
+@@ -111,8 +111,13 @@ fun HomeScreen(
+     val context = LocalContext.current
+     val colorTheme = LocalColorTheme.current
+     val isDarkTextEnabled = LocalDarkTextEnabled.current
++    val showLabels = LocalShowFavoriteLabels.current
++    val fontSize = LocalFontSize.current
++    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
++    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+     val hapticEnabled = LocalHapticFeedbackEnabled.current
+     val animationsEnabled = LocalAnimationsEnabled.current
++    val density = androidx.compose.ui.platform.LocalDensity.current
+ 
+     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
+     var rootSize by remember { mutableStateOf(IntSize.Zero) }
