@@ -5,9 +5,12 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.androidlauncher.ui.theme.ColorTheme
@@ -30,6 +33,9 @@ class ThemeManager(private val context: Context) {
         private val FONT_WEIGHT_KEY = stringPreferencesKey("font_weight")
         private val ICON_SIZE_KEY = stringPreferencesKey("icon_size")
         private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
+        // ARGB-Werte für frei wählbare Icon-/Schriftfarbe (Default Weiß).
+        private val ICON_COLOR_KEY = intPreferencesKey("icon_color")
+        private val HOME_TEXT_COLOR_KEY = intPreferencesKey("home_text_color")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
         private val APP_FONT_KEY = stringPreferencesKey("app_font")
@@ -76,6 +82,14 @@ class ThemeManager(private val context: Context) {
 
     val isDarkTextEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[DARK_TEXT_KEY] ?: false }
+
+    // Frei wählbare Iconfarbe (gilt überall). Default Weiß.
+    val iconColor: Flow<Color> = context.dataStore.data
+        .map { Color(it[ICON_COLOR_KEY] ?: Color.White.toArgb()) }
+
+    // Frei wählbare Schriftfarbe – nur Startbildschirm. Default Weiß.
+    val homeTextColor: Flow<Color> = context.dataStore.data
+        .map { Color(it[HOME_TEXT_COLOR_KEY] ?: Color.White.toArgb()) }
 
     val showFavoriteLabels: Flow<Boolean> = context.dataStore.data
         .map { it[SHOW_FAVORITE_LABELS_KEY] ?: false }
@@ -167,6 +181,8 @@ class ThemeManager(private val context: Context) {
     suspend fun setFontWeight(fontWeight: FontWeightLevel) { context.dataStore.edit { it[FONT_WEIGHT_KEY] = fontWeight.name } }
     suspend fun setIconSize(iconSize: IconSize) { context.dataStore.edit { it[ICON_SIZE_KEY] = iconSize.name } }
     suspend fun setDarkTextEnabled(enabled: Boolean) { context.dataStore.edit { it[DARK_TEXT_KEY] = enabled } }
+    suspend fun setIconColor(color: Color) { context.dataStore.edit { it[ICON_COLOR_KEY] = color.toArgb() } }
+    suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
     suspend fun setAppFont(font: AppFont) { context.dataStore.edit { it[APP_FONT_KEY] = font.name } }

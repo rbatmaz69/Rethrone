@@ -29,6 +29,10 @@ val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
 val LocalFontWeight = staticCompositionLocalOf { FontWeightLevel.NORMAL }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
+/** Frei wählbare Iconfarbe (gilt überall). */
+val LocalIconColor = staticCompositionLocalOf { Color.White }
+/** Frei wählbare Schriftfarbe – nur Startbildschirm. */
+val LocalHomeTextColor = staticCompositionLocalOf { Color.White }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
 val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
@@ -48,6 +52,8 @@ fun AndroidLauncherTheme(
     iconSize: IconSize = IconSize.STANDARD,
     fontWeight: FontWeightLevel = FontWeightLevel.NORMAL,
     darkTextEnabled: Boolean = false,
+    iconColor: Color = Color.White,
+    homeTextColor: Color = Color.White,
     showFavoriteLabels: Boolean = false,
     liquidGlassEnabled: Boolean = true,
     appFont: AppFont = AppFont.SYSTEM_DEFAULT,
@@ -112,6 +118,8 @@ fun AndroidLauncherTheme(
         LocalIconSize provides iconSize,
         LocalFontWeight provides fontWeight,
         LocalDarkTextEnabled provides darkTextEnabled,
+        LocalIconColor provides iconColor,
+        LocalHomeTextColor provides homeTextColor,
         LocalShowFavoriteLabels provides showFavoriteLabels,
         LocalLiquidGlassEnabled provides liquidGlassEnabled,
         LocalAppFont provides appFont,

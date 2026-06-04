@@ -11,7 +11,10 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,9 +25,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Moon
-import com.composables.icons.lucide.Sun
 import com.composables.icons.lucide.Droplets
 import com.composables.icons.lucide.Square
 import com.example.androidlauncher.ui.theme.ColorTheme
@@ -39,7 +41,10 @@ fun ColorConfigMenu(
     selectedTheme: ColorTheme,
     onThemeSelected: (ColorTheme) -> Unit,
     isDarkTextEnabled: Boolean,
-    onDarkTextToggled: (Boolean) -> Unit,
+    iconColor: Color,
+    onIconColorChange: (Color) -> Unit,
+    homeTextColor: Color,
+    onHomeTextColorChange: (Color) -> Unit,
     isLiquidGlassEnabled: Boolean,
     onLiquidGlassToggled: (Boolean) -> Unit,
     customWallpaperUri: String? = null,
@@ -52,6 +57,11 @@ fun ColorConfigMenu(
     }
     val orderedThemes = remember {
         ColorTheme.entries.sortedWith(compareByDescending<ColorTheme> { it.isArtTheme }.thenBy { it.themeName })
+    }
+    // Welcher Farbwähler ist gerade offen: "text", "icon" oder null.
+    var activePicker by remember { mutableStateOf<String?>(null) }
+    val dialogBackground = remember(selectedTheme, isDarkTextEnabled) {
+        selectedTheme.menuSurfaceColor(isDarkTextEnabled)
     }
 
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
@@ -74,22 +84,21 @@ fun ColorConfigMenu(
 
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Vorschau", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
-                val darkTextSwitchColors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
-                Switch(
-                    checked = isDarkTextEnabled,
-                    onCheckedChange = onDarkTextToggled,
-                    colors = darkTextSwitchColors,
-                    thumbContent = {
-                        if (isDarkTextEnabled) {
-                            Icon(imageVector = Lucide.Moon, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
-                        } else {
-                            Icon(imageVector = Lucide.Sun, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFFFFB300))
-                        }
-                    }
-                )
-            }
+            Text("Farben", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(12.dp))
+            ColorPickerRow(
+                label = "Schriftfarbe (Startseite)",
+                color = homeTextColor,
+                mainTextColor = mainTextColor,
+                onClick = { activePicker = "text" }
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            ColorPickerRow(
+                label = "Iconfarbe",
+                color = iconColor,
+                mainTextColor = mainTextColor,
+                onClick = { activePicker = "icon" }
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -136,6 +145,75 @@ fun ColorConfigMenu(
                         onClick = { onThemeSelected(theme) }
                     )
                 }
+            }
+        }
+
+        if (activePicker != null) {
+            val isText = activePicker == "text"
+            ColorPickerDialog(
+                title = if (isText) "Schriftfarbe (Startseite)" else "Iconfarbe",
+                color = if (isText) homeTextColor else iconColor,
+                onColorChange = if (isText) onHomeTextColorChange else onIconColorChange,
+                backgroundColor = dialogBackground,
+                mainTextColor = mainTextColor,
+                onDismiss = { activePicker = null }
+            )
+        }
+    }
+}
+
+/** Eine antippbare Zeile mit Beschriftung und Farb-Swatch, öffnet den Farbwähler. */
+@Composable
+fun ColorPickerRow(label: String, color: Color, mainTextColor: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(mainTextColor.copy(alpha = 0.05f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = mainTextColor, fontSize = 16.sp)
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(color)
+                .border(1.dp, mainTextColor.copy(alpha = 0.3f), CircleShape)
+        )
+    }
+}
+
+/** Modaler Dialog mit dem HSV-Farbwähler. */
+@Composable
+fun ColorPickerDialog(
+    title: String,
+    color: Color,
+    onColorChange: (Color) -> Unit,
+    backgroundColor: Color,
+    mainTextColor: Color,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(backgroundColor)
+                .padding(24.dp)
+        ) {
+            Text(title, color = mainTextColor, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.height(20.dp))
+            ColorWheelPicker(
+                color = color,
+                onColorChange = onColorChange,
+                mainTextColor = mainTextColor
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                Text("Fertig", color = mainTextColor, fontSize = 16.sp)
             }
         }
     }

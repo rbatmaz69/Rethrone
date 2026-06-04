@@ -119,7 +119,8 @@ fun HomeScreen(
     val animationsEnabled = LocalAnimationsEnabled.current
     val density = androidx.compose.ui.platform.LocalDensity.current
 
-    val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
+    // Schriftfarbe nur auf dem Startbildschirm frei wählbar.
+    val mainTextColor = LocalHomeTextColor.current
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
 
     // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
@@ -1352,8 +1353,8 @@ fun ClockHeader(
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
     val appFontWeight = LocalFontWeight.current
-    val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
+    // Uhr/Datum nutzen die frei wählbare Startbildschirm-Schriftfarbe.
+    val mainTextColor = LocalHomeTextColor.current
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
 
     LaunchedEffect(Unit) {

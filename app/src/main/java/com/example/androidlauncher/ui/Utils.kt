@@ -80,7 +80,7 @@ import com.example.androidlauncher.NotificationService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconFallbackType
 import com.example.androidlauncher.data.IconManager
-import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalIconColor
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import kotlin.math.roundToInt
 
@@ -295,8 +295,7 @@ fun AppIconView(
     }
 
     val iconSize = LocalIconSize.current.size
-    val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val tintColor = if (isDarkTextEnabled) Color.Black else Color.White
+    val tintColor = LocalIconColor.current
 
     val activeNotifications by if (showBadge) {
         NotificationService.activeNotificationPackages.collectAsState()
