@@ -25,6 +25,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.Easing
@@ -56,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -306,7 +308,9 @@ class MainActivity : ComponentActivity() {
                 var returnIconPackage by remember { mutableStateOf<String?>(null) }
                 var searchButtonBounceToken by remember { mutableStateOf(0) }
                 val returnOverlayDurationMs = 260L
-                val returnBounceDelayMs = 185L
+                // Bounce erst nach Abschluss des Schließen-Panels (260ms), damit er nicht
+                // gegen das noch schrumpfende Panel läuft.
+                val returnBounceDelayMs = 270L
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
@@ -318,6 +322,9 @@ class MainActivity : ComponentActivity() {
                 var activeLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var activeLaunchBackground by remember { mutableStateOf(searchLaunchOverlayColor) }
                 var activeLaunchBackgroundBrush by remember { mutableStateOf<Brush?>(launchOverlayBrush) }
+                // Treibt das leichte Zurücktreten (Skalieren/Abdunkeln) des Homescreen-/Drawer-Inhalts,
+                // damit das Start-/Rückkehr-Panel nicht als lose Schicht über eingefrorenem Inhalt wirkt.
+                val contentRevealProgress = remember { Animatable(0f) }
                 val searchLaunchDurationMs = 260L
                 val searchLaunchSettleAfterStartMs = 30L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
@@ -453,6 +460,17 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Inhalt synchron zum schrumpfenden Rückkehr-Panel zurückholen.
+                LaunchedEffect(activeReturnAnimation) {
+                    if (activeReturnAnimation != null && isAnimationsEnabled) {
+                        contentRevealProgress.snapTo(1f)
+                        contentRevealProgress.animateTo(
+                            0f,
+                            tween(returnOverlayDurationMs.toInt(), easing = FastOutSlowInEasing)
+                        )
+                    }
+                }
+
                 LaunchedEffect(activeReturnAnimation?.packageName) {
                     val packageName = activeReturnAnimation?.packageName ?: return@LaunchedEffect
                     delay(returnBounceDelayMs)
@@ -584,6 +602,14 @@ class MainActivity : ComponentActivity() {
                         activeLaunchBackground = overlayColor
                         activeLaunchBackgroundBrush = overlayBrush
                         activeLaunchBounds = bounds
+                        // Inhalt synchron zum wachsenden Panel leicht zurücktreten lassen.
+                        scope.launch {
+                            contentRevealProgress.snapTo(0f)
+                            contentRevealProgress.animateTo(
+                                1f,
+                                tween(searchLaunchDurationMs.toInt(), easing = FastOutSlowInEasing)
+                            )
+                        }
                     }
 
                     scope.launch {
@@ -601,6 +627,8 @@ class MainActivity : ComponentActivity() {
                         } finally {
                             activeLaunchBounds = null
                             isAppLaunchAnimating = false
+                            // Hinter dem Vollbild-Panel/der App unsichtbar zurücksetzen.
+                            contentRevealProgress.snapTo(0f)
                             onCompleted?.invoke()
                         }
                     }
@@ -775,6 +803,12 @@ class MainActivity : ComponentActivity() {
                     val fadeTweenDuration = if (animationsEnabled) 200 else 0
 
                     AnimatedContent(
+                        modifier = Modifier.graphicsLayer {
+                            val p = contentRevealProgress.value
+                            scaleX = 1f - 0.06f * p
+                            scaleY = 1f - 0.06f * p
+                            alpha = 1f - 0.25f * p
+                        },
                         targetState = isDrawerOpen,
                         transitionSpec = {
                             if (targetState) {
