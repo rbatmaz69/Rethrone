@@ -1,9 +1,6 @@
 package com.example.androidlauncher.ui
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -29,7 +26,9 @@ import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Palette
 import com.composables.icons.lucide.Pencil
+import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalHomeTextColor
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.delay
 import kotlin.math.*
@@ -62,8 +61,8 @@ fun SettingsPaletteMenu(
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
-    // Verwendung von #010101 gegen HW-Artefakte
-    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    // Icon-Tönung folgt der gewählten Farbe – wie alles andere auf der Startseite.
+    val mainTextColor = LocalHomeTextColor.current
     
     val settingsItems = remember {
         listOf(
@@ -121,16 +120,13 @@ fun SettingsPaletteMenu(
                 val targetX = (cos(angleRad) * radius).toFloat()
                 val targetY = (-sin(angleRad) * radius).toFloat()
 
-                // Styles
-                val backgroundModifier = if (isLiquidGlassEnabled) {
-                    Modifier
-                        .background(LiquidGlass.glassBrush(isDarkTextEnabled), CircleShape)
-                        .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), CircleShape)
-                } else {
-                    Modifier
-                        .background(mainTextColor.copy(alpha = if (isSettingsOpen) 0.1f else 0.15f), CircleShape)
-                        .border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.25f)), CircleShape)
-                }
+                // Gleicher innerer Kreis-Hintergrund wie der Einstellungs-Button selbst.
+                val backgroundModifier = Modifier.conditionalGlass(
+                    CircleShape,
+                    isDarkTextEnabled,
+                    isLiquidGlassEnabled,
+                    fallbackAlpha = if (isSettingsOpen) 0.1f else 0.15f
+                )
 
                 Box(
                     modifier = Modifier
