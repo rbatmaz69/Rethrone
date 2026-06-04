@@ -169,6 +169,8 @@ class MainActivity : ComponentActivity() {
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val currentAppFont by themeManager.selectedAppFont.collectAsState(initial = AppFont.SYSTEM_DEFAULT)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
+            val iconColor by themeManager.iconColor.collectAsState(initial = Color.White)
+            val homeTextColor by themeManager.homeTextColor.collectAsState(initial = Color.White)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
@@ -288,6 +290,8 @@ class MainActivity : ComponentActivity() {
                 fontWeight = currentFontWeight,
                 iconSize = currentIconSize,
                 darkTextEnabled = isDarkTextEnabled,
+                iconColor = iconColor,
+                homeTextColor = homeTextColor,
                 showFavoriteLabels = showFavoriteLabels,
                 liquidGlassEnabled = isLiquidGlassEnabled,
                 appFont = currentAppFont,
@@ -971,7 +975,10 @@ class MainActivity : ComponentActivity() {
                             selectedTheme = currentTheme,
                             onThemeSelected = { scope.launch { themeManager.setTheme(it) } },
                             isDarkTextEnabled = isDarkTextEnabled,
-                            onDarkTextToggled = { scope.launch { themeManager.setDarkTextEnabled(it) } },
+                            iconColor = iconColor,
+                            onIconColorChange = { scope.launch { themeManager.setIconColor(it) } },
+                            homeTextColor = homeTextColor,
+                            onHomeTextColorChange = { scope.launch { themeManager.setHomeTextColor(it) } },
                             isLiquidGlassEnabled = isLiquidGlassEnabled,
                             onLiquidGlassToggled = { scope.launch { themeManager.setLiquidGlassEnabled(it) } },
                             customWallpaperUri = customWallpaperUri,
