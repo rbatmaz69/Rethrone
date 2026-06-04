@@ -603,6 +603,7 @@ fun LaunchAnimationOverlay(
         (startRadiusPx + (endRadiusPx - startRadiusPx) * radiusProgress).toDp()
     }
     val animatedShape = RoundedCornerShape(cornerRadiusDp)
+    val overlayAlpha = (progress.value / 0.18f).coerceIn(0f, 1f)
 
     Box(
         modifier = modifier
@@ -627,6 +628,7 @@ fun LaunchAnimationOverlay(
                 .graphicsLayer {
                     this.shape = animatedShape
                     this.clip = true
+                    this.alpha = overlayAlpha
                 }
                 .then(
                     if (backgroundBrush != null) Modifier.background(backgroundBrush)
