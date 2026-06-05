@@ -8,27 +8,27 @@ import org.junit.Test
 class LauncherShakeGestureDetectorTest {
 
     @Test
-    fun `single shake becomes flashlight action after confirmation window`() {
+    fun `single shake is reported after confirmation window`() {
         val detector = LauncherShakeGestureDetector()
 
         assertNull(detector.onGForceSample(gForce = 2.7f, timestampMs = 1_000L))
         assertNull(detector.flushPending(timestampMs = 1_600L))
 
-        val action = detector.flushPending(timestampMs = 1_700L)
+        val gesture = detector.flushPending(timestampMs = 1_700L)
 
-        assertEquals(LauncherShakeGestureDetector.GestureAction.TOGGLE_FLASHLIGHT, action)
+        assertEquals(LauncherShakeGestureDetector.ShakeGesture.SINGLE_SHAKE, gesture)
         assertFalse(detector.hasPendingSingleShake())
     }
 
     @Test
-    fun `two fast shakes open the camera`() {
+    fun `two fast shakes are reported as a double shake`() {
         val detector = LauncherShakeGestureDetector()
 
         assertNull(detector.onGForceSample(gForce = 2.8f, timestampMs = 1_000L))
 
-        val action = detector.onGForceSample(gForce = 2.9f, timestampMs = 1_400L)
+        val gesture = detector.onGForceSample(gForce = 2.9f, timestampMs = 1_400L)
 
-        assertEquals(LauncherShakeGestureDetector.GestureAction.OPEN_CAMERA, action)
+        assertEquals(LauncherShakeGestureDetector.ShakeGesture.DOUBLE_SHAKE, gesture)
         assertFalse(detector.hasPendingSingleShake())
     }
 
@@ -49,9 +49,9 @@ class LauncherShakeGestureDetectorTest {
         assertNull(detector.onGForceSample(gForce = 2.8f, timestampMs = 1_000L))
         assertNull(detector.onGForceSample(gForce = 3.0f, timestampMs = 1_120L))
 
-        val action = detector.flushPending(timestampMs = 1_700L)
+        val gesture = detector.flushPending(timestampMs = 1_700L)
 
-        assertEquals(LauncherShakeGestureDetector.GestureAction.TOGGLE_FLASHLIGHT, action)
+        assertEquals(LauncherShakeGestureDetector.ShakeGesture.SINGLE_SHAKE, gesture)
     }
 }
 

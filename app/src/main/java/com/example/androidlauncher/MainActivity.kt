@@ -80,6 +80,7 @@ import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.IconQualityEvaluator
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.SearchSuggestionsManager
+import com.example.androidlauncher.data.ShakeAction
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.HybridSearch
@@ -174,6 +175,8 @@ class MainActivity : ComponentActivity() {
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
+            val singleShakeAction by themeManager.singleShakeAction.collectAsState(initial = ShakeAction.FLASHLIGHT)
+            val doubleShakeAction by themeManager.doubleShakeAction.collectAsState(initial = ShakeAction.CAMERA)
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
             val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
@@ -202,8 +205,8 @@ class MainActivity : ComponentActivity() {
             var pendingWallpaperUri by remember { mutableStateOf<Uri?>(null) }
             var showUsageAccessPrompt by remember { mutableStateOf(false) }
             var hasShownUsageAccessPrompt by remember { mutableStateOf(false) }
-            var pendingPermissionGestureAction by remember {
-                mutableStateOf<LauncherShakeGestureDetector.GestureAction?>(null)
+            var pendingPermissionShakeAction by remember {
+                mutableStateOf<ShakeAction?>(null)
             }
 
             val wallpaperPickerLauncher = rememberLauncherForActivityResult(
@@ -218,10 +221,10 @@ class MainActivity : ComponentActivity() {
             val cameraPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestPermission()
             ) { isGranted ->
-                val pendingAction = pendingPermissionGestureAction
-                pendingPermissionGestureAction = null
+                val pendingAction = pendingPermissionShakeAction
+                pendingPermissionShakeAction = null
 
-                if (pendingAction != LauncherShakeGestureDetector.GestureAction.TOGGLE_FLASHLIGHT) {
+                if (pendingAction != ShakeAction.FLASHLIGHT) {
                     return@rememberLauncherForActivityResult
                 }
 
@@ -254,9 +257,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            shakeManager.onGestureAction = { gestureAction ->
-                when (gestureAction) {
-                    LauncherShakeGestureDetector.GestureAction.TOGGLE_FLASHLIGHT -> {
+            shakeManager.onGestureAction = { gesture ->
+                val configuredAction = when (gesture) {
+                    LauncherShakeGestureDetector.ShakeGesture.SINGLE_SHAKE -> singleShakeAction
+                    LauncherShakeGestureDetector.ShakeGesture.DOUBLE_SHAKE -> doubleShakeAction
+                }
+                when (configuredAction) {
+                    ShakeAction.NONE -> Unit
+                    ShakeAction.FLASHLIGHT -> {
                         when (launcherDeviceActions.toggleFlashlight()) {
                             is FlashlightToggleResult.Success -> {
                                 launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
@@ -265,7 +273,7 @@ class MainActivity : ComponentActivity() {
                                 Toast.makeText(context, context.getString(R.string.flashlight_unsupported), Toast.LENGTH_SHORT).show()
                             }
                             FlashlightToggleResult.MissingPermission -> {
-                                pendingPermissionGestureAction = gestureAction
+                                pendingPermissionShakeAction = ShakeAction.FLASHLIGHT
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                             FlashlightToggleResult.Error -> {
@@ -273,7 +281,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    LauncherShakeGestureDetector.GestureAction.OPEN_CAMERA -> {
+                    ShakeAction.CAMERA -> {
                         val didOpenCamera = launcherDeviceActions.openCamera(this@MainActivity)
                         if (didOpenCamera) {
                             launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
@@ -1061,6 +1069,14 @@ class MainActivity : ComponentActivity() {
                             isShakeGesturesEnabled = isShakeGesturesEnabled,
                             onShakeGesturesToggled = { enabled ->
                                 scope.launch { themeManager.setShakeGesturesEnabled(enabled) }
+                            },
+                            singleShakeAction = singleShakeAction,
+                            onSingleShakeActionChange = { action ->
+                                scope.launch { themeManager.setSingleShakeAction(action) }
+                            },
+                            doubleShakeAction = doubleShakeAction,
+                            onDoubleShakeActionChange = { action ->
+                                scope.launch { themeManager.setDoubleShakeAction(action) }
                             },
                             isSmartSuggestionsEnabled = isSmartSuggestionsEnabled,
                             onSmartSuggestionsToggled = { enabled ->

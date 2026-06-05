@@ -34,6 +34,11 @@ import com.composables.icons.lucide.Shield
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.Smartphone
+import com.composables.icons.lucide.Ban
+import com.composables.icons.lucide.Camera
+import com.composables.icons.lucide.ChevronDown
+import com.composables.icons.lucide.Flashlight
+import com.example.androidlauncher.data.ShakeAction
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -55,6 +60,10 @@ fun EditConfigMenu(
     isCustomWallpaperSet: Boolean,
     isShakeGesturesEnabled: Boolean,
     onShakeGesturesToggled: (Boolean) -> Unit,
+    singleShakeAction: ShakeAction,
+    onSingleShakeActionChange: (ShakeAction) -> Unit,
+    doubleShakeAction: ShakeAction,
+    onDoubleShakeActionChange: (ShakeAction) -> Unit,
     isSmartSuggestionsEnabled: Boolean,
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     isAnimationsEnabled: Boolean,
@@ -278,7 +287,7 @@ fun EditConfigMenu(
                 EditToggleItem(
                     icon = Lucide.Smartphone,
                     label = "Shake-Gesten",
-                    description = "1× Schütteln: Taschenlampe · 2× Schütteln: Kamera",
+                    description = "Schütteln, um eine Aktion auszulösen. Zuordnung unten anpassbar.",
                     checked = isShakeGesturesEnabled,
                     onCheckedChange = onShakeGesturesToggled,
                     mainTextColor = mainTextColor,
@@ -286,6 +295,32 @@ fun EditConfigMenu(
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "shake_gestures_switch"
                 )
+            }
+
+            if (isShakeGesturesEnabled) {
+                item {
+                    EditActionSelectorItem(
+                        label = "Einfaches Schütteln",
+                        selectedAction = singleShakeAction,
+                        onActionSelected = onSingleShakeActionChange,
+                        mainTextColor = mainTextColor,
+                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        isDarkTextEnabled = isDarkTextEnabled,
+                        testTag = "single_shake_action_selector"
+                    )
+                }
+
+                item {
+                    EditActionSelectorItem(
+                        label = "Doppeltes Schütteln",
+                        selectedAction = doubleShakeAction,
+                        onActionSelected = onDoubleShakeActionChange,
+                        mainTextColor = mainTextColor,
+                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        isDarkTextEnabled = isDarkTextEnabled,
+                        testTag = "double_shake_action_selector"
+                    )
+                }
             }
 
             item {
@@ -484,6 +519,110 @@ private fun EditToggleItem(
                 onCheckedChange = onCheckedChange,
                 colors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
             )
+        }
+    }
+}
+
+/** Icon + Anzeigename für eine [ShakeAction] (UI-Mapping; das Enum selbst bleibt rein). */
+private fun shakeActionIcon(action: ShakeAction): ImageVector = when (action) {
+    ShakeAction.NONE -> Lucide.Ban
+    ShakeAction.FLASHLIGHT -> Lucide.Flashlight
+    ShakeAction.CAMERA -> Lucide.Camera
+}
+
+private fun shakeActionLabel(action: ShakeAction): String = when (action) {
+    ShakeAction.NONE -> "Aus"
+    ShakeAction.FLASHLIGHT -> "Taschenlampe"
+    ShakeAction.CAMERA -> "Kamera"
+}
+
+/**
+ * Zeilen-Eintrag, der die aktuell gewählte Aktion einer Shake-Geste anzeigt und bei Klick
+ * ein Dropdown mit allen [ShakeAction]-Optionen öffnet.
+ */
+@Composable
+private fun EditActionSelectorItem(
+    label: String,
+    selectedAction: ShakeAction,
+    onActionSelected: (ShakeAction) -> Unit,
+    mainTextColor: Color,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean,
+    testTag: String
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val backgroundModifier = if (isLiquidGlassEnabled) {
+        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
+        val borderBrush = LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, endAlpha = 0.05f)
+        Modifier.background(glassBrush, RoundedCornerShape(16.dp)).border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
+    } else {
+        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .then(backgroundModifier)
+            .testTag(testTag)
+            .clickable { expanded = true },
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 18.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = shakeActionIcon(selectedAction),
+                contentDescription = null,
+                tint = mainTextColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = label,
+                color = mainTextColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = shakeActionLabel(selectedAction),
+                color = mainTextColor.copy(alpha = 0.6f),
+                fontSize = 15.sp,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Icon(
+                imageVector = Lucide.ChevronDown,
+                contentDescription = null,
+                tint = mainTextColor.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                ShakeAction.entries.forEach { action ->
+                    DropdownMenuItem(
+                        text = { Text(shakeActionLabel(action)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = shakeActionIcon(action),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        onClick = {
+                            expanded = false
+                            if (action != selectedAction) {
+                                onActionSelected(action)
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
 }
