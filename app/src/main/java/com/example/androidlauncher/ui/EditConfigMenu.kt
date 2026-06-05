@@ -32,6 +32,7 @@ import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Shield
 import com.composables.icons.lucide.Hand
+import com.composables.icons.lucide.House
 import com.composables.icons.lucide.Smartphone
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
@@ -69,11 +70,13 @@ fun EditConfigMenu(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val menuListState = rememberLazyListState()
 
+    var isDefaultLauncherSet by remember { mutableStateOf(isDefaultLauncher(context)) }
     var isNotificationEnabled by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
     var isAccessibilityEnabled by remember { mutableStateOf(LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) }
     var isUsageAccessEnabled by remember { mutableStateOf(ForegroundAppResolver.hasUsageAccess(context)) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        isDefaultLauncherSet = isDefaultLauncher(context)
         isNotificationEnabled = isNotificationServiceEnabled(context)
         isAccessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
         isUsageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
@@ -289,6 +292,21 @@ fun EditConfigMenu(
                 EditSectionHeader(
                     title = "Zugriffe",
                     mainTextColor = mainTextColor
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.House,
+                    label = "Standard-Launcher",
+                    onClick = {
+                        openDefaultLauncherSettings(context)
+                    },
+                    statusLabel = if (isDefaultLauncherSet) "An" else "Aus",
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "default_launcher_item"
                 )
             }
 

@@ -2,11 +2,13 @@ package com.example.androidlauncher.ui
 
 import android.app.Activity
 import android.app.ActivityOptions
+import android.app.role.RoleManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.LauncherApps
+import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.os.Build
 import android.os.Process
@@ -415,6 +417,46 @@ fun openNotificationSettings(context: Context) {
 fun openAccessibilitySettings(context: Context) {
     val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
     context.startActivity(intent)
+}
+
+/**
+ * Prüft, ob diese App aktuell als Standard-Launcher (Start-App) gesetzt ist.
+ */
+fun isDefaultLauncher(context: Context): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val roleManager = context.getSystemService(RoleManager::class.java)
+        roleManager?.isRoleHeld(RoleManager.ROLE_HOME) == true
+    } else {
+        val resolved = context.packageManager.resolveActivity(
+            Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) },
+            PackageManager.MATCH_DEFAULT_ONLY
+        )?.activityInfo?.packageName
+        resolved == context.packageName
+    }
+}
+
+/**
+ * Öffnet den passenden Systembildschirm, um diese App als Standard-Launcher festzulegen.
+ * Auf Android Q+ wird der direkte Auswahl-Dialog (ROLE_HOME) angezeigt, sofern noch nicht Standard.
+ */
+fun openDefaultLauncherSettings(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val roleManager = context.getSystemService(RoleManager::class.java)
+        if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME) &&
+            !roleManager.isRoleHeld(RoleManager.ROLE_HOME)) {
+            val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
+            runCatching { context.startActivity(intent) }.onSuccess { return }
+        }
+    }
+    val homeSettingsIntent = Intent(Settings.ACTION_HOME_SETTINGS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    runCatching { context.startActivity(homeSettingsIntent) }.onFailure {
+        context.startActivity(
+            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
 }
 
 fun getLucideIconByName(name: String): ImageVector? {
