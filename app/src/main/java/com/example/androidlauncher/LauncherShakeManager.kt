@@ -19,13 +19,13 @@ class LauncherShakeManager(context: Context) {
     private val detector = LauncherShakeGestureDetector()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    var onGestureAction: ((LauncherShakeGestureDetector.GestureAction) -> Unit)? = null
+    var onGestureAction: ((LauncherShakeGestureDetector.ShakeGesture) -> Unit)? = null
 
     private var isStarted = false
 
     private val confirmSingleShakeRunnable = Runnable {
-        detector.flushPending(SystemClock.elapsedRealtime())?.let { action ->
-            onGestureAction?.invoke(action)
+        detector.flushPending(SystemClock.elapsedRealtime())?.let { gesture ->
+            onGestureAction?.invoke(gesture)
         }
     }
 
@@ -34,16 +34,16 @@ class LauncherShakeManager(context: Context) {
             val values = event.values
             if (values.size < 3) return
 
-            val detectedAction = detector.onAccelerationChanged(
+            val detectedGesture = detector.onAccelerationChanged(
                 x = values[0],
                 y = values[1],
                 z = values[2],
                 timestampMs = SystemClock.elapsedRealtime()
             )
 
-            if (detectedAction != null) {
+            if (detectedGesture != null) {
                 mainHandler.removeCallbacks(confirmSingleShakeRunnable)
-                onGestureAction?.invoke(detectedAction)
+                onGestureAction?.invoke(detectedGesture)
                 return
             }
 

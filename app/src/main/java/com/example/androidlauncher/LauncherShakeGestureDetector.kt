@@ -5,8 +5,8 @@ import kotlin.math.sqrt
 /**
  * Erkennt konservativ Single- und Double-Shake-Muster auf Basis des Accelerometers.
  *
- * - 1 Shake -> Taschenlampe umschalten
- * - 2 schnelle Shakes -> Kamera öffnen
+ * Meldet ausschließlich den erkannten Gestentyp ([ShakeGesture]). Welche Aktion daraus
+ * folgt (Taschenlampe, Kamera, …) entscheidet die vom Nutzer konfigurierte Zuordnung.
  */
 class LauncherShakeGestureDetector(
     private val shakeThresholdG: Float = 2.35f,
@@ -18,9 +18,9 @@ class LauncherShakeGestureDetector(
         private const val EARTH_GRAVITY_MS2 = 9.80665f
     }
 
-    enum class GestureAction {
-        TOGGLE_FLASHLIGHT,
-        OPEN_CAMERA
+    enum class ShakeGesture {
+        SINGLE_SHAKE,
+        DOUBLE_SHAKE
     }
 
     val singleShakeConfirmationDelayMs: Long
@@ -30,12 +30,12 @@ class LauncherShakeGestureDetector(
     private var pendingShakeTimestampMs: Long? = null
     private var lastDispatchedTimestampMs = Long.MIN_VALUE / 4
 
-    fun onAccelerationChanged(x: Float, y: Float, z: Float, timestampMs: Long): GestureAction? {
+    fun onAccelerationChanged(x: Float, y: Float, z: Float, timestampMs: Long): ShakeGesture? {
         val gForce = sqrt((x * x + y * y + z * z).toDouble()).toFloat() / EARTH_GRAVITY_MS2
         return onGForceSample(gForce = gForce, timestampMs = timestampMs)
     }
 
-    fun onGForceSample(gForce: Float, timestampMs: Long): GestureAction? {
+    fun onGForceSample(gForce: Float, timestampMs: Long): ShakeGesture? {
         flushPending(timestampMs)?.let { return it }
 
         if (gForce < shakeThresholdG) {
@@ -56,14 +56,14 @@ class LauncherShakeGestureDetector(
         return if (previousPendingShake != null && timestampMs - previousPendingShake <= doubleShakeWindowMs) {
             pendingShakeTimestampMs = null
             lastDispatchedTimestampMs = timestampMs
-            GestureAction.OPEN_CAMERA
+            ShakeGesture.DOUBLE_SHAKE
         } else {
             pendingShakeTimestampMs = timestampMs
             null
         }
     }
 
-    fun flushPending(timestampMs: Long): GestureAction? {
+    fun flushPending(timestampMs: Long): ShakeGesture? {
         val pendingTimestampMs = pendingShakeTimestampMs ?: return null
         if (timestampMs - pendingTimestampMs < doubleShakeWindowMs) {
             return null
@@ -75,7 +75,7 @@ class LauncherShakeGestureDetector(
         }
 
         lastDispatchedTimestampMs = timestampMs
-        return GestureAction.TOGGLE_FLASHLIGHT
+        return ShakeGesture.SINGLE_SHAKE
     }
 
     fun hasPendingSingleShake(): Boolean = pendingShakeTimestampMs != null

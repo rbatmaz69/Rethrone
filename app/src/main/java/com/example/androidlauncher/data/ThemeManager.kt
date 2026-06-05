@@ -44,6 +44,8 @@ class ThemeManager(private val context: Context) {
         private val WALLPAPER_DIM_KEY = floatPreferencesKey("wallpaper_dim")
         private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
         private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
+        private val SINGLE_SHAKE_ACTION_KEY = stringPreferencesKey("single_shake_action")
+        private val DOUBLE_SHAKE_ACTION_KEY = stringPreferencesKey("double_shake_action")
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
         private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
@@ -144,6 +146,24 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
+     * Aktion für einfaches Schütteln. Default Taschenlampe (erhält bisheriges Verhalten).
+     */
+    val singleShakeAction: Flow<ShakeAction> = context.dataStore.data
+        .map { preferences ->
+            val name = preferences[SINGLE_SHAKE_ACTION_KEY] ?: ShakeAction.FLASHLIGHT.name
+            try { ShakeAction.valueOf(name) } catch (e: IllegalArgumentException) { ShakeAction.FLASHLIGHT }
+        }
+
+    /**
+     * Aktion für doppeltes Schütteln. Default Kamera (erhält bisheriges Verhalten).
+     */
+    val doubleShakeAction: Flow<ShakeAction> = context.dataStore.data
+        .map { preferences ->
+            val name = preferences[DOUBLE_SHAKE_ACTION_KEY] ?: ShakeAction.CAMERA.name
+            try { ShakeAction.valueOf(name) } catch (e: IllegalArgumentException) { ShakeAction.CAMERA }
+        }
+
+    /**
      * Observable flow for intelligent search suggestions.
      */
     val isSmartSuggestionsEnabled: Flow<Boolean> = context.dataStore.data
@@ -229,6 +249,24 @@ class ThemeManager(private val context: Context) {
     suspend fun setShakeGesturesEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[SHAKE_GESTURES_KEY] = enabled
+        }
+    }
+
+    /**
+     * Setzt die Aktion für einfaches Schütteln.
+     */
+    suspend fun setSingleShakeAction(action: ShakeAction) {
+        context.dataStore.edit { preferences ->
+            preferences[SINGLE_SHAKE_ACTION_KEY] = action.name
+        }
+    }
+
+    /**
+     * Setzt die Aktion für doppeltes Schütteln.
+     */
+    suspend fun setDoubleShakeAction(action: ShakeAction) {
+        context.dataStore.edit { preferences ->
+            preferences[DOUBLE_SHAKE_ACTION_KEY] = action.name
         }
     }
 

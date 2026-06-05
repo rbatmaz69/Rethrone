@@ -101,9 +101,9 @@ class LauncherShakeManagerTest {
             every { event.values } returns floatArrayOf(20f, 20f, 20f)
         }
 
-        var actionReceived: LauncherShakeGestureDetector.GestureAction? = null
-        manager.onGestureAction = { action ->
-            actionReceived = action
+        var gestureReceived: LauncherShakeGestureDetector.ShakeGesture? = null
+        manager.onGestureAction = { gesture ->
+            gestureReceived = gesture
         }
 
         listener.onSensorChanged(event)
