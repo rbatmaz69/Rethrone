@@ -41,6 +41,7 @@ import com.composables.icons.lucide.Flashlight
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.List
 import com.composables.icons.lucide.PanelRight
+import com.composables.icons.lucide.Trash2
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.ShakeAction
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -57,6 +58,7 @@ fun EditConfigMenu(
     onOpenHomeLayoutEdit: () -> Unit,
     onResetHomeLayout: () -> Unit,
     onOpenIconConfig: () -> Unit,
+    onOpenUninstallApps: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onResetWallpaper: () -> Unit,
     onOpenWallpaperAdjust: () -> Unit,
@@ -260,6 +262,25 @@ fun EditConfigMenu(
                         isDarkTextEnabled = isDarkTextEnabled
                     )
                 }
+            }
+
+            item {
+                EditSectionHeader(
+                    title = "Apps",
+                    mainTextColor = mainTextColor
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.Trash2,
+                    label = "Apps deinstallieren",
+                    onClick = onOpenUninstallApps,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "uninstall_apps_item"
+                )
             }
 
             item {

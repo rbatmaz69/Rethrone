@@ -165,12 +165,12 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
-     * Gewählte Art des App-Zugriffs. Default Grid-Drawer (erhält bisheriges Verhalten).
+     * Gewählte Art des App-Zugriffs. Default ist die Drawer-Liste (Niagara-Stil).
      */
     val appAccessMode: Flow<AppAccessMode> = context.dataStore.data
         .map { preferences ->
-            val name = preferences[APP_ACCESS_MODE_KEY] ?: AppAccessMode.DRAWER_GRID.name
-            try { AppAccessMode.valueOf(name) } catch (e: IllegalArgumentException) { AppAccessMode.DRAWER_GRID }
+            val name = preferences[APP_ACCESS_MODE_KEY] ?: AppAccessMode.DRAWER_LIST.name
+            try { AppAccessMode.valueOf(name) } catch (e: IllegalArgumentException) { AppAccessMode.DRAWER_LIST }
         }
 
     /**
