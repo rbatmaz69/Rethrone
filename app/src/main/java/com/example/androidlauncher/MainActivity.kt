@@ -93,6 +93,7 @@ import com.example.androidlauncher.ui.FontSelectionMenu
 import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.InfoDialog
+import com.example.androidlauncher.ui.UninstallAppsMenu
 import com.example.androidlauncher.ui.LaunchAnimationOverlay
 import com.example.androidlauncher.ui.NiagaraAppDrawer
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
@@ -348,6 +349,7 @@ class MainActivity : ComponentActivity() {
                 var isFontSelectionOpen by remember { mutableStateOf(false) }
                 var isEditConfigOpen by remember { mutableStateOf(false) }
                 var isIconConfigOpen by remember { mutableStateOf(false) }
+                var isUninstallAppsOpen by remember { mutableStateOf(false) }
                 var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
@@ -759,6 +761,7 @@ class MainActivity : ComponentActivity() {
                         isFontSelectionOpen = false
                         isEditConfigOpen = false
                         isIconConfigOpen = false
+                        isUninstallAppsOpen = false
                         isWallpaperConfigOpen = false
                         isInfoOpen = false
                         isHomeEditMode = false
@@ -769,12 +772,12 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(
                     isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
-                    isIconConfigOpen, isWallpaperConfigOpen, isInfoOpen,
+                    isIconConfigOpen, isUninstallAppsOpen, isWallpaperConfigOpen, isInfoOpen,
                     selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
                         isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen ||
-                        isEditConfigOpen || isIconConfigOpen || isWallpaperConfigOpen ||
+                        isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isWallpaperConfigOpen ||
                         isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
@@ -782,7 +785,7 @@ class MainActivity : ComponentActivity() {
                 BackHandler(
                     enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
-                        isIconConfigOpen || isWallpaperConfigOpen || isInfoOpen ||
+                        isIconConfigOpen || isUninstallAppsOpen || isWallpaperConfigOpen || isInfoOpen ||
                         selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                 ) {
                     when {
@@ -791,6 +794,7 @@ class MainActivity : ComponentActivity() {
                         isSearchOpen -> isSearchOpen = false
                         isFontSelectionOpen -> isFontSelectionOpen = false
                         isWallpaperConfigOpen -> isWallpaperConfigOpen = false
+                        isUninstallAppsOpen -> isUninstallAppsOpen = false
                         isIconConfigOpen -> isIconConfigOpen = false
                         isDrawerOpen -> isDrawerOpen = false
                         isFavoritesConfigOpen -> isFavoritesConfigOpen = false
@@ -1074,6 +1078,7 @@ class MainActivity : ComponentActivity() {
                                 Toast.makeText(context, context.getString(R.string.home_layout_reset), Toast.LENGTH_SHORT).show()
                             },
                             onOpenIconConfig = { isIconConfigOpen = true },
+                            onOpenUninstallApps = { isUninstallAppsOpen = true },
                             onChangeWallpaper = {
                                 isEditConfigOpen = false
                                 isWallpaperConfigOpen = false
@@ -1192,6 +1197,17 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onClose = { isIconConfigOpen = false }
+                        )
+                    }
+
+                    MenuOverlay(
+                        visible = isUninstallAppsOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isUninstallAppsOpen = false }
+                    ) {
+                        UninstallAppsMenu(
+                            apps = allApps,
+                            onClose = { isUninstallAppsOpen = false }
                         )
                     }
 
