@@ -38,6 +38,9 @@ import com.composables.icons.lucide.Ban
 import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.Flashlight
+import com.composables.icons.lucide.LayoutGrid
+import com.composables.icons.lucide.List
+import com.example.androidlauncher.data.AppDrawerVersion
 import com.example.androidlauncher.data.ShakeAction
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
@@ -68,6 +71,8 @@ fun EditConfigMenu(
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     isAnimationsEnabled: Boolean,
     onAnimationsToggled: (Boolean) -> Unit,
+    appDrawerVersion: AppDrawerVersion,
+    onAppDrawerVersionChange: (AppDrawerVersion) -> Unit,
     onClearSearchHistory: () -> Unit,
     isHapticFeedbackEnabled: Boolean,
     onHapticFeedbackToggled: (Boolean) -> Unit,
@@ -155,6 +160,18 @@ fun EditConfigMenu(
                     isLiquidGlassEnabled = isLiquidGlassEnabled,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "animations_switch"
+                )
+            }
+
+            item {
+                EditDrawerVersionSelectorItem(
+                    label = "App-Übersicht",
+                    selectedVersion = appDrawerVersion,
+                    onVersionSelected = onAppDrawerVersionChange,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "app_drawer_version_selector"
                 )
             }
 
@@ -519,6 +536,103 @@ private fun EditToggleItem(
                 onCheckedChange = onCheckedChange,
                 colors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
             )
+        }
+    }
+}
+
+/** Icon für eine [AppDrawerVersion] (UI-Mapping; das Enum selbst bleibt rein). */
+private fun appDrawerVersionIcon(version: AppDrawerVersion): ImageVector = when (version) {
+    AppDrawerVersion.VERSION_1 -> Lucide.LayoutGrid
+    AppDrawerVersion.VERSION_2 -> Lucide.List
+}
+
+/**
+ * Zeilen-Eintrag, der die aktuell gewählte AppDrawer-Layoutvariante anzeigt und bei Klick
+ * ein Dropdown mit allen [AppDrawerVersion]-Optionen öffnet.
+ */
+@Composable
+private fun EditDrawerVersionSelectorItem(
+    label: String,
+    selectedVersion: AppDrawerVersion,
+    onVersionSelected: (AppDrawerVersion) -> Unit,
+    mainTextColor: Color,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean,
+    testTag: String
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val backgroundModifier = if (isLiquidGlassEnabled) {
+        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
+        val borderBrush = LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, endAlpha = 0.05f)
+        Modifier.background(glassBrush, RoundedCornerShape(16.dp)).border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
+    } else {
+        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .then(backgroundModifier)
+            .testTag(testTag)
+            .clickable { expanded = true },
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 18.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = appDrawerVersionIcon(selectedVersion),
+                contentDescription = null,
+                tint = mainTextColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = label,
+                color = mainTextColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = selectedVersion.label,
+                color = mainTextColor.copy(alpha = 0.6f),
+                fontSize = 15.sp,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Icon(
+                imageVector = Lucide.ChevronDown,
+                contentDescription = null,
+                tint = mainTextColor.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                AppDrawerVersion.entries.forEach { version ->
+                    DropdownMenuItem(
+                        text = { Text(version.label) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = appDrawerVersionIcon(version),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        onClick = {
+                            expanded = false
+                            if (version != selectedVersion) {
+                                onVersionSelected(version)
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
 }
