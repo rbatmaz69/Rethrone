@@ -1207,6 +1207,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         UninstallAppsMenu(
                             apps = allApps,
+                            onRefreshApps = { pkg -> refreshAppList(pkg) },
                             onClose = { isUninstallAppsOpen = false }
                         )
                     }

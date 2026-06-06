@@ -97,7 +97,10 @@ fun NiagaraAppDrawer(
     val searchQuery by appDrawerVm.searchQuery.collectAsState()
     val visibleApps by appDrawerVm.visibleApps.collectAsState()
 
-    LaunchedEffect(apps) { appDrawerVm.updateApps(apps) }
+    // apps ist eine in-place mutierte SnapshotStateList – auf den Inhalt keyen (Kopie),
+    // damit Installationen/Deinstallationen den ViewModel-State tatsächlich erreichen.
+    val appsSnapshot = apps.toList()
+    LaunchedEffect(appsSnapshot) { appDrawerVm.updateApps(appsSnapshot) }
 
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
 

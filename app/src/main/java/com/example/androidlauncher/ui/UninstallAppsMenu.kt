@@ -33,6 +33,8 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Akzentfarbe für destruktive Aktionen (wie in [IconConfigMenu]). */
@@ -58,9 +60,11 @@ private val DestructiveColor = Color(0xFFEF5350)
 @Composable
 fun UninstallAppsMenu(
     apps: List<AppInfo>,
+    onRefreshApps: (String?) -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
     val fontWeight = LocalFontWeight.current
@@ -136,10 +140,16 @@ fun UninstallAppsMenu(
         processNext()
     }
 
-    // Nach Rückkehr aus dem System-Dialog das nächste Paket abarbeiten.
+    // Nach Rückkehr aus dem System-Dialog das nächste Paket abarbeiten und die
+    // App-Liste aktualisieren (entfernt das gerade deinstallierte Paket).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (awaitingResume) {
+            val justAttempted = uninstallQueue.firstOrNull()
             uninstallQueue = uninstallQueue.drop(1)
+            scope.launch {
+                delay(500) // System die Deinstallation abschließen lassen
+                onRefreshApps(justAttempted)
+            }
             processNext()
         }
     }
