@@ -101,7 +101,10 @@ fun HomeAppScrubber(
         colorTheme.highlightColor(isDarkTextEnabled)
     }
 
-    val ordered = remember(apps) { groupAppsForScrubber(apps) }
+    // apps ist eine in-place mutierte SnapshotStateList – auf den Inhalt keyen (Kopie),
+    // damit Deinstallationen sofort durchschlagen (sonst bliebe die Gruppierung stale).
+    val appsSnapshot = apps.toList()
+    val ordered = remember(appsSnapshot) { groupAppsForScrubber(appsSnapshot) }
     val letters = remember(ordered) { ordered.keys.toList() }
 
     // Geometrie (px)
