@@ -68,6 +68,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.androidlauncher.data.AppFont
+import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.AutoIconRule
@@ -93,6 +94,7 @@ import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.InfoDialog
 import com.example.androidlauncher.ui.LaunchAnimationOverlay
+import com.example.androidlauncher.ui.NiagaraAppDrawer
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
 import com.example.androidlauncher.ui.SizeConfigMenu
 import com.example.androidlauncher.ui.SystemWallpaperView
@@ -180,6 +182,7 @@ class MainActivity : ComponentActivity() {
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
             val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
+            val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_GRID)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
@@ -842,36 +845,64 @@ class MainActivity : ComponentActivity() {
                         label = "DrawerTransition"
                     ) { targetIsDrawerOpen ->
                         if (targetIsDrawerOpen) {
-                            AppDrawer(
-                                apps = allApps,
-                                folders = folders,
-                                onToggleFavorite = { pkg ->
-                                    val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
-                                    if (newFavs != favoritePackages) {
-                                        scope.launch { favoritesManager.saveFavorites(newFavs) }
-                                    }
-                                },
-                                isFavorite = { pkg -> pkg in favoritePackages },
-                                onUpdateFolders = { newFolders ->
-                                    scope.launch { folderManager.saveFolders(newFolders) }
-                                },
-                                onOpenFolderConfig = { folder -> selectedFolderForConfig = folder },
-                                onClose = { isDrawerOpen = false },
-                                onLaunchApp = { pkg, intent, bounds ->
-                                    requestLauncherLaunch(
-                                        packageName = pkg,
-                                        intent = intent,
-                                        bounds = bounds,
-                                        source = LaunchSource.DRAWER,
-                                        overlayColor = searchLaunchOverlayColor,
-                                        overlayBrush = launchOverlayBrush
-                                    )
-                                },
-                                returnIconPackage = returnIconPackage
-                            )
+                            when (appAccessMode) {
+                                AppAccessMode.DRAWER_LIST -> NiagaraAppDrawer(
+                                    apps = allApps,
+                                    onToggleFavorite = { pkg ->
+                                        val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
+                                        if (newFavs != favoritePackages) {
+                                            scope.launch { favoritesManager.saveFavorites(newFavs) }
+                                        }
+                                    },
+                                    isFavorite = { pkg -> pkg in favoritePackages },
+                                    onClose = { isDrawerOpen = false },
+                                    onLaunchApp = { pkg, intent, bounds ->
+                                        requestLauncherLaunch(
+                                            packageName = pkg,
+                                            intent = intent,
+                                            bounds = bounds,
+                                            source = LaunchSource.DRAWER,
+                                            overlayColor = searchLaunchOverlayColor,
+                                            overlayBrush = launchOverlayBrush
+                                        )
+                                    },
+                                    returnIconPackage = returnIconPackage
+                                )
+                                // DRAWER_GRID (und HOME_LIST als harmloser Fallback – im HOME_LIST-Modus
+                                // wird der Drawer nie geöffnet).
+                                else -> AppDrawer(
+                                    apps = allApps,
+                                    folders = folders,
+                                    onToggleFavorite = { pkg ->
+                                        val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
+                                        if (newFavs != favoritePackages) {
+                                            scope.launch { favoritesManager.saveFavorites(newFavs) }
+                                        }
+                                    },
+                                    isFavorite = { pkg -> pkg in favoritePackages },
+                                    onUpdateFolders = { newFolders ->
+                                        scope.launch { folderManager.saveFolders(newFolders) }
+                                    },
+                                    onOpenFolderConfig = { folder -> selectedFolderForConfig = folder },
+                                    onClose = { isDrawerOpen = false },
+                                    onLaunchApp = { pkg, intent, bounds ->
+                                        requestLauncherLaunch(
+                                            packageName = pkg,
+                                            intent = intent,
+                                            bounds = bounds,
+                                            source = LaunchSource.DRAWER,
+                                            overlayColor = searchLaunchOverlayColor,
+                                            overlayBrush = launchOverlayBrush
+                                        )
+                                    },
+                                    returnIconPackage = returnIconPackage
+                                )
+                            }
                         } else {
                             HomeScreen(
                                 favorites = favorites,
+                                allApps = allApps,
+                                appAccessMode = appAccessMode,
                                 isSettingsOpen = isSettingsOpen,
                                 isSearchOpen = isSearchOpen && !isSearchClosingState,
                                 isEditMode = isHomeEditMode,
@@ -1085,6 +1116,10 @@ class MainActivity : ComponentActivity() {
                             isAnimationsEnabled = isAnimationsEnabled,
                             onAnimationsToggled = { enabled ->
                                 scope.launch { themeManager.setAnimationsEnabled(enabled) }
+                            },
+                            appAccessMode = appAccessMode,
+                            onAppAccessModeChange = { mode ->
+                                scope.launch { themeManager.setAppAccessMode(mode) }
                             },
                             onClearSearchHistory = {
                                 scope.launch { searchSuggestionsManager.clearWebHistory() }

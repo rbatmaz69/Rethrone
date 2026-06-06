@@ -61,6 +61,7 @@ import androidx.compose.ui.zIndex
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
 import com.example.androidlauncher.LauncherAccessibilityService
+import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
 import com.example.androidlauncher.ui.theme.*
@@ -84,6 +85,8 @@ private enum class HomeEditTarget {
 @Composable
 fun HomeScreen(
     favorites: List<AppInfo>,
+    allApps: List<AppInfo> = emptyList(),
+    appAccessMode: AppAccessMode = AppAccessMode.DRAWER_GRID,
     isSettingsOpen: Boolean,
     isSearchOpen: Boolean,
     isEditMode: Boolean = false,
@@ -538,10 +541,12 @@ fun HomeScreen(
             .onGloballyPositioned { rootSize = it.size }
             .then(if (!isPreview) {
                 Modifier
-                    .pointerInput(isEditMode) {
+                    .pointerInput(isEditMode, appAccessMode) {
                         if (!isEditMode) {
                             detectVerticalDragGestures { _, dragAmount ->
-                                if (dragAmount < -50) onOpenDrawer()
+                                // Im HOME_LIST-Modus gibt es keinen hochziehbaren Drawer – der App-Zugriff
+                                // läuft über die seitliche Randleiste (HomeAppScrubber).
+                                if (dragAmount < -50 && appAccessMode != AppAccessMode.HOME_LIST) onOpenDrawer()
                                 else if (dragAmount > 50) expandNotifications(context)
                             }
                         }
@@ -1210,6 +1215,16 @@ fun HomeScreen(
                     onShortcutClick = { shortcut -> launchShortcut(context, app.packageName, shortcut.id) }
                 )
             }
+        }
+
+        // Niagara-Schnellzugriff: A–Z-Randleiste direkt auf der Startseite (nur im HOME_LIST-Modus).
+        if (!isPreview && !isEditMode && appAccessMode == AppAccessMode.HOME_LIST) {
+            HomeAppScrubber(
+                apps = allApps,
+                onLaunchApp = onLaunchApp,
+                returnIconPackage = returnIconPackage,
+                modifier = Modifier.zIndex(2500f)
+            )
         }
     }
 }

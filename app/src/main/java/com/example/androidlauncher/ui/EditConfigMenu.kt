@@ -38,6 +38,10 @@ import com.composables.icons.lucide.Ban
 import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.Flashlight
+import com.composables.icons.lucide.LayoutGrid
+import com.composables.icons.lucide.List
+import com.composables.icons.lucide.PanelRight
+import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.ShakeAction
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
@@ -68,6 +72,8 @@ fun EditConfigMenu(
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     isAnimationsEnabled: Boolean,
     onAnimationsToggled: (Boolean) -> Unit,
+    appAccessMode: AppAccessMode,
+    onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
     isHapticFeedbackEnabled: Boolean,
     onHapticFeedbackToggled: (Boolean) -> Unit,
@@ -155,6 +161,18 @@ fun EditConfigMenu(
                     isLiquidGlassEnabled = isLiquidGlassEnabled,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "animations_switch"
+                )
+            }
+
+            item {
+                EditAppAccessSelectorItem(
+                    label = "App-Zugriff",
+                    selectedMode = appAccessMode,
+                    onModeSelected = onAppAccessModeChange,
+                    mainTextColor = mainTextColor,
+                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "app_access_mode_selector"
                 )
             }
 
@@ -519,6 +537,104 @@ private fun EditToggleItem(
                 onCheckedChange = onCheckedChange,
                 colors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
             )
+        }
+    }
+}
+
+/** Icon für einen [AppAccessMode] (UI-Mapping; das Enum selbst bleibt rein). */
+private fun appAccessModeIcon(mode: AppAccessMode): ImageVector = when (mode) {
+    AppAccessMode.DRAWER_GRID -> Lucide.LayoutGrid
+    AppAccessMode.DRAWER_LIST -> Lucide.List
+    AppAccessMode.HOME_LIST -> Lucide.PanelRight
+}
+
+/**
+ * Zeilen-Eintrag, der die aktuell gewählte Art des App-Zugriffs anzeigt und bei Klick
+ * ein Dropdown mit allen [AppAccessMode]-Optionen öffnet.
+ */
+@Composable
+private fun EditAppAccessSelectorItem(
+    label: String,
+    selectedMode: AppAccessMode,
+    onModeSelected: (AppAccessMode) -> Unit,
+    mainTextColor: Color,
+    isLiquidGlassEnabled: Boolean,
+    isDarkTextEnabled: Boolean,
+    testTag: String
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val backgroundModifier = if (isLiquidGlassEnabled) {
+        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
+        val borderBrush = LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, endAlpha = 0.05f)
+        Modifier.background(glassBrush, RoundedCornerShape(16.dp)).border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
+    } else {
+        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .then(backgroundModifier)
+            .testTag(testTag)
+            .clickable { expanded = true },
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 18.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = appAccessModeIcon(selectedMode),
+                contentDescription = null,
+                tint = mainTextColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = label,
+                color = mainTextColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = selectedMode.label,
+                color = mainTextColor.copy(alpha = 0.6f),
+                fontSize = 15.sp,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Icon(
+                imageVector = Lucide.ChevronDown,
+                contentDescription = null,
+                tint = mainTextColor.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                AppAccessMode.entries.forEach { mode ->
+                    DropdownMenuItem(
+                        text = { Text(mode.label) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = appAccessModeIcon(mode),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        onClick = {
+                            expanded = false
+                            if (mode != selectedMode) {
+                                onModeSelected(mode)
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
 }

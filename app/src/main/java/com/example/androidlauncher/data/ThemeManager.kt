@@ -49,6 +49,7 @@ class ThemeManager(private val context: Context) {
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
         private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
+        private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
 
         // Offset for UI elements (Relative to default position)
         private val FAVORITES_OFFSET_X_KEY = floatPreferencesKey("favorites_offset_x")
@@ -164,6 +165,15 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
+     * Gewählte Art des App-Zugriffs. Default Grid-Drawer (erhält bisheriges Verhalten).
+     */
+    val appAccessMode: Flow<AppAccessMode> = context.dataStore.data
+        .map { preferences ->
+            val name = preferences[APP_ACCESS_MODE_KEY] ?: AppAccessMode.DRAWER_GRID.name
+            try { AppAccessMode.valueOf(name) } catch (e: IllegalArgumentException) { AppAccessMode.DRAWER_GRID }
+        }
+
+    /**
      * Observable flow for intelligent search suggestions.
      */
     val isSmartSuggestionsEnabled: Flow<Boolean> = context.dataStore.data
@@ -267,6 +277,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setDoubleShakeAction(action: ShakeAction) {
         context.dataStore.edit { preferences ->
             preferences[DOUBLE_SHAKE_ACTION_KEY] = action.name
+        }
+    }
+
+    /**
+     * Setzt die gewählte Art des App-Zugriffs.
+     */
+    suspend fun setAppAccessMode(mode: AppAccessMode) {
+        context.dataStore.edit { preferences ->
+            preferences[APP_ACCESS_MODE_KEY] = mode.name
         }
     }
 
