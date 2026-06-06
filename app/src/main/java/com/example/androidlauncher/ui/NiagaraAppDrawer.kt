@@ -12,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,6 +34,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -54,6 +58,7 @@ import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import kotlin.math.abs
 import kotlinx.coroutines.launch
 
 /**
@@ -271,7 +276,7 @@ fun NiagaraAppDrawer(
                         } else {
                             grouped.forEach { (letter, groupApps) ->
                                 stickyHeader(key = "header_$letter", contentType = "header") {
-                                    NiagaraSectionHeader(letter = letter, mainTextColor = mainTextColor, backgroundBrush = drawerBackgroundBrush)
+                                    NiagaraSectionHeader(letter = letter, mainTextColor = mainTextColor)
                                 }
                                 items(items = groupApps, key = { it.packageName }, contentType = { "app" }) { app ->
                                     NiagaraAppRow(
@@ -297,38 +302,81 @@ fun NiagaraAppDrawer(
                 }
 
                 // Seitliche A–Z-Schnellnavigation – nur ohne aktive Suche.
+                // Tippen springt zum Buchstaben, Wischen entlang der Leiste scrubbt
+                // flüssig durch die Liste (Buchstabe unter dem Finger).
                 if (!isSearching) {
+                    var activeLetter by remember { mutableStateOf<String?>(null) }
+                    // Gemessene vertikale Mitte jedes Buchstabens (relativ zur Leiste).
+                    // Über SpaceEvenly verteilte Buchstaben liegen nicht in gleich großen
+                    // Slabs – daher den Finger auf den tatsächlich nächsten Buchstaben mappen.
+                    val letterCenters = remember(sideBarLetters) { FloatArray(sideBarLetters.size) }
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .fillMaxHeight()
-                            .width(24.dp),
+                            .width(24.dp)
+                            .pointerInput(headerIndexByLetter, sideBarLetters) {
+                                fun resolve(y: Float) {
+                                    var best: String? = null
+                                    var bestDist = Float.MAX_VALUE
+                                    sideBarLetters.forEachIndexed { i, letter ->
+                                        if (headerIndexByLetter[letter] == null) return@forEachIndexed
+                                        val d = abs(letterCenters[i] - y)
+                                        if (d < bestDist) {
+                                            bestDist = d
+                                            best = letter
+                                        }
+                                    }
+                                    val letter = best ?: return
+                                    if (letter != activeLetter) {
+                                        activeLetter = letter
+                                        if (hapticEnabled) {
+                                            @Suppress("DEPRECATION")
+                                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        }
+                                        headerIndexByLetter[letter]?.let { target ->
+                                            scope.launch { listState.scrollToItem(target) }
+                                        }
+                                    }
+                                }
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    activeLetter = null
+                                    resolve(down.position.y)
+                                    down.consume()
+                                    do {
+                                        val event = awaitPointerEvent()
+                                        val change = event.changes.firstOrNull { it.id == down.id }
+                                            ?: event.changes.firstOrNull()
+                                        if (change != null && change.pressed) {
+                                            resolve(change.position.y)
+                                            change.consume()
+                                        }
+                                    } while (event.changes.any { it.pressed })
+                                    activeLetter = null
+                                }
+                            },
                         verticalArrangement = Arrangement.SpaceEvenly,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        sideBarLetters.forEach { letter ->
-                            val targetIndex = headerIndexByLetter[letter]
-                            val enabled = targetIndex != null
+                        sideBarLetters.forEachIndexed { index, letter ->
+                            val enabled = headerIndexByLetter[letter] != null
+                            val isActive = letter == activeLetter
                             Text(
                                 text = letter,
-                                fontSize = 11.sp,
+                                fontSize = if (isActive) 13.sp else 11.sp,
                                 fontFamily = appFont.fontFamily,
                                 fontWeight = fontWeight.weight,
-                                color = mainTextColor.copy(alpha = if (enabled) 0.75f else 0.22f),
+                                color = mainTextColor.copy(
+                                    alpha = when {
+                                        !enabled -> 0.22f
+                                        isActive -> 1f
+                                        else -> 0.75f
+                                    }
+                                ),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .then(
-                                        if (enabled) Modifier.clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) {
-                                            if (hapticEnabled) {
-                                                @Suppress("DEPRECATION")
-                                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                            }
-                                            scope.launch { listState.scrollToItem(targetIndex!!) }
-                                        } else Modifier
-                                    )
+                                    .onGloballyPositioned { letterCenters[index] = it.boundsInParent().center.y }
                                     .padding(vertical = 2.dp),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
@@ -375,23 +423,17 @@ fun NiagaraAppDrawer(
 @Composable
 private fun NiagaraSectionHeader(
     letter: String,
-    mainTextColor: Color,
-    backgroundBrush: androidx.compose.ui.graphics.Brush
+    mainTextColor: Color
 ) {
     val fontWeight = LocalFontWeight.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(backgroundBrush)
-            .padding(vertical = 6.dp)
-    ) {
-        Text(
-            text = letter,
-            fontSize = 14.sp,
-            fontWeight = fontWeight.weight,
-            color = mainTextColor.copy(alpha = 0.6f)
-        )
-    }
+    // Bewusst ohne Hintergrund-Balken – nur ein dezenter, linksbündiger Buchstabe.
+    Text(
+        text = letter,
+        fontSize = 13.sp,
+        fontWeight = fontWeight.weight,
+        color = mainTextColor.copy(alpha = 0.5f),
+        modifier = Modifier.padding(start = 4.dp, top = 14.dp, bottom = 6.dp)
+    )
 }
 
 /**

@@ -183,7 +183,7 @@ class MainActivity : ComponentActivity() {
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
             val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
-            val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_GRID)
+            val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
