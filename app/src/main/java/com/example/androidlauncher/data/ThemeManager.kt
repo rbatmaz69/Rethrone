@@ -49,7 +49,7 @@ class ThemeManager(private val context: Context) {
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
         private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
-        private val APP_DRAWER_VERSION_KEY = stringPreferencesKey("app_drawer_version")
+        private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
 
         // Offset for UI elements (Relative to default position)
         private val FAVORITES_OFFSET_X_KEY = floatPreferencesKey("favorites_offset_x")
@@ -165,12 +165,12 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
-     * Gewählte Layout-Variante des AppDrawers. Default Grid (erhält bisheriges Verhalten).
+     * Gewählte Art des App-Zugriffs. Default Grid-Drawer (erhält bisheriges Verhalten).
      */
-    val appDrawerVersion: Flow<AppDrawerVersion> = context.dataStore.data
+    val appAccessMode: Flow<AppAccessMode> = context.dataStore.data
         .map { preferences ->
-            val name = preferences[APP_DRAWER_VERSION_KEY] ?: AppDrawerVersion.VERSION_1.name
-            try { AppDrawerVersion.valueOf(name) } catch (e: IllegalArgumentException) { AppDrawerVersion.VERSION_1 }
+            val name = preferences[APP_ACCESS_MODE_KEY] ?: AppAccessMode.DRAWER_GRID.name
+            try { AppAccessMode.valueOf(name) } catch (e: IllegalArgumentException) { AppAccessMode.DRAWER_GRID }
         }
 
     /**
@@ -281,11 +281,11 @@ class ThemeManager(private val context: Context) {
     }
 
     /**
-     * Setzt die gewählte AppDrawer-Layout-Variante.
+     * Setzt die gewählte Art des App-Zugriffs.
      */
-    suspend fun setAppDrawerVersion(version: AppDrawerVersion) {
+    suspend fun setAppAccessMode(mode: AppAccessMode) {
         context.dataStore.edit { preferences ->
-            preferences[APP_DRAWER_VERSION_KEY] = version.name
+            preferences[APP_ACCESS_MODE_KEY] = mode.name
         }
     }
 

@@ -40,7 +40,8 @@ import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.Flashlight
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.List
-import com.example.androidlauncher.data.AppDrawerVersion
+import com.composables.icons.lucide.PanelRight
+import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.ShakeAction
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
@@ -71,8 +72,8 @@ fun EditConfigMenu(
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     isAnimationsEnabled: Boolean,
     onAnimationsToggled: (Boolean) -> Unit,
-    appDrawerVersion: AppDrawerVersion,
-    onAppDrawerVersionChange: (AppDrawerVersion) -> Unit,
+    appAccessMode: AppAccessMode,
+    onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
     isHapticFeedbackEnabled: Boolean,
     onHapticFeedbackToggled: (Boolean) -> Unit,
@@ -164,14 +165,14 @@ fun EditConfigMenu(
             }
 
             item {
-                EditDrawerVersionSelectorItem(
-                    label = "App-Übersicht",
-                    selectedVersion = appDrawerVersion,
-                    onVersionSelected = onAppDrawerVersionChange,
+                EditAppAccessSelectorItem(
+                    label = "App-Zugriff",
+                    selectedMode = appAccessMode,
+                    onModeSelected = onAppAccessModeChange,
                     mainTextColor = mainTextColor,
                     isLiquidGlassEnabled = isLiquidGlassEnabled,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "app_drawer_version_selector"
+                    testTag = "app_access_mode_selector"
                 )
             }
 
@@ -540,21 +541,22 @@ private fun EditToggleItem(
     }
 }
 
-/** Icon für eine [AppDrawerVersion] (UI-Mapping; das Enum selbst bleibt rein). */
-private fun appDrawerVersionIcon(version: AppDrawerVersion): ImageVector = when (version) {
-    AppDrawerVersion.VERSION_1 -> Lucide.LayoutGrid
-    AppDrawerVersion.VERSION_2 -> Lucide.List
+/** Icon für einen [AppAccessMode] (UI-Mapping; das Enum selbst bleibt rein). */
+private fun appAccessModeIcon(mode: AppAccessMode): ImageVector = when (mode) {
+    AppAccessMode.DRAWER_GRID -> Lucide.LayoutGrid
+    AppAccessMode.DRAWER_LIST -> Lucide.List
+    AppAccessMode.HOME_LIST -> Lucide.PanelRight
 }
 
 /**
- * Zeilen-Eintrag, der die aktuell gewählte AppDrawer-Layoutvariante anzeigt und bei Klick
- * ein Dropdown mit allen [AppDrawerVersion]-Optionen öffnet.
+ * Zeilen-Eintrag, der die aktuell gewählte Art des App-Zugriffs anzeigt und bei Klick
+ * ein Dropdown mit allen [AppAccessMode]-Optionen öffnet.
  */
 @Composable
-private fun EditDrawerVersionSelectorItem(
+private fun EditAppAccessSelectorItem(
     label: String,
-    selectedVersion: AppDrawerVersion,
-    onVersionSelected: (AppDrawerVersion) -> Unit,
+    selectedMode: AppAccessMode,
+    onModeSelected: (AppAccessMode) -> Unit,
     mainTextColor: Color,
     isLiquidGlassEnabled: Boolean,
     isDarkTextEnabled: Boolean,
@@ -584,7 +586,7 @@ private fun EditDrawerVersionSelectorItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = appDrawerVersionIcon(selectedVersion),
+                imageVector = appAccessModeIcon(selectedMode),
                 contentDescription = null,
                 tint = mainTextColor,
                 modifier = Modifier.size(24.dp)
@@ -598,7 +600,7 @@ private fun EditDrawerVersionSelectorItem(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = selectedVersion.label,
+                text = selectedMode.label,
                 color = mainTextColor.copy(alpha = 0.6f),
                 fontSize = 15.sp,
                 modifier = Modifier.padding(end = 8.dp)
@@ -614,20 +616,20 @@ private fun EditDrawerVersionSelectorItem(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                AppDrawerVersion.entries.forEach { version ->
+                AppAccessMode.entries.forEach { mode ->
                     DropdownMenuItem(
-                        text = { Text(version.label) },
+                        text = { Text(mode.label) },
                         leadingIcon = {
                             Icon(
-                                imageVector = appDrawerVersionIcon(version),
+                                imageVector = appAccessModeIcon(mode),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp)
                             )
                         },
                         onClick = {
                             expanded = false
-                            if (version != selectedVersion) {
-                                onVersionSelected(version)
+                            if (mode != selectedMode) {
+                                onModeSelected(mode)
                             }
                         }
                     )
