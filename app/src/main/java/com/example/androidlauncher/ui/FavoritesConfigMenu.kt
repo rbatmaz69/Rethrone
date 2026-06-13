@@ -30,11 +30,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -141,7 +141,7 @@ fun FavoritesConfigMenu(
                 )
             }
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
             }
         }
 
@@ -188,7 +188,7 @@ fun FavoritesConfigMenu(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .designSurface(designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent)
+                .designSurface(designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .clickable { focusRequester.requestFocus() }
         ) {
@@ -272,11 +272,11 @@ fun FavoritesConfigMenu(
                             .then(
                                 if (isFav) {
                                     Modifier.designSurface(
-                                        designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                                        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
                                         fillAlpha = 0.05f
                                     )
                                 } else {
-                                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                                    Modifier.background(Color.Transparent, RoundedCornerShape(16.dp))
                                 }
                             )
                             .bounceClick(intSrc)
@@ -358,7 +358,7 @@ fun FavoritesConfigMenu(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Check, contentDescription = null, tint = checkmarkColor, modifier = Modifier.size(28.dp))
+            Icon(Icons.Rounded.Check, contentDescription = null, tint = checkmarkColor, modifier = Modifier.size(28.dp))
         }
     }
 }
@@ -385,7 +385,7 @@ private fun FavoriteOrderItem(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .designSurface(designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f)
+            .designSurface(designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -397,14 +397,14 @@ private fun FavoriteOrderItem(
             Text(app.label, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
             IconButton(onClick = onMoveUp, enabled = index > 0) {
                 Icon(
-                    Icons.Default.KeyboardArrowUp,
+                    Icons.Rounded.KeyboardArrowUp,
                     contentDescription = null,
                     tint = if (index > 0) grayTone else mainTextColor
                 )
             }
             IconButton(onClick = onMoveDown, enabled = index < totalCount - 1) {
                 Icon(
-                    Icons.Default.KeyboardArrowDown,
+                    Icons.Rounded.KeyboardArrowDown,
                     contentDescription = null,
                     tint = if (index < totalCount - 1) grayTone else mainTextColor
                 )

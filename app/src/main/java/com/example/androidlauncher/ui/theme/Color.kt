@@ -633,6 +633,63 @@ enum class ColorTheme(
         Color(0xFFE1BEE7),
         Color.Black,
         Color(0xFF150F16)
+    ),
+
+    // ── Paper-Themes (warmer „Notizen-App"-Look, Android-15/16-Vorbild) ──
+    // Helle Papier-Themes: am besten mit „dunkler Text"-Modus; dunkle mit hellem Text.
+    // Helle Papier-Themes: starke Dunkel-Blends, damit auch der (untypische)
+    // Hell-Text-Modus kontraststark bleibt; der Cream-Look entsteht im Dunkel-Text-Modus.
+    PAPER_DAYLIGHT(
+        "Tagespapier",
+        Color(0xFFFBF7F0),
+        Color(0xFFEFE7D9),
+        Color.Black,
+        Color(0xFF211B18),
+        highlight = Color(0xFFFFFDF8),
+        darkBackgroundBlend = 0.64f,
+        darkMenuBlend = 0.62f,
+        darkSearchBlend = 0.66f,
+        darkAnimationBlend = 0.60f
+    ),
+    PAPER_SAGE(
+        "Salbeipapier",
+        Color(0xFFE7EEE2),
+        Color(0xFFCFDDCB),
+        Color.Black,
+        Color(0xFF1A201A),
+        highlight = Color(0xFFF4F8F0),
+        darkBackgroundBlend = 0.64f,
+        darkMenuBlend = 0.62f,
+        darkSearchBlend = 0.66f,
+        darkAnimationBlend = 0.60f
+    ),
+    PAPER_SUNRISE(
+        "Morgenrot",
+        Color(0xFFFCEDE2),
+        Color(0xFFF6D7C2),
+        Color.Black,
+        Color(0xFF211712),
+        highlight = Color(0xFFFFF4EC),
+        darkBackgroundBlend = 0.64f,
+        darkMenuBlend = 0.62f,
+        darkSearchBlend = 0.66f,
+        darkAnimationBlend = 0.60f
+    ),
+    PAPER_MIDNIGHT(
+        "Mitternachtspapier",
+        Color(0xFF2A2420),
+        Color(0xFF4A4540),
+        Color.White,
+        Color(0xFF161210),
+        highlight = Color(0xFFC9BFB2)
+    ),
+    PAPER_CHARCOAL(
+        "Kohlepapier",
+        Color(0xFF1E1B16),
+        Color(0xFF3A352C),
+        Color.White,
+        Color(0xFF100E0A),
+        highlight = Color(0xFFB8B2A6)
     );
 
     val lightBackground: Color
@@ -682,12 +739,13 @@ enum class ColorTheme(
         ).all { contrastRatio(textColor, it) >= MinimumReadableContrast }
     }
 
+    // Wärmeres, universelles Rendering: heller Anker zieht stärker zu Warmweiß.
     private val lightSurfaceAnchor: Color
         get() = listOf(
             primary.blendWith(Color.White, 0.16f),
             secondary.blendWith(Color.White, 0.24f),
             highlight.blendWith(Color.White, 0.32f)
-        ).averageColor().blendWith(Color(0xFFF6F2ED), 0.10f)
+        ).averageColor().blendWith(WarmLightAnchor, 0.16f)
 
     private fun backgroundGradientColors(darkTextEnabled: Boolean): List<Color> =
         if (darkTextEnabled) {
@@ -695,7 +753,7 @@ enum class ColorTheme(
                 .map { it.blendWith(lightSurfaceAnchor, 0.42f) }
                 .ensureAverageContrastForDarkText()
         } else {
-            artGradient.map { it.blendWith(Color.Black, darkBackgroundBlend) }
+            artGradient.map { it.blendWith(WarmDarkAnchor, darkBackgroundBlend) }
         }
 
     private fun menuGradientColors(darkTextEnabled: Boolean): List<Color> =
@@ -722,12 +780,16 @@ enum class ColorTheme(
                 .map { it.blendWith(lightSurfaceAnchor, 0.46f) }
                 .ensureAverageContrastForDarkText()
         } else {
-            animationGradient.map { it.blendWith(Color.Black, darkAnimationBlend) }
+            animationGradient.map { it.blendWith(WarmDarkAnchor, darkAnimationBlend) }
         }
 
     companion object {
         val DarkTextColor = Color(0xFF010101)
         const val MinimumReadableContrast = 4.5f
+        /** Warmweißer Anker für ein weicheres helles Rendering (statt reinweiß). */
+        val WarmLightAnchor = Color(0xFFF4EEE2)
+        /** Warmer Dunkel-Anker statt reinem Schwarz – verleiht allen Themes Wärme. */
+        val WarmDarkAnchor = Color(0xFF0E0B07)
     }
 }
 

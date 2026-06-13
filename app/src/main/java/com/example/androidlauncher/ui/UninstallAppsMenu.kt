@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -197,7 +197,7 @@ fun UninstallAppsMenu(
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
             }
         }
 
@@ -205,7 +205,7 @@ fun UninstallAppsMenu(
 
         // Suchleiste mit Liquid-Glass-Optik (wie in IconConfigMenu).
         val searchBarModifier = Modifier.designSurface(
-            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+            designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
             fillAlpha = 0.1f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
             borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
         )
@@ -342,14 +342,14 @@ private fun UninstallAppRow(
     )
 
     val itemBackgroundModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
         fillAlpha = 0.03f, glassStartAlpha = 0.06f, glassEndAlpha = 0.02f,
         borderWidth = 1.dp, borderStartAlpha = 0.15f, borderEndAlpha = 0.03f
     )
 
     SwipeToDismissBox(
         state = dismissState,
-        modifier = Modifier.clip(RoundedCornerShape(16.dp)),
+        modifier = Modifier.clip(RoundedCornerShape(20.dp)),
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true,
         backgroundContent = {
@@ -358,14 +358,14 @@ private fun UninstallAppRow(
             val isSwiping = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
             if (isSwiping) {
                 val revealModifier = Modifier.designSurface(
-                    designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                    designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
                     fillAlpha = 0.10f, glassStartAlpha = 0.18f, glassEndAlpha = 0.08f,
                     borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(20.dp))
                         .then(revealModifier)
                         .padding(horizontal = 24.dp),
                     contentAlignment = Alignment.CenterEnd
@@ -379,7 +379,7 @@ private fun UninstallAppRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("uninstall_item_${app.packageName}")
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(20.dp))
                 .then(itemBackgroundModifier)
                 .clickable { onToggleSelected() },
             color = Color.Transparent

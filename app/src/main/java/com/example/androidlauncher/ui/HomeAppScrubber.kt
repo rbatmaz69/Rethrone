@@ -146,7 +146,7 @@ fun HomeAppScrubber(
                 modifier = Modifier
                     .offset { IntOffset(listLeftPx.roundToInt(), listTopYPx.roundToInt()) }
                     .width(232.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(menuSurfaceColor.copy(alpha = 0.96f))
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {

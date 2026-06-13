@@ -16,8 +16,22 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `total number of color themes is 69`() {
-        assertEquals(69, ColorTheme.entries.size)
+    fun `total number of color themes is 74`() {
+        assertEquals(74, ColorTheme.entries.size)
+    }
+
+    @Test
+    fun `warm paper theme names exist`() {
+        val actualNames = ColorTheme.entries.map { it.name }
+        listOf(
+            "PAPER_DAYLIGHT",
+            "PAPER_SAGE",
+            "PAPER_SUNRISE",
+            "PAPER_MIDNIGHT",
+            "PAPER_CHARCOAL"
+        ).forEach { name ->
+            assertTrue("Expected warm paper theme $name to exist", name in actualNames)
+        }
     }
 
     @Test

@@ -23,8 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -347,7 +347,7 @@ fun WallpaperCropScreen(
                         .background(Color.Black.copy(alpha = 0.5f)),
                     colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Abbrechen")
+                    Icon(Icons.Rounded.Close, contentDescription = "Abbrechen")
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -388,7 +388,7 @@ fun WallpaperCropScreen(
                         .background(Color.White),
                     colors = IconButtonDefaults.iconButtonColors(contentColor = Color.Black)
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = "Speichern")
+                    Icon(Icons.Rounded.Check, contentDescription = "Speichern")
                 }
             }
         }

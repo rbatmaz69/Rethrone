@@ -192,10 +192,10 @@ fun AppShortcutsMenu(
                 val scale = 0.05f + (0.95f * progress)
 
                 val menuModifier = when (designStyle) {
-                    DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(20.dp))
-                    DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(20.dp))
+                    DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(24.dp))
+                    DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(24.dp))
                     DesignStyle.MINIMAL -> Modifier
-                    else -> Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
+                    else -> Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
                 }
 
                 Surface(
@@ -211,7 +211,7 @@ fun AppShortcutsMenu(
                         .clickable(enabled = false) {}
                         .then(menuModifier),
                     color = if (isDarkTextEnabled) themedLightBackground.copy(alpha = 0.98f) else colorTheme.drawerBackground.copy(alpha = 0.98f),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(24.dp),
                     shadowElevation = 20.dp
                 ) {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {

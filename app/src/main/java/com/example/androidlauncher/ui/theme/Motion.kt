@@ -1,0 +1,95 @@
+package com.example.androidlauncher.ui.theme
+
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.unit.IntOffset
+
+/**
+ * Zentrale Motion-Sprache im Material-3-Expressive-Stil.
+ *
+ * Bündelt federnde Spring-Specs und einheitliche Menü-/Sheet-Übergänge, damit
+ * sich der gesamte Launcher universell „dynamisch & verspielt" anfühlt – statt
+ * uneinheitlicher, harter `slideIn/Out`-Blöcke in jeder Menü-Datei.
+ *
+ * Alle Aufrufer sollten die Übergänge hinter [LocalAnimationsEnabled] gaten:
+ * bei deaktivierten Animationen `EnterTransition.None` / `ExitTransition.None`
+ * verwenden.
+ */
+object RethroneSprings {
+
+    /** Räumliche Bewegung (Position/Größe): spürbar federnd. */
+    fun <T> spatial(): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessMediumLow
+    )
+
+    /** Effekte (Alpha/Farbe): weich, aber ohne Nachschwingen. */
+    fun <T> effects(): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMedium
+    )
+}
+
+/**
+ * Einheitlicher Expressive-Eingang für Menüs/Sheets: federndes „Aufpoppen"
+ * aus leicht verkleinerter, von unten kommender Position + Einblenden.
+ *
+ * @param animationsEnabled wenn `false`, wird [EnterTransition.None] genutzt.
+ * @param fromBottom wenn `true`, gleitet der Inhalt zusätzlich von unten herein.
+ */
+@Composable
+fun rememberMenuEnter(
+    animationsEnabled: Boolean,
+    fromBottom: Boolean = true
+): EnterTransition {
+    if (!animationsEnabled) return EnterTransition.None
+    val scale = scaleIn(
+        animationSpec = RethroneSprings.spatial(),
+        initialScale = 0.92f,
+        transformOrigin = TransformOrigin(0.5f, if (fromBottom) 1f else 0.5f)
+    )
+    val fade = fadeIn(animationSpec = RethroneSprings.effects())
+    return if (fromBottom) {
+        scale + fade + slideInVertically(
+            animationSpec = RethroneSprings.spatial<IntOffset>(),
+            initialOffsetY = { it / 6 }
+        )
+    } else {
+        scale + fade
+    }
+}
+
+/**
+ * Passender Expressive-Ausgang: schrumpfen + ausblenden (+ optional nach unten).
+ */
+@Composable
+fun rememberMenuExit(
+    animationsEnabled: Boolean,
+    toBottom: Boolean = true
+): ExitTransition {
+    if (!animationsEnabled) return ExitTransition.None
+    val scale = scaleOut(
+        animationSpec = RethroneSprings.effects(),
+        targetScale = 0.92f,
+        transformOrigin = TransformOrigin(0.5f, if (toBottom) 1f else 0.5f)
+    )
+    val fade = fadeOut(animationSpec = RethroneSprings.effects())
+    return if (toBottom) {
+        scale + fade + slideOutVertically(
+            animationSpec = RethroneSprings.effects<IntOffset>(),
+            targetOffsetY = { it / 6 }
+        )
+    } else {
+        scale + fade
+    }
+}

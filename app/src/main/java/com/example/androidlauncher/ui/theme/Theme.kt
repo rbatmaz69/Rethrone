@@ -130,6 +130,7 @@ fun AndroidLauncherTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = getTypography(appFont.fontFamily, fontWeight),
+            shapes = RethroneShapes,
             content = content
         )
     }

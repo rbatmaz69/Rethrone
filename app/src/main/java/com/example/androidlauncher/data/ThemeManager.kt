@@ -62,8 +62,9 @@ class ThemeManager(private val context: Context) {
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
         .map { preferences ->
-            val themeName = preferences[THEME_KEY] ?: ColorTheme.SIGNATURE.name
-            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.SIGNATURE }
+            // Standard: warmes Papier-Theme (Android-15/16-Look) für Neuinstallationen.
+            val themeName = preferences[THEME_KEY] ?: ColorTheme.PAPER_MIDNIGHT.name
+            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.PAPER_MIDNIGHT }
         }
 
     val selectedFontSize: Flow<FontSize> = context.dataStore.data

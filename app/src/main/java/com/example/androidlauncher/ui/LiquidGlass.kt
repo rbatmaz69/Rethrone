@@ -7,6 +7,7 @@ import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -109,6 +110,10 @@ object LiquidGlass {
      * @param fillAlpha Alpha des flachen Hintergrunds bei [DesignStyle.FLAT].
      * @param glassStartAlpha / glassEndAlpha Alpha-Werte des Glas-Gradienten.
      * @param borderWidth Breite des Rahmens (Glass/Tinted/Outline).
+     * @param elevation Optionale weiche Material-3-Expressive-Tiefe. Wird NUR bei
+     *                  undurchsichtigen/halbdeckenden Styles (FLAT/SOLID/TINTED)
+     *                  als sanfter, warmer Schatten gerendert – Glass/Minimal/Outline
+     *                  bleiben transparent (kein harter Schatten auf Glas).
      */
     fun Modifier.designSurface(
         style: DesignStyle,
@@ -120,7 +125,8 @@ object LiquidGlass {
         glassEndAlpha: Float = 0.05f,
         borderWidth: Dp = 1.2.dp,
         borderStartAlpha: Float? = null,
-        borderEndAlpha: Float? = null
+        borderEndAlpha: Float? = null,
+        elevation: Dp = 0.dp
     ): Modifier {
         val baseColor = if (isDarkText) Color.Black else Color.White
         val glassBorder = if (borderStartAlpha != null && borderEndAlpha != null) {
@@ -128,7 +134,21 @@ object LiquidGlass {
         } else {
             borderBrush(isDarkText)
         }
-        return when (style) {
+        // Weiche, warme Tiefe nur für deckende Flächen; Transparenz-Styles bleiben unberührt.
+        val softShadow: Modifier =
+            if (elevation > 0.dp && (style == DesignStyle.FLAT || style == DesignStyle.SOLID || style == DesignStyle.TINTED)) {
+                Modifier.shadow(
+                    elevation = elevation,
+                    shape = shape,
+                    clip = false,
+                    ambientColor = WarmShadow,
+                    spotColor = WarmShadow
+                )
+            } else {
+                Modifier
+            }
+        return softShadow.then(
+        when (style) {
             DesignStyle.GLASS -> this
                 .background(glassBrush(isDarkText, glassStartAlpha, glassEndAlpha), shape)
                 .border(BorderStroke(borderWidth, glassBorder), shape)
@@ -143,7 +163,11 @@ object LiquidGlass {
                 .background(tintedBrush(accent), shape)
                 .border(BorderStroke(borderWidth, accent.copy(alpha = 0.4f)), shape)
         }
+        )
     }
+
+    /** Warmer Schattenton (statt reinem Schwarz) für die weiche Expressive-Tiefe. */
+    private val WarmShadow = Color(0xFF2A1E16)
 
     // ── Switch-Farben ────────────────────────────────────────────────
 

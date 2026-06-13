@@ -7,7 +7,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,9 +70,9 @@ fun SettingsPaletteMenu(
         listOf(
             PaletteMenuItem("themes", Lucide.Palette, "Themes", onOpenColorConfig),
             PaletteMenuItem("size", Lucide.ALargeSmall, "Größe", onOpenSizeConfig),
-            PaletteMenuItem("favorites", Icons.Default.Star, "Favorites", onOpenFavoritesConfig),
+            PaletteMenuItem("favorites", Icons.Rounded.Star, "Favorites", onOpenFavoritesConfig),
             PaletteMenuItem("edit", Lucide.Pencil, "Bearbeiten", onOpenSystemSettings),
-            PaletteMenuItem("info", Icons.Default.Info, "Info", onOpenInfo),
+            PaletteMenuItem("info", Icons.Rounded.Info, "Info", onOpenInfo),
         )
     }
 

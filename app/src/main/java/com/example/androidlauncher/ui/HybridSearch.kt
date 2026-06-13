@@ -20,8 +20,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Close
 import com.composables.icons.lucide.History
 import com.composables.icons.lucide.Lucide
 import androidx.compose.material3.*
@@ -384,7 +384,7 @@ fun HybridSearch(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = Icons.Rounded.Search,
                     contentDescription = null,
                     tint = mainTextColor.copy(alpha = 0.5f),
                     modifier = Modifier
@@ -457,7 +457,7 @@ fun HybridSearch(
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Rounded.Close,
                             contentDescription = "Clear",
                             tint = mainTextColor.copy(alpha = 0.42f),
                             modifier = Modifier.size(18.dp)
@@ -533,7 +533,7 @@ fun AppSearchItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(rowBackgroundColor)
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .pointerInput(app.packageName, rowBounds, iconBounds) {
@@ -617,7 +617,7 @@ private fun SearchHistoryItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor)
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .clickable { onClick(iconBounds ?: rowBounds) }
@@ -655,7 +655,7 @@ private fun SearchHistoryItem(
                 .testTag("history_remove_${entry.query.hashCode()}")
         ) {
             Icon(
-                imageVector = Icons.Default.Close,
+                imageVector = Icons.Rounded.Close,
                 contentDescription = "Verlaufseintrag entfernen",
                 tint = mainTextColor.copy(alpha = 0.42f),
                 modifier = Modifier.size(16.dp)
@@ -687,7 +687,7 @@ fun WebSearchItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor)
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .pointerInput(query, rowBounds, iconBounds) {
@@ -739,7 +739,7 @@ fun WebSearchItem(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Search,
+                imageVector = Icons.Rounded.Search,
                 contentDescription = null,
                 tint = mainTextColor.copy(alpha = 0.9f),
                 modifier = Modifier.size(18.dp)

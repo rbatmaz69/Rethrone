@@ -73,8 +73,8 @@ fun ColorWheelPicker(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(180.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .border(1.dp, mainTextColor.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(20.dp))
+                .border(1.dp, mainTextColor.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         sat = (offset.x / size.width).coerceIn(0f, 1f)

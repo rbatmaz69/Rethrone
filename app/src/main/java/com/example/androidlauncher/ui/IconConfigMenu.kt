@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -106,7 +106,7 @@ fun IconConfigMenu(
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
             }
         }
 
@@ -114,7 +114,7 @@ fun IconConfigMenu(
 
         // Suchleiste mit Liquid-Glass-Optik
         val searchBarModifier = Modifier.designSurface(
-            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+            designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
             fillAlpha = 0.1f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
             borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
         )
@@ -164,7 +164,7 @@ fun IconConfigMenu(
                     exit = fadeOut(animationSpec = tween(200))
                 ) {
                     val itemBackgroundModifier = Modifier.designSurface(
-                        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
                         fillAlpha = 0.03f, glassStartAlpha = 0.06f, glassEndAlpha = 0.02f,
                         borderWidth = 1.dp, borderStartAlpha = 0.15f, borderEndAlpha = 0.03f
                     )
@@ -173,7 +173,7 @@ fun IconConfigMenu(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("icon_config_item_${app.packageName}")
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .then(itemBackgroundModifier)
                             .clickable { selectedAppForActions = app },
                         color = Color.Transparent
@@ -395,15 +395,15 @@ private fun IconActionDialog(
                                 }
                             }
                             IconButton(onClick = ::dismissSheet) {
-                                Icon(Icons.Default.Close, contentDescription = "Schließen", tint = mainTextColor)
+                                Icon(Icons.Rounded.Close, contentDescription = "Schließen", tint = mainTextColor)
                             }
                         }
 
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(20.dp))
-                                .designSurface(designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .designSurface(designStyle, RoundedCornerShape(24.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f)
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -576,7 +576,7 @@ private fun IconActionButton(
         isPrimary -> mainTextColor
         else -> mainTextColor
     }
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(22.dp)
     val containerModifier = if (isSelected) {
         Modifier
             .background(accentColor.copy(alpha = if (isDarkTextEnabled) 0.10f else 0.16f), shape)
@@ -694,7 +694,7 @@ fun LucideIconPicker(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
+                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
                     }
                     Text("Icon wählen", fontSize = 20.sp, fontWeight = fontWeight.weight, color = mainTextColor)
                     Spacer(modifier = Modifier.width(48.dp)) // Placeholder for balance
@@ -702,7 +702,7 @@ fun LucideIconPicker(
 
                 // Suchleiste im Icon-Picker
                 val searchBarModifier = Modifier.designSurface(
-                    designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                    designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
                     fillAlpha = 0.1f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
                     borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
                 )
@@ -753,7 +753,7 @@ fun LucideIconPicker(
                             exit = fadeOut(animationSpec = tween(200))
                         ) {
                             val iconBoxModifier = Modifier.designSurface(
-                                designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                                designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
                                 fillAlpha = 0.05f, glassStartAlpha = 0.08f, glassEndAlpha = 0.02f,
                                 borderWidth = 0.5.dp, borderStartAlpha = 0.1f, borderEndAlpha = 0.1f
                             )
@@ -761,7 +761,7 @@ fun LucideIconPicker(
                             Box(
                                 modifier = Modifier
                                     .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(16.dp))
                                     .then(iconBoxModifier)
                                     .clickable { onIconSelected(name) }
                                     .padding(4.dp),

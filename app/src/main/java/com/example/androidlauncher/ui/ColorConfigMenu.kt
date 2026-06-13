@@ -7,8 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.ColorTheme
@@ -78,7 +78,7 @@ fun ColorConfigMenu(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Farben", fontSize = 24.sp, fontWeight = fontWeight.weight, color = mainTextColor)
                 IconButton(onClick = onClose) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = mainTextColor)
+                    Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
                 }
             }
 
@@ -114,9 +114,9 @@ fun ColorConfigMenu(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .clickable { onOpenDesignMenu() }
-                    .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                    .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
                     .testTag("design_style_row")
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -127,7 +127,7 @@ fun ColorConfigMenu(
                     Text(designStyle.displayName, color = mainTextColor.copy(alpha = 0.6f), fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = null,
                         tint = mainTextColor.copy(alpha = 0.5f),
                         modifier = Modifier.size(20.dp)
@@ -180,7 +180,7 @@ fun ColorPickerRow(label: String, color: Color, mainTextColor: Color, onClick: (
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(mainTextColor.copy(alpha = 0.05f))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -234,7 +234,7 @@ fun ColorPickerDialog(
 @Composable
 fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, mainTextColor: Color, designStyle: DesignStyle, isDarkTextEnabled: Boolean, modifier: Modifier = Modifier) {
     val cardModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled,
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled,
         accent = colorTheme.menuSurfaceColor(isDarkTextEnabled), fillAlpha = 0.05f
     )
 
@@ -279,12 +279,12 @@ fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, mainText
 @Composable
 fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color, designStyle: DesignStyle, isDarkTextEnabled: Boolean, onClick: () -> Unit) {
     val baseModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled,
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled,
         accent = theme.menuSurfaceColor(isDarkTextEnabled),
         fillAlpha = if (isSelected) 0.15f else 0.05f
     )
     val itemModifier = if (isSelected) {
-        baseModifier.border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
+        baseModifier.border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.5f)), RoundedCornerShape(20.dp))
     } else {
         baseModifier
     }
@@ -342,7 +342,7 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
             }
 
             if (isSelected) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = mainTextColor)
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = mainTextColor)
             }
         }
     }

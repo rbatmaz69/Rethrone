@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -59,7 +59,7 @@ fun WallpaperConfigMenu(
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Schließen", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = "Schließen", tint = mainTextColor)
             }
         }
 
@@ -134,7 +134,7 @@ fun WallpaperConfigMenu(
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = mainTextColor.copy(alpha = 0.1f)),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp)
         ) {
             Text("Effekte zurücksetzen", color = mainTextColor)
         }
