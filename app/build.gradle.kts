@@ -25,6 +25,10 @@ android {
 
     buildTypes {
         release {
+            // Mit dem Debug-Keystore signieren, damit der Release-Build per ADB
+            // (auch über WLAN) installierbar ist und in-place neben dem Debug-Build
+            // aktualisiert werden kann (gleiche Signatur, gleiche applicationId).
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
