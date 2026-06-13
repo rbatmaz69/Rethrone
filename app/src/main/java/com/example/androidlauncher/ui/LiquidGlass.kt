@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.androidlauncher.data.DesignStyle
 
 /**
  * Zentrales Hilfs-Objekt für den "Liquid Glass"-Effekt.
@@ -87,26 +88,61 @@ object LiquidGlass {
         .border(BorderStroke(borderWidth, borderBrush(isDarkText)), shape)
 
     /**
-     * Wendet entweder den Liquid-Glass-Effekt oder einen einfachen halbtransparenten
-     * Hintergrund an, abhängig davon ob Liquid Glass aktiviert ist.
+     * Erzeugt einen getönten Glas-Brush (wie [glassBrush], aber in einer Akzentfarbe).
+     */
+    fun tintedBrush(accent: Color, startAlpha: Float = 0.30f, endAlpha: Float = 0.12f): Brush =
+        Brush.linearGradient(
+            colors = listOf(accent.copy(alpha = startAlpha), accent.copy(alpha = endAlpha)),
+            start = Offset(0f, 0f),
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        )
+
+    /**
+     * Zentraler Oberflächen-Modifier: wendet je nach [DesignStyle] den passenden
+     * Hintergrund/Rahmen an. Ersetzt die früheren `if (isLiquidGlassEnabled)`-Verzweigungen.
      *
+     * @param style Der gewählte Design-Stil.
      * @param shape Die Form des Elements.
      * @param isDarkText Ob der dunkle Textmodus aktiv ist.
-     * @param isEnabled Ob Liquid Glass aktiviert ist.
-     * @param fallbackAlpha Alpha-Wert für den einfachen Hintergrund wenn Glass deaktiviert ist.
-     * @param borderWidth Breite des Glass-Rahmens.
+     * @param accent Theme-Farbe für [DesignStyle.SOLID]/[DesignStyle.TINTED]
+     *               (i.d.R. `LocalColorTheme.current.menuSurfaceColor(isDarkText)`).
+     * @param fillAlpha Alpha des flachen Hintergrunds bei [DesignStyle.FLAT].
+     * @param glassStartAlpha / glassEndAlpha Alpha-Werte des Glas-Gradienten.
+     * @param borderWidth Breite des Rahmens (Glass/Tinted/Outline).
      */
-    fun Modifier.conditionalGlass(
+    fun Modifier.designSurface(
+        style: DesignStyle,
         shape: Shape,
         isDarkText: Boolean,
-        isEnabled: Boolean,
-        fallbackAlpha: Float = 0.1f,
-        borderWidth: Dp = 1.2.dp
-    ): Modifier = if (isEnabled) {
-        this.liquidGlass(shape, isDarkText, borderWidth)
-    } else {
+        accent: Color = Color.Transparent,
+        fillAlpha: Float = 0.1f,
+        glassStartAlpha: Float = 0.15f,
+        glassEndAlpha: Float = 0.05f,
+        borderWidth: Dp = 1.2.dp,
+        borderStartAlpha: Float? = null,
+        borderEndAlpha: Float? = null
+    ): Modifier {
         val baseColor = if (isDarkText) Color.Black else Color.White
-        this.background(baseColor.copy(alpha = fallbackAlpha), shape)
+        val glassBorder = if (borderStartAlpha != null && borderEndAlpha != null) {
+            borderBrush(isDarkText, borderStartAlpha, borderEndAlpha)
+        } else {
+            borderBrush(isDarkText)
+        }
+        return when (style) {
+            DesignStyle.GLASS -> this
+                .background(glassBrush(isDarkText, glassStartAlpha, glassEndAlpha), shape)
+                .border(BorderStroke(borderWidth, glassBorder), shape)
+            DesignStyle.FLAT -> this
+                .background(baseColor.copy(alpha = fillAlpha), shape)
+            DesignStyle.MINIMAL -> this
+            DesignStyle.OUTLINE -> this
+                .border(BorderStroke(borderWidth, baseColor.copy(alpha = 0.5f)), shape)
+            DesignStyle.SOLID -> this
+                .background(accent, shape)
+            DesignStyle.TINTED -> this
+                .background(tintedBrush(accent), shape)
+                .border(BorderStroke(borderWidth, accent.copy(alpha = 0.4f)), shape)
+        }
     }
 
     // ── Switch-Farben ────────────────────────────────────────────────

@@ -30,9 +30,12 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -67,7 +70,8 @@ fun UninstallAppsMenu(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
     val fontWeight = LocalFontWeight.current
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     val secondaryTextColor = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
@@ -200,13 +204,11 @@ fun UninstallAppsMenu(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Suchleiste mit Liquid-Glass-Optik (wie in IconConfigMenu).
-        val searchBarModifier = if (isLiquidGlassEnabled) {
-            Modifier
-                .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f), RoundedCornerShape(12.dp))
-                .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.2f, endAlpha = 0.05f)), RoundedCornerShape(12.dp))
-        } else {
-            Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-        }
+        val searchBarModifier = Modifier.designSurface(
+            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+            fillAlpha = 0.1f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+            borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
+        )
 
         Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp)) {
             StableSearchFieldContent(
@@ -239,7 +241,8 @@ fun UninstallAppsMenu(
                     onRequestUninstall = { pendingConfirmation = listOf(app.packageName) },
                     mainTextColor = mainTextColor,
                     secondaryTextColor = secondaryTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled
                 )
             }
@@ -323,7 +326,8 @@ private fun UninstallAppRow(
     onRequestUninstall: () -> Unit,
     mainTextColor: Color,
     secondaryTextColor: Color,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     isDarkTextEnabled: Boolean
 ) {
     // Swipe löst die Bestätigung aus; die Zeile bleibt erhalten (confirmValueChange == false),
@@ -337,13 +341,11 @@ private fun UninstallAppRow(
         }
     )
 
-    val itemBackgroundModifier = if (isLiquidGlassEnabled) {
-        Modifier
-            .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.06f, endAlpha = 0.02f), RoundedCornerShape(16.dp))
-            .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.15f, endAlpha = 0.03f)), RoundedCornerShape(16.dp))
-    } else {
-        Modifier.background(mainTextColor.copy(alpha = 0.03f), RoundedCornerShape(16.dp))
-    }
+    val itemBackgroundModifier = Modifier.designSurface(
+        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        fillAlpha = 0.03f, glassStartAlpha = 0.06f, glassEndAlpha = 0.02f,
+        borderWidth = 1.dp, borderStartAlpha = 0.15f, borderEndAlpha = 0.03f
+    )
 
     SwipeToDismissBox(
         state = dismissState,
@@ -355,13 +357,11 @@ private fun UninstallAppRow(
             // Hintergrund durch den durchscheinenden Zeilen-Vordergrund scheinen.
             val isSwiping = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
             if (isSwiping) {
-                val revealModifier = if (isLiquidGlassEnabled) {
-                    Modifier
-                        .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.18f, endAlpha = 0.08f), RoundedCornerShape(16.dp))
-                        .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.2f, endAlpha = 0.05f)), RoundedCornerShape(16.dp))
-                } else {
-                    Modifier.background(mainTextColor.copy(alpha = 0.10f), RoundedCornerShape(16.dp))
-                }
+                val revealModifier = Modifier.designSurface(
+                    designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                    fillAlpha = 0.10f, glassStartAlpha = 0.18f, glassEndAlpha = 0.08f,
+                    borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

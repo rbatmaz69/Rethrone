@@ -26,10 +26,11 @@ import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Palette
 import com.composables.icons.lucide.Pencil
-import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalHomeTextColor
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlinx.coroutines.delay
 import kotlin.math.*
 
@@ -60,7 +61,8 @@ fun SettingsPaletteMenu(
     onOpenInfo: () -> Unit
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
     // Icon-Tönung folgt der gewählten Farbe – wie alles andere auf der Startseite.
     val mainTextColor = LocalHomeTextColor.current
     
@@ -121,11 +123,12 @@ fun SettingsPaletteMenu(
                 val targetY = (-sin(angleRad) * radius).toFloat()
 
                 // Gleicher innerer Kreis-Hintergrund wie der Einstellungs-Button selbst.
-                val backgroundModifier = Modifier.conditionalGlass(
+                val backgroundModifier = Modifier.designSurface(
+                    designStyle,
                     CircleShape,
                     isDarkTextEnabled,
-                    isLiquidGlassEnabled,
-                    fallbackAlpha = if (isSettingsOpen) 0.1f else 0.15f
+                    surfaceAccent,
+                    fillAlpha = if (isSettingsOpen) 0.1f else 0.15f
                 )
 
                 Box(

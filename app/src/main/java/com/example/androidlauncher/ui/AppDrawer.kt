@@ -80,7 +80,9 @@ import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.composables.icons.lucide.*
 import kotlinx.coroutines.delay
 import kotlin.math.max
@@ -117,7 +119,8 @@ fun AppDrawer(
     }
     val appFont = LocalAppFont.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val drawerBackgroundBrush = remember(colorTheme, isDarkTextEnabled) {
@@ -240,10 +243,11 @@ fun AppDrawer(
                         
                         if (isCreateFolderDialogOpen) {
                             Dialog(onDismissRequest = { isCreateFolderDialogOpen = false }) {
-                                val dialogBorderModifier = if (isLiquidGlassEnabled) {
-                                    Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
-                                } else {
-                                    Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
+                                val dialogBorderModifier = when (designStyle) {
+                                    DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
+                                    DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(28.dp))
+                                    DesignStyle.MINIMAL -> Modifier
+                                    else -> Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
                                 }
 
                                 Surface(
@@ -263,13 +267,9 @@ fun AppDrawer(
                                         )
                                         Spacer(modifier = Modifier.height(16.dp))
 
-                                        val inputModifier = if (isLiquidGlassEnabled) {
-                                            Modifier
-                                                .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
-                                                .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
-                                        } else {
-                                            Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                                        }
+                                        val inputModifier = Modifier.designSurface(
+                                            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+                                        )
 
                                         Box(
                                             modifier = Modifier
@@ -340,13 +340,9 @@ fun AppDrawer(
             Spacer(modifier = Modifier.height(16.dp))
 
             val searchIntSrc = remember { MutableInteractionSource() }
-            val searchBarModifier = if (isLiquidGlassEnabled) {
-                Modifier
-                    .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
-                    .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
-            } else {
-                Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-            }
+            val searchBarModifier = Modifier.designSurface(
+                designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+            )
 
             Box(modifier = Modifier.fillMaxWidth().testTag("app_drawer_search_field").then(searchBarModifier).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
                 interactionSource = searchIntSrc,
@@ -496,8 +492,12 @@ fun AppDrawer(
                     val translationX = folderTranslation.x * (1f - folderProgress)
                     val translationY = folderTranslation.y * (1f - folderProgress)
 
-                    val folderBorder = if (isLiquidGlassEnabled) BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled))
-                    else BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f))
+                    val folderBorder = when (designStyle) {
+                        DesignStyle.GLASS -> BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled))
+                        DesignStyle.TINTED -> BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f))
+                        DesignStyle.MINIMAL -> BorderStroke(0.dp, Color.Transparent)
+                        else -> BorderStroke(1.dp, mainTextColor.copy(alpha = 0.15f))
+                    }
 
                     Surface(
                          modifier = Modifier
@@ -809,7 +809,12 @@ fun AppDrawer(
 
         if (showFolderSelection && folderSelectionApp != null) {
             Dialog(onDismissRequest = { showFolderSelection = false }) {
-                val dialogBorderModifier = if (isLiquidGlassEnabled) Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp)) else Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
+                val dialogBorderModifier = when (designStyle) {
+                    DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
+                    DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(28.dp))
+                    DesignStyle.MINIMAL -> Modifier
+                    else -> Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(28.dp))
+                }
                 Surface(modifier = Modifier.fillMaxWidth(0.8f).wrapContentHeight().then(dialogBorderModifier), shape = RoundedCornerShape(28.dp), color = menuSurfaceColor.copy(alpha = 0.98f), shadowElevation = 16.dp) {
                      Column(modifier = Modifier.padding(20.dp)) {
                         Text("In Ordner verschieben", fontSize = 18.sp * fontSize.scale, fontWeight = fontWeight.weight, color = mainTextColor, modifier = Modifier.padding(bottom = 16.dp))
@@ -844,7 +849,8 @@ fun FolderItem(
     val iconSizeValue = LocalIconSize.current.size
     val fontWeight = LocalFontWeight.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val intSrc = remember { MutableInteractionSource() }
     var itemOffset by remember { mutableStateOf(Offset.Zero) }
@@ -855,7 +861,7 @@ fun FolderItem(
         itemOffset = Offset(x = position.x + size.width / 2f, y = position.y + size.height / 2f)
     }, contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(interactionSource = intSrc, indication = null, onClick = { onClick(itemOffset) }, onLongClick = { onOpenFolderConfig(folder) })) {
-            val folderBoxModifier = if (isLiquidGlassEnabled) Modifier.background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp)).border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp)) else Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            val folderBoxModifier = Modifier.designSurface(designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f)
             Box(modifier = Modifier.size(iconSizeValue).then(folderBoxModifier), contentAlignment = Alignment.Center) { Icon(Lucide.Folder, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(iconSizeValue * 0.6f)) }
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = folder.name, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), fontWeight = fontWeight.weight)

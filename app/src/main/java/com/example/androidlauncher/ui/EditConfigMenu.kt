@@ -43,9 +43,12 @@ import com.composables.icons.lucide.List
 import com.composables.icons.lucide.PanelRight
 import com.composables.icons.lucide.Trash2
 import com.example.androidlauncher.data.AppAccessMode
+import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.ShakeAction
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -83,7 +86,8 @@ fun EditConfigMenu(
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val menuListState = rememberLazyListState()
 
@@ -146,7 +150,8 @@ fun EditConfigMenu(
                     checked = isHapticFeedbackEnabled,
                     onCheckedChange = { onHapticFeedbackToggled(it) },
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "haptic_feedback_switch"
                 )
@@ -160,7 +165,8 @@ fun EditConfigMenu(
                     checked = isAnimationsEnabled,
                     onCheckedChange = { onAnimationsToggled(it) },
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "animations_switch"
                 )
@@ -172,7 +178,8 @@ fun EditConfigMenu(
                     selectedMode = appAccessMode,
                     onModeSelected = onAppAccessModeChange,
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     testTag = "app_access_mode_selector"
                 )
@@ -184,7 +191,8 @@ fun EditConfigMenu(
                     label = "Startbildschirm-Layout anpassen",
                     onClick = onOpenHomeLayoutEdit,
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     testTag = "edit_home_layout_item",
                     trailingContent = {
@@ -217,7 +225,8 @@ fun EditConfigMenu(
                     label = "App-Icons anpassen",
                     onClick = onOpenIconConfig,
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled
                 )
             }
@@ -228,7 +237,8 @@ fun EditConfigMenu(
                     label = "Wallpaper ändern",
                     onClick = onChangeWallpaper,
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     trailingContent = {
                         if (isCustomWallpaperSet) {
@@ -258,7 +268,8 @@ fun EditConfigMenu(
                         label = "Hintergrund anpassen",
                         onClick = onOpenWallpaperAdjust,
                         mainTextColor = mainTextColor,
-                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                         isDarkTextEnabled = isDarkTextEnabled
                     )
                 }
@@ -277,7 +288,8 @@ fun EditConfigMenu(
                     label = "Apps deinstallieren",
                     onClick = onOpenUninstallApps,
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     testTag = "uninstall_apps_item"
                 )
@@ -298,7 +310,8 @@ fun EditConfigMenu(
                     checked = isSmartSuggestionsEnabled,
                     onCheckedChange = onSmartSuggestionsToggled,
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "smart_search_switch"
                 )
@@ -310,7 +323,8 @@ fun EditConfigMenu(
                     label = "Suchverlauf löschen",
                     onClick = onClearSearchHistory,
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled
                 )
             }
@@ -330,7 +344,8 @@ fun EditConfigMenu(
                     checked = isShakeGesturesEnabled,
                     onCheckedChange = onShakeGesturesToggled,
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "shake_gestures_switch"
                 )
@@ -343,7 +358,8 @@ fun EditConfigMenu(
                         selectedAction = singleShakeAction,
                         onActionSelected = onSingleShakeActionChange,
                         mainTextColor = mainTextColor,
-                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                         isDarkTextEnabled = isDarkTextEnabled,
                         testTag = "single_shake_action_selector"
                     )
@@ -355,7 +371,8 @@ fun EditConfigMenu(
                         selectedAction = doubleShakeAction,
                         onActionSelected = onDoubleShakeActionChange,
                         mainTextColor = mainTextColor,
-                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                         isDarkTextEnabled = isDarkTextEnabled,
                         testTag = "double_shake_action_selector"
                     )
@@ -378,7 +395,8 @@ fun EditConfigMenu(
                     },
                     statusLabel = if (isDefaultLauncherSet) "An" else "Aus",
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     testTag = "default_launcher_item"
                 )
@@ -393,7 +411,8 @@ fun EditConfigMenu(
                     },
                     statusLabel = if (isNotificationEnabled) "An" else "Aus",
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled
                 )
             }
@@ -407,7 +426,8 @@ fun EditConfigMenu(
                     },
                     statusLabel = if (isAccessibilityEnabled) "An" else "Aus",
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled
                 )
             }
@@ -421,7 +441,8 @@ fun EditConfigMenu(
                     },
                     statusLabel = if (isUsageAccessEnabled) "An" else "Aus",
                     mainTextColor = mainTextColor,
-                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled
                 )
             }
@@ -449,19 +470,18 @@ fun EditMenuItem(
     label: String,
     onClick: () -> Unit,
     mainTextColor: Color,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     isDarkTextEnabled: Boolean,
     statusLabel: String? = null,
     trailingContent: @Composable (() -> Unit)? = null,
     testTag: String? = null
 ) {
-    val backgroundModifier = if (isLiquidGlassEnabled) {
-        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
-        val borderBrush = LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, endAlpha = 0.05f)
-        Modifier.background(glassBrush, RoundedCornerShape(16.dp)).border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
-    } else {
-        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-    }
+    val backgroundModifier = Modifier.designSurface(
+        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+        borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
+    )
 
     Surface(
         modifier = Modifier
@@ -499,23 +519,16 @@ private fun EditToggleItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     mainTextColor: Color,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     isDarkTextEnabled: Boolean,
     switchTestTag: String
 ) {
-    val backgroundModifier = if (isLiquidGlassEnabled) {
-        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
-        val borderBrush = LiquidGlass.borderBrush(
-            isDarkTextEnabled,
-            startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f,
-            endAlpha = 0.05f
-        )
-        Modifier
-            .background(glassBrush, RoundedCornerShape(16.dp))
-            .border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
-    } else {
-        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-    }
+    val backgroundModifier = Modifier.designSurface(
+        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+        borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
+    )
 
     Surface(
         modifier = Modifier
@@ -556,7 +569,7 @@ private fun EditToggleItem(
                 modifier = Modifier.testTag(switchTestTag),
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                colors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled)
+                colors = LiquidGlass.switchColors(isDarkTextEnabled, designStyle.isGlassLike)
             )
         }
     }
@@ -579,19 +592,18 @@ private fun EditAppAccessSelectorItem(
     selectedMode: AppAccessMode,
     onModeSelected: (AppAccessMode) -> Unit,
     mainTextColor: Color,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     isDarkTextEnabled: Boolean,
     testTag: String
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    val backgroundModifier = if (isLiquidGlassEnabled) {
-        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
-        val borderBrush = LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, endAlpha = 0.05f)
-        Modifier.background(glassBrush, RoundedCornerShape(16.dp)).border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
-    } else {
-        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-    }
+    val backgroundModifier = Modifier.designSurface(
+        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+        borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
+    )
 
     Surface(
         modifier = Modifier
@@ -683,19 +695,18 @@ private fun EditActionSelectorItem(
     selectedAction: ShakeAction,
     onActionSelected: (ShakeAction) -> Unit,
     mainTextColor: Color,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     isDarkTextEnabled: Boolean,
     testTag: String
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    val backgroundModifier = if (isLiquidGlassEnabled) {
-        val glassBrush = LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f)
-        val borderBrush = LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, endAlpha = 0.05f)
-        Modifier.background(glassBrush, RoundedCornerShape(16.dp)).border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(16.dp))
-    } else {
-        Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-    }
+    val backgroundModifier = Modifier.designSurface(
+        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+        borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
+    )
 
     Surface(
         modifier = Modifier

@@ -65,9 +65,11 @@ import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlinx.coroutines.delay
 
 /**
@@ -97,7 +99,8 @@ fun FavoritesConfigMenu(
 ) {
     val context = LocalContext.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
 
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     val grayTone = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
@@ -157,7 +160,7 @@ fun FavoritesConfigMenu(
             Switch(
                 checked = showFavoriteLabels,
                 onCheckedChange = onShowLabelsToggled,
-                colors = LiquidGlass.switchColors(isDarkTextEnabled, isLiquidGlassEnabled),
+                colors = LiquidGlass.switchColors(isDarkTextEnabled, designStyle.isGlassLike),
                 thumbContent = {
                     Box(contentAlignment = Alignment.Center) {
                         if (showFavoriteLabels) {
@@ -185,7 +188,7 @@ fun FavoritesConfigMenu(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .conditionalGlass(RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled)
+                .designSurface(designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .clickable { focusRequester.requestFocus() }
         ) {
@@ -225,7 +228,8 @@ fun FavoritesConfigMenu(
                             mainTextColor = mainTextColor,
                             grayTone = grayTone,
                             isDarkTextEnabled = isDarkTextEnabled,
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
+                            designStyle = designStyle,
+                            surfaceAccent = surfaceAccent,
                             onMoveUp = {
                                 selectedPackages = LauncherLogic.moveFavoriteUp(selectedPackages, index)
                             },
@@ -267,9 +271,9 @@ fun FavoritesConfigMenu(
                             .fillMaxWidth()
                             .then(
                                 if (isFav) {
-                                    Modifier.conditionalGlass(
-                                        RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled,
-                                        fallbackAlpha = 0.05f
+                                    Modifier.designSurface(
+                                        designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                                        fillAlpha = 0.05f
                                     )
                                 } else {
                                     Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
@@ -373,14 +377,15 @@ private fun FavoriteOrderItem(
     mainTextColor: Color,
     grayTone: Color,
     isDarkTextEnabled: Boolean,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .conditionalGlass(RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.05f)
+            .designSurface(designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),

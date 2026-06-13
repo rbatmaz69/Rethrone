@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.example.androidlauncher.data.AppFont
+import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
@@ -34,7 +35,7 @@ val LocalIconColor = staticCompositionLocalOf { Color.White }
 /** Frei wählbare Schriftfarbe – nur Startbildschirm. */
 val LocalHomeTextColor = staticCompositionLocalOf { Color.White }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
-val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
+val LocalDesignStyle = staticCompositionLocalOf { DesignStyle.GLASS }
 val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
 /**
  * CompositionLocal for haptic feedback enabled state.
@@ -55,7 +56,7 @@ fun AndroidLauncherTheme(
     iconColor: Color = Color.White,
     homeTextColor: Color = Color.White,
     showFavoriteLabels: Boolean = false,
-    liquidGlassEnabled: Boolean = true,
+    designStyle: DesignStyle = DesignStyle.GLASS,
     appFont: AppFont = AppFont.SYSTEM_DEFAULT,
     hapticFeedbackEnabled: Boolean = true,
     animationsEnabled: Boolean = true,
@@ -121,7 +122,7 @@ fun AndroidLauncherTheme(
         LocalIconColor provides iconColor,
         LocalHomeTextColor provides homeTextColor,
         LocalShowFavoriteLabels provides showFavoriteLabels,
-        LocalLiquidGlassEnabled provides liquidGlassEnabled,
+        LocalDesignStyle provides designStyle,
         LocalAppFont provides appFont,
         LocalHapticFeedbackEnabled provides hapticFeedbackEnabled,
         LocalAnimationsEnabled provides animationsEnabled

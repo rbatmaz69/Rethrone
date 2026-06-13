@@ -27,7 +27,8 @@ import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import kotlinx.coroutines.delay
 
 /**
@@ -41,7 +42,8 @@ fun FontSelectionMenu(
     onBack: () -> Unit
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val grayTone = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
     
@@ -76,13 +78,9 @@ fun FontSelectionMenu(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Search Bar
-        val searchBarModifier = if (isLiquidGlassEnabled) {
-            Modifier
-                .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
-                .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
-        } else {
-            Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-        }
+        val searchBarModifier = Modifier.designSurface(
+            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+        )
 
         Box(
             modifier = Modifier
@@ -132,19 +130,10 @@ fun FontSelectionMenu(
                     exit = fadeOut(animationSpec = tween(200))
                 ) {
                     val itemModifier = if (isSelected) {
-                        if (isLiquidGlassEnabled) {
-                            Modifier
-                                .background(
-                                    LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.25f, endAlpha = 0.1f),
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .border(
-                                    BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)),
-                                    RoundedCornerShape(12.dp)
-                                )
-                        } else {
-                            Modifier.background(mainTextColor.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                        }
+                        Modifier.designSurface(
+                            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                            fillAlpha = 0.15f, glassStartAlpha = 0.25f, glassEndAlpha = 0.1f
+                        )
                     } else {
                         Modifier
                     }

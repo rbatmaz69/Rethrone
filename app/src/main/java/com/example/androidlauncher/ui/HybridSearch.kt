@@ -60,7 +60,8 @@ import com.example.androidlauncher.data.SearchHistoryEntry
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlin.math.min
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
@@ -81,7 +82,8 @@ fun HybridSearch(
     val keyboardController = LocalSoftwareKeyboardController.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val fontSize = LocalFontSize.current
     val density = LocalDensity.current
 
@@ -119,15 +121,17 @@ fun HybridSearch(
         colorTheme.borderColor(isDarkTextEnabled)
     }
 
-    val searchContainerModifier = if (isLiquidGlassEnabled) {
-        Modifier
-            .background(searchSurfaceBrush, RoundedCornerShape(28.dp))
-            .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
-    } else {
-        Modifier
-            .background(searchSurfaceBrush, RoundedCornerShape(28.dp))
-            .border(BorderStroke(1.dp, themeBorderColor), RoundedCornerShape(28.dp))
-    }
+    // Suchfeld behält stets seinen Theme-Hintergrund (Lesbarkeit); nur der Rand variiert je Stil.
+    val searchContainerModifier = Modifier
+        .background(searchSurfaceBrush, RoundedCornerShape(28.dp))
+        .then(
+            when (designStyle) {
+                DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
+                DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(28.dp))
+                DesignStyle.MINIMAL -> Modifier
+                else -> Modifier.border(BorderStroke(1.dp, themeBorderColor), RoundedCornerShape(28.dp))
+            }
+        )
     val rowBackgroundColor = remember(mainTextColor, isDarkTextEnabled) {
         if (isDarkTextEnabled) Color.Black.copy(alpha = 0.035f) else Color.White.copy(alpha = 0.055f)
     }
@@ -339,7 +343,7 @@ fun HybridSearch(
                                 query = query,
                                 rowBackgroundColor = rowBackgroundColor,
                                 mainTextColor = mainTextColor,
-                                isLiquidGlass = isLiquidGlassEnabled,
+                                isLiquidGlass = designStyle.isGlassLike,
                                 isDarkText = isDarkTextEnabled,
                                 onClick = { bounds ->
                                     buildWebSearchIntent(context, historySuggestion.query)?.let { intent ->
@@ -354,7 +358,7 @@ fun HybridSearch(
                                 query = webSuggestionQuery,
                                 rowBackgroundColor = primaryWebRowColor,
                                 mainTextColor = mainTextColor,
-                                isLiquidGlass = isLiquidGlassEnabled,
+                                isLiquidGlass = designStyle.isGlassLike,
                                 isDarkText = isDarkTextEnabled,
                                 onClick = { bounds ->
                                     buildWebSearchIntent(context, webSuggestionQuery)?.let { intent ->

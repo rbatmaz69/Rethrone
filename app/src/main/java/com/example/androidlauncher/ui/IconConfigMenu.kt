@@ -40,11 +40,12 @@ import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.AutoIconRuleMode
-import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -71,7 +72,8 @@ fun IconConfigMenu(
     onClose: () -> Unit
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
     val fontWeight = LocalFontWeight.current
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     val secondaryTextColor = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
@@ -111,13 +113,11 @@ fun IconConfigMenu(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Suchleiste mit Liquid-Glass-Optik
-        val searchBarModifier = if (isLiquidGlassEnabled) {
-            Modifier
-                .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f), RoundedCornerShape(12.dp))
-                .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.2f, endAlpha = 0.05f)), RoundedCornerShape(12.dp))
-        } else {
-            Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-        }
+        val searchBarModifier = Modifier.designSurface(
+            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+            fillAlpha = 0.1f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+            borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
+        )
 
         Box(modifier = Modifier.fillMaxWidth().then(searchBarModifier).padding(horizontal = 16.dp, vertical = 12.dp)) {
             StableSearchFieldContent(
@@ -163,13 +163,11 @@ fun IconConfigMenu(
                             slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
                     exit = fadeOut(animationSpec = tween(200))
                 ) {
-                    val itemBackgroundModifier = if (isLiquidGlassEnabled) {
-                        Modifier
-                            .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.06f, endAlpha = 0.02f), RoundedCornerShape(16.dp))
-                            .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.15f, endAlpha = 0.03f)), RoundedCornerShape(16.dp))
-                    } else {
-                        Modifier.background(mainTextColor.copy(alpha = 0.03f), RoundedCornerShape(16.dp))
-                    }
+                    val itemBackgroundModifier = Modifier.designSurface(
+                        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                        fillAlpha = 0.03f, glassStartAlpha = 0.06f, glassEndAlpha = 0.02f,
+                        borderWidth = 1.dp, borderStartAlpha = 0.15f, borderEndAlpha = 0.03f
+                    )
 
                     Surface(
                         modifier = Modifier
@@ -232,7 +230,8 @@ fun IconConfigMenu(
                 selectedAppForActions = null
             },
             onDismiss = { selectedAppForActions = null },
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            designStyle = designStyle,
+            surfaceAccent = surfaceAccent,
             isDarkTextEnabled = isDarkTextEnabled
         )
     }
@@ -244,7 +243,8 @@ fun IconConfigMenu(
                 selectedAppForPicker = null
             },
             onDismiss = { selectedAppForPicker = null },
-            isLiquidGlassEnabled = isLiquidGlassEnabled,
+            designStyle = designStyle,
+            surfaceAccent = surfaceAccent,
             isDarkTextEnabled = isDarkTextEnabled
         )
     }
@@ -261,7 +261,8 @@ private fun IconActionDialog(
     onSelectRule: (AutoIconRuleMode?) -> Unit,
     onReanalyze: () -> Unit,
     onDismiss: () -> Unit,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     isDarkTextEnabled: Boolean
 ) {
     val colorTheme = LocalColorTheme.current
@@ -331,14 +332,15 @@ private fun IconActionDialog(
                         .heightIn(max = maxSheetHeight)
                         .testTag("icon_action_dialog")
                         .clip(shape)
-                        .conditionalGlass(
+                        .designSurface(
+                            style = designStyle,
                             shape = shape,
                             isDarkText = isDarkTextEnabled,
-                            isEnabled = isLiquidGlassEnabled,
-                            fallbackAlpha = 0.08f
+                            accent = surfaceAccent,
+                            fillAlpha = 0.08f
                         )
                         .clickable(enabled = false) {},
-                    color = menuSurfaceColor.copy(alpha = if (isLiquidGlassEnabled) 0.84f else 0.96f),
+                    color = menuSurfaceColor.copy(alpha = if (designStyle.isGlassLike) 0.84f else 0.96f),
                     shape = shape,
                     shadowElevation = 28.dp
                 ) {
@@ -373,7 +375,7 @@ private fun IconActionDialog(
                                     modifier = Modifier
                                         .size(54.dp)
                                         .clip(CircleShape)
-                                        .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.06f),
+                                        .designSurface(designStyle, CircleShape, isDarkTextEnabled, surfaceAccent, fillAlpha = 0.06f),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     AppIconView(app = app, modifier = Modifier.size(30.dp))
@@ -401,7 +403,7 @@ private fun IconActionDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(20.dp))
-                                .conditionalGlass(RoundedCornerShape(20.dp), isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.05f)
+                                .designSurface(designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f)
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -443,7 +445,8 @@ private fun IconActionDialog(
                                     onPickLucide()
                                 },
                                 isPrimary = true,
-                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                designStyle = designStyle,
+                                surfaceAccent = surfaceAccent,
                                 isDarkTextEnabled = isDarkTextEnabled
                             )
                             IconActionButton(
@@ -455,7 +458,8 @@ private fun IconActionDialog(
                                     dismissSheet()
                                     onReanalyze()
                                 },
-                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                designStyle = designStyle,
+                                surfaceAccent = surfaceAccent,
                                 isDarkTextEnabled = isDarkTextEnabled
                             )
                         }
@@ -478,7 +482,8 @@ private fun IconActionDialog(
                                     onSelectRule(AutoIconRuleMode.KEEP_ORIGINAL)
                                 },
                                 isSelected = explicitRule?.mode == AutoIconRuleMode.KEEP_ORIGINAL,
-                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                designStyle = designStyle,
+                                surfaceAccent = surfaceAccent,
                                 isDarkTextEnabled = isDarkTextEnabled
                             )
                             IconActionButton(
@@ -491,7 +496,8 @@ private fun IconActionDialog(
                                     onSelectRule(AutoIconRuleMode.FORCE_FALLBACK)
                                 },
                                 isSelected = explicitRule?.mode == AutoIconRuleMode.FORCE_FALLBACK,
-                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                designStyle = designStyle,
+                                surfaceAccent = surfaceAccent,
                                 isDarkTextEnabled = isDarkTextEnabled
                             )
                             IconActionButton(
@@ -504,7 +510,8 @@ private fun IconActionDialog(
                                     onSelectRule(AutoIconRuleMode.FOLLOW_HEURISTIC)
                                 },
                                 isSelected = explicitRule?.mode == AutoIconRuleMode.FOLLOW_HEURISTIC,
-                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                designStyle = designStyle,
+                                surfaceAccent = surfaceAccent,
                                 isDarkTextEnabled = isDarkTextEnabled
                             )
                             if (explicitRule != null) {
@@ -517,7 +524,8 @@ private fun IconActionDialog(
                                         dismissSheet()
                                         onSelectRule(null)
                                     },
-                                    isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                    designStyle = designStyle,
+                                    surfaceAccent = surfaceAccent,
                                     isDarkTextEnabled = isDarkTextEnabled
                                 )
                             }
@@ -535,7 +543,8 @@ private fun IconActionDialog(
                                     onResetManual()
                                 },
                                 isDestructive = true,
-                                isLiquidGlassEnabled = isLiquidGlassEnabled,
+                                designStyle = designStyle,
+                                surfaceAccent = surfaceAccent,
                                 isDarkTextEnabled = isDarkTextEnabled
                             )
                         }
@@ -556,7 +565,8 @@ private fun IconActionButton(
     isPrimary: Boolean = false,
     isDestructive: Boolean = false,
     isSelected: Boolean = false,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     isDarkTextEnabled: Boolean
 ) {
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
@@ -572,7 +582,7 @@ private fun IconActionButton(
             .background(accentColor.copy(alpha = if (isDarkTextEnabled) 0.10f else 0.16f), shape)
             .border(BorderStroke(1.dp, accentColor.copy(alpha = 0.38f)), shape)
     } else {
-        Modifier.conditionalGlass(shape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.05f)
+        Modifier.designSurface(designStyle, shape, isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f)
     }
 
     Row(
@@ -642,7 +652,8 @@ private fun buildIconStatusLabel(app: AppInfo, explicitRule: AutoIconRule?): Str
 fun LucideIconPicker(
     onIconSelected: (String) -> Unit,
     onDismiss: () -> Unit,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     isDarkTextEnabled: Boolean
 ) {
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
@@ -690,13 +701,11 @@ fun LucideIconPicker(
                 }
 
                 // Suchleiste im Icon-Picker
-                val searchBarModifier = if (isLiquidGlassEnabled) {
-                    Modifier
-                        .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.10f, endAlpha = 0.03f), RoundedCornerShape(12.dp))
-                        .border(BorderStroke(1.dp, LiquidGlass.borderBrush(isDarkTextEnabled, startAlpha = 0.2f, endAlpha = 0.05f)), RoundedCornerShape(12.dp))
-                } else {
-                    Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                }
+                val searchBarModifier = Modifier.designSurface(
+                    designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                    fillAlpha = 0.1f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+                    borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
+                )
 
                 Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).then(searchBarModifier)) {
                     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -743,13 +752,11 @@ fun LucideIconPicker(
                                     slideInVertically(initialOffsetY = { 15 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
                             exit = fadeOut(animationSpec = tween(200))
                         ) {
-                            val iconBoxModifier = if (isLiquidGlassEnabled) {
-                                Modifier
-                                    .background(LiquidGlass.glassBrush(isDarkTextEnabled, startAlpha = 0.08f, endAlpha = 0.02f), RoundedCornerShape(12.dp))
-                                    .border(BorderStroke(0.5.dp, mainTextColor.copy(alpha = 0.1f)), RoundedCornerShape(12.dp))
-                            } else {
-                                Modifier.background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
-                            }
+                            val iconBoxModifier = Modifier.designSurface(
+                                designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                                fillAlpha = 0.05f, glassStartAlpha = 0.08f, glassEndAlpha = 0.02f,
+                                borderWidth = 0.5.dp, borderStartAlpha = 0.1f, borderEndAlpha = 0.1f
+                            )
 
                             Box(
                                 modifier = Modifier

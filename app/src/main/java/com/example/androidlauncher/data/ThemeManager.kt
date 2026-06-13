@@ -38,6 +38,7 @@ class ThemeManager(private val context: Context) {
         private val HOME_TEXT_COLOR_KEY = intPreferencesKey("home_text_color")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
+        private val DESIGN_STYLE_KEY = stringPreferencesKey("design_style")
         private val APP_FONT_KEY = stringPreferencesKey("app_font")
         private val CUSTOM_WALLPAPER_KEY = stringPreferencesKey("custom_wallpaper_uri")
         private val WALLPAPER_BLUR_KEY = floatPreferencesKey("wallpaper_blur")
@@ -99,6 +100,22 @@ class ThemeManager(private val context: Context) {
 
     val isLiquidGlassEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[LIQUID_GLASS_KEY] ?: true }
+
+    /**
+     * Gewählter Oberflächen-Stil. Migriert automatisch aus dem alten
+     * `liquid_glass_enabled`-Boolean, falls noch kein `design_style` gesetzt ist
+     * (true → GLASS, false → FLAT).
+     */
+    val designStyle: Flow<DesignStyle> = context.dataStore.data
+        .map { preferences ->
+            val stored = preferences[DESIGN_STYLE_KEY]
+            if (stored != null) {
+                DesignStyle.fromKey(stored)
+            } else {
+                // Migration aus dem Legacy-Boolean.
+                if (preferences[LIQUID_GLASS_KEY] == false) DesignStyle.FLAT else DesignStyle.GLASS
+            }
+        }
 
     val selectedAppFont: Flow<AppFont> = context.dataStore.data
         .map { preferences ->
@@ -215,6 +232,13 @@ class ThemeManager(private val context: Context) {
     suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
+    suspend fun setDesignStyle(style: DesignStyle) {
+        context.dataStore.edit {
+            it[DESIGN_STYLE_KEY] = style.name
+            // Legacy-Boolean konsistent halten, falls anderer Code es noch liest.
+            it[LIQUID_GLASS_KEY] = style.isGlassLike
+        }
+    }
     suspend fun setAppFont(font: AppFont) { context.dataStore.edit { it[APP_FONT_KEY] = font.name } }
     suspend fun setCustomWallpaperUri(uri: String?) { context.dataStore.edit { if (uri == null) it.remove(CUSTOM_WALLPAPER_KEY) else it[CUSTOM_WALLPAPER_KEY] = uri } }
     suspend fun setWallpaperBlur(blur: Float) { context.dataStore.edit { it[WALLPAPER_BLUR_KEY] = blur } }

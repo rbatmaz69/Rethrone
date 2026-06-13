@@ -27,7 +27,8 @@ import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.*
 import kotlinx.coroutines.delay
@@ -54,7 +55,8 @@ fun AppContextMenu(
 ) {
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
         colorTheme.menuSurfaceColor(isDarkTextEnabled)
@@ -159,10 +161,11 @@ fun AppContextMenu(
                 
                 val scale = 0.05f + (0.95f * progress)
 
-                val menuModifier = if (isLiquidGlassEnabled) {
-                    Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(24.dp))
-                } else {
-                    Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
+                val menuModifier = when (designStyle) {
+                    DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(24.dp))
+                    DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(24.dp))
+                    DesignStyle.MINIMAL -> Modifier
+                    else -> Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
                 }
 
                 Surface(

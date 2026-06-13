@@ -72,6 +72,7 @@ import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.AutoIconRule
+import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
@@ -86,6 +87,7 @@ import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
+import com.example.androidlauncher.ui.DesignStyleMenu
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.FavoritesConfigMenu
 import com.example.androidlauncher.ui.FolderConfigMenu
@@ -176,7 +178,7 @@ class MainActivity : ComponentActivity() {
             val iconColor by themeManager.iconColor.collectAsState(initial = Color.White)
             val homeTextColor by themeManager.homeTextColor.collectAsState(initial = Color.White)
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
-            val isLiquidGlassEnabled by themeManager.isLiquidGlassEnabled.collectAsState(initial = true)
+            val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
             val singleShakeAction by themeManager.singleShakeAction.collectAsState(initial = ShakeAction.FLASHLIGHT)
             val doubleShakeAction by themeManager.doubleShakeAction.collectAsState(initial = ShakeAction.CAMERA)
@@ -305,7 +307,7 @@ class MainActivity : ComponentActivity() {
                 iconColor = iconColor,
                 homeTextColor = homeTextColor,
                 showFavoriteLabels = showFavoriteLabels,
-                liquidGlassEnabled = isLiquidGlassEnabled,
+                designStyle = designStyle,
                 appFont = currentAppFont,
                 hapticFeedbackEnabled = isHapticFeedbackEnabled,
                 animationsEnabled = isAnimationsEnabled
@@ -345,6 +347,7 @@ class MainActivity : ComponentActivity() {
                 val searchLaunchSettleAfterStartMs = 30L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
+                var isDesignMenuOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
                 var isFontSelectionOpen by remember { mutableStateOf(false) }
                 var isEditConfigOpen by remember { mutableStateOf(false) }
@@ -770,20 +773,20 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(
-                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen,
+                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isDesignMenuOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
                     isIconConfigOpen, isUninstallAppsOpen, isWallpaperConfigOpen, isInfoOpen,
                     selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
-                        isColorConfigOpen || isSizeConfigOpen || isFontSelectionOpen ||
+                        isColorConfigOpen || isDesignMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
                         isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isWallpaperConfigOpen ||
                         isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
 
                 BackHandler(
-                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen ||
+                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isDesignMenuOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
                         isIconConfigOpen || isUninstallAppsOpen || isWallpaperConfigOpen || isInfoOpen ||
                         selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
@@ -798,6 +801,7 @@ class MainActivity : ComponentActivity() {
                         isIconConfigOpen -> isIconConfigOpen = false
                         isDrawerOpen -> isDrawerOpen = false
                         isFavoritesConfigOpen -> isFavoritesConfigOpen = false
+                        isDesignMenuOpen -> isDesignMenuOpen = false
                         isColorConfigOpen -> isColorConfigOpen = false
                         isSizeConfigOpen -> isSizeConfigOpen = false
                         isEditConfigOpen -> isEditConfigOpen = false
@@ -1022,10 +1026,27 @@ class MainActivity : ComponentActivity() {
                             onIconColorChange = { scope.launch { themeManager.setIconColor(it) } },
                             homeTextColor = homeTextColor,
                             onHomeTextColorChange = { scope.launch { themeManager.setHomeTextColor(it) } },
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
-                            onLiquidGlassToggled = { scope.launch { themeManager.setLiquidGlassEnabled(it) } },
+                            designStyle = designStyle,
+                            onOpenDesignMenu = { isDesignMenuOpen = true },
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isColorConfigOpen = false }
+                        )
+                    }
+
+                    MenuOverlay(
+                        visible = isDesignMenuOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isDesignMenuOpen = false }
+                    ) {
+                        DesignStyleMenu(
+                            currentStyle = designStyle,
+                            selectedTheme = currentTheme,
+                            isDarkTextEnabled = isDarkTextEnabled,
+                            onStyleSelected = { style ->
+                                scope.launch { themeManager.setDesignStyle(style) }
+                                isDesignMenuOpen = false
+                            },
+                            onClose = { isDesignMenuOpen = false }
                         )
                     }
 

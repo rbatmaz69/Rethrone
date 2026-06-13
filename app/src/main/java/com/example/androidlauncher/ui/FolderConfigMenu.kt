@@ -36,12 +36,13 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
-import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlinx.coroutines.delay
 
 /**
@@ -64,7 +65,8 @@ fun FolderConfigMenu(
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val fontWeight = LocalFontWeight.current
     val appFont = LocalAppFont.current
 
@@ -139,7 +141,7 @@ fun FolderConfigMenu(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .conditionalGlass(RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled)
+                .designSurface(designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .clickable { focusRequester.requestFocus() }
         ) {
@@ -178,7 +180,8 @@ fun FolderConfigMenu(
                         mainTextColor = mainTextColor,
                         grayTone = grayTone,
                         isDarkTextEnabled = isDarkTextEnabled,
-                        isLiquidGlassEnabled = isLiquidGlassEnabled,
+                        designStyle = designStyle,
+                        surfaceAccent = surfaceAccent,
                         onToggle = {
                             selectedPackages = selectedPackages - app.packageName
                         }
@@ -217,7 +220,8 @@ fun FolderConfigMenu(
                             mainTextColor = mainTextColor,
                             grayTone = grayTone,
                             isDarkTextEnabled = isDarkTextEnabled,
-                            isLiquidGlassEnabled = isLiquidGlassEnabled,
+                            designStyle = designStyle,
+                            surfaceAccent = surfaceAccent,
                             onToggle = {
                                 if (!isAlreadyInAnotherFolder) {
                                     // CUSTOM: Add to end of list to preserve selection sequence for folder order.
@@ -300,19 +304,20 @@ private fun AppSelectionItem(
     mainTextColor: Color,
     grayTone: Color,
     isDarkTextEnabled: Boolean,
-    isLiquidGlassEnabled: Boolean,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
     onToggle: () -> Unit
 ) {
     val intSrc = remember { MutableInteractionSource() }
-    
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .then(
                 if (isSelected) {
-                    Modifier.conditionalGlass(
-                        RoundedCornerShape(12.dp), isDarkTextEnabled, isLiquidGlassEnabled,
-                        fallbackAlpha = 0.05f
+                    Modifier.designSurface(
+                        designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                        fillAlpha = 0.05f
                     )
                 } else {
                     Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))

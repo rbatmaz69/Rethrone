@@ -36,7 +36,8 @@ import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -73,7 +74,8 @@ fun AppShortcutsMenu(
 
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     val themedLightBackground = remember(colorTheme.primary) {
@@ -189,10 +191,11 @@ fun AppShortcutsMenu(
                 val currentOffsetY = startOffsetY + (relativeY - startOffsetY) * progress
                 val scale = 0.05f + (0.95f * progress)
 
-                val menuModifier = if (isLiquidGlassEnabled) {
-                    Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(20.dp))
-                } else {
-                    Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
+                val menuModifier = when (designStyle) {
+                    DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(20.dp))
+                    DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(20.dp))
+                    DesignStyle.MINIMAL -> Modifier
+                    else -> Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
                 }
 
                 Surface(

@@ -56,7 +56,8 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import kotlin.math.abs
 import kotlinx.coroutines.launch
@@ -85,7 +86,8 @@ fun NiagaraAppDrawer(
     val fontWeight = LocalFontWeight.current
     val appFont = LocalAppFont.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     val haptic = LocalHapticFeedback.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
@@ -208,13 +210,9 @@ fun NiagaraAppDrawer(
             Spacer(modifier = Modifier.height(16.dp))
 
             val searchIntSrc = remember { MutableInteractionSource() }
-            val searchBarModifier = if (isLiquidGlassEnabled) {
-                Modifier
-                    .background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp))
-                    .border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
-            } else {
-                Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-            }
+            val searchBarModifier = Modifier.designSurface(
+                designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+            )
 
             Box(
                 modifier = Modifier

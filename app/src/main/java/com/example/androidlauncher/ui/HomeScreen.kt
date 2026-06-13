@@ -63,7 +63,8 @@ import com.composables.icons.lucide.Settings2
 import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.ui.LiquidGlass.conditionalGlass
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -116,7 +117,8 @@ fun HomeScreen(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val showLabels = LocalShowFavoriteLabels.current
     val fontSize = LocalFontSize.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     val animationsEnabled = LocalAnimationsEnabled.current
@@ -897,7 +899,7 @@ fun HomeScreen(
                         Box(
                             modifier = Modifier
                                 .size(56.dp)
-                                .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled)
+                                .designSurface(designStyle, CircleShape, isDarkTextEnabled, surfaceAccent)
                                 .clip(CircleShape)
                                 .then(
                                     if (!isPreview) {
@@ -1133,7 +1135,7 @@ fun HomeScreen(
                                     rotationZ = searchButtonRotation
                                 }
                                 .size(56.dp)
-                                .conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.15f)
+                                .designSurface(designStyle, CircleShape, isDarkTextEnabled, surfaceAccent, fillAlpha = 0.15f)
                                 .clip(CircleShape)
                                 .testTag("home_search_button")
                                 .onGloballyPositioned {
@@ -1171,11 +1173,12 @@ fun HomeScreen(
                                 scaleY = settingsBtnScale
                             }
                             .size(56.dp)
-                            .conditionalGlass(
+                            .designSurface(
+                                designStyle,
                                 CircleShape,
                                 isDarkTextEnabled,
-                                isLiquidGlassEnabled,
-                                fallbackAlpha = if (isSettingsOpen) 0.1f else 0.15f
+                                surfaceAccent,
+                                fillAlpha = if (isSettingsOpen) 0.1f else 0.15f
                             )
                             .clip(CircleShape)
                             .testTag("settings_button")
@@ -1239,15 +1242,16 @@ private fun EditControlButton(
     testTag: String? = null
 ) {
     val intSrc = remember { MutableInteractionSource() }
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
+    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
 
     Box(
         modifier = Modifier
             .size(sizeDp)
             .then(
                 if (containerColor == Color.Transparent) {
-                    Modifier.conditionalGlass(CircleShape, isDarkTextEnabled, isLiquidGlassEnabled, fallbackAlpha = 0.1f)
+                    Modifier.designSurface(designStyle, CircleShape, isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f)
                 } else {
                     Modifier.background(containerColor, CircleShape)
                 }

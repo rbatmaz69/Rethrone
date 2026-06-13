@@ -23,7 +23,8 @@ import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,7 +47,8 @@ fun SizeConfigMenu(
 ) {
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val isLiquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val designStyle = LocalDesignStyle.current
+    val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val secondaryTextColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
 
@@ -109,9 +111,9 @@ fun SizeConfigMenu(
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
             
             Text(text = "Schriftart", color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
-            val fontButtonModifier = if (isLiquidGlassEnabled) {
-                Modifier.background(LiquidGlass.glassBrush(isDarkTextEnabled), RoundedCornerShape(12.dp)).border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(12.dp))
-            } else { Modifier.background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)) }
+            val fontButtonModifier = Modifier.designSurface(
+                designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+            )
 
             Box(
                 modifier = Modifier.fillMaxWidth().height(56.dp).then(fontButtonModifier).clip(RoundedCornerShape(12.dp)).clickable { onOpenFontSelection() }.padding(horizontal = 16.dp),
