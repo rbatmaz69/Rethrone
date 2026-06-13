@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalLiquidGlassEnabled
@@ -75,18 +76,36 @@ fun UninstallAppsMenu(
     val uninstallableApps by produceState(initialValue = emptyList<AppInfo>(), apps.toList()) {
         value = withContext(Dispatchers.IO) {
             val pm = context.packageManager
-            apps.filter { app ->
+            val filtered = apps.filter { app ->
                 try {
                     val flags = pm.getApplicationInfo(app.packageName, 0).flags
                     val isSystem = (flags and ApplicationInfo.FLAG_SYSTEM) != 0
                     val isUpdatedSystem = (flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-                    // Eigene App ausblenden; reine System-Apps ausblenden,
+                    // Eigene App hier separat behandeln (s.u.); reine System-Apps ausblenden,
                     // aktualisierte System-Apps (deinstallierbar) erlauben.
                     app.packageName != context.packageName && (!isSystem || isUpdatedSystem)
                 } catch (_: Exception) {
                     false
                 }
             }
+            // Rethrone selbst soll AUSSCHLIESSLICH hier (im Deinstallieren-Menü) erscheinen –
+            // in der allgemeinen App-Liste ist es als Standard-Launcher ausgeblendet.
+            // Eintrag inkl. Icon eigenständig aufbauen, da er nicht in `apps` enthalten ist.
+            val ownEntry = try {
+                val ai = pm.getApplicationInfo(context.packageName, 0)
+                val ownIcon = AppRepository(context).loadResolvedIcon(
+                    AppInfo(label = pm.getApplicationLabel(ai).toString(), packageName = context.packageName)
+                )
+                AppInfo(
+                    label = pm.getApplicationLabel(ai).toString(),
+                    packageName = context.packageName,
+                    iconBitmap = ownIcon?.imageBitmap,
+                    autoIconFallback = ownIcon?.autoFallback
+                )
+            } catch (_: Exception) {
+                null
+            }
+            if (ownEntry != null) filtered + ownEntry else filtered
         }
     }
 

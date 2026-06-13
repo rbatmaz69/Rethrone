@@ -2,6 +2,7 @@ package com.example.androidlauncher.data
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.AdaptiveIconDrawable
@@ -56,6 +57,10 @@ class AppRepository(private val context: Context) {
         val intent = Intent(Intent.ACTION_MAIN, null).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
+        // Rethrone selbst nur ausblenden, wenn es der aktive Standard-Launcher ist.
+        // (Ist Rethrone nicht Standard, bleibt es startbar in der Liste.)
+        // Zum Deinstallieren wird die eigene App separat im UninstallAppsMenu eingeblendet.
+        val isOwnDefaultLauncher = isDefaultLauncher()
         pm.queryIntentActivities(intent, 0)
             .map { resolveInfo ->
                 val packageName = resolveInfo.activityInfo.packageName
@@ -66,7 +71,23 @@ class AppRepository(private val context: Context) {
                 )
             }
             .distinctBy { it.packageName }
+            .filterNot { isOwnDefaultLauncher && it.packageName == context.packageName }
             .sortedBy { it.label.lowercase() }
+    }
+
+    /**
+     * Prüft, ob Rethrone aktuell der vom System gesetzte Standard-Launcher ist.
+     */
+    fun isDefaultLauncher(): Boolean {
+        return try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            val defaultLauncher = context.packageManager
+                .resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName
+            defaultLauncher == context.packageName
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
