@@ -22,7 +22,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Search
+import com.example.androidlauncher.ui.theme.RethroneSprings
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -103,6 +110,7 @@ fun NiagaraAppDrawer(
     val customIcons by appDrawerVm.customIcons.collectAsState()
     val searchQuery by appDrawerVm.searchQuery.collectAsState()
     val visibleApps by appDrawerVm.visibleApps.collectAsState()
+    var searchExpanded by remember { mutableStateOf(searchQuery.isNotBlank()) }
 
     // apps ist eine in-place mutierte SnapshotStateList – auf den Inhalt keyen (Kopie),
     // damit Installationen/Deinstallationen den ViewModel-State tatsächlich erreichen.
@@ -203,41 +211,41 @@ fun NiagaraAppDrawer(
                     fontWeight = fontWeight.weight,
                     color = mainTextColor
                 )
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                Row {
+                    IconButton(
+                        onClick = {
+                            if (searchExpanded) { searchExpanded = false; appDrawerVm.setSearchQuery("") }
+                            else searchExpanded = true
+                        },
+                        modifier = Modifier.testTag("niagara_search_toggle")
+                    ) {
+                        Icon(Icons.Rounded.Search, contentDescription = "Suche", tint = mainTextColor)
+                    }
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
 
-            val searchIntSrc = remember { MutableInteractionSource() }
-            val searchBarModifier = Modifier.designSurface(
-                designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("niagara_app_drawer_search_field")
-                    .then(searchBarModifier)
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-                    .clickable(interactionSource = searchIntSrc, indication = null) { focusRequester.requestFocus() }
+            AnimatedVisibility(
+                visible = searchExpanded,
+                enter = expandVertically(animationSpec = RethroneSprings.spatial(), expandFrom = Alignment.Top) + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                StableSearchFieldContent(
-                    value = searchQuery,
-                    onValueChange = { appDrawerVm.setSearchQuery(it) },
-                    placeholder = "Apps durchsuchen...",
-                    textStyle = androidx.compose.ui.text.TextStyle(
-                        color = mainTextColor,
-                        fontSize = 16.sp * fontSize.scale
-                    ),
-                    textColor = mainTextColor,
-                    placeholderColor = mainTextColor.copy(alpha = 0.4f),
-                    focusRequester = focusRequester,
-                    leadingIconTint = mainTextColor.copy(alpha = 0.4f),
-                    leadingIconSize = 20.dp,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
-                )
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    DrawerSearchField(
+                        searchQuery = searchQuery,
+                        onValueChange = { appDrawerVm.setSearchQuery(it) },
+                        mainTextColor = mainTextColor,
+                        designStyle = designStyle,
+                        surfaceAccent = surfaceAccent,
+                        isDarkTextEnabled = isDarkTextEnabled,
+                        fontScale = fontSize.scale,
+                        testTag = "niagara_app_drawer_search_field",
+                        onCollapse = { searchExpanded = false }
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
 

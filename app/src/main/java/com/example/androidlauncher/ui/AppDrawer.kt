@@ -20,6 +20,13 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.material.icons.rounded.Search
+import com.example.androidlauncher.ui.theme.RethroneSprings
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -143,6 +150,7 @@ fun AppDrawer(
     val appDrawerVm: AppDrawerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val customIcons by appDrawerVm.customIcons.collectAsState()
     val searchQuery by appDrawerVm.searchQuery.collectAsState()
+    var searchExpanded by remember { mutableStateOf(searchQuery.isNotBlank()) }
     val visibleApps by appDrawerVm.visibleApps.collectAsState()
 
     // apps ist eine in-place mutierte SnapshotStateList – auf den Inhalt keyen (Kopie),
@@ -247,12 +255,21 @@ fun AppDrawer(
                     color = mainTextColor
                 )
                 Row {
+                    IconButton(
+                        onClick = {
+                            if (searchExpanded) { searchExpanded = false; appDrawerVm.setSearchQuery("") }
+                            else searchExpanded = true
+                        },
+                        modifier = Modifier.testTag("app_drawer_search_toggle")
+                    ) {
+                        Icon(Icons.Rounded.Search, contentDescription = "Suche", tint = mainTextColor)
+                    }
                     if (searchQuery.isBlank()) {
                         var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
                         var folderNameInput by remember { mutableStateOf("") }
-                        
-                        IconButton(onClick = { isCreateFolderDialogOpen = true }) { 
-                            Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = mainTextColor) 
+
+                        IconButton(onClick = { isCreateFolderDialogOpen = true }) {
+                            Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = mainTextColor)
                         }
                         
                         if (isCreateFolderDialogOpen) {
@@ -351,33 +368,25 @@ fun AppDrawer(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val searchIntSrc = remember { MutableInteractionSource() }
-            val searchBarModifier = Modifier.designSurface(
-                designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
-            )
-
-            Box(modifier = Modifier.fillMaxWidth().testTag("app_drawer_search_field").then(searchBarModifier).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
-                interactionSource = searchIntSrc,
-                indication = null
-            ) { focusRequester.requestFocus() }) {
-                StableSearchFieldContent(
-                    value = searchQuery,
-                    onValueChange = { appDrawerVm.setSearchQuery(it) },
-                    placeholder = "Apps durchsuchen...",
-                    textStyle = androidx.compose.ui.text.TextStyle(
-                        color = mainTextColor,
-                        fontSize = 16.sp * fontSize.scale
-                    ),
-                    textColor = mainTextColor,
-                    placeholderColor = mainTextColor.copy(alpha = 0.4f),
-                    focusRequester = focusRequester,
-                    leadingIconTint = mainTextColor.copy(alpha = 0.4f),
-                    leadingIconSize = 20.dp,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() })
-                )
+            AnimatedVisibility(
+                visible = searchExpanded,
+                enter = expandVertically(animationSpec = RethroneSprings.spatial(), expandFrom = Alignment.Top) + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    DrawerSearchField(
+                        searchQuery = searchQuery,
+                        onValueChange = { appDrawerVm.setSearchQuery(it) },
+                        mainTextColor = mainTextColor,
+                        designStyle = designStyle,
+                        surfaceAccent = surfaceAccent,
+                        isDarkTextEnabled = isDarkTextEnabled,
+                        fontScale = fontSize.scale,
+                        testTag = "app_drawer_search_field",
+                        onCollapse = { searchExpanded = false }
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(24.dp))
 
