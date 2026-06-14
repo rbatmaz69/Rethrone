@@ -43,6 +43,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -70,6 +71,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -1547,6 +1549,11 @@ private fun MenuOverlay(
                     scaleY = 1f - 0.10f * p
                     alpha = 1f - 0.15f * p
                     translationX = size.width * p * backSign
+                    // Ecken runden sich ab, sobald Predictive Back aktiv ist – schon beim Halten
+                    // voll gerundet (Peek liegt nur bei 0.20, daher 5x verstärkt), offen = eckig.
+                    val cornerFraction = (p * 5f).coerceAtMost(1f)
+                    shape = RoundedCornerShape((cornerFraction * 44f).dp)
+                    clip = true
                 }
                 .pointerInput(Unit) {
                     detectTapGestures { } // Verhindert Klicks durch das Overlay hindurch
