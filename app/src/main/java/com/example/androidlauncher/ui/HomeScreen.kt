@@ -23,13 +23,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -635,7 +635,7 @@ fun HomeScreen(
                                             1.dp,
                                             mainTextColor.copy(alpha = if (isClockSelected) 0.35f else 0.2f)
                                         ),
-                                        RoundedCornerShape(16.dp)
+                                        RoundedCornerShape(20.dp)
                                     )
                                 } else {
                                     Modifier
@@ -743,7 +743,7 @@ fun HomeScreen(
                     ) {
                         if (canMoveClockUp) {
                             Icon(
-                                imageVector = Icons.Default.KeyboardArrowUp,
+                                imageVector = Icons.Rounded.KeyboardArrowUp,
                                 contentDescription = null,
                                 tint = mainTextColor.copy(alpha = 0.35f),
                                 modifier = Modifier
@@ -755,7 +755,7 @@ fun HomeScreen(
                         }
                         if (canMoveClockDown) {
                             Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
+                                imageVector = Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = mainTextColor.copy(alpha = 0.35f),
                                 modifier = Modifier
@@ -803,7 +803,7 @@ fun HomeScreen(
                                             1.dp,
                                             mainTextColor.copy(alpha = if (isFavoritesSelected) 0.35f else 0.2f)
                                         ),
-                                        RoundedCornerShape(16.dp)
+                                        RoundedCornerShape(20.dp)
                                     )
                                 } else {
                                     Modifier
@@ -916,7 +916,7 @@ fun HomeScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = mainTextColor)
+                            Icon(Icons.Rounded.Add, contentDescription = null, tint = mainTextColor)
                         }
                     } else {
                         favorites.forEach { app ->
@@ -946,7 +946,7 @@ fun HomeScreen(
                     ) {
                         if (canMoveFavoritesUp) {
                             Icon(
-                                imageVector = Icons.Default.KeyboardArrowUp,
+                                imageVector = Icons.Rounded.KeyboardArrowUp,
                                 contentDescription = null,
                                 tint = mainTextColor.copy(alpha = 0.35f),
                                 modifier = Modifier
@@ -958,7 +958,7 @@ fun HomeScreen(
                         }
                         if (canMoveFavoritesDown) {
                             Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
+                                imageVector = Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = mainTextColor.copy(alpha = 0.35f),
                                 modifier = Modifier
@@ -1000,7 +1000,7 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     EditControlButton(
-                        icon = Icons.Default.Close,
+                        icon = Icons.Rounded.Close,
                         onClick = {
                             currentFavOffsetX = 0f
                             currentFavOffsetY = favoritesOffsetY
@@ -1023,7 +1023,7 @@ fun HomeScreen(
                     )
 
                     EditControlButton(
-                        icon = Icons.Default.Check,
+                        icon = Icons.Rounded.Check,
                         onClick = {
                             val savedFavoritesX = 0f
                             val savedFavoritesY = currentFavOffsetY + editHintContentPaddingPx
@@ -1152,7 +1152,7 @@ fun HomeScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Search,
+                                imageVector = Icons.Rounded.Search,
                                 contentDescription = "Search",
                                 tint = mainTextColor,
                                 modifier = Modifier.size(28.dp)
@@ -1198,7 +1198,7 @@ fun HomeScreen(
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                             Icon(
-                                imageVector = if (isSettingsOpen) Icons.Default.Close else Icons.Default.Settings,
+                                imageVector = if (isSettingsOpen) Icons.Rounded.Close else Icons.Rounded.Settings,
                                 contentDescription = null,
                                 tint = mainTextColor,
                                 modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
@@ -1296,7 +1296,7 @@ private fun FavoriteItem(
 
     Surface(
         color = Color.Transparent,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .onGloballyPositioned { coordinates -> itemBounds.value = coordinates.boundsInRoot() }
             .graphicsLayer { translationX = animatedOffset }

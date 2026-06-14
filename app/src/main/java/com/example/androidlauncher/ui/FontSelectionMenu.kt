@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -64,7 +64,7 @@ fun FontSelectionMenu(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück", tint = mainTextColor)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Zurück", tint = mainTextColor)
             }
             Text(
                 text = "Schriftart auswählen",
@@ -79,7 +79,7 @@ fun FontSelectionMenu(
 
         // Search Bar
         val searchBarModifier = Modifier.designSurface(
-            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+            designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
         )
 
         Box(
@@ -131,7 +131,7 @@ fun FontSelectionMenu(
                 ) {
                     val itemModifier = if (isSelected) {
                         Modifier.designSurface(
-                            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                            designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
                             fillAlpha = 0.15f, glassStartAlpha = 0.25f, glassEndAlpha = 0.1f
                         )
                     } else {
@@ -142,7 +142,7 @@ fun FontSelectionMenu(
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(itemModifier)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .clickable { onAppFontSelected(font) }
                             .padding(horizontal = 16.dp, vertical = 12.dp)
                     ) {

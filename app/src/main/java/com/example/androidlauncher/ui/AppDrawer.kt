@@ -5,7 +5,9 @@ import android.net.Uri
 import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Animatable
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -30,7 +32,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -175,8 +177,20 @@ fun AppDrawer(
     var isFolderNameFocused by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
 
-    BackHandler(enabled = activeFolderId != null) {
-        if (isEditMode) isEditMode = false else activeFolderId = null
+    // Predictive Back: die Zurück-Geste „schrumpft" den geöffneten Ordner live mit.
+    val folderBackProgress = remember { Animatable(0f) }
+    PredictiveBackHandler(enabled = activeFolderId != null) { backEvent ->
+        try {
+            backEvent.collect { ev ->
+                if (!isEditMode) folderBackProgress.snapTo(ev.progress)
+            }
+            // Geste vollzogen → schließen.
+            if (isEditMode) isEditMode = false else activeFolderId = null
+            folderBackProgress.snapTo(0f)
+        } catch (e: CancellationException) {
+            // Geste abgebrochen → zurückfedern.
+            folderBackProgress.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMedium))
+        }
     }
 
     val draggingItemPkg by appDrawerVm.draggingItemPkg.collectAsState()
@@ -268,7 +282,7 @@ fun AppDrawer(
                                         Spacer(modifier = Modifier.height(16.dp))
 
                                         val inputModifier = Modifier.designSurface(
-                                            designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+                                            designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
                                         )
 
                                         Box(
@@ -333,7 +347,7 @@ fun AppDrawer(
                         }
                     }
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
+                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
                     }
                 }
             }
@@ -341,7 +355,7 @@ fun AppDrawer(
 
             val searchIntSrc = remember { MutableInteractionSource() }
             val searchBarModifier = Modifier.designSurface(
-                designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+                designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
             )
 
             Box(modifier = Modifier.fillMaxWidth().testTag("app_drawer_search_field").then(searchBarModifier).padding(horizontal = 16.dp, vertical = 14.dp).clickable(
@@ -488,7 +502,8 @@ fun AppDrawer(
                          }),
                     contentAlignment = Alignment.Center
                 ) {
-                    val scale = 0.05f + (1f - 0.05f) * folderProgress
+                    val predict = folderBackProgress.value
+                    val scale = (0.05f + (1f - 0.05f) * folderProgress) * (1f - 0.12f * predict)
                     val translationX = folderTranslation.x * (1f - folderProgress)
                     val translationY = folderTranslation.y * (1f - folderProgress)
 
@@ -514,7 +529,7 @@ fun AppDrawer(
                                  this.translationX = translationX
                                  this.translationY = translationY
                                  this.transformOrigin = TransformOrigin.Center
-                                 if (isCurrentFolderDeleted) this.alpha = folderProgress
+                                 this.alpha = (if (isCurrentFolderDeleted) folderProgress else 1f) * (1f - 0.25f * predict)
                              }
                              .clickable(enabled = false) {},
                         color = menuSurfaceColor.copy(alpha = 0.98f),
@@ -774,7 +789,7 @@ fun AppDrawer(
                                     if (draggingItemPkg != null) {
                                         val draggedApp = currentFolderApps.find { it.packageName == draggingItemPkg }
                                         if (draggedApp != null) {
-                                            Box(modifier = Modifier.size(80.dp).graphicsLayer { this.translationX = touchPosition.x - initialTouchOffsetInItem.x; this.translationY = touchPosition.y - initialTouchOffsetInItem.y; this.scaleX = 1.25f; this.scaleY = 1.25f; this.alpha = 0.95f }.zIndex(1000f).shadow(24.dp, RoundedCornerShape(16.dp))) {
+                                            Box(modifier = Modifier.size(80.dp).graphicsLayer { this.translationX = touchPosition.x - initialTouchOffsetInItem.x; this.translationY = touchPosition.y - initialTouchOffsetInItem.y; this.scaleX = 1.25f; this.scaleY = 1.25f; this.alpha = 0.95f }.zIndex(1000f).shadow(24.dp, RoundedCornerShape(20.dp))) {
                                                 AppItem(app = draggedApp, adaptiveColumns = 3, isInFolder = true, currentFolderId = currentActiveFolder.id, isEditMode = true, customIcons = customIcons, onLongPress = { _, _ -> }, onAppLaunchRequested = null)
                                             }
                                         }
@@ -820,7 +835,7 @@ fun AppDrawer(
                         Text("In Ordner verschieben", fontSize = 18.sp * fontSize.scale, fontWeight = fontWeight.weight, color = mainTextColor, modifier = Modifier.padding(bottom = 16.dp))
                         folders.forEach { folder ->
                             @Suppress("DEPRECATION")
-                            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, folderSelectionApp!!.packageName)); showFolderSelection = false; menuApp = null }.padding(vertical = 14.dp, horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, folderSelectionApp!!.packageName)); showFolderSelection = false; menuApp = null }.padding(vertical = 14.dp, horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Lucide.Folder, contentDescription = null, modifier = Modifier.size(20.dp), tint = mainTextColor)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(folder.name, fontSize = 16.sp * fontSize.scale, color = mainTextColor)
@@ -861,7 +876,7 @@ fun FolderItem(
         itemOffset = Offset(x = position.x + size.width / 2f, y = position.y + size.height / 2f)
     }, contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.bounceClick(intSrc).combinedClickable(interactionSource = intSrc, indication = null, onClick = { onClick(itemOffset) }, onLongClick = { onOpenFolderConfig(folder) })) {
-            val folderBoxModifier = Modifier.designSurface(designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f)
+            val folderBoxModifier = Modifier.designSurface(designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f)
             Box(modifier = Modifier.size(iconSizeValue).then(folderBoxModifier), contentAlignment = Alignment.Center) { Icon(Lucide.Folder, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(iconSizeValue * 0.6f)) }
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = folder.name, fontSize = 11.sp * fontSize.scale, color = mainTextColor.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), fontWeight = fontWeight.weight)

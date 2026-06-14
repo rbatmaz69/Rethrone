@@ -5,6 +5,11 @@ import android.app.SearchManager
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.graphics.graphicsLayer
+import com.example.androidlauncher.ui.theme.RethroneSprings
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -20,8 +25,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Close
 import com.composables.icons.lucide.History
 import com.composables.icons.lucide.Lucide
 import androidx.compose.material3.*
@@ -231,14 +236,23 @@ fun HybridSearch(
             )
     }
 
-    BackHandler {
-        keyboardController?.hide()
-        if (!isClosing) {
-            isClosing = true
-            onClosingStart()
-        }
-        if (maxImeBottom == 0) {
-            onClose()
+    // Predictive Back: die Zurück-Geste schrumpft die Suche live; Abbruch federt zurück,
+    // Vollzug nutzt den bestehenden Schließpfad (inkl. IME-Handling).
+    val searchBackProgress = remember { Animatable(0f) }
+    PredictiveBackHandler(enabled = !isClosing) { backEvent ->
+        try {
+            backEvent.collect { ev -> searchBackProgress.snapTo(ev.progress) }
+            keyboardController?.hide()
+            if (!isClosing) {
+                isClosing = true
+                onClosingStart()
+            }
+            if (maxImeBottom == 0) {
+                onClose()
+            }
+            searchBackProgress.snapTo(0f)
+        } catch (e: CancellationException) {
+            searchBackProgress.animateTo(0f, animationSpec = RethroneSprings.effects())
         }
     }
 
@@ -268,6 +282,12 @@ fun HybridSearch(
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.ime)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
+                .graphicsLayer {
+                    val p = searchBackProgress.value
+                    scaleX = 1f - 0.10f * p
+                    scaleY = 1f - 0.10f * p
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+                }
                 .alpha(contentAlpha)
                 .padding(16.dp)
         ) {
@@ -384,7 +404,7 @@ fun HybridSearch(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = Icons.Rounded.Search,
                     contentDescription = null,
                     tint = mainTextColor.copy(alpha = 0.5f),
                     modifier = Modifier
@@ -457,7 +477,7 @@ fun HybridSearch(
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Rounded.Close,
                             contentDescription = "Clear",
                             tint = mainTextColor.copy(alpha = 0.42f),
                             modifier = Modifier.size(18.dp)
@@ -533,7 +553,7 @@ fun AppSearchItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(rowBackgroundColor)
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .pointerInput(app.packageName, rowBounds, iconBounds) {
@@ -617,7 +637,7 @@ private fun SearchHistoryItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor)
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .clickable { onClick(iconBounds ?: rowBounds) }
@@ -655,7 +675,7 @@ private fun SearchHistoryItem(
                 .testTag("history_remove_${entry.query.hashCode()}")
         ) {
             Icon(
-                imageVector = Icons.Default.Close,
+                imageVector = Icons.Rounded.Close,
                 contentDescription = "Verlaufseintrag entfernen",
                 tint = mainTextColor.copy(alpha = 0.42f),
                 modifier = Modifier.size(16.dp)
@@ -687,7 +707,7 @@ fun WebSearchItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor)
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .pointerInput(query, rowBounds, iconBounds) {
@@ -739,7 +759,7 @@ fun WebSearchItem(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Search,
+                imageVector = Icons.Rounded.Search,
                 contentDescription = null,
                 tint = mainTextColor.copy(alpha = 0.9f),
                 modifier = Modifier.size(18.dp)

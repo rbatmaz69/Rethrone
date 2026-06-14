@@ -42,7 +42,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,10 +98,16 @@ fun Context.findActivity(): Activity? {
 fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: Boolean = true) = composed {
     val isPressed by interactionSource.collectIsPressedAsState()
     val animationsEnabled = com.example.androidlauncher.ui.theme.LocalAnimationsEnabled.current
-    val targetScale = if (!animationsEnabled) 1f else if (isPressed && enabled) 0.90f else 1f
+    // Universeller, dezenter Tap-Haptik beim Drücken (respektiert die Haptik-Einstellung).
+    val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
+    LaunchedEffect(isPressed) {
+        if (isPressed && enabled) haptics.tap()
+    }
+    val targetScale = if (!animationsEnabled) 1f else if (isPressed && enabled) 0.93f else 1f
+    // Material-3-Expressive: federnderes Tap-Feedback (LowBouncy/StiffnessLow).
     val scale by animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
         label = "bounceScale"
     )
     this.scale(scale)
@@ -242,7 +248,7 @@ fun StableSearchFieldContent(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.Search,
+            imageVector = Icons.Rounded.Search,
             contentDescription = null,
             tint = leadingIconTint,
             modifier = Modifier.size(leadingIconSize)

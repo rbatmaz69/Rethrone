@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -71,12 +71,12 @@ fun SizeConfigMenu(
             ) {
                 Text(
                     text = "Design & Schriftart",
-                    fontSize = 24.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Light,
                     color = mainTextColor
                 )
                 IconButton(onClick = onClose) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Schließen", tint = mainTextColor)
+                    Icon(imageVector = Icons.Rounded.Close, contentDescription = "Schließen", tint = mainTextColor)
                 }
             }
             
@@ -112,11 +112,11 @@ fun SizeConfigMenu(
             
             Text(text = "Schriftart", color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
             val fontButtonModifier = Modifier.designSurface(
-                designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+                designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
             )
 
             Box(
-                modifier = Modifier.fillMaxWidth().height(56.dp).then(fontButtonModifier).clip(RoundedCornerShape(12.dp)).clickable { onOpenFontSelection() }.padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp).then(fontButtonModifier).clip(RoundedCornerShape(16.dp)).clickable { onOpenFontSelection() }.padding(horizontal = 16.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -124,7 +124,7 @@ fun SizeConfigMenu(
                         Text(text = "Schriftart wählen", fontSize = 16.sp, color = mainTextColor)
                         Text(text = currentAppFont.label, fontSize = 12.sp, color = mainTextColor.copy(alpha = 0.6f), fontFamily = currentAppFont.fontFamily)
                     }
-                    Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.6f))
+                    Icon(imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.6f))
                 }
             }
 

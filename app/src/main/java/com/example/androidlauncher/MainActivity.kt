@@ -17,8 +17,12 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.example.androidlauncher.ui.theme.RethroneSprings
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
@@ -35,9 +39,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,6 +71,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -87,6 +96,7 @@ import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
+import com.example.androidlauncher.ui.ThemeSelectionMenu
 import com.example.androidlauncher.ui.DesignStyleMenu
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.FavoritesConfigMenu
@@ -145,6 +155,9 @@ class MainActivity : ComponentActivity() {
         intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         logHomeIntent(intent)
 
+        // Material You: Wallpaper-Farben für das DYNAMIC-Theme laden + auf Wechsel lauschen.
+        com.example.androidlauncher.data.DynamicColorHolder.register(applicationContext)
+
         backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
         }
@@ -177,6 +190,12 @@ class MainActivity : ComponentActivity() {
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val iconColor by themeManager.iconColor.collectAsState(initial = Color.White)
             val homeTextColor by themeManager.homeTextColor.collectAsState(initial = Color.White)
+            val customBackgroundColor by themeManager.customBackgroundColor.collectAsState(initial = ColorTheme.FallbackCustomBackground)
+            val customMenuColor by themeManager.customMenuColor.collectAsState(initial = ColorTheme.FallbackCustomMenu)
+            // CUSTOM-Theme: gewählte Flächenfarben in den Holder spiegeln (treibt die Farb-Pipeline).
+            LaunchedEffect(customBackgroundColor, customMenuColor) {
+                com.example.androidlauncher.data.CustomColorHolder.set(customBackgroundColor, customMenuColor)
+            }
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
@@ -348,6 +367,7 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isDesignMenuOpen by remember { mutableStateOf(false) }
+                var isThemeMenuOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
                 var isFontSelectionOpen by remember { mutableStateOf(false) }
                 var isEditConfigOpen by remember { mutableStateOf(false) }
@@ -773,20 +793,20 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(
-                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isDesignMenuOpen,
+                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
                     isIconConfigOpen, isUninstallAppsOpen, isWallpaperConfigOpen, isInfoOpen,
                     selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
-                        isColorConfigOpen || isDesignMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
+                        isColorConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
                         isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isWallpaperConfigOpen ||
                         isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
 
                 BackHandler(
-                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isDesignMenuOpen ||
+                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
                         isIconConfigOpen || isUninstallAppsOpen || isWallpaperConfigOpen || isInfoOpen ||
                         selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
@@ -801,6 +821,7 @@ class MainActivity : ComponentActivity() {
                         isIconConfigOpen -> isIconConfigOpen = false
                         isDrawerOpen -> isDrawerOpen = false
                         isFavoritesConfigOpen -> isFavoritesConfigOpen = false
+                        isThemeMenuOpen -> isThemeMenuOpen = false
                         isDesignMenuOpen -> isDesignMenuOpen = false
                         isColorConfigOpen -> isColorConfigOpen = false
                         isSizeConfigOpen -> isSizeConfigOpen = false
@@ -1020,7 +1041,6 @@ class MainActivity : ComponentActivity() {
                     ) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
-                            onThemeSelected = { scope.launch { themeManager.setTheme(it) } },
                             isDarkTextEnabled = isDarkTextEnabled,
                             iconColor = iconColor,
                             onIconColorChange = { scope.launch { themeManager.setIconColor(it) } },
@@ -1028,8 +1048,28 @@ class MainActivity : ComponentActivity() {
                             onHomeTextColorChange = { scope.launch { themeManager.setHomeTextColor(it) } },
                             designStyle = designStyle,
                             onOpenDesignMenu = { isDesignMenuOpen = true },
+                            onOpenThemeMenu = { isThemeMenuOpen = true },
+                            customBackgroundColor = customBackgroundColor,
+                            onCustomBackgroundChange = { scope.launch { themeManager.setCustomBackgroundColor(it) } },
+                            customMenuColor = customMenuColor,
+                            onCustomMenuChange = { scope.launch { themeManager.setCustomMenuColor(it) } },
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isColorConfigOpen = false }
+                        )
+                    }
+
+                    MenuOverlay(
+                        visible = isThemeMenuOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isThemeMenuOpen = false }
+                    ) {
+                        ThemeSelectionMenu(
+                            selectedTheme = currentTheme,
+                            onThemeSelected = { scope.launch { themeManager.setTheme(it) } },
+                            isDarkTextEnabled = isDarkTextEnabled,
+                            designStyle = designStyle,
+                            customWallpaperUri = customWallpaperUri,
+                            onClose = { isThemeMenuOpen = false }
                         )
                     }
 
@@ -1495,35 +1535,69 @@ private fun MenuOverlay(
 
     AnimatedVisibility(
         visible = visible,
-        enter = slideInVertically(
-            initialOffsetY = { it },
+        // Seitliches Öffnen/Schließen (von rechts) – kohärent mit der Predictive-Back-Geste.
+        enter = slideInHorizontally(
+            initialOffsetX = { it },
             animationSpec = tween(actualEnterSlideDuration, easing = enterSlideEasing)
         ) + fadeIn(animationSpec = tween(actualEnterFadeDuration)),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
+        exit = slideOutHorizontally(
+            targetOffsetX = { it },
             animationSpec = tween(actualExitSlideDuration, easing = exitSlideEasing)
         ) + fadeOut(animationSpec = tween(actualExitFadeDuration))
     ) {
-        var totalDragY by remember { mutableStateOf(0f) }
-        
+        var totalDragX by remember { mutableStateOf(0f) }
+
+        // Predictive Back: durchgehender Dismiss-Wert (0 = offen, 1 = ganz draußen).
+        // Beim Bestätigen läuft die Animation NAHTLOS von der gehaltenen Position weiter
+        // nach draußen – kein Zurückspringen in die Ausgangsposition.
+        val dismiss = remember { Animatable(0f) }
+        // +1 = nach rechts (Wisch von linker Kante), -1 = nach links (Wisch von rechter Kante).
+        var backSign by remember { mutableStateOf(1f) }
+        PredictiveBackHandler(enabled = true) { backEvent ->
+            try {
+                backEvent.collect { ev ->
+                    backSign = if (ev.swipeEdge == BackEventCompat.EDGE_LEFT) 1f else -1f
+                    dismiss.snapTo(ev.progress * 0.20f) // Live-„Peek" während der Geste
+                }
+                // Commit: von der aktuellen Position weiter ganz hinausgleiten, dann schließen.
+                dismiss.animateTo(1f, animationSpec = tween(220, easing = EaseInCubic))
+                onClose()
+            } catch (e: CancellationException) {
+                // Abbruch: zurückfedern.
+                dismiss.animateTo(0f, animationSpec = RethroneSprings.effects())
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    val p = dismiss.value
+                    scaleX = 1f - 0.10f * p
+                    scaleY = 1f - 0.10f * p
+                    alpha = 1f - 0.15f * p
+                    translationX = size.width * p * backSign
+                    // Ecken runden sich ab, sobald Predictive Back aktiv ist – schon beim Halten
+                    // voll gerundet (Peek liegt nur bei 0.20, daher 5x verstärkt), offen = eckig.
+                    val cornerFraction = (p * 5f).coerceAtMost(1f)
+                    shape = RoundedCornerShape((cornerFraction * 44f).dp)
+                    clip = true
+                }
                 .pointerInput(Unit) {
                     detectTapGestures { } // Verhindert Klicks durch das Overlay hindurch
                 }
                 .then(
                     if (enableDragToClose) {
                         Modifier.pointerInput(Unit) {
-                            detectVerticalDragGestures(
+                            detectHorizontalDragGestures(
                                 onDragEnd = {
-                                    if (totalDragY > 300f) onClose()
-                                    totalDragY = 0f
+                                    if (abs(totalDragX) > 300f) onClose()
+                                    totalDragX = 0f
                                 },
-                                onDragCancel = { totalDragY = 0f },
-                                onVerticalDrag = { change, dragAmount ->
+                                onDragCancel = { totalDragX = 0f },
+                                onHorizontalDrag = { change, dragAmount ->
                                     change.consume()
-                                    totalDragY += dragAmount
+                                    totalDragX += dragAmount
                                 }
                             )
                         }

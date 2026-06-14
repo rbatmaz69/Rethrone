@@ -8,8 +8,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -57,9 +57,9 @@ fun DesignStyleMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Design", fontSize = 24.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text("Design", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
             }
         }
 
@@ -96,15 +96,16 @@ private fun DesignStyleTile(
     secondaryTextColor: Color,
     onClick: () -> Unit
 ) {
+    val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     val accent = selectedTheme.menuSurfaceColor(isDarkTextEnabled)
     val previewBrush = selectedTheme.menuBrush(isDarkTextEnabled, alpha = 0.96f)
-    val outerShape = RoundedCornerShape(20.dp)
+    val outerShape = RoundedCornerShape(24.dp)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(outerShape)
-            .clickable { onClick() }
+            .clickable { haptics.select(); onClick() }
             .background(mainTextColor.copy(alpha = if (isSelected) 0.12f else 0.05f), outerShape)
             .testTag("design_tile_${style.name}")
             .padding(12.dp),
@@ -115,19 +116,19 @@ private fun DesignStyleTile(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(76.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(previewBrush, RoundedCornerShape(14.dp)),
+                .clip(RoundedCornerShape(18.dp))
+                .background(previewBrush, RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
                     .size(width = 96.dp, height = 44.dp)
-                    .designSurface(style, RoundedCornerShape(12.dp), isDarkTextEnabled, accent),
+                    .designSurface(style, RoundedCornerShape(16.dp), isDarkTextEnabled, accent),
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelected) {
                     Icon(
-                        Icons.Default.Check,
+                        Icons.Rounded.Check,
                         contentDescription = null,
                         tint = mainTextColor,
                         modifier = Modifier.size(20.dp)

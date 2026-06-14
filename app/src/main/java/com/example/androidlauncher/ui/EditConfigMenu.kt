@@ -11,8 +11,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,7 +49,7 @@ import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 
@@ -118,12 +118,12 @@ fun EditConfigMenu(
             @Suppress("DEPRECATION")
             Text(
                 "Bearbeiten",
-                fontSize = 24.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Light,
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
             }
         }
 
@@ -202,7 +202,7 @@ fun EditConfigMenu(
                                 modifier = Modifier.testTag("edit_home_layout_reset")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
+                                    imageVector = Icons.Rounded.Close,
                                     contentDescription = "Reset Home Layout",
                                     tint = mainTextColor.copy(alpha = 0.6f),
                                     modifier = Modifier.size(24.dp)
@@ -210,7 +210,7 @@ fun EditConfigMenu(
                             }
                         } else {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                                 contentDescription = null,
                                 tint = mainTextColor.copy(alpha = 0.4f)
                             )
@@ -244,7 +244,7 @@ fun EditConfigMenu(
                         if (isCustomWallpaperSet) {
                             IconButton(onClick = onResetWallpaper) {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
+                                    imageVector = Icons.Rounded.Close,
                                     contentDescription = "Remove Wallpaper",
                                     tint = mainTextColor.copy(alpha = 0.6f),
                                     modifier = Modifier.size(24.dp)
@@ -252,7 +252,7 @@ fun EditConfigMenu(
                             }
                         } else {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                                 contentDescription = null,
                                 tint = mainTextColor.copy(alpha = 0.4f)
                             )
@@ -304,7 +304,7 @@ fun EditConfigMenu(
 
             item {
                 EditToggleItem(
-                    icon = Icons.Default.Search,
+                    icon = Icons.Rounded.Search,
                     label = "Intelligente Suchvorschläge",
                     description = "Lernt aus App-Starts und Websuchen. Alles bleibt lokal auf dem Gerät.",
                     checked = isSmartSuggestionsEnabled,
@@ -319,7 +319,7 @@ fun EditConfigMenu(
 
             item {
                 EditMenuItem(
-                    icon = Icons.Default.Search,
+                    icon = Icons.Rounded.Search,
                     label = "Suchverlauf löschen",
                     onClick = onClearSearchHistory,
                     mainTextColor = mainTextColor,
@@ -478,7 +478,7 @@ fun EditMenuItem(
     testTag: String? = null
 ) {
     val backgroundModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
         borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
     )
@@ -486,7 +486,7 @@ fun EditMenuItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
             .clickable { onClick() },
@@ -505,7 +505,7 @@ fun EditMenuItem(
             if (trailingContent != null) {
                 trailingContent()
             } else {
-                Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f))
+                Icon(imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f))
             }
         }
     }
@@ -524,8 +524,10 @@ private fun EditToggleItem(
     isDarkTextEnabled: Boolean,
     switchTestTag: String
 ) {
+    val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
+    val toggle: (Boolean) -> Unit = { haptics.toggle(it); onCheckedChange(it) }
     val backgroundModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
         borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
     )
@@ -533,9 +535,9 @@ private fun EditToggleItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
-            .clickable { onCheckedChange(!checked) },
+            .clickable { toggle(!checked) },
         color = Color.Transparent
     ) {
         Row(
@@ -568,7 +570,7 @@ private fun EditToggleItem(
             Switch(
                 modifier = Modifier.testTag(switchTestTag),
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = toggle,
                 colors = LiquidGlass.switchColors(isDarkTextEnabled, designStyle.isGlassLike)
             )
         }
@@ -600,7 +602,7 @@ private fun EditAppAccessSelectorItem(
     var expanded by remember { mutableStateOf(false) }
 
     val backgroundModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
         borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
     )
@@ -608,7 +610,7 @@ private fun EditAppAccessSelectorItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
             .testTag(testTag)
             .clickable { expanded = true },
@@ -703,7 +705,7 @@ private fun EditActionSelectorItem(
     var expanded by remember { mutableStateOf(false) }
 
     val backgroundModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
         borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
     )
@@ -711,7 +713,7 @@ private fun EditActionSelectorItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
             .testTag(testTag)
             .clickable { expanded = true },

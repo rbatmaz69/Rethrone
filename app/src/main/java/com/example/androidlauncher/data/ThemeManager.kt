@@ -36,6 +36,9 @@ class ThemeManager(private val context: Context) {
         // ARGB-Werte für frei wählbare Icon-/Schriftfarbe (Default Weiß).
         private val ICON_COLOR_KEY = intPreferencesKey("icon_color")
         private val HOME_TEXT_COLOR_KEY = intPreferencesKey("home_text_color")
+        // ARGB-Flächenfarben für das CUSTOM-Theme ("Eigene Farbe").
+        private val CUSTOM_BG_COLOR_KEY = intPreferencesKey("custom_bg_color")
+        private val CUSTOM_MENU_COLOR_KEY = intPreferencesKey("custom_menu_color")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
         private val DESIGN_STYLE_KEY = stringPreferencesKey("design_style")
@@ -62,8 +65,9 @@ class ThemeManager(private val context: Context) {
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
         .map { preferences ->
-            val themeName = preferences[THEME_KEY] ?: ColorTheme.SIGNATURE.name
-            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.SIGNATURE }
+            // Standard: warmes Papier-Theme (Android-15/16-Look) für Neuinstallationen.
+            val themeName = preferences[THEME_KEY] ?: ColorTheme.PAPER_MIDNIGHT.name
+            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.PAPER_MIDNIGHT }
         }
 
     val selectedFontSize: Flow<FontSize> = context.dataStore.data
@@ -94,6 +98,13 @@ class ThemeManager(private val context: Context) {
     // Frei wählbare Schriftfarbe – nur Startbildschirm. Default Weiß.
     val homeTextColor: Flow<Color> = context.dataStore.data
         .map { Color(it[HOME_TEXT_COLOR_KEY] ?: Color.White.toArgb()) }
+
+    // CUSTOM-Theme: frei wählbare Flächenfarben (Default: dunkel, kontraststark zu Weiß).
+    val customBackgroundColor: Flow<Color> = context.dataStore.data
+        .map { Color(it[CUSTOM_BG_COLOR_KEY] ?: 0xFF12141A.toInt()) }
+
+    val customMenuColor: Flow<Color> = context.dataStore.data
+        .map { Color(it[CUSTOM_MENU_COLOR_KEY] ?: 0xFF20242E.toInt()) }
 
     val showFavoriteLabels: Flow<Boolean> = context.dataStore.data
         .map { it[SHOW_FAVORITE_LABELS_KEY] ?: false }
@@ -230,6 +241,8 @@ class ThemeManager(private val context: Context) {
     suspend fun setDarkTextEnabled(enabled: Boolean) { context.dataStore.edit { it[DARK_TEXT_KEY] = enabled } }
     suspend fun setIconColor(color: Color) { context.dataStore.edit { it[ICON_COLOR_KEY] = color.toArgb() } }
     suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }
+    suspend fun setCustomBackgroundColor(color: Color) { context.dataStore.edit { it[CUSTOM_BG_COLOR_KEY] = color.toArgb() } }
+    suspend fun setCustomMenuColor(color: Color) { context.dataStore.edit { it[CUSTOM_MENU_COLOR_KEY] = color.toArgb() } }
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
     suspend fun setDesignStyle(style: DesignStyle) {

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monochrom-Layer für das themed adaptive Icon (Android 13+ / Material You).
+  Einfarbige Kronen-Silhouette ("Rethrone"); das System tönt sie passend zum Theme.
+  Inhalt liegt in der zentralen Safe-Zone (108x108 viewport).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Kronen-Zacken -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M26,64 L33,39 L44,54 L54,31 L64,54 L75,39 L82,64 Z" />
+    <!-- Basisband -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M25,65 L83,65 A3,3 0 0 1 86,68 L86,74 A3,3 0 0 1 83,77 L25,77 A3,3 0 0 1 22,74 L22,68 A3,3 0 0 1 25,65 Z" />
+    <!-- Juwelen auf den Zacken -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M54,28 m-3,0 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M33,36 m-2.5,0 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M75,36 m-2.5,0 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0 Z" />
+</vector>

@@ -69,35 +69,11 @@ fun SystemWallpaperView(
         }
 
         withContext(Dispatchers.IO) {
-            try {
-                if (!customWallpaperUri.isNullOrEmpty()) {
-                    val uri = customWallpaperUri.toUri()
-                    context.contentResolver.openInputStream(uri)?.use { stream ->
-                        val b = BitmapFactory.decodeStream(stream)
-                        val ib = b?.asImageBitmap()
-                        if (ib != null) {
-                            withContext(Dispatchers.Main) { wallpaperBitmap = ib }
-                        }
-                    }
-                } else {
-                    val drawable = wallpaperManager.drawable
-                    val ib = drawable?.toBitmap()?.asImageBitmap()
-                    if (ib != null) {
-                        withContext(Dispatchers.Main) { wallpaperBitmap = ib }
-                    }
-                }
-            } catch (_: Exception) {
-                // Fallback: System-Wallpaper laden bei URI-Fehler
-                try {
-                    val drawable = wallpaperManager.drawable
-                    val ib = drawable?.toBitmap()?.asImageBitmap()
-                    if (ib != null) {
-                        withContext(Dispatchers.Main) { wallpaperBitmap = ib }
-                    }
-                } catch (_: Exception) {
-                    // Kein Wallpaper verfügbar – beim Reset bleibt dann korrekt der Gradient-Fallback sichtbar.
-                }
+            val ib = loadWallpaperBitmap(context, customWallpaperUri)?.asImageBitmap()
+            if (ib != null) {
+                withContext(Dispatchers.Main) { wallpaperBitmap = ib }
             }
+            // Kein Wallpaper verfügbar – beim Reset bleibt korrekt der Gradient-Fallback sichtbar.
         }
     }
 

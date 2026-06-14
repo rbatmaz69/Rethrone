@@ -94,12 +94,11 @@ fun HomeAppScrubber(
     val appFont = LocalAppFont.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
-        colorTheme.menuSurfaceColor(isDarkTextEnabled)
-    }
-    val highlightColor = remember(colorTheme, isDarkTextEnabled) {
-        colorTheme.highlightColor(isDarkTextEnabled)
-    }
+    // Direkt berechnet (nicht via remember(colorTheme,…)): bei CUSTOM/DYNAMIC ändern sich
+    // die Farben über den Holder, ohne dass sich der Enum-Key ändert – sonst bliebe die
+    // Startseiten-Liste stale, bis ein Layout-Wechsel sie neu zusammensetzt.
+    val menuSurfaceColor = colorTheme.menuSurfaceColor(isDarkTextEnabled)
+    val highlightColor = colorTheme.highlightColor(isDarkTextEnabled)
 
     // apps ist eine in-place mutierte SnapshotStateList – auf den Inhalt keyen (Kopie),
     // damit Deinstallationen sofort durchschlagen (sonst bliebe die Gruppierung stale).
@@ -146,7 +145,7 @@ fun HomeAppScrubber(
                 modifier = Modifier
                     .offset { IntOffset(listLeftPx.roundToInt(), listTopYPx.roundToInt()) }
                     .width(232.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(menuSurfaceColor.copy(alpha = 0.96f))
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {

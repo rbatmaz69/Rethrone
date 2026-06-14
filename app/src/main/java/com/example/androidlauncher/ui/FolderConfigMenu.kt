@@ -16,8 +16,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -131,7 +131,7 @@ fun FolderConfigMenu(
                 IconButton(onClick = { showDeleteConfirm = true }) {
                     Icon(Lucide.Trash2, contentDescription = "Ordner löschen", tint = Color.Red.copy(alpha = 0.8f))
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = null, tint = mainTextColor) }
+                IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, contentDescription = null, tint = mainTextColor) }
             }
         }
 
@@ -141,7 +141,7 @@ fun FolderConfigMenu(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .designSurface(designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent)
+                .designSurface(designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .clickable { focusRequester.requestFocus() }
         ) {
@@ -284,7 +284,7 @@ fun FolderConfigMenu(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.Check,
+                Icons.Rounded.Check,
                 contentDescription = "Bestätigen",
                 tint = checkmarkColor,
                 modifier = Modifier.size(28.dp)
@@ -316,11 +316,11 @@ private fun AppSelectionItem(
             .then(
                 if (isSelected) {
                     Modifier.designSurface(
-                        designStyle, RoundedCornerShape(12.dp), isDarkTextEnabled, surfaceAccent,
+                        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
                         fillAlpha = 0.05f
                     )
                 } else {
-                    Modifier.background(Color.Transparent, RoundedCornerShape(12.dp))
+                    Modifier.background(Color.Transparent, RoundedCornerShape(16.dp))
                 }
             )
             .graphicsLayer {
