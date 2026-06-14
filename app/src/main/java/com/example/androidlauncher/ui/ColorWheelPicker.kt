@@ -17,7 +17,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Colorize
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -57,7 +61,8 @@ fun ColorWheelPicker(
     color: Color,
     onColorChange: (Color) -> Unit,
     mainTextColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onEyedropper: (() -> Unit)? = null
 ) {
     // Lokaler HSV-Zustand, initial aus der übergebenen Farbe abgeleitet.
     val initialHsv = remember(color) { color.toHsv() }
@@ -137,7 +142,17 @@ fun ColorWheelPicker(
             val hex = remember(currentColor) {
                 "#%06X".format(0xFFFFFF and currentColor.toArgb())
             }
-            Text(hex, color = mainTextColor, fontSize = 16.sp)
+            Text(hex, color = mainTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            // Farbpinzette: Farbe vom Wallpaper aufnehmen.
+            if (onEyedropper != null) {
+                IconButton(onClick = onEyedropper) {
+                    Icon(
+                        imageVector = Icons.Rounded.Colorize,
+                        contentDescription = "Farbpinzette",
+                        tint = mainTextColor
+                    )
+                }
+            }
         }
 
         // Schnellwahl-Swatches

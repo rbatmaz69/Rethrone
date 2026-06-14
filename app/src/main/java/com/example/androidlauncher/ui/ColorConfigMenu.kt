@@ -47,6 +47,10 @@ fun ColorConfigMenu(
     designStyle: DesignStyle,
     onOpenDesignMenu: () -> Unit,
     onOpenThemeMenu: () -> Unit,
+    customBackgroundColor: Color,
+    onCustomBackgroundChange: (Color) -> Unit,
+    customMenuColor: Color,
+    onCustomMenuChange: (Color) -> Unit,
     customWallpaperUri: String? = null,
     onClose: () -> Unit
 ) {
@@ -55,8 +59,10 @@ fun ColorConfigMenu(
     val backgroundBrush = remember(selectedTheme, isDarkTextEnabled) {
         selectedTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.95f)
     }
-    // Welcher Farbwähler ist gerade offen: "text", "icon" oder null.
+    // Welcher Farbwähler ist gerade offen: "text", "icon", "bg", "menu" oder null.
     var activePicker by remember { mutableStateOf<String?>(null) }
+    // Ob die Wallpaper-Farbpinzette gerade aktiv ist (überdeckt den Picker-Dialog).
+    var eyedropperActive by remember { mutableStateOf(false) }
     val dialogBackground = remember(selectedTheme, isDarkTextEnabled) {
         selectedTheme.menuSurfaceColor(isDarkTextEnabled)
     }
@@ -96,6 +102,24 @@ fun ColorConfigMenu(
                 mainTextColor = mainTextColor,
                 onClick = { activePicker = "icon" }
             )
+
+            // Nur bei „Eigene Farbe": zwei wählbare Flächenfarben.
+            if (selectedTheme == ColorTheme.CUSTOM) {
+                Spacer(modifier = Modifier.height(10.dp))
+                ColorPickerRow(
+                    label = "Hintergrundfarbe",
+                    color = customBackgroundColor,
+                    mainTextColor = mainTextColor,
+                    onClick = { activePicker = "bg" }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                ColorPickerRow(
+                    label = "Menüfarbe",
+                    color = customMenuColor,
+                    mainTextColor = mainTextColor,
+                    onClick = { activePicker = "menu" }
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -158,15 +182,29 @@ fun ColorConfigMenu(
         }
 
         if (activePicker != null) {
-            val isText = activePicker == "text"
-            ColorPickerDialog(
-                title = if (isText) "Schriftfarbe (Startseite)" else "Iconfarbe",
-                color = if (isText) homeTextColor else iconColor,
-                onColorChange = if (isText) onHomeTextColorChange else onIconColorChange,
-                backgroundColor = dialogBackground,
-                mainTextColor = mainTextColor,
-                onDismiss = { activePicker = null }
-            )
+            val (pickerTitle, pickerColor, pickerOnChange) = when (activePicker) {
+                "text" -> Triple("Schriftfarbe (Startseite)", homeTextColor, onHomeTextColorChange)
+                "icon" -> Triple("Iconfarbe", iconColor, onIconColorChange)
+                "bg" -> Triple("Hintergrundfarbe", customBackgroundColor, onCustomBackgroundChange)
+                else -> Triple("Menüfarbe", customMenuColor, onCustomMenuChange)
+            }
+            if (eyedropperActive) {
+                WallpaperEyedropper(
+                    customWallpaperUri = customWallpaperUri,
+                    onPicked = { c -> pickerOnChange(c); eyedropperActive = false },
+                    onCancel = { eyedropperActive = false }
+                )
+            } else {
+                ColorPickerDialog(
+                    title = pickerTitle,
+                    color = pickerColor,
+                    onColorChange = pickerOnChange,
+                    backgroundColor = dialogBackground,
+                    mainTextColor = mainTextColor,
+                    onRequestEyedropper = { eyedropperActive = true },
+                    onDismiss = { activePicker = null }
+                )
+            }
         }
     }
 }
@@ -203,7 +241,8 @@ fun ColorPickerDialog(
     onColorChange: (Color) -> Unit,
     backgroundColor: Color,
     mainTextColor: Color,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onRequestEyedropper: (() -> Unit)? = null
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -218,7 +257,8 @@ fun ColorPickerDialog(
             ColorWheelPicker(
                 color = color,
                 onColorChange = onColorChange,
-                mainTextColor = mainTextColor
+                mainTextColor = mainTextColor,
+                onEyedropper = onRequestEyedropper
             )
             Spacer(modifier = Modifier.height(20.dp))
             TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
@@ -247,8 +287,9 @@ fun ThemeSelectionMenu(
     }
     val orderedThemes = remember {
         ColorTheme.entries.sortedWith(
-            // Material You ("Dynamisch") ganz vorne, dann Art-Themes, dann alphabetisch.
-            compareByDescending<ColorTheme> { it == ColorTheme.DYNAMIC }
+            // "Eigene Farbe" und "Dynamisch" ganz vorne, dann Art-Themes, dann alphabetisch.
+            compareByDescending<ColorTheme> { it == ColorTheme.CUSTOM }
+                .thenByDescending { it == ColorTheme.DYNAMIC }
                 .thenByDescending { it.isArtTheme }
                 .thenBy { it.themeName }
         )
@@ -355,6 +396,7 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
                 }
                 Text(
                     text = when {
+                        theme == ColorTheme.CUSTOM -> "Eigene Flächenfarben selbst wählen"
                         theme == ColorTheme.DYNAMIC -> "Farben aus deinem Hintergrundbild (Material You)"
                         theme.isArtTheme -> "Mehrfarbiger Atmosphären-Verlauf"
                         else -> "Klassische minimalistische Palette"

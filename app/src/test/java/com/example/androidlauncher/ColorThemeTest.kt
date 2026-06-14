@@ -16,8 +16,13 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `total number of color themes is 75`() {
-        assertEquals(75, ColorTheme.entries.size)
+    fun `total number of color themes is 76`() {
+        assertEquals(76, ColorTheme.entries.size)
+    }
+
+    @Test
+    fun `custom theme exists`() {
+        assertTrue("Expected CUSTOM theme to exist", "CUSTOM" in ColorTheme.entries.map { it.name })
     }
 
     @Test
@@ -92,7 +97,9 @@ class ColorThemeTest {
 
     @Test
     fun `all themes pass contrast checks for dark and light text modes`() {
-        ColorTheme.entries.forEach { theme ->
+        // CUSTOM stellt die frei gewählten Flächenfarben faithful dar; der Kontrast liegt
+        // dort in der Verantwortung des Nutzers (eigene Textfarbe) und ist daher ausgenommen.
+        ColorTheme.entries.filter { it != ColorTheme.CUSTOM }.forEach { theme ->
             assertTrue("${theme.name} should keep readable contrast in dark mode", theme.passesContrastForMainText(false))
             assertTrue("${theme.name} should keep readable contrast in light mode", theme.passesContrastForMainText(true))
         }

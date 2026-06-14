@@ -3,6 +3,7 @@ package com.example.androidlauncher.ui.theme
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.example.androidlauncher.data.CustomColorHolder
 import com.example.androidlauncher.data.DynamicColorHolder
 import kotlin.math.max
 import kotlin.math.min
@@ -719,6 +720,18 @@ enum class ColorTheme(
         darkMenuBlend = 0.42f,
         darkSearchBlend = 0.52f,
         darkAnimationBlend = 0.42f
+    ),
+
+    // ── Eigene Farbe: zwei frei gewählte Flächenfarben (Laufzeit, via CustomColorHolder) ──
+    // Felder sind Platzhalter; die echten Werte liefert cust(). Flächen werden FAITHFUL
+    // dargestellt (kein Anchor-Re-Toning) – der Nutzer wählt Kontrast über die Textfarbe.
+    CUSTOM(
+        "Eigene Farbe",
+        Color(0xFF20242E),
+        Color(0xFF20242E),
+        Color.White,
+        Color(0xFF12141A),
+        highlight = Color(0xFF3A4150)
     );
 
     val lightBackground: Color
@@ -779,51 +792,68 @@ enum class ColorTheme(
             rHighlight().blendWith(Color.White, 0.32f)
         ).averageColor().blendWith(WarmLightAnchor, 0.16f)
 
-    private fun backgroundGradientColors(darkTextEnabled: Boolean): List<Color> =
-        if (darkTextEnabled) {
-            rArtGradient()
-                .map { it.blendWith(lightSurfaceAnchor, 0.42f) }
-                .ensureAverageContrastForDarkText()
-        } else {
-            rArtGradient().map { it.blendWith(WarmDarkAnchor, darkBackgroundBlend) }
-        }
+    private fun backgroundGradientColors(darkTextEnabled: Boolean): List<Color> = when {
+        this == CUSTOM -> rArtGradient() // FAITHFUL: gewählte Farbe ohne Re-Toning
+        darkTextEnabled -> rArtGradient()
+            .map { it.blendWith(lightSurfaceAnchor, 0.42f) }
+            .ensureAverageContrastForDarkText()
+        else -> rArtGradient().map { it.blendWith(WarmDarkAnchor, darkBackgroundBlend) }
+    }
 
-    private fun menuGradientColors(darkTextEnabled: Boolean): List<Color> =
-        if (darkTextEnabled) {
-            rMenuGradient()
-                .map { it.blendWith(lightSurfaceAnchor, 0.50f) }
-                .ensureAverageContrastForDarkText()
-        } else {
-            rMenuGradient().map { it.blendWith(rDrawerBackground(), darkMenuBlend) }
-        }
+    private fun menuGradientColors(darkTextEnabled: Boolean): List<Color> = when {
+        this == CUSTOM -> rMenuGradient()
+        darkTextEnabled -> rMenuGradient()
+            .map { it.blendWith(lightSurfaceAnchor, 0.50f) }
+            .ensureAverageContrastForDarkText()
+        else -> rMenuGradient().map { it.blendWith(rDrawerBackground(), darkMenuBlend) }
+    }
 
-    private fun searchGradientColors(darkTextEnabled: Boolean): List<Color> =
-        if (darkTextEnabled) {
-            rSearchGradient()
-                .map { it.blendWith(lightSurfaceAnchor, 0.58f) }
-                .ensureAverageContrastForDarkText()
-        } else {
-            rSearchGradient().map { it.blendWith(rDrawerBackground(), darkSearchBlend) }
-        }
+    private fun searchGradientColors(darkTextEnabled: Boolean): List<Color> = when {
+        this == CUSTOM -> rSearchGradient()
+        darkTextEnabled -> rSearchGradient()
+            .map { it.blendWith(lightSurfaceAnchor, 0.58f) }
+            .ensureAverageContrastForDarkText()
+        else -> rSearchGradient().map { it.blendWith(rDrawerBackground(), darkSearchBlend) }
+    }
 
-    private fun animationGradientColors(darkTextEnabled: Boolean): List<Color> =
-        if (darkTextEnabled) {
-            rAnimationGradient()
-                .map { it.blendWith(lightSurfaceAnchor, 0.46f) }
-                .ensureAverageContrastForDarkText()
-        } else {
-            rAnimationGradient().map { it.blendWith(WarmDarkAnchor, darkAnimationBlend) }
-        }
+    private fun animationGradientColors(darkTextEnabled: Boolean): List<Color> = when {
+        this == CUSTOM -> rAnimationGradient()
+        darkTextEnabled -> rAnimationGradient()
+            .map { it.blendWith(lightSurfaceAnchor, 0.46f) }
+            .ensureAverageContrastForDarkText()
+        else -> rAnimationGradient().map { it.blendWith(WarmDarkAnchor, darkAnimationBlend) }
+    }
 
-    // ── Resolved-Accessoren: liefern für DYNAMIC die Wallpaper-Palette, sonst die Felder ──
-    private fun rPrimary(): Color = if (this == DYNAMIC) dyn().primary else primary
-    private fun rSecondary(): Color = if (this == DYNAMIC) dyn().secondary else secondary
-    private fun rHighlight(): Color = if (this == DYNAMIC) dyn().highlight else highlight
-    private fun rDrawerBackground(): Color = if (this == DYNAMIC) dyn().drawerBackground else drawerBackground
-    private fun rArtGradient(): List<Color> = if (this == DYNAMIC) dyn().art else artGradient
-    private fun rMenuGradient(): List<Color> = if (this == DYNAMIC) dyn().menu else menuGradient
-    private fun rSearchGradient(): List<Color> = if (this == DYNAMIC) dyn().search else searchGradient
-    private fun rAnimationGradient(): List<Color> = if (this == DYNAMIC) dyn().anim else animationGradient
+    // ── Resolved-Accessoren: liefern für DYNAMIC/CUSTOM die Seed-Palette, sonst die Felder ──
+    private fun isSeedTheme(): Boolean = this == DYNAMIC || this == CUSTOM
+    private fun seedPalette(): DynColors = if (this == CUSTOM) cust() else dyn()
+    private fun rPrimary(): Color = if (isSeedTheme()) seedPalette().primary else primary
+    private fun rSecondary(): Color = if (isSeedTheme()) seedPalette().secondary else secondary
+    private fun rHighlight(): Color = if (isSeedTheme()) seedPalette().highlight else highlight
+    private fun rDrawerBackground(): Color = if (isSeedTheme()) seedPalette().drawerBackground else drawerBackground
+    private fun rArtGradient(): List<Color> = if (isSeedTheme()) seedPalette().art else artGradient
+    private fun rMenuGradient(): List<Color> = if (isSeedTheme()) seedPalette().menu else menuGradient
+    private fun rSearchGradient(): List<Color> = if (isSeedTheme()) seedPalette().search else searchGradient
+    private fun rAnimationGradient(): List<Color> = if (isSeedTheme()) seedPalette().anim else animationGradient
+
+    /**
+     * CUSTOM-Palette aus den zwei gewählten Flächenfarben (Hintergrund + Menü), faithful
+     * mit nur dezenter Tiefe. Liest [CustomColorHolder] als Snapshot-State.
+     */
+    private fun cust(): DynColors {
+        val bg = CustomColorHolder.background ?: FallbackCustomBackground
+        val mn = CustomColorHolder.menu ?: FallbackCustomMenu
+        return DynColors(
+            primary = mn,
+            secondary = mn,
+            highlight = mn.blendWith(Color.White, 0.30f),
+            drawerBackground = bg,
+            art = listOf(bg.blendWith(Color.Black, 0.05f), bg, bg.blendWith(Color.White, 0.04f)),
+            menu = listOf(mn.blendWith(Color.Black, 0.05f), mn, mn.blendWith(Color.White, 0.05f)),
+            search = listOf(mn.blendWith(Color.Black, 0.02f), mn.blendWith(Color.White, 0.04f), mn.blendWith(Color.White, 0.10f)),
+            anim = listOf(bg.blendWith(Color.Black, 0.05f), bg, mn)
+        )
+    }
 
     /**
      * Baut die dynamische Palette aus dem Wallpaper-Seed (oder Fallback) tonal auf.
@@ -857,6 +887,9 @@ enum class ColorTheme(
         val WarmDarkAnchor = Color(0xFF0E0B07)
         /** Fallback-Seed für DYNAMIC, wenn keine Wallpaper-Farben vorliegen (Tests/Boot). */
         val FallbackDynamicPrimary = Color(0xFF6D5DBE)
+        /** Fallback-Flächenfarben für CUSTOM (Tests/Boot, bis der Holder befüllt ist). */
+        val FallbackCustomBackground = Color(0xFF12141A)
+        val FallbackCustomMenu = Color(0xFF20242E)
     }
 }
 

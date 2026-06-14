@@ -190,6 +190,12 @@ class MainActivity : ComponentActivity() {
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val iconColor by themeManager.iconColor.collectAsState(initial = Color.White)
             val homeTextColor by themeManager.homeTextColor.collectAsState(initial = Color.White)
+            val customBackgroundColor by themeManager.customBackgroundColor.collectAsState(initial = ColorTheme.FallbackCustomBackground)
+            val customMenuColor by themeManager.customMenuColor.collectAsState(initial = ColorTheme.FallbackCustomMenu)
+            // CUSTOM-Theme: gewählte Flächenfarben in den Holder spiegeln (treibt die Farb-Pipeline).
+            LaunchedEffect(customBackgroundColor, customMenuColor) {
+                com.example.androidlauncher.data.CustomColorHolder.set(customBackgroundColor, customMenuColor)
+            }
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
@@ -1043,6 +1049,10 @@ class MainActivity : ComponentActivity() {
                             designStyle = designStyle,
                             onOpenDesignMenu = { isDesignMenuOpen = true },
                             onOpenThemeMenu = { isThemeMenuOpen = true },
+                            customBackgroundColor = customBackgroundColor,
+                            onCustomBackgroundChange = { scope.launch { themeManager.setCustomBackgroundColor(it) } },
+                            customMenuColor = customMenuColor,
+                            onCustomMenuChange = { scope.launch { themeManager.setCustomMenuColor(it) } },
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isColorConfigOpen = false }
                         )
