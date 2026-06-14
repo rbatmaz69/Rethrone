@@ -17,6 +17,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,9 +39,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -1501,26 +1505,36 @@ private fun MenuOverlay(
 
     AnimatedVisibility(
         visible = visible,
-        enter = slideInVertically(
-            initialOffsetY = { it },
+        // Seitliches Öffnen/Schließen (von rechts) – kohärent mit der Predictive-Back-Geste.
+        enter = slideInHorizontally(
+            initialOffsetX = { it },
             animationSpec = tween(actualEnterSlideDuration, easing = enterSlideEasing)
         ) + fadeIn(animationSpec = tween(actualEnterFadeDuration)),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
+        exit = slideOutHorizontally(
+            targetOffsetX = { it },
             animationSpec = tween(actualExitSlideDuration, easing = exitSlideEasing)
         ) + fadeOut(animationSpec = tween(actualExitFadeDuration))
     ) {
-        var totalDragY by remember { mutableStateOf(0f) }
+        var totalDragX by remember { mutableStateOf(0f) }
 
-        // Predictive Back: die Zurück-Geste schrumpft das Menü live mit; Abbruch federt zurück.
-        val backProgress = remember { Animatable(0f) }
+        // Predictive Back: durchgehender Dismiss-Wert (0 = offen, 1 = ganz draußen).
+        // Beim Bestätigen läuft die Animation NAHTLOS von der gehaltenen Position weiter
+        // nach draußen – kein Zurückspringen in die Ausgangsposition.
+        val dismiss = remember { Animatable(0f) }
+        // +1 = nach rechts (Wisch von linker Kante), -1 = nach links (Wisch von rechter Kante).
+        var backSign by remember { mutableStateOf(1f) }
         PredictiveBackHandler(enabled = true) { backEvent ->
             try {
-                backEvent.collect { ev -> backProgress.snapTo(ev.progress) }
+                backEvent.collect { ev ->
+                    backSign = if (ev.swipeEdge == BackEventCompat.EDGE_LEFT) 1f else -1f
+                    dismiss.snapTo(ev.progress * 0.20f) // Live-„Peek" während der Geste
+                }
+                // Commit: von der aktuellen Position weiter ganz hinausgleiten, dann schließen.
+                dismiss.animateTo(1f, animationSpec = tween(220, easing = EaseInCubic))
                 onClose()
-                backProgress.snapTo(0f)
             } catch (e: CancellationException) {
-                backProgress.animateTo(0f, animationSpec = RethroneSprings.effects())
+                // Abbruch: zurückfedern.
+                dismiss.animateTo(0f, animationSpec = RethroneSprings.effects())
             }
         }
 
@@ -1528,10 +1542,11 @@ private fun MenuOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val p = backProgress.value
+                    val p = dismiss.value
                     scaleX = 1f - 0.10f * p
                     scaleY = 1f - 0.10f * p
-                    alpha = 1f - 0.20f * p
+                    alpha = 1f - 0.15f * p
+                    translationX = size.width * p * backSign
                 }
                 .pointerInput(Unit) {
                     detectTapGestures { } // Verhindert Klicks durch das Overlay hindurch
@@ -1539,15 +1554,15 @@ private fun MenuOverlay(
                 .then(
                     if (enableDragToClose) {
                         Modifier.pointerInput(Unit) {
-                            detectVerticalDragGestures(
+                            detectHorizontalDragGestures(
                                 onDragEnd = {
-                                    if (totalDragY > 300f) onClose()
-                                    totalDragY = 0f
+                                    if (abs(totalDragX) > 300f) onClose()
+                                    totalDragX = 0f
                                 },
-                                onDragCancel = { totalDragY = 0f },
-                                onVerticalDrag = { change, dragAmount ->
+                                onDragCancel = { totalDragX = 0f },
+                                onHorizontalDrag = { change, dragAmount ->
                                     change.consume()
-                                    totalDragY += dragAmount
+                                    totalDragX += dragAmount
                                 }
                             )
                         }
