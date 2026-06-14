@@ -39,6 +39,8 @@ class ThemeManager(private val context: Context) {
         // ARGB-Flächenfarben für das CUSTOM-Theme ("Eigene Farbe").
         private val CUSTOM_BG_COLOR_KEY = intPreferencesKey("custom_bg_color")
         private val CUSTOM_MENU_COLOR_KEY = intPreferencesKey("custom_menu_color")
+        // Komma-separierte Paketnamen der ausgeblendeten Apps.
+        private val HIDDEN_APPS_KEY = stringPreferencesKey("hidden_apps")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
         private val DESIGN_STYLE_KEY = stringPreferencesKey("design_style")
@@ -105,6 +107,13 @@ class ThemeManager(private val context: Context) {
 
     val customMenuColor: Flow<Color> = context.dataStore.data
         .map { Color(it[CUSTOM_MENU_COLOR_KEY] ?: 0xFF20242E.toInt()) }
+
+    // Ausgeblendete Apps (Paketnamen). Werden überall aus der Anzeige gefiltert.
+    val hiddenApps: Flow<Set<String>> = context.dataStore.data
+        .map { prefs ->
+            val raw = prefs[HIDDEN_APPS_KEY] ?: ""
+            if (raw.isEmpty()) emptySet() else raw.split(",").filter { it.isNotEmpty() }.toSet()
+        }
 
     val showFavoriteLabels: Flow<Boolean> = context.dataStore.data
         .map { it[SHOW_FAVORITE_LABELS_KEY] ?: false }
@@ -243,6 +252,7 @@ class ThemeManager(private val context: Context) {
     suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }
     suspend fun setCustomBackgroundColor(color: Color) { context.dataStore.edit { it[CUSTOM_BG_COLOR_KEY] = color.toArgb() } }
     suspend fun setCustomMenuColor(color: Color) { context.dataStore.edit { it[CUSTOM_MENU_COLOR_KEY] = color.toArgb() } }
+    suspend fun setHiddenApps(packages: Set<String>) { context.dataStore.edit { it[HIDDEN_APPS_KEY] = packages.joinToString(",") } }
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
     suspend fun setDesignStyle(style: DesignStyle) {

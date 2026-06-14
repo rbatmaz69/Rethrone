@@ -106,6 +106,7 @@ import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.InfoDialog
 import com.example.androidlauncher.ui.UninstallAppsMenu
+import com.example.androidlauncher.ui.HiddenAppsMenu
 import com.example.androidlauncher.ui.LaunchAnimationOverlay
 import com.example.androidlauncher.ui.NiagaraAppDrawer
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
@@ -197,6 +198,7 @@ class MainActivity : ComponentActivity() {
                 com.example.androidlauncher.data.CustomColorHolder.set(customBackgroundColor, customMenuColor)
             }
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
+            val hiddenApps by themeManager.hiddenApps.collectAsState(initial = emptySet())
             val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
             val singleShakeAction by themeManager.singleShakeAction.collectAsState(initial = ShakeAction.FLASHLIGHT)
@@ -373,6 +375,7 @@ class MainActivity : ComponentActivity() {
                 var isEditConfigOpen by remember { mutableStateOf(false) }
                 var isIconConfigOpen by remember { mutableStateOf(false) }
                 var isUninstallAppsOpen by remember { mutableStateOf(false) }
+                var isHiddenAppsOpen by remember { mutableStateOf(false) }
                 var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
@@ -535,8 +538,14 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val allApps = remember { mutableStateListOf<AppInfo>() }
-                val favorites = remember(allApps.toList(), favoritePackages) {
-                    LauncherLogic.getFavoriteApps(allApps.toList(), favoritePackages)
+                // Anzeige-Liste ohne ausgeblendete Apps (Drawer/Startseiten-Liste/Suche/Favoriten).
+                // Das Ausblenden-Menü selbst nutzt weiterhin die volle `allApps`-Liste.
+                val visibleApps = remember(allApps.toList(), hiddenApps) {
+                    if (hiddenApps.isEmpty()) allApps.toList()
+                    else allApps.filterNot { it.packageName in hiddenApps }
+                }
+                val favorites = remember(visibleApps, favoritePackages) {
+                    LauncherLogic.getFavoriteApps(visibleApps, favoritePackages)
                 }
 
                 fun refreshAppList(targetPackageName: String? = null) {
@@ -785,6 +794,7 @@ class MainActivity : ComponentActivity() {
                         isEditConfigOpen = false
                         isIconConfigOpen = false
                         isUninstallAppsOpen = false
+                        isHiddenAppsOpen = false
                         isWallpaperConfigOpen = false
                         isInfoOpen = false
                         isHomeEditMode = false
@@ -795,12 +805,12 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(
                     isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
-                    isIconConfigOpen, isUninstallAppsOpen, isWallpaperConfigOpen, isInfoOpen,
+                    isIconConfigOpen, isUninstallAppsOpen, isHiddenAppsOpen, isWallpaperConfigOpen, isInfoOpen,
                     selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
                         isColorConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
-                        isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isWallpaperConfigOpen ||
+                        isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isWallpaperConfigOpen ||
                         isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
@@ -808,7 +818,7 @@ class MainActivity : ComponentActivity() {
                 BackHandler(
                     enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
-                        isIconConfigOpen || isUninstallAppsOpen || isWallpaperConfigOpen || isInfoOpen ||
+                        isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isWallpaperConfigOpen || isInfoOpen ||
                         selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                 ) {
                     when {
@@ -818,6 +828,7 @@ class MainActivity : ComponentActivity() {
                         isFontSelectionOpen -> isFontSelectionOpen = false
                         isWallpaperConfigOpen -> isWallpaperConfigOpen = false
                         isUninstallAppsOpen -> isUninstallAppsOpen = false
+                        isHiddenAppsOpen -> isHiddenAppsOpen = false
                         isIconConfigOpen -> isIconConfigOpen = false
                         isDrawerOpen -> isDrawerOpen = false
                         isFavoritesConfigOpen -> isFavoritesConfigOpen = false
@@ -876,7 +887,7 @@ class MainActivity : ComponentActivity() {
                         if (targetIsDrawerOpen) {
                             when (appAccessMode) {
                                 AppAccessMode.DRAWER_LIST -> NiagaraAppDrawer(
-                                    apps = allApps,
+                                    apps = visibleApps,
                                     onToggleFavorite = { pkg ->
                                         val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
                                         if (newFavs != favoritePackages) {
@@ -900,7 +911,7 @@ class MainActivity : ComponentActivity() {
                                 // DRAWER_GRID (und HOME_LIST als harmloser Fallback – im HOME_LIST-Modus
                                 // wird der Drawer nie geöffnet).
                                 else -> AppDrawer(
-                                    apps = allApps,
+                                    apps = visibleApps,
                                     folders = folders,
                                     onToggleFavorite = { pkg ->
                                         val newFavs = LauncherLogic.toggleFavorite(favoritePackages, pkg)
@@ -930,7 +941,7 @@ class MainActivity : ComponentActivity() {
                         } else {
                             HomeScreen(
                                 favorites = favorites,
-                                allApps = allApps,
+                                allApps = visibleApps,
                                 appAccessMode = appAccessMode,
                                 isSettingsOpen = isSettingsOpen,
                                 isSearchOpen = isSearchOpen && !isSearchClosingState,
@@ -1140,6 +1151,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onOpenUninstallApps = { isUninstallAppsOpen = true },
+                            onOpenHiddenApps = { isHiddenAppsOpen = true },
                             onChangeWallpaper = {
                                 isEditConfigOpen = false
                                 isWallpaperConfigOpen = false
@@ -1270,6 +1282,22 @@ class MainActivity : ComponentActivity() {
                             apps = allApps,
                             onRefreshApps = { pkg -> refreshAppList(pkg) },
                             onClose = { isUninstallAppsOpen = false }
+                        )
+                    }
+
+                    MenuOverlay(
+                        visible = isHiddenAppsOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isHiddenAppsOpen = false }
+                    ) {
+                        HiddenAppsMenu(
+                            apps = allApps,
+                            hiddenPackages = hiddenApps,
+                            onToggleHidden = { pkg ->
+                                val newHidden = if (pkg in hiddenApps) hiddenApps - pkg else hiddenApps + pkg
+                                scope.launch { themeManager.setHiddenApps(newHidden) }
+                            },
+                            onClose = { isHiddenAppsOpen = false }
                         )
                     }
 

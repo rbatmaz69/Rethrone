@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +63,7 @@ fun EditConfigMenu(
     onResetHomeLayout: () -> Unit,
     onOpenIconConfig: () -> Unit,
     onOpenUninstallApps: () -> Unit,
+    onOpenHiddenApps: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onResetWallpaper: () -> Unit,
     onOpenWallpaperAdjust: () -> Unit,
@@ -279,6 +281,19 @@ fun EditConfigMenu(
                 EditSectionHeader(
                     title = "Apps",
                     mainTextColor = mainTextColor
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Icons.Rounded.VisibilityOff,
+                    label = "Apps ausblenden",
+                    onClick = onOpenHiddenApps,
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "hidden_apps_item"
                 )
             }
 
