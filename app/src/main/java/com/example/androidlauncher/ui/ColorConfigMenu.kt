@@ -283,6 +283,7 @@ fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, mainText
 
 @Composable
 fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color, designStyle: DesignStyle, isDarkTextEnabled: Boolean, onClick: () -> Unit) {
+    val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     val baseModifier = Modifier.designSurface(
         designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled,
         accent = theme.menuSurfaceColor(isDarkTextEnabled),
@@ -305,7 +306,7 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
         modifier = Modifier
             .fillMaxWidth()
             .then(itemModifier)
-            .clickable(onClick = onClick)
+            .clickable(onClick = { haptics.select(); onClick() })
     ) {
         Row(
             modifier = Modifier.padding(16.dp),

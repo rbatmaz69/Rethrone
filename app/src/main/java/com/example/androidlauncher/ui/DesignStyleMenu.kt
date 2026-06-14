@@ -96,6 +96,7 @@ private fun DesignStyleTile(
     secondaryTextColor: Color,
     onClick: () -> Unit
 ) {
+    val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     val accent = selectedTheme.menuSurfaceColor(isDarkTextEnabled)
     val previewBrush = selectedTheme.menuBrush(isDarkTextEnabled, alpha = 0.96f)
     val outerShape = RoundedCornerShape(24.dp)
@@ -104,7 +105,7 @@ private fun DesignStyleTile(
         modifier = Modifier
             .fillMaxWidth()
             .clip(outerShape)
-            .clickable { onClick() }
+            .clickable { haptics.select(); onClick() }
             .background(mainTextColor.copy(alpha = if (isSelected) 0.12f else 0.05f), outerShape)
             .testTag("design_tile_${style.name}")
             .padding(12.dp),

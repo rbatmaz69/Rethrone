@@ -5,6 +5,11 @@ import android.app.SearchManager
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.graphics.graphicsLayer
+import com.example.androidlauncher.ui.theme.RethroneSprings
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -231,14 +236,23 @@ fun HybridSearch(
             )
     }
 
-    BackHandler {
-        keyboardController?.hide()
-        if (!isClosing) {
-            isClosing = true
-            onClosingStart()
-        }
-        if (maxImeBottom == 0) {
-            onClose()
+    // Predictive Back: die Zurück-Geste schrumpft die Suche live; Abbruch federt zurück,
+    // Vollzug nutzt den bestehenden Schließpfad (inkl. IME-Handling).
+    val searchBackProgress = remember { Animatable(0f) }
+    PredictiveBackHandler(enabled = !isClosing) { backEvent ->
+        try {
+            backEvent.collect { ev -> searchBackProgress.snapTo(ev.progress) }
+            keyboardController?.hide()
+            if (!isClosing) {
+                isClosing = true
+                onClosingStart()
+            }
+            if (maxImeBottom == 0) {
+                onClose()
+            }
+            searchBackProgress.snapTo(0f)
+        } catch (e: CancellationException) {
+            searchBackProgress.animateTo(0f, animationSpec = RethroneSprings.effects())
         }
     }
 
@@ -268,6 +282,12 @@ fun HybridSearch(
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.ime)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
+                .graphicsLayer {
+                    val p = searchBackProgress.value
+                    scaleX = 1f - 0.10f * p
+                    scaleY = 1f - 0.10f * p
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+                }
                 .alpha(contentAlpha)
                 .padding(16.dp)
         ) {

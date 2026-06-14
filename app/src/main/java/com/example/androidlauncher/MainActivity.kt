@@ -18,7 +18,10 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.example.androidlauncher.ui.theme.RethroneSprings
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
@@ -1508,10 +1511,28 @@ private fun MenuOverlay(
         ) + fadeOut(animationSpec = tween(actualExitFadeDuration))
     ) {
         var totalDragY by remember { mutableStateOf(0f) }
-        
+
+        // Predictive Back: die Zurück-Geste schrumpft das Menü live mit; Abbruch federt zurück.
+        val backProgress = remember { Animatable(0f) }
+        PredictiveBackHandler(enabled = true) { backEvent ->
+            try {
+                backEvent.collect { ev -> backProgress.snapTo(ev.progress) }
+                onClose()
+                backProgress.snapTo(0f)
+            } catch (e: CancellationException) {
+                backProgress.animateTo(0f, animationSpec = RethroneSprings.effects())
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    val p = backProgress.value
+                    scaleX = 1f - 0.10f * p
+                    scaleY = 1f - 0.10f * p
+                    alpha = 1f - 0.20f * p
+                }
                 .pointerInput(Unit) {
                     detectTapGestures { } // Verhindert Klicks durch das Overlay hindurch
                 }

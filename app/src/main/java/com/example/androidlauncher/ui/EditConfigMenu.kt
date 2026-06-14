@@ -524,6 +524,8 @@ private fun EditToggleItem(
     isDarkTextEnabled: Boolean,
     switchTestTag: String
 ) {
+    val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
+    val toggle: (Boolean) -> Unit = { haptics.toggle(it); onCheckedChange(it) }
     val backgroundModifier = Modifier.designSurface(
         designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
@@ -535,7 +537,7 @@ private fun EditToggleItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
-            .clickable { onCheckedChange(!checked) },
+            .clickable { toggle(!checked) },
         color = Color.Transparent
     ) {
         Row(
@@ -568,7 +570,7 @@ private fun EditToggleItem(
             Switch(
                 modifier = Modifier.testTag(switchTestTag),
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = toggle,
                 colors = LiquidGlass.switchColors(isDarkTextEnabled, designStyle.isGlassLike)
             )
         }

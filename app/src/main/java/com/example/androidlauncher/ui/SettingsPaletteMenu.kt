@@ -65,6 +65,7 @@ fun SettingsPaletteMenu(
     val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
     // Icon-Tönung folgt der gewählten Farbe – wie alles andere auf der Startseite.
     val mainTextColor = LocalHomeTextColor.current
+    val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     
     val settingsItems = remember {
         listOf(
@@ -183,6 +184,7 @@ fun SettingsPaletteMenu(
                                 indication = null,
                                 enabled = isSettingsOpen,
                                 onClick = {
+                                    haptics.confirm()
                                     item.action()
                                     onToggleSettings()
                                 }
