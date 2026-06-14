@@ -39,7 +39,6 @@ import com.example.androidlauncher.ui.theme.LocalFontWeight
 @Composable
 fun ColorConfigMenu(
     selectedTheme: ColorTheme,
-    onThemeSelected: (ColorTheme) -> Unit,
     isDarkTextEnabled: Boolean,
     iconColor: Color,
     onIconColorChange: (Color) -> Unit,
@@ -47,6 +46,7 @@ fun ColorConfigMenu(
     onHomeTextColorChange: (Color) -> Unit,
     designStyle: DesignStyle,
     onOpenDesignMenu: () -> Unit,
+    onOpenThemeMenu: () -> Unit,
     customWallpaperUri: String? = null,
     onClose: () -> Unit
 ) {
@@ -54,14 +54,6 @@ fun ColorConfigMenu(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val backgroundBrush = remember(selectedTheme, isDarkTextEnabled) {
         selectedTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.95f)
-    }
-    val orderedThemes = remember {
-        ColorTheme.entries.sortedWith(
-            // Material You ("Dynamisch") ganz vorne, dann Art-Themes, dann alphabetisch.
-            compareByDescending<ColorTheme> { it == ColorTheme.DYNAMIC }
-                .thenByDescending { it.isArtTheme }
-                .thenBy { it.themeName }
-        )
     }
     // Welcher Farbwähler ist gerade offen: "text", "icon" oder null.
     var activePicker by remember { mutableStateOf<String?>(null) }
@@ -105,17 +97,39 @@ fun ColorConfigMenu(
                 onClick = { activePicker = "icon" }
             )
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text("Darstellung", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Preview Area mit flexibler Gewichtung
-            Row(modifier = Modifier.fillMaxWidth().weight(2f).heightIn(min = 100.dp, max = 150.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                PreviewCard(title = "Startseite", colorTheme = selectedTheme, isHome = true, mainTextColor = mainTextColor, designStyle = designStyle, isDarkTextEnabled = isDarkTextEnabled, modifier = Modifier.weight(1f))
-                PreviewCard(title = "App Drawer", colorTheme = selectedTheme, isHome = false, mainTextColor = mainTextColor, designStyle = designStyle, isDarkTextEnabled = isDarkTextEnabled, modifier = Modifier.weight(1f))
+            // Antippbare Zeile → Theme-Untermenü.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { onOpenThemeMenu() }
+                    .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                    .testTag("theme_selection_row")
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Themen", color = mainTextColor, fontSize = 16.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(selectedTheme.themeName, color = mainTextColor.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = mainTextColor.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 32.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Antippbare Zeile, die das Design-Untermenü öffnet (ersetzt den früheren Switch).
+            // Antippbare Zeile, die das Design-Untermenü öffnet.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -140,29 +154,7 @@ fun ColorConfigMenu(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text("Themen", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Liste der Themen mit Gewichtung
-            LazyColumn(
-                modifier = Modifier.weight(3f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 8.dp)
-            ) {
-                items(orderedThemes, key = { it.name }) { theme ->
-                    ThemeOptionItem(
-                        theme = theme,
-                        isSelected = theme == selectedTheme,
-                        mainTextColor = mainTextColor,
-                        designStyle = designStyle,
-                        isDarkTextEnabled = isDarkTextEnabled,
-                        onClick = { onThemeSelected(theme) }
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.weight(1f))
         }
 
         if (activePicker != null) {
@@ -236,45 +228,66 @@ fun ColorPickerDialog(
     }
 }
 
+/**
+ * Eigenständiges Untermenü mit der Theme-Auswahl (vorher inline im Farben-Menü).
+ */
 @Composable
-fun PreviewCard(title: String, colorTheme: ColorTheme, isHome: Boolean, mainTextColor: Color, designStyle: DesignStyle, isDarkTextEnabled: Boolean, modifier: Modifier = Modifier) {
-    val cardModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled,
-        accent = colorTheme.menuSurfaceColor(isDarkTextEnabled), fillAlpha = 0.05f
-    )
-
-    val previewBrush = remember(colorTheme, isHome, isDarkTextEnabled) {
-        if (isHome) colorTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.88f)
-        else colorTheme.menuBrush(isDarkTextEnabled, alpha = 0.96f)
+fun ThemeSelectionMenu(
+    selectedTheme: ColorTheme,
+    onThemeSelected: (ColorTheme) -> Unit,
+    isDarkTextEnabled: Boolean,
+    designStyle: DesignStyle,
+    customWallpaperUri: String? = null,
+    onClose: () -> Unit
+) {
+    val fontWeight = LocalFontWeight.current
+    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val backgroundBrush = remember(selectedTheme, isDarkTextEnabled) {
+        selectedTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.95f)
+    }
+    val orderedThemes = remember {
+        ColorTheme.entries.sortedWith(
+            // Material You ("Dynamisch") ganz vorne, dann Art-Themes, dann alphabetisch.
+            compareByDescending<ColorTheme> { it == ColorTheme.DYNAMIC }
+                .thenByDescending { it.isArtTheme }
+                .thenBy { it.themeName }
+        )
     }
 
-    Box(
-        modifier = modifier.then(cardModifier)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(title, color = mainTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(previewBrush)
+    Box(modifier = Modifier.fillMaxSize().testTag("theme_selection_menu")) {
+        SystemWallpaperView(customWallpaperUri)
+        Box(modifier = Modifier.fillMaxSize().background(backgroundBrush))
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Themen", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+                IconButton(onClick = onClose) {
+                    Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 8.dp)
             ) {
-                if (isHome) {
-                    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = Modifier.width(40.dp).height(8.dp).background(mainTextColor.copy(alpha = 0.8f), CircleShape))
-                        Box(modifier = Modifier.width(30.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.4f), CircleShape))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        repeat(3) { Row(verticalAlignment = Alignment.CenterVertically) { Box(modifier = Modifier.size(12.dp).border(1.dp, mainTextColor.copy(alpha = 0.5f), CircleShape)); Spacer(modifier = Modifier.width(8.dp)); Box(modifier = Modifier.width(40.dp).height(4.dp).background(mainTextColor.copy(alpha = 0.2f), CircleShape)) } }
-                    }
-                } else {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Column(modifier = Modifier.padding(8.dp)) {
-                            Box(modifier = Modifier.fillMaxWidth().height(16.dp).background(mainTextColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
-                            Spacer(modifier = Modifier.height(12.dp))
-                            repeat(3) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) { repeat(4) { Box(modifier = Modifier.size(10.dp).border(1.dp, mainTextColor.copy(alpha = 0.7f), CircleShape)) } }; Spacer(modifier = Modifier.height(8.dp)) }
-                        }
-                    }
+                items(orderedThemes, key = { it.name }) { theme ->
+                    ThemeOptionItem(
+                        theme = theme,
+                        isSelected = theme == selectedTheme,
+                        mainTextColor = mainTextColor,
+                        designStyle = designStyle,
+                        isDarkTextEnabled = isDarkTextEnabled,
+                        onClick = { onThemeSelected(theme) }
+                    )
                 }
             }
         }
