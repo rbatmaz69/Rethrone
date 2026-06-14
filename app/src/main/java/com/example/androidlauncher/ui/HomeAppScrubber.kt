@@ -111,6 +111,9 @@ fun HomeAppScrubber(
     val rowHeightPx = with(density) { 52.dp.toPx() }
     val listWidthPx = with(density) { 232.dp.toPx() }
     val gapPx = with(density) { 8.dp.toPx() }
+    // Schrittweite (px pro Buchstabe) für relatives Scrubbing – kleinere Werte = empfindlicher.
+    val minStepPx = with(density) { 10.dp.toPx() }
+    val maxStepPx = with(density) { 28.dp.toPx() }
 
     var active by remember { mutableStateOf(false) }
     var stripBounds by remember { mutableStateOf(Rect.Zero) }
@@ -119,6 +122,10 @@ fun HomeAppScrubber(
     var hoveredIndex by remember { mutableStateOf(-1) }
     var inListMode by remember { mutableStateOf(false) }
     var listTopYPx by remember { mutableStateOf(0f) }
+    // Relatives Scrubbing: letzte Finger-Y + aufaddierte Bewegung; thumbY für die Anzeige.
+    var lastScrubY by remember { mutableStateOf(0f) }
+    var accumPx by remember { mutableStateOf(0f) }
+    var thumbY by remember { mutableStateOf(0f) }
 
     val barAlpha by animateFloatAsState(targetValue = if (active) 1f else 0f, label = "ScrubberBarAlpha")
 
@@ -194,6 +201,10 @@ fun HomeAppScrubber(
                             down.consume()
                             active = true
                             inListMode = false
+                            // Relatives Scrubbing: ab Druckpunkt zählen, aktueller Buchstabe bleibt.
+                            lastScrubY = stripBounds.top + down.position.y
+                            accumPx = 0f
+                            thumbY = stripBounds.top + down.position.y
 
                             fun handle(localPos: Offset) {
                                 val sb = stripBounds
@@ -201,13 +212,20 @@ fun HomeAppScrubber(
                                 val rootX = sb.left + localPos.x
                                 val rootY = sb.top + localPos.y
                                 if (rootX >= sb.left) {
-                                    // Finger über der Leiste → Buchstabe wählen
+                                    // Finger über der Leiste → relativ durch die Buchstaben blättern.
                                     inListMode = false
-                                    val frac = ((rootY - sb.top) / sb.height).coerceIn(0f, 0.9999f)
-                                    val idx = (frac * letters.size).toInt().coerceIn(0, letters.size - 1)
+                                    thumbY = rootY
+                                    accumPx += rootY - lastScrubY
+                                    lastScrubY = rootY
+                                    val denom = (letters.size - 1).coerceAtLeast(1)
+                                    val stepPx = (0.32f * rootHeightPx / denom).coerceIn(minStepPx, maxStepPx)
+                                    var idx = currentLetterIndex
+                                    while (accumPx >= stepPx) { idx++; accumPx -= stepPx }
+                                    while (accumPx <= -stepPx) { idx--; accumPx += stepPx }
+                                    idx = idx.coerceIn(0, letters.size - 1)
                                     if (idx != currentLetterIndex) { currentLetterIndex = idx; tick() }
                                     hoveredIndex = -1
-                                    val count = (ordered[letters[idx]] ?: emptyList()).size
+                                    val count = (ordered[letters[currentLetterIndex]] ?: emptyList()).size
                                     val listH = count * rowHeightPx
                                     val maxTop = (rootHeightPx - listH).coerceAtLeast(0f)
                                     listTopYPx = (rootY - listH / 2f).coerceIn(0f, maxTop)
@@ -254,25 +272,58 @@ fun HomeAppScrubber(
                         }
                     }
                 }
-        ) {
-            Column(
+        ) { /* unsichtbarer Touch-Streifen – das Feedback liefert die Buchstaben-Walze am Daumen */ }
+
+        // Daumen-folgende Buchstaben-Walze: aktueller Buchstabe groß, Nachbarn blass.
+        if (active && letters.isNotEmpty()) {
+            val idx = currentLetterIndex.coerceIn(0, letters.size - 1)
+            val wheelWidthPx = with(density) { 96.dp.toPx() }
+            val wheelHeightPx = with(density) { 168.dp.toPx() }
+            val wheelXPx = (stripBounds.left - wheelWidthPx).coerceAtLeast(0f)
+            Box(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth()
+                    .offset { IntOffset(wheelXPx.roundToInt(), (thumbY - wheelHeightPx / 2f).roundToInt()) }
+                    .width(96.dp)
+                    .height(168.dp)
                     .alpha(barAlpha),
-                verticalArrangement = Arrangement.SpaceEvenly,
-                horizontalAlignment = Alignment.CenterHorizontally
+                contentAlignment = Alignment.Center
             ) {
-                letters.forEachIndexed { index, letter ->
-                    val isCurrent = active && index == currentLetterIndex
-                    androidx.compose.material3.Text(
-                        text = letter,
-                        fontSize = if (isCurrent) 14.sp else 11.sp,
-                        fontFamily = appFont.fontFamily,
-                        fontWeight = if (isCurrent) FontWeight.Bold else fontWeight.weight,
-                        color = if (isCurrent) mainTextColor else mainTextColor.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center
-                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    for (d in -2..2) {
+                        val li = idx + d
+                        if (li in letters.indices) {
+                            if (d == 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(menuSurfaceColor.copy(alpha = 0.96f))
+                                        .padding(horizontal = 18.dp, vertical = 6.dp)
+                                ) {
+                                    androidx.compose.material3.Text(
+                                        text = letters[li],
+                                        fontSize = 30.sp,
+                                        fontFamily = appFont.fontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        color = mainTextColor,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            } else {
+                                androidx.compose.material3.Text(
+                                    text = letters[li],
+                                    fontSize = 14.sp,
+                                    fontFamily = appFont.fontFamily,
+                                    fontWeight = fontWeight.weight,
+                                    color = mainTextColor.copy(alpha = if (kotlin.math.abs(d) == 1) 0.5f else 0.25f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
