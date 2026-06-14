@@ -145,6 +145,9 @@ class MainActivity : ComponentActivity() {
         intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         logHomeIntent(intent)
 
+        // Material You: Wallpaper-Farben für das DYNAMIC-Theme laden + auf Wechsel lauschen.
+        com.example.androidlauncher.data.DynamicColorHolder.register(applicationContext)
+
         backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
         }

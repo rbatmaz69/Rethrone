@@ -56,7 +56,12 @@ fun ColorConfigMenu(
         selectedTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.95f)
     }
     val orderedThemes = remember {
-        ColorTheme.entries.sortedWith(compareByDescending<ColorTheme> { it.isArtTheme }.thenBy { it.themeName })
+        ColorTheme.entries.sortedWith(
+            // Material You ("Dynamisch") ganz vorne, dann Art-Themes, dann alphabetisch.
+            compareByDescending<ColorTheme> { it == ColorTheme.DYNAMIC }
+                .thenByDescending { it.isArtTheme }
+                .thenBy { it.themeName }
+        )
     }
     // Welcher Farbwähler ist gerade offen: "text", "icon" oder null.
     var activePicker by remember { mutableStateOf<String?>(null) }
@@ -76,7 +81,7 @@ fun ColorConfigMenu(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Farben", fontSize = 24.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+                Text("Farben", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
                 IconButton(onClick = onClose) {
                     Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
                 }
@@ -335,7 +340,11 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
                     }
                 }
                 Text(
-                    text = if (theme.isArtTheme) "Mehrfarbiger Atmosphären-Verlauf" else "Klassische minimalistische Palette",
+                    text = when {
+                        theme == ColorTheme.DYNAMIC -> "Farben aus deinem Hintergrundbild (Material You)"
+                        theme.isArtTheme -> "Mehrfarbiger Atmosphären-Verlauf"
+                        else -> "Klassische minimalistische Palette"
+                    },
                     color = mainTextColor.copy(alpha = 0.55f),
                     fontSize = 12.sp
                 )

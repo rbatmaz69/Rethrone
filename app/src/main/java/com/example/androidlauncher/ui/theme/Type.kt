@@ -18,8 +18,81 @@ fun getTypography(fontFamily: FontFamily, baseWeight: FontWeightLevel = FontWeig
         FontWeightLevel.NORMAL -> Pair(FontWeight.Normal, FontWeight.Medium)
         FontWeightLevel.BOLD -> Pair(FontWeight.Medium, FontWeight.Bold)
     }
+    // Material-3-Expressive betont „Emphasis": Display/Headline kräftiger als der Body.
+    val emphasizedWeight = when (baseWeight) {
+        FontWeightLevel.LIGHT -> FontWeight.Medium
+        FontWeightLevel.NORMAL -> FontWeight.SemiBold
+        FontWeightLevel.BOLD -> FontWeight.Bold
+    }
 
     return Typography(
+        // ── Display (große, ausdrucksstarke Titel, z. B. Uhr) ──
+        displayLarge = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = emphasizedWeight,
+            fontSize = 57.sp,
+            lineHeight = 64.sp,
+            letterSpacing = (-0.25).sp
+        ),
+        displayMedium = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = emphasizedWeight,
+            fontSize = 45.sp,
+            lineHeight = 52.sp,
+            letterSpacing = 0.sp
+        ),
+        displaySmall = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = emphasizedWeight,
+            fontSize = 36.sp,
+            lineHeight = 44.sp,
+            letterSpacing = 0.sp
+        ),
+        // ── Headline (Abschnittsüberschriften) ──
+        headlineLarge = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = emphasizedWeight,
+            fontSize = 32.sp,
+            lineHeight = 40.sp,
+            letterSpacing = 0.sp
+        ),
+        headlineMedium = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = emphasizedWeight,
+            fontSize = 28.sp,
+            lineHeight = 36.sp,
+            letterSpacing = 0.sp
+        ),
+        headlineSmall = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = mediumWeight,
+            fontSize = 24.sp,
+            lineHeight = 32.sp,
+            letterSpacing = 0.sp
+        ),
+        // ── Title ──
+        titleLarge = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = mediumWeight,
+            fontSize = 22.sp,
+            lineHeight = 28.sp,
+            letterSpacing = 0.sp
+        ),
+        titleMedium = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = mediumWeight,
+            fontSize = 16.sp,
+            lineHeight = 24.sp,
+            letterSpacing = 0.15.sp
+        ),
+        titleSmall = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = mediumWeight,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            letterSpacing = 0.1.sp
+        ),
+        // ── Body ──
         bodyLarge = TextStyle(
             fontFamily = fontFamily,
             fontWeight = regularWeight,
@@ -27,21 +100,6 @@ fun getTypography(fontFamily: FontFamily, baseWeight: FontWeightLevel = FontWeig
             lineHeight = 24.sp,
             letterSpacing = 0.5.sp
         ),
-        titleLarge = TextStyle(
-            fontFamily = fontFamily,
-            fontWeight = regularWeight,
-            fontSize = 22.sp,
-            lineHeight = 28.sp,
-            letterSpacing = 0.sp
-        ),
-        labelSmall = TextStyle(
-            fontFamily = fontFamily,
-            fontWeight = mediumWeight,
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            letterSpacing = 0.5.sp
-        ),
-        // Add other styles if needed
         bodyMedium = TextStyle(
             fontFamily = fontFamily,
             fontWeight = regularWeight,
@@ -49,12 +107,34 @@ fun getTypography(fontFamily: FontFamily, baseWeight: FontWeightLevel = FontWeig
             lineHeight = 20.sp,
             letterSpacing = 0.25.sp
         ),
+        bodySmall = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = regularWeight,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            letterSpacing = 0.4.sp
+        ),
+        // ── Label ──
         labelLarge = TextStyle(
             fontFamily = fontFamily,
             fontWeight = mediumWeight,
             fontSize = 14.sp,
             lineHeight = 20.sp,
             letterSpacing = 0.1.sp
+        ),
+        labelMedium = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = mediumWeight,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            letterSpacing = 0.5.sp
+        ),
+        labelSmall = TextStyle(
+            fontFamily = fontFamily,
+            fontWeight = mediumWeight,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+            letterSpacing = 0.5.sp
         )
     )
 }

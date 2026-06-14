@@ -16,8 +16,8 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `total number of color themes is 74`() {
-        assertEquals(74, ColorTheme.entries.size)
+    fun `total number of color themes is 75`() {
+        assertEquals(75, ColorTheme.entries.size)
     }
 
     @Test
@@ -32,6 +32,11 @@ class ColorThemeTest {
         ).forEach { name ->
             assertTrue("Expected warm paper theme $name to exist", name in actualNames)
         }
+    }
+
+    @Test
+    fun `dynamic Material You theme exists`() {
+        assertTrue("Expected DYNAMIC theme to exist", "DYNAMIC" in ColorTheme.entries.map { it.name })
     }
 
     @Test

@@ -78,7 +78,7 @@ fun AndroidLauncherTheme(
             val outlineColor = colorTheme.borderColor(darkTextEnabled)
 
             darkColorScheme(
-                primary = colorTheme.primary,
+                primary = colorTheme.schemePrimary(),
                 secondary = accentColor,
                 tertiary = highlightColor,
                 background = backgroundColor,

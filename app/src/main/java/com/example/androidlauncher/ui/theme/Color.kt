@@ -3,9 +3,22 @@ package com.example.androidlauncher.ui.theme
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.example.androidlauncher.data.DynamicColorHolder
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+
+/** Aus dem Wallpaper-Seed berechnete Palette für [ColorTheme.DYNAMIC]. */
+private class DynColors(
+    val primary: Color,
+    val secondary: Color,
+    val highlight: Color,
+    val drawerBackground: Color,
+    val art: List<Color>,
+    val menu: List<Color>,
+    val search: List<Color>,
+    val anim: List<Color>
+)
 
 /**
  * Enum defining the available color themes for the launcher.
@@ -690,6 +703,22 @@ enum class ColorTheme(
         Color.White,
         Color(0xFF100E0A),
         highlight = Color(0xFFB8B2A6)
+    ),
+
+    // ── Material You: Farben aus dem Hintergrundbild (Laufzeit-Seed) ──
+    // Felder sind nur Fallback-Platzhalter; die echten Werte liefert DynamicColorHolder
+    // über die resolved*-Accessoren. Höhere Dunkel-Blends sichern Hell-Text-Kontrast.
+    DYNAMIC(
+        "Dynamisch",
+        Color(0xFF6D5DBE),
+        Color(0xFF625B71),
+        Color.White,
+        Color(0xFF141118),
+        highlight = Color(0xFFCFBCFF),
+        darkBackgroundBlend = 0.50f,
+        darkMenuBlend = 0.42f,
+        darkSearchBlend = 0.52f,
+        darkAnimationBlend = 0.42f
     );
 
     val lightBackground: Color
@@ -705,18 +734,21 @@ enum class ColorTheme(
         searchGradientColors(darkTextEnabled).averageColor()
 
     fun accentColor(darkTextEnabled: Boolean): Color =
-        if (darkTextEnabled) secondary.blendWith(Color.White, 0.18f) else secondary.blendWith(primary, 0.18f)
+        if (darkTextEnabled) rSecondary().blendWith(Color.White, 0.18f) else rSecondary().blendWith(rPrimary(), 0.18f)
 
     fun highlightColor(darkTextEnabled: Boolean): Color =
-        if (darkTextEnabled) highlight.blendWith(Color.Black, 0.08f) else highlight.blendWith(Color.White, 0.08f)
+        if (darkTextEnabled) rHighlight().blendWith(Color.Black, 0.08f) else rHighlight().blendWith(Color.White, 0.08f)
 
     fun borderColor(darkTextEnabled: Boolean): Color =
-        if (darkTextEnabled) primary.blendWith(Color.Black, 0.48f).copy(alpha = 0.22f)
-        else secondary.blendWith(Color.White, 0.15f).copy(alpha = 0.28f)
+        if (darkTextEnabled) rPrimary().blendWith(Color.Black, 0.48f).copy(alpha = 0.22f)
+        else rSecondary().blendWith(Color.White, 0.15f).copy(alpha = 0.28f)
 
     fun overlayScrimColor(darkTextEnabled: Boolean): Color =
-        if (darkTextEnabled) primary.blendWith(Color.White, 0.82f).copy(alpha = 0.52f)
-        else drawerBackground.blendWith(Color.Black, 0.18f).copy(alpha = 0.64f)
+        if (darkTextEnabled) rPrimary().blendWith(Color.White, 0.82f).copy(alpha = 0.52f)
+        else rDrawerBackground().blendWith(Color.Black, 0.18f).copy(alpha = 0.64f)
+
+    /** Für Material3-`colorScheme.primary` (DYNAMIC liefert die Wallpaper-Primärfarbe). */
+    fun schemePrimary(): Color = rPrimary()
 
     fun backgroundBrush(darkTextEnabled: Boolean, alpha: Float = 1f): Brush =
         gradientBrush(backgroundGradientColors(darkTextEnabled).withAlpha(alpha))
@@ -742,46 +774,79 @@ enum class ColorTheme(
     // Wärmeres, universelles Rendering: heller Anker zieht stärker zu Warmweiß.
     private val lightSurfaceAnchor: Color
         get() = listOf(
-            primary.blendWith(Color.White, 0.16f),
-            secondary.blendWith(Color.White, 0.24f),
-            highlight.blendWith(Color.White, 0.32f)
+            rPrimary().blendWith(Color.White, 0.16f),
+            rSecondary().blendWith(Color.White, 0.24f),
+            rHighlight().blendWith(Color.White, 0.32f)
         ).averageColor().blendWith(WarmLightAnchor, 0.16f)
 
     private fun backgroundGradientColors(darkTextEnabled: Boolean): List<Color> =
         if (darkTextEnabled) {
-            artGradient
+            rArtGradient()
                 .map { it.blendWith(lightSurfaceAnchor, 0.42f) }
                 .ensureAverageContrastForDarkText()
         } else {
-            artGradient.map { it.blendWith(WarmDarkAnchor, darkBackgroundBlend) }
+            rArtGradient().map { it.blendWith(WarmDarkAnchor, darkBackgroundBlend) }
         }
 
     private fun menuGradientColors(darkTextEnabled: Boolean): List<Color> =
         if (darkTextEnabled) {
-            menuGradient
+            rMenuGradient()
                 .map { it.blendWith(lightSurfaceAnchor, 0.50f) }
                 .ensureAverageContrastForDarkText()
         } else {
-            menuGradient.map { it.blendWith(drawerBackground, darkMenuBlend) }
+            rMenuGradient().map { it.blendWith(rDrawerBackground(), darkMenuBlend) }
         }
 
     private fun searchGradientColors(darkTextEnabled: Boolean): List<Color> =
         if (darkTextEnabled) {
-            searchGradient
+            rSearchGradient()
                 .map { it.blendWith(lightSurfaceAnchor, 0.58f) }
                 .ensureAverageContrastForDarkText()
         } else {
-            searchGradient.map { it.blendWith(drawerBackground, darkSearchBlend) }
+            rSearchGradient().map { it.blendWith(rDrawerBackground(), darkSearchBlend) }
         }
 
     private fun animationGradientColors(darkTextEnabled: Boolean): List<Color> =
         if (darkTextEnabled) {
-            animationGradient
+            rAnimationGradient()
                 .map { it.blendWith(lightSurfaceAnchor, 0.46f) }
                 .ensureAverageContrastForDarkText()
         } else {
-            animationGradient.map { it.blendWith(WarmDarkAnchor, darkAnimationBlend) }
+            rAnimationGradient().map { it.blendWith(WarmDarkAnchor, darkAnimationBlend) }
         }
+
+    // ── Resolved-Accessoren: liefern für DYNAMIC die Wallpaper-Palette, sonst die Felder ──
+    private fun rPrimary(): Color = if (this == DYNAMIC) dyn().primary else primary
+    private fun rSecondary(): Color = if (this == DYNAMIC) dyn().secondary else secondary
+    private fun rHighlight(): Color = if (this == DYNAMIC) dyn().highlight else highlight
+    private fun rDrawerBackground(): Color = if (this == DYNAMIC) dyn().drawerBackground else drawerBackground
+    private fun rArtGradient(): List<Color> = if (this == DYNAMIC) dyn().art else artGradient
+    private fun rMenuGradient(): List<Color> = if (this == DYNAMIC) dyn().menu else menuGradient
+    private fun rSearchGradient(): List<Color> = if (this == DYNAMIC) dyn().search else searchGradient
+    private fun rAnimationGradient(): List<Color> = if (this == DYNAMIC) dyn().anim else animationGradient
+
+    /**
+     * Baut die dynamische Palette aus dem Wallpaper-Seed (oder Fallback) tonal auf.
+     * Liest [DynamicColorHolder.seed] als Snapshot-State → Recomposition bei Wechsel.
+     */
+    private fun dyn(): DynColors {
+        val seed = DynamicColorHolder.seed
+        val p = seed?.primary ?: FallbackDynamicPrimary
+        val s = seed?.secondary ?: p.blendWith(Color.White, 0.20f)
+        val t = seed?.tertiary ?: s.blendWith(Color.White, 0.28f)
+        val hi = t.blendWith(Color.White, 0.25f)
+        val bg = p.blendWith(Color.Black, 0.84f)
+        return DynColors(
+            primary = p,
+            secondary = s,
+            highlight = hi,
+            drawerBackground = bg,
+            art = listOf(p.blendWith(Color.Black, 0.50f), p, s, t),
+            menu = listOf(p.blendWith(Color.Black, 0.58f), p.blendWith(Color.Black, 0.28f), s),
+            search = listOf(p.blendWith(Color.Black, 0.42f), s.blendWith(Color.Black, 0.08f), t),
+            anim = listOf(p.blendWith(Color.Black, 0.48f), s.blendWith(Color.Black, 0.08f), t)
+        )
+    }
 
     companion object {
         val DarkTextColor = Color(0xFF010101)
@@ -790,6 +855,8 @@ enum class ColorTheme(
         val WarmLightAnchor = Color(0xFFF4EEE2)
         /** Warmer Dunkel-Anker statt reinem Schwarz – verleiht allen Themes Wärme. */
         val WarmDarkAnchor = Color(0xFF0E0B07)
+        /** Fallback-Seed für DYNAMIC, wenn keine Wallpaper-Farben vorliegen (Tests/Boot). */
+        val FallbackDynamicPrimary = Color(0xFF6D5DBE)
     }
 }
 

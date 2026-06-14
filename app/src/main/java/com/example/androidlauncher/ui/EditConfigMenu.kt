@@ -118,7 +118,7 @@ fun EditConfigMenu(
             @Suppress("DEPRECATION")
             Text(
                 "Bearbeiten",
-                fontSize = 24.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Light,
                 color = mainTextColor
             )

@@ -65,7 +65,7 @@ fun InfoDialog(
             ) {
                 Text(
                     text = stringResource(R.string.info_title),
-                    fontSize = 24.sp,
+                    fontSize = 28.sp,
                     fontWeight = fontWeight.weight,
                     color = mainTextColor
                 )

@@ -5,7 +5,9 @@ import android.net.Uri
 import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Animatable
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -175,8 +177,20 @@ fun AppDrawer(
     var isFolderNameFocused by remember { mutableStateOf(false) }
     var editingFolderName by remember { mutableStateOf("") }
 
-    BackHandler(enabled = activeFolderId != null) {
-        if (isEditMode) isEditMode = false else activeFolderId = null
+    // Predictive Back: die Zurück-Geste „schrumpft" den geöffneten Ordner live mit.
+    val folderBackProgress = remember { Animatable(0f) }
+    PredictiveBackHandler(enabled = activeFolderId != null) { backEvent ->
+        try {
+            backEvent.collect { ev ->
+                if (!isEditMode) folderBackProgress.snapTo(ev.progress)
+            }
+            // Geste vollzogen → schließen.
+            if (isEditMode) isEditMode = false else activeFolderId = null
+            folderBackProgress.snapTo(0f)
+        } catch (e: CancellationException) {
+            // Geste abgebrochen → zurückfedern.
+            folderBackProgress.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMedium))
+        }
     }
 
     val draggingItemPkg by appDrawerVm.draggingItemPkg.collectAsState()
@@ -488,7 +502,8 @@ fun AppDrawer(
                          }),
                     contentAlignment = Alignment.Center
                 ) {
-                    val scale = 0.05f + (1f - 0.05f) * folderProgress
+                    val predict = folderBackProgress.value
+                    val scale = (0.05f + (1f - 0.05f) * folderProgress) * (1f - 0.12f * predict)
                     val translationX = folderTranslation.x * (1f - folderProgress)
                     val translationY = folderTranslation.y * (1f - folderProgress)
 
@@ -514,7 +529,7 @@ fun AppDrawer(
                                  this.translationX = translationX
                                  this.translationY = translationY
                                  this.transformOrigin = TransformOrigin.Center
-                                 if (isCurrentFolderDeleted) this.alpha = folderProgress
+                                 this.alpha = (if (isCurrentFolderDeleted) folderProgress else 1f) * (1f - 0.25f * predict)
                              }
                              .clickable(enabled = false) {},
                         color = menuSurfaceColor.copy(alpha = 0.98f),

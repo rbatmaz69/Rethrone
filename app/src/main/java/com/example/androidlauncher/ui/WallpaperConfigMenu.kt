@@ -54,7 +54,7 @@ fun WallpaperConfigMenu(
         ) {
             Text(
                 "Hintergrund anpassen",
-                fontSize = 24.sp,
+                fontSize = 28.sp,
                 fontWeight = fontWeight.weight,
                 color = mainTextColor
             )

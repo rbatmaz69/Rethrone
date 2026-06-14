@@ -57,7 +57,7 @@ fun DesignStyleMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Design", fontSize = 24.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text("Design", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
             }

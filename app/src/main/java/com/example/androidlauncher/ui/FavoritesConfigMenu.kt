@@ -130,7 +130,7 @@ fun FavoritesConfigMenu(
             Column {
                 Text(
                     stringResource(R.string.favorites_title),
-                    fontSize = 24.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Light,
                     color = mainTextColor
                 )
