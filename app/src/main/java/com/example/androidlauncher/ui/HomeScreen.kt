@@ -117,6 +117,7 @@ fun HomeScreen(
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val showLabels = LocalShowFavoriteLabels.current
     val fontSize = LocalFontSize.current
+    val favoriteSpacing = LocalFavoriteSpacing.current
     val designStyle = LocalDesignStyle.current
     val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -898,7 +899,7 @@ fun HomeScreen(
 
                 Column(
                     modifier = if (isEditMode) Modifier.padding(vertical = editHintContentPadding) else Modifier,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(favoriteSpacing.spacing)
                 ) {
                     if (favorites.isEmpty()) {
                         val intSrc = remember { MutableInteractionSource() }

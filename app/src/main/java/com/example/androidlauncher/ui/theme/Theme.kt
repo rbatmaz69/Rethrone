@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
@@ -28,6 +29,8 @@ import com.example.androidlauncher.data.IconSize
 val LocalColorTheme = staticCompositionLocalOf { ColorTheme.SIGNATURE }
 val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
+/** Vertikaler Abstand zwischen den Favoriten-Icons (Startbildschirm). */
+val LocalFavoriteSpacing = staticCompositionLocalOf { FavoriteSpacing.STANDARD }
 val LocalFontWeight = staticCompositionLocalOf { FontWeightLevel.NORMAL }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
 /** Frei wählbare Iconfarbe (gilt überall). */
@@ -51,6 +54,7 @@ fun AndroidLauncherTheme(
     colorTheme: ColorTheme = ColorTheme.SIGNATURE,
     fontSize: FontSize = FontSize.STANDARD,
     iconSize: IconSize = IconSize.STANDARD,
+    favoriteSpacing: FavoriteSpacing = FavoriteSpacing.STANDARD,
     fontWeight: FontWeightLevel = FontWeightLevel.NORMAL,
     darkTextEnabled: Boolean = false,
     iconColor: Color = Color.White,
@@ -117,6 +121,7 @@ fun AndroidLauncherTheme(
         LocalColorTheme provides colorTheme,
         LocalFontSize provides fontSize,
         LocalIconSize provides iconSize,
+        LocalFavoriteSpacing provides favoriteSpacing,
         LocalFontWeight provides fontWeight,
         LocalDarkTextEnabled provides darkTextEnabled,
         LocalIconColor provides iconColor,

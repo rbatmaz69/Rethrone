@@ -85,6 +85,7 @@ import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
+import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconManager
@@ -188,6 +189,7 @@ class MainActivity : ComponentActivity() {
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentFontWeight by themeManager.selectedFontWeight.collectAsState(initial = FontWeightLevel.NORMAL)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
+            val currentFavoriteSpacing by themeManager.selectedFavoriteSpacing.collectAsState(initial = FavoriteSpacing.STANDARD)
             val currentAppFont by themeManager.selectedAppFont.collectAsState(initial = AppFont.SYSTEM_DEFAULT)
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
             val iconColor by themeManager.iconColor.collectAsState(initial = Color.White)
@@ -393,6 +395,7 @@ class MainActivity : ComponentActivity() {
                 fontSize = currentFontSize,
                 fontWeight = currentFontWeight,
                 iconSize = currentIconSize,
+                favoriteSpacing = currentFavoriteSpacing,
                 darkTextEnabled = isDarkTextEnabled,
                 iconColor = iconColor,
                 homeTextColor = homeTextColor,
@@ -1222,6 +1225,8 @@ class MainActivity : ComponentActivity() {
                             onFontWeightSelected = { scope.launch { themeManager.setFontWeight(it) } },
                             currentIconSize = currentIconSize,
                             onIconSizeSelected = { scope.launch { themeManager.setIconSize(it) } },
+                            currentFavoriteSpacing = currentFavoriteSpacing,
+                            onFavoriteSpacingSelected = { scope.launch { themeManager.setFavoriteSpacing(it) } },
                             currentAppFont = currentAppFont,
                             onOpenFontSelection = { isFontSelectionOpen = true },
                             customWallpaperUri = customWallpaperUri,

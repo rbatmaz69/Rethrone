@@ -32,6 +32,7 @@ class ThemeManager(private val context: Context) {
         private val FONT_SIZE_KEY = stringPreferencesKey("font_size")
         private val FONT_WEIGHT_KEY = stringPreferencesKey("font_weight")
         private val ICON_SIZE_KEY = stringPreferencesKey("icon_size")
+        private val FAVORITE_SPACING_KEY = stringPreferencesKey("favorite_icon_spacing")
         private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
         // ARGB-Werte für frei wählbare Icon-/Schriftfarbe (Default Weiß).
         private val ICON_COLOR_KEY = intPreferencesKey("icon_color")
@@ -89,6 +90,12 @@ class ThemeManager(private val context: Context) {
         .map { preferences ->
             val iconSizeName = preferences[ICON_SIZE_KEY] ?: IconSize.STANDARD.name
             try { IconSize.valueOf(iconSizeName) } catch (e: IllegalArgumentException) { IconSize.STANDARD }
+        }
+
+    val selectedFavoriteSpacing: Flow<FavoriteSpacing> = context.dataStore.data
+        .map { preferences ->
+            val name = preferences[FAVORITE_SPACING_KEY] ?: FavoriteSpacing.STANDARD.name
+            try { FavoriteSpacing.valueOf(name) } catch (e: IllegalArgumentException) { FavoriteSpacing.STANDARD }
         }
 
     // Standard: dunkler Text – passend zum hellen Default-Theme "Tagespapier".
@@ -249,6 +256,7 @@ class ThemeManager(private val context: Context) {
     suspend fun setFontSize(fontSize: FontSize) { context.dataStore.edit { it[FONT_SIZE_KEY] = fontSize.name } }
     suspend fun setFontWeight(fontWeight: FontWeightLevel) { context.dataStore.edit { it[FONT_WEIGHT_KEY] = fontWeight.name } }
     suspend fun setIconSize(iconSize: IconSize) { context.dataStore.edit { it[ICON_SIZE_KEY] = iconSize.name } }
+    suspend fun setFavoriteSpacing(spacing: FavoriteSpacing) { context.dataStore.edit { it[FAVORITE_SPACING_KEY] = spacing.name } }
     suspend fun setDarkTextEnabled(enabled: Boolean) { context.dataStore.edit { it[DARK_TEXT_KEY] = enabled } }
     suspend fun setIconColor(color: Color) { context.dataStore.edit { it[ICON_COLOR_KEY] = color.toArgb() } }
     suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }

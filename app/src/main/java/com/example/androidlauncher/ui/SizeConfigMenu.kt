@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 // SystemWallpaperView ist im selben Paket (ui)
 import com.example.androidlauncher.data.AppFont
+import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
@@ -40,6 +41,8 @@ fun SizeConfigMenu(
     onFontWeightSelected: (FontWeightLevel) -> Unit,
     currentIconSize: IconSize,
     onIconSizeSelected: (IconSize) -> Unit,
+    currentFavoriteSpacing: FavoriteSpacing,
+    onFavoriteSpacingSelected: (FavoriteSpacing) -> Unit,
     currentAppFont: AppFont,
     onOpenFontSelection: () -> Unit,
     customWallpaperUri: String? = null,
@@ -100,10 +103,13 @@ fun SizeConfigMenu(
                 Column(modifier = Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.Start) {
                     Text("12:00", color = mainTextColor, fontSize = (40.sp * currentFontSize.scale), fontWeight = currentFontWeight.weight, letterSpacing = (-1).sp)
                     Spacer(modifier = Modifier.height(20.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(32.dp * currentIconSize.scale).background(mainTextColor.copy(alpha = 0.3f), CircleShape))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("Favorit", color = mainTextColor, fontSize = (16.sp * currentFontSize.scale), fontWeight = FontWeight.Normal)
+                    repeat(2) { index ->
+                        if (index > 0) Spacer(modifier = Modifier.height(currentFavoriteSpacing.spacing))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(32.dp * currentIconSize.scale).background(mainTextColor.copy(alpha = 0.3f), CircleShape))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Favorit", color = mainTextColor, fontSize = (16.sp * currentFontSize.scale), fontWeight = FontWeight.Normal)
+                        }
                     }
                 }
             }
@@ -162,6 +168,18 @@ fun SizeConfigMenu(
                 onValueChange = { onIconSizeSelected(iconSizeOptions[it.toInt()]) },
                 valueRange = 0f..(iconSizeOptions.size - 1).toFloat(),
                 steps = iconSizeOptions.size - 2,
+                colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text("Icon-Abstand", color = secondaryTextColor, fontSize = 12.sp)
+            val favoriteSpacingOptions = FavoriteSpacing.entries
+            Slider(
+                value = favoriteSpacingOptions.indexOf(currentFavoriteSpacing).toFloat(),
+                onValueChange = { onFavoriteSpacingSelected(favoriteSpacingOptions[it.toInt()]) },
+                valueRange = 0f..(favoriteSpacingOptions.size - 1).toFloat(),
+                steps = favoriteSpacingOptions.size - 2,
                 colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
             )
         }
