@@ -23,6 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
@@ -38,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -459,21 +463,33 @@ private fun NiagaraAppRow(
     val fontWeight = LocalFontWeight.current
     val intSrc = remember { MutableInteractionSource() }
     var iconBounds by remember { mutableStateOf<Rect?>(null) }
+    var rowBounds by remember { mutableStateOf<Rect?>(null) }
+    val animationsEnabled = com.example.androidlauncher.ui.theme.LocalAnimationsEnabled.current
+    val bounceScale by animateFloatAsState(
+        targetValue = if (!animationsEnabled) 1f else if (bouncePackage == app.packageName) 1.2f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "NiagaraReturnBounce"
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .bounceClick(intSrc)
             .combinedClickable(
                 interactionSource = intSrc,
                 indication = null,
-                onClick = { onLaunch(iconBounds) },
-                onLongClick = { onLongPress(iconBounds) }
+                onClick = { onLaunch(iconBounds ?: rowBounds) },
+                onLongClick = { onLongPress(iconBounds ?: rowBounds) }
             )
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.onGloballyPositioned { iconBounds = it.boundsInRoot() }) {
+        Box(
+            modifier = Modifier
+                .graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }
+                .onGloballyPositioned { iconBounds = it.boundsInRoot() }
+        ) {
             AppIconView(app, customIcons = customIcons)
         }
         Spacer(modifier = Modifier.width(16.dp))

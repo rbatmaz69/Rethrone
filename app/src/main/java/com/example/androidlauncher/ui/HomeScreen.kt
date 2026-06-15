@@ -1280,7 +1280,7 @@ private fun FavoriteItem(
     val context = LocalContext.current
     val intSrc = remember { MutableInteractionSource() }
     val bounceScale by animateFloatAsState(
-        targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage == app.packageName) 1.06f else 1f,
+        targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage == app.packageName) 1.2f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "HomeReturnBounce"
     )

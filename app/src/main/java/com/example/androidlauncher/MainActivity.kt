@@ -346,6 +346,17 @@ class MainActivity : ComponentActivity() {
                 var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
                 var returnIconPackage by remember { mutableStateOf<String?>(null) }
                 var searchButtonBounceToken by remember { mutableStateOf(0) }
+                // Eigener Trigger für den Rückkehr-Bounce, entkoppelt von
+                // activeReturnAnimation. Letzteres wird vom Schließen-Overlay nach
+                // ~260ms auf null gesetzt; würde der Bounce darauf gekeyt sein, würde
+                // die delay(270)-Coroutine ~10ms vor dem Feuern abgebrochen -> der
+                // Bounce käme nur „manchmal". Das Token steigt nur bei einer neuen
+                // Aktivierung, sodass die Coroutine zuverlässig zu Ende läuft.
+                var returnBounceToken by remember { mutableStateOf(0) }
+                var returnBounceTargetPackage by remember { mutableStateOf<String?>(null) }
+                // Beim Öffnen poppt das gedrückte Icon kurz, bevor das Panel es
+                // verdeckt – symmetrisch zum Rückkehr-Bounce.
+                var launchIconPackage by remember { mutableStateOf<String?>(null) }
                 val returnOverlayDurationMs = 260L
                 // Bounce erst nach Abschluss des Schließen-Panels (260ms), damit er nicht
                 // gegen das noch schrumpfende Panel läuft.
@@ -366,6 +377,9 @@ class MainActivity : ComponentActivity() {
                 val contentRevealProgress = remember { Animatable(0f) }
                 val searchLaunchDurationMs = 260L
                 val searchLaunchSettleAfterStartMs = 30L
+                // Kurzer Vorlauf, in dem nur das gedrückte Icon poppt, bevor das
+                // wachsende Panel es verdeckt.
+                val launchBounceLeadMs = 120L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isDesignMenuOpen by remember { mutableStateOf(false) }
@@ -477,6 +491,8 @@ class MainActivity : ComponentActivity() {
                                  }
                                 activeReturnAnimation = animation
                                 returnIconPackage = null
+                                returnBounceTargetPackage = animation.packageName
+                                returnBounceToken += 1
                                 pendingReturnAnimation = null
                                 pendingReturnAnimationStartedWallClockMs = 0L
                                 ReturnOriginStore.clear(context, animation.launchedPackageName)
@@ -514,28 +530,30 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(activeReturnAnimation?.packageName) {
-                    val packageName = activeReturnAnimation?.packageName ?: return@LaunchedEffect
+                LaunchedEffect(returnBounceToken) {
+                    if (returnBounceToken == 0) return@LaunchedEffect
+                    val packageName = returnBounceTargetPackage ?: return@LaunchedEffect
                     delay(returnBounceDelayMs)
-                    if (activeReturnAnimation?.packageName == packageName) {
-                        if (packageName == SEARCH_RETURN_TARGET) {
-                            Log.d(RETURN_TAG, "bounce searchButton target=$packageName")
-                             searchButtonBounceToken += 1
-                        } else {
-                            Log.d(RETURN_TAG, "bounce icon target=$packageName")
-                             returnIconPackage = packageName
-                        }
+                    if (packageName == SEARCH_RETURN_TARGET) {
+                        Log.d(RETURN_TAG, "bounce searchButton target=$packageName")
+                        searchButtonBounceToken += 1
                     } else {
-                        Log.d(RETURN_TAG, "bounce skipped stale target=$packageName active=${activeReturnAnimation?.packageName}")
+                        Log.d(RETURN_TAG, "bounce icon target=$packageName")
+                        returnIconPackage = packageName
                     }
                 }
 
                 LaunchedEffect(returnIconPackage) {
                     if (returnIconPackage != null) {
-                        delay(220)
+                        delay(300)
                         returnIconPackage = null
                     }
                 }
+
+                // Gemeinsamer Bounce-Auslöser für Icons: Öffnen (launchIconPackage)
+                // und Zurückkehren (returnIconPackage) sind zeitlich getrennt, daher
+                // ist höchstens einer gesetzt.
+                val bounceIconPackage = returnIconPackage ?: launchIconPackage
 
                 val allApps = remember { mutableStateListOf<AppInfo>() }
                 // Anzeige-Liste ohne ausgeblendete Apps (Drawer/Startseiten-Liste/Suche/Favoriten).
@@ -631,8 +649,23 @@ class MainActivity : ComponentActivity() {
                     onCompleted: (() -> Unit)? = null
                 ) {
                     if (isAppLaunchAnimating) return
+                    // Letzte-Instanz-Bounds: Falls weder Launch- noch Return-Bounds
+                    // gemessen wurden (z. B. onGloballyPositioned hat noch nicht
+                    // gefeuert), nutzen wir einen kleinen zentrierten Rect, damit die
+                    // Overlays nie still ausfallen.
+                    val centerFallbackRect: androidx.compose.ui.geometry.Rect? =
+                        if (rootSize.width > 0 && rootSize.height > 0) {
+                            val sizePx = 48f * context.resources.displayMetrics.density
+                            val cx = rootSize.width / 2f
+                            val cy = rootSize.height / 2f
+                            androidx.compose.ui.geometry.Rect(
+                                cx - sizePx / 2f, cy - sizePx / 2f,
+                                cx + sizePx / 2f, cy + sizePx / 2f
+                            )
+                        } else null
+                    val effectiveReturnBounds = returnBounds ?: bounds ?: centerFallbackRect
                     val returnAnimation = ReturnAnimation(
-                        bounds = returnBounds,
+                        bounds = effectiveReturnBounds,
                         source = source,
                         packageName = returnPackageName,
                         launchedPackageName = packageName,
@@ -650,20 +683,25 @@ class MainActivity : ComponentActivity() {
                     if (isAnimationsEnabled) {
                         activeLaunchBackground = overlayColor
                         activeLaunchBackgroundBrush = overlayBrush
-                        activeLaunchBounds = bounds
-                        // Inhalt synchron zum wachsenden Panel leicht zurücktreten lassen.
-                        scope.launch {
-                            contentRevealProgress.snapTo(0f)
-                            contentRevealProgress.animateTo(
-                                1f,
-                                tween(searchLaunchDurationMs.toInt(), easing = FastOutSlowInEasing)
-                            )
-                        }
                     }
 
                     scope.launch {
                         try {
                             if (isAnimationsEnabled) {
+                                // 1) Gedrücktes Icon poppt zuerst, damit sichtbar ist,
+                                //    was getippt wurde (Bounce auch beim Öffnen).
+                                launchIconPackage = returnPackageName
+                                delay(launchBounceLeadMs)
+                                launchIconPackage = null
+                                // 2) Container-Transform: Panel wächst aus dem Icon heraus.
+                                activeLaunchBounds = bounds ?: centerFallbackRect
+                                launch {
+                                    contentRevealProgress.snapTo(0f)
+                                    contentRevealProgress.animateTo(
+                                        1f,
+                                        tween(searchLaunchDurationMs.toInt(), easing = FastOutSlowInEasing)
+                                    )
+                                }
                                 delay(searchLaunchDurationMs)
                             }
                             launchAppNoTransition(context, Intent(intent))
@@ -674,6 +712,7 @@ class MainActivity : ComponentActivity() {
                                 delay(searchLaunchSettleAfterStartMs)
                             }
                         } finally {
+                            launchIconPackage = null
                             activeLaunchBounds = null
                             isAppLaunchAnimating = false
                             // Hinter dem Vollbild-Panel/der App unsichtbar zurücksetzen.
@@ -906,7 +945,7 @@ class MainActivity : ComponentActivity() {
                                             overlayBrush = launchOverlayBrush
                                         )
                                     },
-                                    returnIconPackage = returnIconPackage
+                                    returnIconPackage = bounceIconPackage
                                 )
                                 // DRAWER_GRID (und HOME_LIST als harmloser Fallback – im HOME_LIST-Modus
                                 // wird der Drawer nie geöffnet).
@@ -935,7 +974,7 @@ class MainActivity : ComponentActivity() {
                                             overlayBrush = launchOverlayBrush
                                         )
                                     },
-                                    returnIconPackage = returnIconPackage
+                                    returnIconPackage = bounceIconPackage
                                 )
                             }
                         } else {
@@ -978,7 +1017,7 @@ class MainActivity : ComponentActivity() {
                                         overlayBrush = launchOverlayBrush
                                     )
                                 },
-                                returnIconPackage = returnIconPackage,
+                                returnIconPackage = bounceIconPackage,
                                 searchButtonBounceToken = searchButtonBounceToken,
                                 onSearchButtonBoundsChanged = { bounds ->
                                     homeSearchButtonBounds = bounds

@@ -86,6 +86,35 @@ class ReturnAnimationGateTest {
     }
 
     @Test
+    fun `falls back to fresh pending animation when no observations are available`() {
+        val pendingLaunchStartedAtMs = System.currentTimeMillis() - 3_000L
+        val decision = ReturnAnimationGate.resolve(
+            pendingReturnAnimation = pendingAnimation,
+            pendingLaunchStartedAtMs = pendingLaunchStartedAtMs,
+            storedAnimations = emptyMap(),
+            observations = emptyList()
+        )
+
+        assertEquals("pending-fallback-no-observations", decision.reason)
+        assertEquals(pendingAnimation, decision.returnAnimation)
+        assertNull(decision.matchedObservation)
+    }
+
+    @Test
+    fun `does not fall back to stale pending animation when no observations are available`() {
+        val pendingLaunchStartedAtMs = System.currentTimeMillis() - (5 * 60 * 1000L) - 1_000L
+        val decision = ReturnAnimationGate.resolve(
+            pendingReturnAnimation = pendingAnimation,
+            pendingLaunchStartedAtMs = pendingLaunchStartedAtMs,
+            storedAnimations = emptyMap(),
+            observations = emptyList()
+        )
+
+        assertEquals("no-foreground-observations", decision.reason)
+        assertNull(decision.returnAnimation)
+    }
+
+    @Test
     fun `does not return animation when only a different package was seen before launcher`() {
         val pendingLaunchStartedAtMs = System.currentTimeMillis() - 1_000L
         val decision = ReturnAnimationGate.resolve(
