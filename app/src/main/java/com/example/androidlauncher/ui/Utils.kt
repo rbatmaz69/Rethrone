@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
+import android.net.Uri
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
@@ -442,27 +443,40 @@ fun isDefaultLauncher(context: Context): Boolean {
 }
 
 /**
- * Öffnet den passenden Systembildschirm, um diese App als Standard-Launcher festzulegen.
- * Auf Android Q+ wird der direkte Auswahl-Dialog (ROLE_HOME) angezeigt, sofern noch nicht Standard.
+ * Öffnet einen passenden Systembildschirm, um diese App als Standard-Launcher festzulegen.
+ *
+ * Universelle Fallback-Kette: probiert mehrere System-Intents in Reihenfolge und startet den
+ * ersten, der sich tatsächlich auflösen lässt. Das deckt OEM-Eigenheiten (Stock, Motorola,
+ * Samsung, Xiaomi/MIUI) ab, wo einzelne Intents fehlen können. Der direkte Rollen-Dialog
+ * (ROLE_HOME) wird in der MainActivity über die ActivityResult-API ausgelöst.
  */
 fun openDefaultLauncherSettings(context: Context) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        val roleManager = context.getSystemService(RoleManager::class.java)
-        if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME) &&
-            !roleManager.isRoleHeld(RoleManager.ROLE_HOME)) {
-            val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
-            runCatching { context.startActivity(intent) }.onSuccess { return }
+    val pm = context.packageManager
+    val candidates = buildList {
+        add(Intent(Settings.ACTION_HOME_SETTINGS))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            add(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
         }
-    }
-    val homeSettingsIntent = Intent(Settings.ACTION_HOME_SETTINGS).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    runCatching { context.startActivity(homeSettingsIntent) }.onFailure {
-        context.startActivity(
-            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        add(
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", context.packageName, null)
+            )
         )
+        add(Intent(Settings.ACTION_SETTINGS))
     }
+
+    for (intent in candidates) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (pm.resolveActivity(intent, 0) == null) continue
+        if (runCatching { context.startActivity(intent) }.isSuccess) return
+    }
+
+    Toast.makeText(
+        context,
+        "Bitte in den Systemeinstellungen als Standard-Launcher festlegen",
+        Toast.LENGTH_LONG
+    ).show()
 }
 
 fun getLucideIconByName(name: String): ImageVector? {

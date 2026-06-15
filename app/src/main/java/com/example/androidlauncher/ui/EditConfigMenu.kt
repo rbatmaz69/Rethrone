@@ -71,6 +71,7 @@ fun EditConfigMenu(
     onOpenIconConfig: () -> Unit,
     onOpenUninstallApps: () -> Unit,
     onOpenHiddenApps: () -> Unit,
+    onOpenDefaultLauncher: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onResetWallpaper: () -> Unit,
     onOpenWallpaperAdjust: () -> Unit,
@@ -435,9 +436,7 @@ fun EditConfigMenu(
                 EditMenuItem(
                     icon = Lucide.House,
                     label = "Standard-Launcher",
-                    onClick = {
-                        openDefaultLauncherSettings(context)
-                    },
+                    onClick = onOpenDefaultLauncher,
                     statusLabel = if (isDefaultLauncherSet) "An" else "Aus",
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,

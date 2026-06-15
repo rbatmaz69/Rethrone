@@ -115,6 +115,7 @@ import com.example.androidlauncher.ui.SystemWallpaperView
 import com.example.androidlauncher.ui.WallpaperConfigMenu
 import com.example.androidlauncher.ui.WallpaperCropScreen
 import com.example.androidlauncher.ui.launchAppNoTransition
+import com.example.androidlauncher.ui.openDefaultLauncherSettings
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
@@ -282,6 +283,31 @@ class MainActivity : ComponentActivity() {
                         Toast.makeText(context, context.getString(R.string.flashlight_error), Toast.LENGTH_SHORT).show()
                     }
                 }
+            }
+
+            // Rollen-Dialog (ROLE_HOME) zuverlässig über die ActivityResult-API; der Status
+            // ("An"/"Aus") aktualisiert sich ohnehin beim nächsten ON_RESUME.
+            val defaultLauncherRoleLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) { /* Ergebnis egal – Status wird bei ON_RESUME neu gelesen */ }
+
+            fun requestDefaultLauncher() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val roleManager = getSystemService(RoleManager::class.java)
+                    if (roleManager != null &&
+                        roleManager.isRoleAvailable(RoleManager.ROLE_HOME) &&
+                        !roleManager.isRoleHeld(RoleManager.ROLE_HOME)
+                    ) {
+                        runCatching {
+                            defaultLauncherRoleLauncher.launch(
+                                roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
+                            )
+                        }.onFailure { openDefaultLauncherSettings(context) }
+                        return
+                    }
+                }
+                // Bereits Standard, pre-Q oder Rolle nicht verfügbar: System-Einstellungen öffnen.
+                openDefaultLauncherSettings(context)
             }
 
             fun runShakeAction(action: ShakeAction) {
@@ -1235,6 +1261,7 @@ class MainActivity : ComponentActivity() {
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onOpenUninstallApps = { isUninstallAppsOpen = true },
                             onOpenHiddenApps = { isHiddenAppsOpen = true },
+                            onOpenDefaultLauncher = { requestDefaultLauncher() },
                             onChangeWallpaper = {
                                 isEditConfigOpen = false
                                 isWallpaperConfigOpen = false
