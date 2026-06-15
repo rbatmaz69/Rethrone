@@ -343,7 +343,7 @@ fun EditConfigMenu(
 
             item {
                 EditMenuItem(
-                    icon = Icons.Rounded.Search,
+                    icon = Lucide.Trash2,
                     label = "Suchverlauf löschen",
                     onClick = onClearSearchHistory,
                     mainTextColor = mainTextColor,
