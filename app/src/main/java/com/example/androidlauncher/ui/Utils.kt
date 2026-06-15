@@ -77,6 +77,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.zIndex
 import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.NotificationService
@@ -387,15 +389,14 @@ private fun NeutralIconFallback(
     }
 
     Box(
-        modifier = Modifier
-            .size(iconSize * 0.82f)
-            .background(tintColor.copy(alpha = 0.04f), CircleShape)
-            .border(1.dp, tintColor.copy(alpha = 0.45f), CircleShape),
+        modifier = Modifier.size(iconSize),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = initial,
-            color = tintColor.copy(alpha = 0.92f)
+            color = tintColor,
+            fontSize = (iconSize.value * 0.6f).sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }
