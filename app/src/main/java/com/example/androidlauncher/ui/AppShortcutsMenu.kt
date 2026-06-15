@@ -78,16 +78,6 @@ fun AppShortcutsMenu(
     val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
-    val themedLightBackground = remember(colorTheme.primary) {
-        val primary = colorTheme.primary
-        Color(
-            red = primary.red * 0.90f + 0.10f,
-            green = primary.green * 0.90f + 0.10f,
-            blue = primary.blue * 0.90f + 0.10f,
-            alpha = 1f
-        )
-    }
-
     val density = LocalDensity.current
     
     // Wir messen die Größe und Position des Menü-Containers selbst
@@ -210,7 +200,7 @@ fun AppShortcutsMenu(
                         }
                         .clickable(enabled = false) {}
                         .then(menuModifier),
-                    color = if (isDarkTextEnabled) themedLightBackground.copy(alpha = 0.98f) else colorTheme.drawerBackground.copy(alpha = 0.98f),
+                    color = surfaceAccent.copy(alpha = 0.98f),
                     shape = RoundedCornerShape(24.dp),
                     shadowElevation = 20.dp
                 ) {

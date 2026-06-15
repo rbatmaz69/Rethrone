@@ -854,7 +854,7 @@ private fun ShakeAppPickerDialog(
                 .fillMaxWidth()
                 .fillMaxHeight(0.8f)
                 .clip(RoundedCornerShape(24.dp)),
-            color = if (isDarkTextEnabled) Color(0xFFF2F2F2) else Color(0xFF1C1C1E)
+            color = surfaceAccent
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
