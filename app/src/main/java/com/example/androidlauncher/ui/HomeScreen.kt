@@ -208,6 +208,12 @@ fun HomeScreen(
             point.y <= rect.bottom
     }
 
+    fun intersectionArea(first: Rect, second: Rect): Float {
+        val width = minOf(first.right, second.right) - maxOf(first.left, second.left)
+        val height = minOf(first.bottom, second.bottom) - maxOf(first.top, second.top)
+        return if (width > 0f && height > 0f) width * height else 0f
+    }
+
     fun clampToRoot(candidateX: Float, candidateY: Float, neutralBounds: Rect?): Pair<Float, Float> {
         val bounds = neutralBounds ?: return candidateX to candidateY
         if (rootSize.width <= 0 || rootSize.height <= 0) return candidateX to candidateY
@@ -276,7 +282,11 @@ fun HomeScreen(
         }
     }
 
-    fun isValidLayoutState(
+    /**
+     * Harte Constraints (alles außer der gegenseitigen Überlappung von Uhr & Favoriten):
+     * Clamp an den Bildschirm, Navigationsleiste, Bottom-Controls-Zonen.
+     */
+    fun hardConstraintsOk(
         favoritesX: Float,
         favoritesY: Float,
         clockX: Float,
@@ -305,8 +315,6 @@ fun HomeScreen(
 
         if (favoritesRect == null || clockRect == null) return true
 
-        if (intersects(favoritesRect, clockRect)) return false
-
         val navigationBarZone = getNavigationBarForbiddenZone()
         if (intersects(favoritesRect, navigationBarZone) || (clockNavRect != null && intersects(clockNavRect, navigationBarZone))) return false
 
@@ -317,87 +325,85 @@ fun HomeScreen(
         return true
     }
 
-    fun findReachableClockOffsetY(baseY: Float, desiredY: Float): Float? {
-        if (abs(desiredY - baseY) < 0.5f) {
-            return if (
-                isValidLayoutState(
-                    favoritesX = 0f,
-                    favoritesY = currentFavOffsetY,
-                    clockX = 0f,
-                    clockY = baseY
-                )
-            ) baseY else null
+    /** Überlappungsfläche zwischen Favoriten-Rect (inkl. Padding) und Uhr-Rect (0, wenn getrennt). */
+    fun clockFavoritesOverlapArea(
+        favoritesX: Float,
+        favoritesY: Float,
+        clockX: Float,
+        clockY: Float
+    ): Float {
+        val favoritesRect = favoritesNeutralBounds?.let {
+            expandRect(translateRect(it, favoritesX, favoritesY), favoritesFramePaddingPx)
+        } ?: return 0f
+        val clockRect = clockNeutralBounds?.let {
+            translateRect(it, clockX, clockY)
+        } ?: return 0f
+        return intersectionArea(favoritesRect, clockRect)
+    }
+
+    fun isValidLayoutState(
+        favoritesX: Float,
+        favoritesY: Float,
+        clockX: Float,
+        clockY: Float
+    ): Boolean {
+        return hardConstraintsOk(favoritesX, favoritesY, clockX, clockY) &&
+            clockFavoritesOverlapArea(favoritesX, favoritesY, clockX, clockY) == 0f
+    }
+
+    /**
+     * Sucht eine erreichbare Offset-Position zwischen [baseOffset] und [desiredOffset].
+     *
+     * Überlappungs-bewusst: Überlappen sich Uhr & Favoriten am Start ([baseOffset]) bereits,
+     * werden Bewegungen akzeptiert, die die Überlappung **nicht vergrößern** (Auseinanderziehen
+     * möglich, Tieferrutschen blockiert). Ohne Start-Überlappung gilt die strenge Regel (keine
+     * neue Überlappung), wodurch das bisherige Verhalten erhalten bleibt.
+     */
+    fun reachableOffset(
+        baseOffset: Float,
+        desiredOffset: Float,
+        overlapAt: (Float) -> Float,
+        hardOkAt: (Float) -> Boolean
+    ): Float? {
+        val baseOverlap = overlapAt(baseOffset)
+        fun acceptable(offset: Float): Boolean {
+            if (!hardOkAt(offset)) return false
+            val overlap = overlapAt(offset)
+            return if (baseOverlap > 0f) overlap <= baseOverlap else overlap == 0f
+        }
+
+        if (abs(desiredOffset - baseOffset) < 0.5f) {
+            return if (acceptable(baseOffset)) baseOffset else null
         }
 
         val stepPx = reachabilityProbeStepPx
-        val direction = if (desiredY > baseY) 1f else -1f
-        var probeY = desiredY
+        val direction = if (desiredOffset > baseOffset) 1f else -1f
+        var probe = desiredOffset
 
         while (true) {
-            val isValid = isValidLayoutState(
-                favoritesX = 0f,
-                favoritesY = currentFavOffsetY,
-                clockX = 0f,
-                clockY = probeY
-            )
-            if (isValid) return probeY
-
-            val nextProbeY = probeY - (direction * stepPx)
-            val crossedBase = (direction > 0f && nextProbeY < baseY) || (direction < 0f && nextProbeY > baseY)
+            if (acceptable(probe)) return probe
+            val next = probe - (direction * stepPx)
+            val crossedBase = (direction > 0f && next < baseOffset) || (direction < 0f && next > baseOffset)
             if (crossedBase) break
-            probeY = nextProbeY
+            probe = next
         }
 
-        return if (
-            isValidLayoutState(
-                favoritesX = 0f,
-                favoritesY = currentFavOffsetY,
-                clockX = 0f,
-                clockY = baseY
-            )
-        ) baseY else null
+        return if (acceptable(baseOffset)) baseOffset else null
     }
 
-    fun findReachableFavoritesOffsetY(baseY: Float, desiredY: Float): Float? {
-        if (abs(desiredY - baseY) < 0.5f) {
-            return if (
-                isValidLayoutState(
-                    favoritesX = 0f,
-                    favoritesY = baseY,
-                    clockX = 0f,
-                    clockY = currentClockOffsetY
-                )
-            ) baseY else null
-        }
+    fun findReachableClockOffsetY(baseY: Float, desiredY: Float): Float? = reachableOffset(
+        baseOffset = baseY,
+        desiredOffset = desiredY,
+        overlapAt = { y -> clockFavoritesOverlapArea(0f, currentFavOffsetY, 0f, y) },
+        hardOkAt = { y -> hardConstraintsOk(0f, currentFavOffsetY, 0f, y) }
+    )
 
-        val stepPx = reachabilityProbeStepPx
-        val direction = if (desiredY > baseY) 1f else -1f
-        var probeY = desiredY
-
-        while (true) {
-            val isValid = isValidLayoutState(
-                favoritesX = 0f,
-                favoritesY = probeY,
-                clockX = 0f,
-                clockY = currentClockOffsetY
-            )
-            if (isValid) return probeY
-
-            val nextProbeY = probeY - (direction * stepPx)
-            val crossedBase = (direction > 0f && nextProbeY < baseY) || (direction < 0f && nextProbeY > baseY)
-            if (crossedBase) break
-            probeY = nextProbeY
-        }
-
-        return if (
-            isValidLayoutState(
-                favoritesX = 0f,
-                favoritesY = baseY,
-                clockX = 0f,
-                clockY = currentClockOffsetY
-            )
-        ) baseY else null
-    }
+    fun findReachableFavoritesOffsetY(baseY: Float, desiredY: Float): Float? = reachableOffset(
+        baseOffset = baseY,
+        desiredOffset = desiredY,
+        overlapAt = { y -> clockFavoritesOverlapArea(0f, y, 0f, currentClockOffsetY) },
+        hardOkAt = { y -> hardConstraintsOk(0f, y, 0f, currentClockOffsetY) }
+    )
 
     fun canMoveClockBy(deltaY: Float): Boolean {
         if (deltaY == 0f) return false
