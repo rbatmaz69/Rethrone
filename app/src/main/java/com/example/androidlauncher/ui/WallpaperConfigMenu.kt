@@ -1,10 +1,8 @@
 package com.example.androidlauncher.ui
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -14,7 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 // SystemWallpaperView ist im selben Paket (ui)
@@ -33,6 +32,7 @@ fun WallpaperConfigMenu(
     zoomLevel: Float,
     onZoomChange: (Float) -> Unit,
     customWallpaperUri: String? = null,
+    homeScreenPreview: @Composable () -> Unit = {},
     onClose: () -> Unit
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
@@ -87,28 +87,23 @@ fun WallpaperConfigMenu(
                         dimLevel = dimLevel,
                         zoomLevel = zoomLevel
                     )
-                    
-                    // Home Screen Mockup
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Text(
-                            "12:00", 
-                            color = mainTextColor, 
-                            fontSize = 40.sp, 
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-1).sp
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        repeat(4) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 6.dp)) {
-                                Box(modifier = Modifier.size(28.dp).background(mainTextColor.copy(alpha = 0.3f), CircleShape))
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Box(modifier = Modifier.width(70.dp).height(5.dp).background(mainTextColor.copy(alpha = 0.15f), CircleShape))
-                            }
+
+                    // Echte, herunterskalierte Startbildschirm-Vorschau (Layout + Farben live).
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val config = LocalConfiguration.current
+                        val screenW = config.screenWidthDp.dp
+                        val screenH = config.screenHeightDp.dp
+                        val previewScale = minOf(maxWidth / screenW, maxHeight / screenH)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .requiredSize(screenW, screenH)
+                                .graphicsLayer {
+                                    scaleX = previewScale
+                                    scaleY = previewScale
+                                }
+                        ) {
+                            homeScreenPreview()
                         }
                     }
                 }

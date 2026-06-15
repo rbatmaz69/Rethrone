@@ -1337,6 +1337,37 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // Gemeinsame Live-Vorschau des echten Startbildschirms (Layout + Farben) für
+                    // Wallpaper-Anpassung und Crop-Ansicht.
+                    val wallpaperHomePreview: @Composable () -> Unit = {
+                        HomeScreen(
+                            favorites = favorites,
+                            isSettingsOpen = false,
+                            isSearchOpen = false,
+                            isEditMode = false,
+                            favoritesOffsetX = favoritesOffsetX,
+                            favoritesOffsetY = favoritesOffsetY,
+                            clockOffsetX = clockOffsetX,
+                            clockOffsetY = clockOffsetY,
+                            onOpenDrawer = {},
+                            onOpenSearch = {},
+                            onToggleSettings = {},
+                            onToggleEditMode = {},
+                            onOpenFavoritesConfig = {},
+                            onOpenColorConfig = {},
+                            onOpenSizeConfig = {},
+                            onOpenSystemSettings = {},
+                            onOpenInfo = {},
+                            onSaveFavoritesOffset = { _, _ -> },
+                            onSaveClockOffset = { _, _ -> },
+                            onLaunchApp = { _, _, _ -> },
+                            returnIconPackage = null,
+                            searchButtonBounceToken = 0,
+                            onSearchButtonBoundsChanged = {},
+                            isPreview = true
+                        )
+                    }
+
                     MenuOverlay(
                         visible = isWallpaperConfigOpen,
                         backgroundColor = menuBackgroundColor,
@@ -1350,6 +1381,7 @@ class MainActivity : ComponentActivity() {
                             zoomLevel = wallpaperZoom,
                             onZoomChange = { scope.launch { themeManager.setWallpaperZoom(it) } },
                             customWallpaperUri = customWallpaperUri,
+                            homeScreenPreview = wallpaperHomePreview,
                             onClose = { isWallpaperConfigOpen = false }
                         )
                     }
@@ -1508,34 +1540,7 @@ class MainActivity : ComponentActivity() {
                                         pendingWallpaperUri = null
                                     }
                                 },
-                                homeScreenPreview = {
-                                    HomeScreen(
-                                        favorites = favorites,
-                                        isSettingsOpen = false,
-                                        isSearchOpen = false,
-                                        isEditMode = false,
-                                        favoritesOffsetX = 0f,
-                                        favoritesOffsetY = 0f,
-                                        clockOffsetX = 0f,
-                                        clockOffsetY = 0f,
-                                        onOpenDrawer = {},
-                                        onOpenSearch = {},
-                                        onToggleSettings = {},
-                                        onToggleEditMode = {},
-                                        onOpenFavoritesConfig = {},
-                                        onOpenColorConfig = {},
-                                        onOpenSizeConfig = {},
-                                        onOpenSystemSettings = {},
-                                        onOpenInfo = {},
-                                        onSaveFavoritesOffset = { _, _ -> },
-                                        onSaveClockOffset = { _, _ -> },
-                                        onLaunchApp = { _, _, _ -> },
-                                        returnIconPackage = null,
-                                        searchButtonBounceToken = 0,
-                                        onSearchButtonBoundsChanged = {},
-                                        isPreview = true
-                                    )
-                                }
+                                homeScreenPreview = wallpaperHomePreview
                             )
                         }
                     }
