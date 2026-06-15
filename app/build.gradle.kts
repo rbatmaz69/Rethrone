@@ -135,6 +135,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     // Rounded-Icon-Set (Android-15/16-Look). R8 shrinkt ungenutzte Icons im Release.
     implementation(libs.androidx.compose.material.icons.extended)
+    // Google Fonts (Downloadable) – universelle Schriftarten über den Play-Services-Provider.
+    implementation(libs.androidx.compose.ui.text.google.fonts)
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
