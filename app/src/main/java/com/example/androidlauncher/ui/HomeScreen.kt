@@ -58,12 +58,16 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
+import com.composables.icons.lucide.Sun
 import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.WeatherData
+import com.example.androidlauncher.data.WeatherRepository
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
 import kotlinx.coroutines.delay
@@ -1456,6 +1460,73 @@ fun ClockHeader(
                     }
                 )
                 .padding(horizontal = 4.dp, vertical = 2.dp)
+        )
+
+        // Schmales Wetter-Widget (Symbol + Temperatur) direkt unter dem Datum.
+        if (LocalWeatherWidgetEnabled.current) {
+            WeatherRow(isPreview = isPreview)
+        }
+    }
+}
+
+/**
+ * Schmale Wetterzeile unter Uhr/Datum: ein Symbol plus aktuelle Temperatur.
+ *
+ * Holt den groben Standort über [WeatherRepository] und ruft das Wetter von Open-Meteo ab.
+ * Solange kein Standort/keine Daten vorliegen (z. B. Berechtigung noch nicht erteilt),
+ * wird in kurzen Abständen erneut versucht; danach im 30-Minuten-Takt aktualisiert.
+ * Im Vorschau-/Edit-Modus wird ein statischer Platzhalter gezeigt (kein Netzwerkzugriff).
+ */
+@Composable
+fun WeatherRow(isPreview: Boolean = false) {
+    val context = LocalContext.current
+    val fontSize = LocalFontSize.current
+    val appFontWeight = LocalFontWeight.current
+    val mainTextColor = LocalHomeTextColor.current
+
+    val weather by produceState<WeatherData?>(initialValue = null, isPreview) {
+        if (isPreview) return@produceState
+        val repo = WeatherRepository(context)
+        while (true) {
+            // GPS nur, falls die Berechtigung ohnehin erteilt ist; sonst grobe Position
+            // über die IP-Adresse (ohne Standortdienst/Berechtigung).
+            val location = repo.awaitLocation() ?: repo.ipLocation()
+            if (location != null) {
+                repo.fetch(location.first, location.second)?.let { value = it }
+            }
+            // Schneller erneut versuchen, solange noch keine Daten vorliegen,
+            // sonst regulär alle 30 Minuten aktualisieren.
+            delay(if (value == null) 20_000L else 30 * 60_000L)
+        }
+    }
+
+    val icon: ImageVector
+    val temperatureText: String
+    if (isPreview) {
+        icon = Lucide.Sun
+        temperatureText = "21°"
+    } else {
+        val data = weather ?: return
+        icon = WeatherRepository.iconFor(data.weatherCode)
+        temperatureText = "${data.temperatureC}°"
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = mainTextColor.copy(alpha = 0.7f),
+            modifier = Modifier.size(18.dp * fontSize.scale)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = temperatureText,
+            fontSize = 18.sp * fontSize.scale,
+            fontWeight = appFontWeight.weight,
+            color = mainTextColor.copy(alpha = 0.7f)
         )
     }
 }

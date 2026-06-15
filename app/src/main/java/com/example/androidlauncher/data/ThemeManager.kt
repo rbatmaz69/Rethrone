@@ -58,6 +58,8 @@ class ThemeManager(private val context: Context) {
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
         private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
         private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
+        // Wetter-Widget unter Uhr/Datum (Standard: an).
+        private val WEATHER_WIDGET_KEY = booleanPreferencesKey("weather_widget_enabled")
 
         // Offset for UI elements (Relative to default position)
         private val FAVORITES_OFFSET_X_KEY = floatPreferencesKey("favorites_offset_x")
@@ -186,6 +188,12 @@ class ThemeManager(private val context: Context) {
      */
     val isAnimationsEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[ANIMATIONS_ENABLED_KEY] ?: true }
+
+    /**
+     * Observable flow für das Wetter-Widget (Symbol + Temperatur unter der Uhr). Default: an.
+     */
+    val isWeatherWidgetEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[WEATHER_WIDGET_KEY] ?: true }
 
     /**
      * Observable flow for shake gesture toggle.
@@ -365,6 +373,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setAnimationsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[ANIMATIONS_ENABLED_KEY] = enabled
+        }
+    }
+
+    /**
+     * Schaltet das Wetter-Widget ein/aus.
+     */
+    suspend fun setWeatherWidgetEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[WEATHER_WIDGET_KEY] = enabled
         }
     }
 }

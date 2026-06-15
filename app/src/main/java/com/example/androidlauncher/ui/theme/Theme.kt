@@ -48,6 +48,10 @@ val LocalHapticFeedbackEnabled = staticCompositionLocalOf { true }
  * CompositionLocal for animations enabled state.
  */
 val LocalAnimationsEnabled = staticCompositionLocalOf { true }
+/**
+ * CompositionLocal für das Wetter-Widget (Symbol + Temperatur unter der Uhr).
+ */
+val LocalWeatherWidgetEnabled = staticCompositionLocalOf { true }
 
 @Composable
 fun AndroidLauncherTheme(
@@ -64,6 +68,7 @@ fun AndroidLauncherTheme(
     appFont: AppFont = AppFont.SYSTEM_DEFAULT,
     hapticFeedbackEnabled: Boolean = true,
     animationsEnabled: Boolean = true,
+    weatherWidgetEnabled: Boolean = true,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -130,7 +135,8 @@ fun AndroidLauncherTheme(
         LocalDesignStyle provides designStyle,
         LocalAppFont provides appFont,
         LocalHapticFeedbackEnabled provides hapticFeedbackEnabled,
-        LocalAnimationsEnabled provides animationsEnabled
+        LocalAnimationsEnabled provides animationsEnabled,
+        LocalWeatherWidgetEnabled provides weatherWidgetEnabled
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

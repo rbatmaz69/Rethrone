@@ -40,6 +40,7 @@ import com.composables.icons.lucide.Ban
 import com.composables.icons.lucide.BellOff
 import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.ChevronDown
+import com.composables.icons.lucide.CloudSun
 import com.composables.icons.lucide.Flashlight
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.List
@@ -88,6 +89,8 @@ fun EditConfigMenu(
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     isAnimationsEnabled: Boolean,
     onAnimationsToggled: (Boolean) -> Unit,
+    isWeatherWidgetEnabled: Boolean,
+    onWeatherWidgetToggled: (Boolean) -> Unit,
     appAccessMode: AppAccessMode,
     onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
@@ -180,6 +183,21 @@ fun EditConfigMenu(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "animations_switch"
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.CloudSun,
+                    label = "Wetter-Widget",
+                    description = "Zeigt Symbol und Temperatur unter der Uhr",
+                    checked = isWeatherWidgetEnabled,
+                    onCheckedChange = { onWeatherWidgetToggled(it) },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "weather_widget_switch"
                 )
             }
 

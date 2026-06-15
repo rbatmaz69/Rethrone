@@ -209,6 +209,7 @@ class MainActivity : ComponentActivity() {
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
             val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
+            val isWeatherWidgetEnabled by themeManager.isWeatherWidgetEnabled.collectAsState(initial = true)
             val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
@@ -403,7 +404,8 @@ class MainActivity : ComponentActivity() {
                 designStyle = designStyle,
                 appFont = currentAppFont,
                 hapticFeedbackEnabled = isHapticFeedbackEnabled,
-                animationsEnabled = isAnimationsEnabled
+                animationsEnabled = isAnimationsEnabled,
+                weatherWidgetEnabled = isWeatherWidgetEnabled
             ) {
                 // Determine whether to use dark or light text/colors dynamically
                 val lifecycleOwner = LocalLifecycleOwner.current
@@ -1310,6 +1312,10 @@ class MainActivity : ComponentActivity() {
                             isAnimationsEnabled = isAnimationsEnabled,
                             onAnimationsToggled = { enabled ->
                                 scope.launch { themeManager.setAnimationsEnabled(enabled) }
+                            },
+                            isWeatherWidgetEnabled = isWeatherWidgetEnabled,
+                            onWeatherWidgetToggled = { enabled ->
+                                scope.launch { themeManager.setWeatherWidgetEnabled(enabled) }
                             },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->
