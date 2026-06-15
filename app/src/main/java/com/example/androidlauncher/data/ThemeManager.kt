@@ -67,9 +67,9 @@ class ThemeManager(private val context: Context) {
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
         .map { preferences ->
-            // Standard: warmes Papier-Theme (Android-15/16-Look) für Neuinstallationen.
-            val themeName = preferences[THEME_KEY] ?: ColorTheme.PAPER_MIDNIGHT.name
-            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.PAPER_MIDNIGHT }
+            // Standard: helles Papier-Theme "Tagespapier" für Neuinstallationen.
+            val themeName = preferences[THEME_KEY] ?: ColorTheme.PAPER_DAYLIGHT.name
+            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.PAPER_DAYLIGHT }
         }
 
     val selectedFontSize: Flow<FontSize> = context.dataStore.data
@@ -90,8 +90,9 @@ class ThemeManager(private val context: Context) {
             try { IconSize.valueOf(iconSizeName) } catch (e: IllegalArgumentException) { IconSize.STANDARD }
         }
 
+    // Standard: dunkler Text – passend zum hellen Default-Theme "Tagespapier".
     val isDarkTextEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[DARK_TEXT_KEY] ?: false }
+        .map { it[DARK_TEXT_KEY] ?: true }
 
     // Frei wählbare Iconfarbe (gilt überall). Default Weiß.
     val iconColor: Flow<Color> = context.dataStore.data
@@ -132,8 +133,11 @@ class ThemeManager(private val context: Context) {
             if (stored != null) {
                 DesignStyle.fromKey(stored)
             } else {
-                // Migration aus dem Legacy-Boolean.
-                if (preferences[LIQUID_GLASS_KEY] == false) DesignStyle.FLAT else DesignStyle.GLASS
+                // Neuinstallation → "Standard" (FLAT); Legacy-Glas-Nutzer behalten GLASS.
+                when (preferences[LIQUID_GLASS_KEY]) {
+                    true -> DesignStyle.GLASS
+                    else -> DesignStyle.FLAT
+                }
             }
         }
 
