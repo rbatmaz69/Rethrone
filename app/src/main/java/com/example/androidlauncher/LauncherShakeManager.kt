@@ -5,54 +5,35 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
 
 /**
- * Verbindet die Shake-Erkennung mit dem Android-Accelerometer.
+ * Verbindet die Doppel-Schüttel-Erkennung mit dem Android-Accelerometer.
  */
 class LauncherShakeManager(context: Context) {
     private val appContext = context.applicationContext
     private val sensorManager = appContext.getSystemService(SensorManager::class.java)
     private val accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val detector = LauncherShakeGestureDetector()
-    private val mainHandler = Handler(Looper.getMainLooper())
 
-    var onGestureAction: ((LauncherShakeGestureDetector.ShakeGesture) -> Unit)? = null
+    var onDoubleShake: (() -> Unit)? = null
 
     private var isStarted = false
-
-    private val confirmSingleShakeRunnable = Runnable {
-        detector.flushPending(SystemClock.elapsedRealtime())?.let { gesture ->
-            onGestureAction?.invoke(gesture)
-        }
-    }
 
     private val sensorListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             val values = event.values
             if (values.size < 3) return
 
-            val detectedGesture = detector.onAccelerationChanged(
+            val isDoubleShake = detector.onAccelerationChanged(
                 x = values[0],
                 y = values[1],
                 z = values[2],
                 timestampMs = SystemClock.elapsedRealtime()
             )
 
-            if (detectedGesture != null) {
-                mainHandler.removeCallbacks(confirmSingleShakeRunnable)
-                onGestureAction?.invoke(detectedGesture)
-                return
-            }
-
-            if (detector.hasPendingSingleShake()) {
-                mainHandler.removeCallbacks(confirmSingleShakeRunnable)
-                mainHandler.postDelayed(
-                    confirmSingleShakeRunnable,
-                    detector.singleShakeConfirmationDelayMs
-                )
+            if (isDoubleShake) {
+                onDoubleShake?.invoke()
             }
         }
 
@@ -77,7 +58,6 @@ class LauncherShakeManager(context: Context) {
     }
 
     fun stop() {
-        mainHandler.removeCallbacks(confirmSingleShakeRunnable)
         detector.reset()
 
         if (!isStarted) return
@@ -85,4 +65,3 @@ class LauncherShakeManager(context: Context) {
         isStarted = false
     }
 }
-

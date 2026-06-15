@@ -1,6 +1,7 @@
 package com.example.androidlauncher
 
 import android.app.Activity
+import android.app.NotificationManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
@@ -17,6 +18,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.MediaStore
+import android.provider.Settings
 import android.view.HapticFeedbackConstants
 
 sealed interface FlashlightToggleResult {
@@ -24,6 +26,13 @@ sealed interface FlashlightToggleResult {
     data object Unsupported : FlashlightToggleResult
     data object MissingPermission : FlashlightToggleResult
     data object Error : FlashlightToggleResult
+}
+
+sealed interface DndToggleResult {
+    /** [isEnabled] = true, wenn "Nicht stören" jetzt aktiv ist. */
+    data class Success(val isEnabled: Boolean) : DndToggleResult
+    data object MissingPermission : DndToggleResult
+    data object Unsupported : DndToggleResult
 }
 
 /**
@@ -132,6 +141,73 @@ class LauncherDeviceActions(context: Context) {
             } catch (_: RuntimeException) {
                 false
             }
+        }
+    }
+
+    /**
+     * Startet die App mit dem angegebenen Paketnamen.
+     * @return false, wenn keine startbare App gefunden wurde.
+     */
+    fun openApp(activity: Activity, packageName: String): Boolean {
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try {
+            activity.startActivity(launchIntent)
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        } catch (_: RuntimeException) {
+            false
+        }
+    }
+
+    /**
+     * Schaltet den "Nicht stören"-Modus um (Alle ↔ Nur Prioritär).
+     */
+    fun toggleDoNotDisturb(): DndToggleResult {
+        val notificationManager = appContext.getSystemService(NotificationManager::class.java)
+            ?: return DndToggleResult.Unsupported
+        if (!notificationManager.isNotificationPolicyAccessGranted) {
+            return DndToggleResult.MissingPermission
+        }
+        val shouldEnable =
+            notificationManager.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL
+        val newFilter = if (shouldEnable) {
+            NotificationManager.INTERRUPTION_FILTER_PRIORITY
+        } else {
+            NotificationManager.INTERRUPTION_FILTER_ALL
+        }
+        return try {
+            notificationManager.setInterruptionFilter(newFilter)
+            DndToggleResult.Success(isEnabled = shouldEnable)
+        } catch (_: SecurityException) {
+            DndToggleResult.MissingPermission
+        }
+    }
+
+    /** Öffnet den Systembildschirm, um Zugriff auf die "Nicht stören"-Richtlinie zu erteilen. */
+    fun openDndPolicySettings(activity: Activity) {
+        runCatching {
+            activity.startActivity(
+                Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
+
+    /** Öffnet die System-Einstellungen. @return false, wenn kein passender Bildschirm gefunden wurde. */
+    fun openSystemSettings(activity: Activity): Boolean {
+        return try {
+            activity.startActivity(
+                Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        } catch (_: RuntimeException) {
+            false
         }
     }
 

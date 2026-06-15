@@ -50,8 +50,9 @@ class ThemeManager(private val context: Context) {
         private val WALLPAPER_DIM_KEY = floatPreferencesKey("wallpaper_dim")
         private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
         private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
-        private val SINGLE_SHAKE_ACTION_KEY = stringPreferencesKey("single_shake_action")
         private val DOUBLE_SHAKE_ACTION_KEY = stringPreferencesKey("double_shake_action")
+        // Paketname der App, die bei ShakeAction.OPEN_APP gestartet wird.
+        private val SHAKE_OPEN_APP_PACKAGE_KEY = stringPreferencesKey("shake_open_app_package")
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
         private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
@@ -188,22 +189,19 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
-     * Aktion für einfaches Schütteln. Default Taschenlampe (erhält bisheriges Verhalten).
+     * Aktion für doppeltes Schütteln (einzige Shake-Geste). Default Taschenlampe.
      */
-    val singleShakeAction: Flow<ShakeAction> = context.dataStore.data
+    val doubleShakeAction: Flow<ShakeAction> = context.dataStore.data
         .map { preferences ->
-            val name = preferences[SINGLE_SHAKE_ACTION_KEY] ?: ShakeAction.FLASHLIGHT.name
+            val name = preferences[DOUBLE_SHAKE_ACTION_KEY] ?: ShakeAction.FLASHLIGHT.name
             try { ShakeAction.valueOf(name) } catch (e: IllegalArgumentException) { ShakeAction.FLASHLIGHT }
         }
 
     /**
-     * Aktion für doppeltes Schütteln. Default Kamera (erhält bisheriges Verhalten).
+     * Paketname der App, die bei [ShakeAction.OPEN_APP] gestartet wird (null, wenn keine gewählt).
      */
-    val doubleShakeAction: Flow<ShakeAction> = context.dataStore.data
-        .map { preferences ->
-            val name = preferences[DOUBLE_SHAKE_ACTION_KEY] ?: ShakeAction.CAMERA.name
-            try { ShakeAction.valueOf(name) } catch (e: IllegalArgumentException) { ShakeAction.CAMERA }
-        }
+    val shakeOpenAppPackage: Flow<String?> = context.dataStore.data
+        .map { preferences -> preferences[SHAKE_OPEN_APP_PACKAGE_KEY]?.takeIf { it.isNotBlank() } }
 
     /**
      * Gewählte Art des App-Zugriffs. Default ist die Drawer-Liste (Niagara-Stil).
@@ -314,20 +312,24 @@ class ThemeManager(private val context: Context) {
     }
 
     /**
-     * Setzt die Aktion für einfaches Schütteln.
-     */
-    suspend fun setSingleShakeAction(action: ShakeAction) {
-        context.dataStore.edit { preferences ->
-            preferences[SINGLE_SHAKE_ACTION_KEY] = action.name
-        }
-    }
-
-    /**
      * Setzt die Aktion für doppeltes Schütteln.
      */
     suspend fun setDoubleShakeAction(action: ShakeAction) {
         context.dataStore.edit { preferences ->
             preferences[DOUBLE_SHAKE_ACTION_KEY] = action.name
+        }
+    }
+
+    /**
+     * Setzt das Paket der App, die bei [ShakeAction.OPEN_APP] gestartet wird (null löscht die Wahl).
+     */
+    suspend fun setShakeOpenAppPackage(packageName: String?) {
+        context.dataStore.edit { preferences ->
+            if (packageName.isNullOrBlank()) {
+                preferences.remove(SHAKE_OPEN_APP_PACKAGE_KEY)
+            } else {
+                preferences[SHAKE_OPEN_APP_PACKAGE_KEY] = packageName
+            }
         }
     }
 

@@ -201,8 +201,8 @@ class MainActivity : ComponentActivity() {
             val hiddenApps by themeManager.hiddenApps.collectAsState(initial = emptySet())
             val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
-            val singleShakeAction by themeManager.singleShakeAction.collectAsState(initial = ShakeAction.FLASHLIGHT)
-            val doubleShakeAction by themeManager.doubleShakeAction.collectAsState(initial = ShakeAction.CAMERA)
+            val doubleShakeAction by themeManager.doubleShakeAction.collectAsState(initial = ShakeAction.FLASHLIGHT)
+            val shakeOpenAppPackage by themeManager.shakeOpenAppPackage.collectAsState(initial = null)
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
             val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
@@ -284,12 +284,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            shakeManager.onGestureAction = { gesture ->
-                val configuredAction = when (gesture) {
-                    LauncherShakeGestureDetector.ShakeGesture.SINGLE_SHAKE -> singleShakeAction
-                    LauncherShakeGestureDetector.ShakeGesture.DOUBLE_SHAKE -> doubleShakeAction
-                }
-                when (configuredAction) {
+            fun runShakeAction(action: ShakeAction) {
+                when (action) {
                     ShakeAction.NONE -> Unit
                     ShakeAction.FLASHLIGHT -> {
                         when (launcherDeviceActions.toggleFlashlight()) {
@@ -316,8 +312,55 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(context, context.getString(R.string.camera_app_not_found), Toast.LENGTH_SHORT).show()
                         }
                     }
+                    ShakeAction.OPEN_APP -> {
+                        val targetPackage = shakeOpenAppPackage
+                        if (targetPackage.isNullOrBlank()) {
+                            Toast.makeText(context, context.getString(R.string.shake_no_app_selected), Toast.LENGTH_SHORT).show()
+                        } else if (launcherDeviceActions.openApp(this@MainActivity, targetPackage)) {
+                            launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.shake_app_not_found), Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    ShakeAction.LOCK_SCREEN -> {
+                        if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
+                            LauncherAccessibilityService.requestLockScreen(context)
+                            launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.shake_lock_needs_accessibility), Toast.LENGTH_LONG).show()
+                            runCatching {
+                                startActivity(
+                                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            }
+                        }
+                    }
+                    ShakeAction.TOGGLE_DND -> {
+                        when (launcherDeviceActions.toggleDoNotDisturb()) {
+                            is DndToggleResult.Success -> {
+                                launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
+                            }
+                            DndToggleResult.MissingPermission -> {
+                                Toast.makeText(context, context.getString(R.string.shake_dnd_needs_permission), Toast.LENGTH_LONG).show()
+                                launcherDeviceActions.openDndPolicySettings(this@MainActivity)
+                            }
+                            DndToggleResult.Unsupported -> {
+                                Toast.makeText(context, context.getString(R.string.shake_dnd_unsupported), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    ShakeAction.OPEN_SETTINGS -> {
+                        if (launcherDeviceActions.openSystemSettings(this@MainActivity)) {
+                            launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.shake_settings_not_found), Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
             }
+
+            shakeManager.onDoubleShake = { runShakeAction(doubleShakeAction) }
 
             AndroidLauncherTheme(
                 colorTheme = currentTheme,
@@ -1219,13 +1262,14 @@ class MainActivity : ComponentActivity() {
                             onShakeGesturesToggled = { enabled ->
                                 scope.launch { themeManager.setShakeGesturesEnabled(enabled) }
                             },
-                            singleShakeAction = singleShakeAction,
-                            onSingleShakeActionChange = { action ->
-                                scope.launch { themeManager.setSingleShakeAction(action) }
-                            },
                             doubleShakeAction = doubleShakeAction,
                             onDoubleShakeActionChange = { action ->
                                 scope.launch { themeManager.setDoubleShakeAction(action) }
+                            },
+                            apps = allApps,
+                            shakeOpenAppPackage = shakeOpenAppPackage,
+                            onShakeOpenAppPackageChange = { pkg ->
+                                scope.launch { themeManager.setShakeOpenAppPackage(pkg) }
                             },
                             isSmartSuggestionsEnabled = isSmartSuggestionsEnabled,
                             onSmartSuggestionsToggled = { enabled ->

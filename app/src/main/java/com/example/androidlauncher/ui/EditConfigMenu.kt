@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -36,14 +37,20 @@ import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.Smartphone
 import com.composables.icons.lucide.Ban
+import com.composables.icons.lucide.BellOff
 import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.Flashlight
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.List
+import com.composables.icons.lucide.Lock
 import com.composables.icons.lucide.PanelRight
 import com.composables.icons.lucide.Trash2
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.window.Dialog
+import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppAccessMode
+import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.ShakeAction
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
@@ -71,10 +78,11 @@ fun EditConfigMenu(
     isCustomWallpaperSet: Boolean,
     isShakeGesturesEnabled: Boolean,
     onShakeGesturesToggled: (Boolean) -> Unit,
-    singleShakeAction: ShakeAction,
-    onSingleShakeActionChange: (ShakeAction) -> Unit,
     doubleShakeAction: ShakeAction,
     onDoubleShakeActionChange: (ShakeAction) -> Unit,
+    apps: List<AppInfo>,
+    shakeOpenAppPackage: String?,
+    onShakeOpenAppPackageChange: (String?) -> Unit,
     isSmartSuggestionsEnabled: Boolean,
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     isAnimationsEnabled: Boolean,
@@ -355,7 +363,7 @@ fun EditConfigMenu(
                 EditToggleItem(
                     icon = Lucide.Smartphone,
                     label = "Shake-Gesten",
-                    description = "Schütteln, um eine Aktion auszulösen. Zuordnung unten anpassbar.",
+                    description = "2× Schütteln, um die gewählte Aktion auszulösen.",
                     checked = isShakeGesturesEnabled,
                     onCheckedChange = onShakeGesturesToggled,
                     mainTextColor = mainTextColor,
@@ -369,28 +377,50 @@ fun EditConfigMenu(
             if (isShakeGesturesEnabled) {
                 item {
                     EditActionSelectorItem(
-                        label = "Einfaches Schütteln",
-                        selectedAction = singleShakeAction,
-                        onActionSelected = onSingleShakeActionChange,
-                        mainTextColor = mainTextColor,
-                        designStyle = designStyle,
-                    surfaceAccent = surfaceAccent,
-                        isDarkTextEnabled = isDarkTextEnabled,
-                        testTag = "single_shake_action_selector"
-                    )
-                }
-
-                item {
-                    EditActionSelectorItem(
-                        label = "Doppeltes Schütteln",
+                        label = "Bei 2× Schütteln",
                         selectedAction = doubleShakeAction,
                         onActionSelected = onDoubleShakeActionChange,
                         mainTextColor = mainTextColor,
                         designStyle = designStyle,
-                    surfaceAccent = surfaceAccent,
+                        surfaceAccent = surfaceAccent,
                         isDarkTextEnabled = isDarkTextEnabled,
                         testTag = "double_shake_action_selector"
                     )
+                }
+
+                if (doubleShakeAction == ShakeAction.OPEN_APP) {
+                    item {
+                        var showAppPicker by remember { mutableStateOf(false) }
+                        val selectedAppLabel = apps.firstOrNull { it.packageName == shakeOpenAppPackage }?.label
+
+                        EditMenuItem(
+                            icon = Lucide.LayoutGrid,
+                            label = "App wählen",
+                            onClick = { showAppPicker = true },
+                            statusLabel = selectedAppLabel ?: "Keine",
+                            mainTextColor = mainTextColor,
+                            designStyle = designStyle,
+                            surfaceAccent = surfaceAccent,
+                            isDarkTextEnabled = isDarkTextEnabled,
+                            testTag = "shake_open_app_picker"
+                        )
+
+                        if (showAppPicker) {
+                            ShakeAppPickerDialog(
+                                apps = apps,
+                                selectedPackage = shakeOpenAppPackage,
+                                onAppSelected = {
+                                    onShakeOpenAppPackageChange(it)
+                                    showAppPicker = false
+                                },
+                                onDismiss = { showAppPicker = false },
+                                mainTextColor = mainTextColor,
+                                designStyle = designStyle,
+                                surfaceAccent = surfaceAccent,
+                                isDarkTextEnabled = isDarkTextEnabled
+                            )
+                        }
+                    }
                 }
             }
 
@@ -694,12 +724,20 @@ private fun shakeActionIcon(action: ShakeAction): ImageVector = when (action) {
     ShakeAction.NONE -> Lucide.Ban
     ShakeAction.FLASHLIGHT -> Lucide.Flashlight
     ShakeAction.CAMERA -> Lucide.Camera
+    ShakeAction.OPEN_APP -> Lucide.LayoutGrid
+    ShakeAction.LOCK_SCREEN -> Lucide.Lock
+    ShakeAction.TOGGLE_DND -> Lucide.BellOff
+    ShakeAction.OPEN_SETTINGS -> Lucide.Settings2
 }
 
 private fun shakeActionLabel(action: ShakeAction): String = when (action) {
     ShakeAction.NONE -> "Aus"
     ShakeAction.FLASHLIGHT -> "Taschenlampe"
     ShakeAction.CAMERA -> "Kamera"
+    ShakeAction.OPEN_APP -> "App öffnen"
+    ShakeAction.LOCK_SCREEN -> "Bildschirm sperren"
+    ShakeAction.TOGGLE_DND -> "Nicht stören"
+    ShakeAction.OPEN_SETTINGS -> "Einstellungen"
 }
 
 /**
@@ -786,6 +824,107 @@ private fun EditActionSelectorItem(
                             }
                         }
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Dialog zum Auswählen der App, die bei [ShakeAction.OPEN_APP] gestartet wird.
+ * Bietet ein Suchfeld und eine Liste aller installierten Apps (Single-Select).
+ */
+@Composable
+private fun ShakeAppPickerDialog(
+    apps: List<AppInfo>,
+    selectedPackage: String?,
+    onAppSelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+    mainTextColor: Color,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
+    isDarkTextEnabled: Boolean
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredApps = remember(apps, searchQuery) { LauncherLogic.filterApps(apps, searchQuery) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.8f)
+                .clip(RoundedCornerShape(24.dp)),
+            color = if (isDarkTextEnabled) Color(0xFFF2F2F2) else Color(0xFF1C1C1E)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = "App wählen",
+                    color = mainTextColor,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Suchen", color = mainTextColor.copy(alpha = 0.5f)) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.6f)) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = mainTextColor,
+                        unfocusedTextColor = mainTextColor,
+                        cursorColor = mainTextColor,
+                        focusedBorderColor = mainTextColor.copy(alpha = 0.5f),
+                        unfocusedBorderColor = mainTextColor.copy(alpha = 0.2f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(items = filteredApps, key = { it.packageName }) { app ->
+                        val isSelected = app.packageName == selectedPackage
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .then(
+                                    if (isSelected) {
+                                        Modifier.designSurface(
+                                            designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                                            fillAlpha = 0.08f
+                                        )
+                                    } else {
+                                        Modifier.background(Color.Transparent)
+                                    }
+                                )
+                                .clickable { onAppSelected(app.packageName) }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AppIconView(app)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = app.label,
+                                color = mainTextColor,
+                                fontSize = 16.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = mainTextColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

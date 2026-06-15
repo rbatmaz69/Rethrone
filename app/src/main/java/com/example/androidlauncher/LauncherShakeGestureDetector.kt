@@ -3,10 +3,11 @@ package com.example.androidlauncher
 import kotlin.math.sqrt
 
 /**
- * Erkennt konservativ Single- und Double-Shake-Muster auf Basis des Accelerometers.
+ * Erkennt konservativ ein Doppel-Schüttel-Muster auf Basis des Accelerometers.
  *
- * Meldet ausschließlich den erkannten Gestentyp ([ShakeGesture]). Welche Aktion daraus
- * folgt (Taschenlampe, Kamera, …) entscheidet die vom Nutzer konfigurierte Zuordnung.
+ * Meldet ausschließlich, ob ein doppeltes Schütteln (zwei schnelle Peaks) erkannt wurde.
+ * Welche Aktion daraus folgt (Taschenlampe, Kamera, …) entscheidet die vom Nutzer
+ * konfigurierte Zuordnung.
  */
 class LauncherShakeGestureDetector(
     private val shakeThresholdG: Float = 2.35f,
@@ -18,36 +19,28 @@ class LauncherShakeGestureDetector(
         private const val EARTH_GRAVITY_MS2 = 9.80665f
     }
 
-    enum class ShakeGesture {
-        SINGLE_SHAKE,
-        DOUBLE_SHAKE
-    }
-
-    val singleShakeConfirmationDelayMs: Long
-        get() = doubleShakeWindowMs
-
     private var lastShakePeakTimestampMs = 0L
     private var pendingShakeTimestampMs: Long? = null
     private var lastDispatchedTimestampMs = Long.MIN_VALUE / 4
 
-    fun onAccelerationChanged(x: Float, y: Float, z: Float, timestampMs: Long): ShakeGesture? {
+    /** @return true, wenn mit diesem Sample ein doppeltes Schütteln erkannt wurde. */
+    fun onAccelerationChanged(x: Float, y: Float, z: Float, timestampMs: Long): Boolean {
         val gForce = sqrt((x * x + y * y + z * z).toDouble()).toFloat() / EARTH_GRAVITY_MS2
         return onGForceSample(gForce = gForce, timestampMs = timestampMs)
     }
 
-    fun onGForceSample(gForce: Float, timestampMs: Long): ShakeGesture? {
-        flushPending(timestampMs)?.let { return it }
-
+    /** @return true, wenn mit diesem Sample ein doppeltes Schütteln erkannt wurde. */
+    fun onGForceSample(gForce: Float, timestampMs: Long): Boolean {
         if (gForce < shakeThresholdG) {
-            return null
+            return false
         }
 
         if (timestampMs - lastDispatchedTimestampMs < actionCooldownMs) {
-            return null
+            return false
         }
 
         if (lastShakePeakTimestampMs != 0L && timestampMs - lastShakePeakTimestampMs < minShakeGapMs) {
-            return null
+            return false
         }
 
         val previousPendingShake = pendingShakeTimestampMs
@@ -56,33 +49,16 @@ class LauncherShakeGestureDetector(
         return if (previousPendingShake != null && timestampMs - previousPendingShake <= doubleShakeWindowMs) {
             pendingShakeTimestampMs = null
             lastDispatchedTimestampMs = timestampMs
-            ShakeGesture.DOUBLE_SHAKE
+            true
         } else {
+            // Erster Peak (oder zu spät für ein Doppel-Schütteln): als neuen Startpunkt merken.
             pendingShakeTimestampMs = timestampMs
-            null
+            false
         }
     }
-
-    fun flushPending(timestampMs: Long): ShakeGesture? {
-        val pendingTimestampMs = pendingShakeTimestampMs ?: return null
-        if (timestampMs - pendingTimestampMs < doubleShakeWindowMs) {
-            return null
-        }
-
-        pendingShakeTimestampMs = null
-        if (timestampMs - lastDispatchedTimestampMs < actionCooldownMs) {
-            return null
-        }
-
-        lastDispatchedTimestampMs = timestampMs
-        return ShakeGesture.SINGLE_SHAKE
-    }
-
-    fun hasPendingSingleShake(): Boolean = pendingShakeTimestampMs != null
 
     fun reset() {
         lastShakePeakTimestampMs = 0L
         pendingShakeTimestampMs = null
     }
 }
-

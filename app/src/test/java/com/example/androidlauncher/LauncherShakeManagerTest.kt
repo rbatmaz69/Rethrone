@@ -4,13 +4,9 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Handler
-import android.os.Looper
-import io.mockk.Runs
+import android.os.SystemClock
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
-import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
@@ -18,7 +14,6 @@ import io.mockk.verify
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -35,12 +30,7 @@ class LauncherShakeManagerTest {
         sensor = mockk(relaxed = true)
         every { context.applicationContext } returns appContext
         every { appContext.getSystemService(SensorManager::class.java) } returns sensorManager
-        mockkStatic(Looper::class)
-        val dummyLooper = mockk<Looper>()
-        every { Looper.getMainLooper() } returns dummyLooper
-        mockkConstructor(Handler::class)
-        every { anyConstructed<Handler>().postDelayed(any(), any()) } returns true
-        every { anyConstructed<Handler>().removeCallbacks(any()) } just Runs
+        mockkStatic(SystemClock::class)
     }
     @After
     fun tearDown() {
@@ -78,7 +68,7 @@ class LauncherShakeManagerTest {
     }
 
     @Test
-    fun testSensorEventHandling() {
+    fun testDoubleShakeTriggersCallback() {
         every { sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) } returns sensor
         every { sensorManager.registerListener(any(), sensor, any()) } returns true
 
@@ -89,26 +79,26 @@ class LauncherShakeManagerTest {
         verify { sensorManager.registerListener(capture(listenerSlot), sensor, any()) }
         val listener = listenerSlot.captured
 
-        // Create a mock SensorEvent with reflection since its constructor is package-private in standard Android
         val event = mockk<SensorEvent>()
-
         try {
             val valuesField = SensorEvent::class.java.getField("values")
             valuesField.isAccessible = true
             valuesField.set(event, floatArrayOf(20f, 20f, 20f))
-        } catch(e: Exception) {
-            // Android stub doesn't have it or it's unmodifiable, try mockk
+        } catch (e: Exception) {
             every { event.values } returns floatArrayOf(20f, 20f, 20f)
         }
 
-        var gestureReceived: LauncherShakeGestureDetector.ShakeGesture? = null
-        manager.onGestureAction = { gesture ->
-            gestureReceived = gesture
-        }
+        var doubleShakeCount = 0
+        manager.onDoubleShake = { doubleShakeCount++ }
 
+        // Erster Peak: noch kein Doppel-Schütteln.
+        every { SystemClock.elapsedRealtime() } returns 1_000L
         listener.onSensorChanged(event)
+        assertEquals(0, doubleShakeCount)
 
-        // Assert or verify handler
-        verify { anyConstructed<Handler>().removeCallbacks(any()) }
+        // Zweiter Peak innerhalb des Fensters: Doppel-Schütteln.
+        every { SystemClock.elapsedRealtime() } returns 1_400L
+        listener.onSensorChanged(event)
+        assertEquals(1, doubleShakeCount)
     }
 }

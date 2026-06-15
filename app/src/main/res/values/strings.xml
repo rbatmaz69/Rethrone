@@ -29,6 +29,13 @@
     <string name="flashlight_unsupported">Keine Taschenlampe verfügbar</string>
     <string name="flashlight_error">Taschenlampe konnte nicht geändert werden</string>
     <string name="camera_app_not_found">Keine Kamera-App gefunden</string>
+    <string name="shake_no_app_selected">Keine App für die Geste ausgewählt</string>
+    <string name="shake_app_not_found">App konnte nicht gestartet werden</string>
+    <string name="shake_lock_needs_accessibility">Zum Sperren bitte die Bedienungshilfe aktivieren</string>
+    <string name="shake_dnd_needs_permission">Zugriff auf „Nicht stören“ benötigt</string>
+    <string name="shake_dnd_unsupported">„Nicht stören“ wird nicht unterstützt</string>
+    <string name="shake_settings_not_found">Einstellungen konnten nicht geöffnet werden</string>
+    <string name="shake_choose_app">App wählen</string>
     <string name="home_layout_reset">Startbildschirm-Layout zurückgesetzt</string>
     <string name="wallpaper_removed">Hintergrund entfernt</string>
     <string name="search_history_cleared">Suchverlauf gelöscht</string>
