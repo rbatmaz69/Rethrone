@@ -118,7 +118,9 @@ fun HybridSearch(
         label = "contentAlpha"
     )
 
-    val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
+    val mainTextColor = remember(colorTheme, isDarkTextEnabled) {
+        colorTheme.searchTextColor(isDarkTextEnabled)
+    }
     val searchSurfaceBrush = remember(colorTheme, isDarkTextEnabled) {
         colorTheme.searchBrush(isDarkTextEnabled, alpha = if (isDarkTextEnabled) 0.97f else 0.94f)
     }
@@ -363,8 +365,6 @@ fun HybridSearch(
                                 query = query,
                                 rowBackgroundColor = rowBackgroundColor,
                                 mainTextColor = mainTextColor,
-                                isLiquidGlass = designStyle.isGlassLike,
-                                isDarkText = isDarkTextEnabled,
                                 onClick = { bounds ->
                                     buildWebSearchIntent(context, historySuggestion.query)?.let { intent ->
                                         onWebLaunch(intent, bounds, historySuggestion.query)
@@ -378,8 +378,6 @@ fun HybridSearch(
                                 query = webSuggestionQuery,
                                 rowBackgroundColor = primaryWebRowColor,
                                 mainTextColor = mainTextColor,
-                                isLiquidGlass = designStyle.isGlassLike,
-                                isDarkText = isDarkTextEnabled,
                                 onClick = { bounds ->
                                     buildWebSearchIntent(context, webSuggestionQuery)?.let { intent ->
                                         onWebLaunch(intent, bounds, webSuggestionQuery)
@@ -621,16 +619,12 @@ private fun SearchHistoryItem(
     query: String,
     rowBackgroundColor: Color,
     mainTextColor: Color,
-    isLiquidGlass: Boolean,
-    isDarkText: Boolean,
     onClick: (Rect?) -> Unit,
     onRemove: () -> Unit
 ) {
-    val backgroundColor = if (isLiquidGlass) {
-        rowBackgroundColor
-    } else {
-        if (isDarkText) rowBackgroundColor.copy(alpha = 0.92f) else rowBackgroundColor
-    }
+    // Dezentes Overlay auf der (stets deckenden) Suchfläche – designunabhängig, damit der
+    // Zeilenhintergrund nie mit der kontrastsicheren Textfarbe kollidiert (kein „schwarzer Balken“).
+    val backgroundColor = rowBackgroundColor
     var iconBounds by remember(entry.query) { mutableStateOf<Rect?>(null) }
     var rowBounds by remember(entry.query) { mutableStateOf<Rect?>(null) }
 
@@ -689,16 +683,12 @@ fun WebSearchItem(
     query: String,
     rowBackgroundColor: Color,
     mainTextColor: Color,
-    isLiquidGlass: Boolean,
-    isDarkText: Boolean,
     onClick: (Rect?) -> Unit
 ) {
     val density = LocalDensity.current
-    val backgroundColor = if (isLiquidGlass) {
-        rowBackgroundColor
-    } else {
-        if (isDarkText) rowBackgroundColor.copy(alpha = 0.92f) else rowBackgroundColor
-    }
+    // Dezentes Overlay auf der (stets deckenden) Suchfläche – designunabhängig, damit der
+    // Zeilenhintergrund nie mit der kontrastsicheren Textfarbe kollidiert (kein „schwarzer Balken“).
+    val backgroundColor = rowBackgroundColor
     var iconBounds by remember(query) { mutableStateOf<Rect?>(null) }
     var rowBounds by remember(query) { mutableStateOf<Rect?>(null) }
     val minLaunchSizePx = with(density) { 28.dp.toPx() }

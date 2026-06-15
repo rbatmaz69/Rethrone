@@ -784,6 +784,22 @@ enum class ColorTheme(
         ).all { contrastRatio(textColor, it) >= MinimumReadableContrast }
     }
 
+    /**
+     * Wählt die Suchtext-Farbe kontrastsicher: behält die bevorzugte Richtung (Dunkel-/Helltext),
+     * solange sie auf der tatsächlichen Suchfläche lesbar ist; kippt nur bei zu geringem Kontrast
+     * auf die Gegenfarbe. Schützt v. a. CUSTOM, das faithful (ohne Re-Toning) gerendert wird.
+     */
+    fun searchTextColor(darkTextEnabled: Boolean): Color {
+        val surface = searchSurfaceColor(darkTextEnabled)
+        val preferred = if (darkTextEnabled) DarkTextColor else Color.White
+        val alternate = if (darkTextEnabled) Color.White else DarkTextColor
+        return when {
+            contrastRatio(preferred, surface) >= MinimumReadableContrast -> preferred
+            contrastRatio(alternate, surface) > contrastRatio(preferred, surface) -> alternate
+            else -> preferred
+        }
+    }
+
     // Wärmeres, universelles Rendering: heller Anker zieht stärker zu Warmweiß.
     private val lightSurfaceAnchor: Color
         get() = listOf(
