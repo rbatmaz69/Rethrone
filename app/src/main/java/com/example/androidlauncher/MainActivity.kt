@@ -569,6 +569,7 @@ class MainActivity : ComponentActivity() {
                 fun refreshAppList(targetPackageName: String? = null) {
                     scope.launch {
                         appRepository.cleanupLegacyCache()
+                        appRepository.invalidateCacheOnAppUpdate()
                         val basicList = appRepository.getInstalledApps()
                         val currentIcons = allApps.associate { it.packageName to it.iconBitmap }
                         val currentFallbacks = allApps.associate { it.packageName to it.autoIconFallback }

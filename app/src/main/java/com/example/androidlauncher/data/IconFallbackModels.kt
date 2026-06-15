@@ -7,6 +7,7 @@ import kotlin.math.max
 private const val AUTO_ICON_SERIALIZATION_DELIMITER = "|"
 
 private val DEFAULT_AUTO_ICON_RULES: Map<String, AutoIconRule> = mapOf(
+    "com.example.androidlauncher" to AutoIconRule(AutoIconRuleMode.KEEP_ORIGINAL, reason = "own_brand_tulip"),
     "org.mozilla.firefox" to AutoIconRule(AutoIconRuleMode.KEEP_ORIGINAL, reason = "default_firefox_brand"),
     "org.mozilla.fenix" to AutoIconRule(AutoIconRuleMode.KEEP_ORIGINAL, reason = "default_firefox_brand"),
     "org.mozilla.focus" to AutoIconRule(AutoIconRuleMode.KEEP_ORIGINAL, reason = "default_firefox_brand"),

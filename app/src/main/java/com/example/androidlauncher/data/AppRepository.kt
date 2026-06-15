@@ -35,6 +35,25 @@ class AppRepository(private val context: Context) {
     }
 
     /**
+     * Leert den Icon-Cache, sobald die eigene App neu installiert/aktualisiert
+     * wurde. So werden nach einem App-Update (z.B. geändertes Launcher-Icon)
+     * keine veralteten Icon-Bitmaps mehr aus dem Cache geladen.
+     */
+    suspend fun invalidateCacheOnAppUpdate() = withContext(Dispatchers.IO) {
+        try {
+            val pkgInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val token = "${pkgInfo.versionCode}:${pkgInfo.lastUpdateTime}"
+            val prefs = context.getSharedPreferences("icon_cache_meta", Context.MODE_PRIVATE)
+            if (prefs.getString("app_build_token", null) != token) {
+                iconCacheDir.listFiles()?.forEach { it.delete() }
+                prefs.edit().putString("app_build_token", token).apply()
+            }
+        } catch (_: Exception) {
+            // Fehler hier sind unkritisch – im Zweifel bleibt der Cache bestehen.
+        }
+    }
+
+    /**
      * Bereinigt veraltete Cache-Verzeichnisse (z.B. aus dem temporary cacheDir).
      */
     fun cleanupLegacyCache() {
