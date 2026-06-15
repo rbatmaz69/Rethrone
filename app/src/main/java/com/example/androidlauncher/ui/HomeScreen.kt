@@ -14,6 +14,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -51,7 +52,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -66,6 +70,7 @@ import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.WeatherData
 import com.example.androidlauncher.data.WeatherRepository
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
@@ -76,11 +81,12 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.max
 import kotlin.math.roundToInt
 
-private enum class HomeEditTarget {
+internal enum class HomeEditTarget {
     CLOCK,
+    DATE,
+    WEATHER,
     FAVORITES
 }
 
@@ -95,10 +101,7 @@ fun HomeScreen(
     isSettingsOpen: Boolean,
     isSearchOpen: Boolean,
     isEditMode: Boolean = false,
-    favoritesOffsetX: Float = 0f,
-    favoritesOffsetY: Float = 0f,
-    clockOffsetX: Float = 0f,
-    clockOffsetY: Float = 0f,
+    homeLayout: HomeLayout = HomeLayout(),
     onOpenDrawer: () -> Unit,
     onOpenSearch: () -> Unit,
     onToggleSettings: () -> Unit,
@@ -108,8 +111,7 @@ fun HomeScreen(
     onOpenSizeConfig: () -> Unit,
     onOpenSystemSettings: () -> Unit,
     onOpenInfo: () -> Unit,
-    onSaveFavoritesOffset: (Float, Float) -> Unit,
-    onSaveClockOffset: (Float, Float) -> Unit,
+    onSaveHomeLayout: (HomeLayout) -> Unit,
     onLaunchApp: (String, Intent, Rect?) -> Unit,
     returnIconPackage: String?,
     searchButtonBounceToken: Int = 0,
@@ -134,48 +136,53 @@ fun HomeScreen(
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
 
     // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
-    var currentFavOffsetX by remember { mutableStateOf(0f) }
-    var currentFavOffsetY by remember(favoritesOffsetY) { mutableStateOf(favoritesOffsetY) }
-    var currentClockOffsetX by remember { mutableStateOf(0f) }
-    var currentClockOffsetY by remember(clockOffsetY) { mutableStateOf(clockOffsetY) }
+    // Live-Offsets, Neutralpositionen und Haptik-Zeitstempel je verschiebbarem Element.
+    val offsets = remember {
+        mutableStateMapOf(
+            HomeEditTarget.CLOCK to homeLayout.clock,
+            HomeEditTarget.DATE to homeLayout.date,
+            HomeEditTarget.WEATHER to homeLayout.weather,
+            HomeEditTarget.FAVORITES to homeLayout.favorites
+        )
+    }
+    val neutralBounds = remember { mutableStateMapOf<HomeEditTarget, Rect>() }
+    val lastBlockedHapticMs = remember { mutableStateMapOf<HomeEditTarget, Long>() }
 
-    var lastValidFavOffsetX by remember { mutableStateOf(0f) }
-    var lastValidFavOffsetY by remember(favoritesOffsetY) { mutableStateOf(favoritesOffsetY) }
-    var lastValidClockOffsetX by remember { mutableStateOf(0f) }
-    var lastValidClockOffsetY by remember(clockOffsetY) { mutableStateOf(clockOffsetY) }
+    // Hält die Live-Offsets außerhalb des Edit-Modus an der gespeicherten Position;
+    // beim Betreten des Edit-Modus werden sie 1:1 daraus geseedet, Abbrechen revertiert.
+    LaunchedEffect(homeLayout, isEditMode) {
+        offsets[HomeEditTarget.CLOCK] = homeLayout.clock
+        offsets[HomeEditTarget.DATE] = homeLayout.date
+        offsets[HomeEditTarget.WEATHER] = homeLayout.weather
+        offsets[HomeEditTarget.FAVORITES] = homeLayout.favorites
+    }
 
-    var clockNeutralBounds by remember { mutableStateOf<Rect?>(null) }
-    var favoritesNeutralBounds by remember { mutableStateOf<Rect?>(null) }
+    // Tickt die Uhrzeit für die getrennten Uhr-/Datums-Elemente.
+    var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = Calendar.getInstance().time
+            delay(30_000L)
+        }
+    }
+
     var searchButtonBounds by remember { mutableStateOf<Rect?>(null) }
     var settingsButtonBounds by remember { mutableStateOf<Rect?>(null) }
     var editControlsBounds by remember { mutableStateOf<Rect?>(null) }
-
-    var isClockCollisionBlocked by remember { mutableStateOf(false) }
-    var isFavoritesCollisionBlocked by remember { mutableStateOf(false) }
-    var isClockNavigationBarBlocked by remember { mutableStateOf(false) }
-    var isFavoritesNavigationBarBlocked by remember { mutableStateOf(false) }
     var collisionHapticWasTriggered by remember { mutableStateOf(false) }
-    var lastBlockedClockHapticMs by remember { mutableLongStateOf(0L) }
-    var lastBlockedFavoritesHapticMs by remember { mutableLongStateOf(0L) }
 
     val favoritesFramePaddingPx = with(density) { 10.dp.toPx() }
-    val clockNavCollisionPaddingPx = favoritesFramePaddingPx
+    val navCollisionPaddingPx = favoritesFramePaddingPx
     val bottomControlsPaddingPx = with(density) { 8.dp.toPx() }
-    
+
     val navigationBarHeightPx = with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
-    val arrowProbeStepPx = with(density) { 8.dp.toPx() }
-    val editHintContentPadding = 14.dp
-    val editHintArrowInset = 4.dp
-    val editHintArrowSize = 18.dp
-    val editHintClockDownInset = 2.dp
-    val editHintContentPaddingPx = with(density) { editHintContentPadding.toPx() }
     val editSelectionHitPaddingPx = with(density) { 12.dp.toPx() }
     val dragVisualDeadzonePx = 1f
     val reachabilityProbeStepPx = 1f
     val blockedDragHapticMinIntervalMs = 45L
     val blockedDragHapticMinDeltaPx = 0.25f
     val clockTopLimitPx = with(density) { 32.dp.toPx() }
-    
+
     var selectedEditTarget by remember { mutableStateOf<HomeEditTarget?>(null) }
     var isEditTargetUserPinned by remember { mutableStateOf(false) }
     var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
@@ -219,28 +226,31 @@ fun HomeScreen(
         return if (width > 0f && height > 0f) width * height else 0f
     }
 
-    fun clampToRoot(candidateX: Float, candidateY: Float, neutralBounds: Rect?): Pair<Float, Float> {
-        val bounds = neutralBounds ?: return candidateX to candidateY
-        if (rootSize.width <= 0 || rootSize.height <= 0) return candidateX to candidateY
+    // Sammel-Padding je Element: Favoriten behalten ihren Rahmenabstand, Text-Elemente
+    // (Uhr/Datum/Wetter) liegen im Neutralzustand bündig gestapelt → kein Inter-Padding.
+    fun framePadding(target: HomeEditTarget): Float =
+        if (target == HomeEditTarget.FAVORITES) favoritesFramePaddingPx else 0f
+
+    fun baseRect(target: HomeEditTarget, o: Offset): Rect? =
+        neutralBounds[target]?.let { translateRect(it, o.x, o.y) }
+
+    fun overlapRect(target: HomeEditTarget, o: Offset): Rect? =
+        baseRect(target, o)?.let { expandRect(it, framePadding(target)) }
+
+    fun navRect(target: HomeEditTarget, o: Offset): Rect? =
+        baseRect(target, o)?.let { expandRect(it, navCollisionPaddingPx) }
+
+    fun clampOffset(target: HomeEditTarget, x: Float, y: Float): Offset {
+        val bounds = neutralBounds[target] ?: return Offset(x, y)
+        if (rootSize.width <= 0 || rootSize.height <= 0) return Offset(x, y)
 
         val minX = -bounds.left
         val maxX = rootSize.width.toFloat() - bounds.right
-        val minY = -bounds.top
-        val maxY = (rootSize.height.toFloat() - bounds.bottom - navigationBarHeightPx).coerceAtLeast(-bounds.top)
-
-        return candidateX.coerceIn(minX, maxX) to candidateY.coerceIn(minY, maxY)
-    }
-
-    fun clampClockToRoot(candidateX: Float, candidateY: Float): Pair<Float, Float> {
-        val bounds = clockNeutralBounds ?: return candidateX to candidateY
-        if (rootSize.width <= 0 || rootSize.height <= 0) return candidateX to candidateY
-
-        val minX = -bounds.left
-        val maxX = rootSize.width.toFloat() - bounds.right
-        val minY = -bounds.top + clockTopLimitPx
+        val topLimit = if (target == HomeEditTarget.CLOCK) clockTopLimitPx else 0f
+        val minY = -bounds.top + topLimit
         val maxY = (rootSize.height.toFloat() - bounds.bottom - navigationBarHeightPx).coerceAtLeast(minY)
 
-        return candidateX.coerceIn(minX, maxX) to candidateY.coerceIn(minY, maxY)
+        return Offset(x.coerceIn(minX, maxX), y.coerceIn(minY, maxY))
     }
 
     fun getNavigationBarForbiddenZone(): Rect {
@@ -273,87 +283,42 @@ fun HomeScreen(
         }
     }
 
-    fun updateCollisionFeedback(clockBlocked: Boolean, favoritesBlocked: Boolean) {
-        isClockCollisionBlocked = clockBlocked
-        isFavoritesCollisionBlocked = favoritesBlocked
-
-        val anyBlocked = clockBlocked || favoritesBlocked
-        if (anyBlocked && !collisionHapticWasTriggered && hapticEnabled) {
+    fun updateCollisionFeedback(blocked: Boolean) {
+        if (blocked && !collisionHapticWasTriggered && hapticEnabled) {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             collisionHapticWasTriggered = true
         }
-        if (!anyBlocked) {
+        if (!blocked) {
             collisionHapticWasTriggered = false
         }
     }
 
     /**
-     * Harte Constraints (alles außer der gegenseitigen Überlappung von Uhr & Favoriten):
-     * Clamp an den Bildschirm, Navigationsleiste, Bottom-Controls-Zonen.
+     * Gesamt-Überlappungsfläche von [target] (an Position [pos]) mit allen anderen Elementen.
+     * 0, wenn das Element frei steht.
      */
-    fun hardConstraintsOk(
-        favoritesX: Float,
-        favoritesY: Float,
-        clockX: Float,
-        clockY: Float
-    ): Boolean {
-        val adjustedFavorites = clampToRoot(favoritesX, favoritesY, favoritesNeutralBounds)
-        val adjustedClock = clampClockToRoot(clockX, clockY)
-
-        val favoritesWereClamped = adjustedFavorites.first != favoritesX || adjustedFavorites.second != favoritesY
-        val clockWereClamped = adjustedClock.first != clockX || adjustedClock.second != clockY
-        if (favoritesWereClamped || clockWereClamped) return false
-
-        val favoritesRect = favoritesNeutralBounds?.let {
-            expandRect(
-                rect = translateRect(it, favoritesX, favoritesY),
-                padding = favoritesFramePaddingPx
-            )
+    fun totalOverlap(target: HomeEditTarget, pos: Offset): Float {
+        val rect = overlapRect(target, pos) ?: return 0f
+        var sum = 0f
+        for (other in HomeEditTarget.entries) {
+            if (other == target) continue
+            val otherRect = overlapRect(other, offsets[other] ?: Offset.Zero) ?: continue
+            sum += intersectionArea(rect, otherRect)
         }
-        val clockRect = clockNeutralBounds?.let {
-            translateRect(it, clockX, clockY)
-        }
-        val clockNavRect = clockRect?.let {
-            expandRect(it, clockNavCollisionPaddingPx)
-        }
-        val bottomControlsZones = bottomControlsForbiddenZones
+        return sum
+    }
 
-        if (favoritesRect == null || clockRect == null) return true
-
-        val navigationBarZone = getNavigationBarForbiddenZone()
-        if (intersects(favoritesRect, navigationBarZone) || (clockNavRect != null && intersects(clockNavRect, navigationBarZone))) return false
-
-        if (bottomControlsZones.any { zone ->
-                intersects(favoritesRect, zone) || (clockNavRect != null && intersects(clockNavRect, zone))
-            }) return false
-
+    /**
+     * Harte Constraints für [target] an [pos]: innerhalb des Bildschirms (kein Clamp nötig)
+     * und keine Kollision mit Navigationsleiste oder unteren Steuer-Buttons.
+     */
+    fun hardOk(target: HomeEditTarget, pos: Offset): Boolean {
+        val clamped = clampOffset(target, pos.x, pos.y)
+        if (clamped.x != pos.x || clamped.y != pos.y) return false
+        val rect = navRect(target, pos) ?: return true
+        if (intersects(rect, getNavigationBarForbiddenZone())) return false
+        if (bottomControlsForbiddenZones.any { intersects(rect, it) }) return false
         return true
-    }
-
-    /** Überlappungsfläche zwischen Favoriten-Rect (inkl. Padding) und Uhr-Rect (0, wenn getrennt). */
-    fun clockFavoritesOverlapArea(
-        favoritesX: Float,
-        favoritesY: Float,
-        clockX: Float,
-        clockY: Float
-    ): Float {
-        val favoritesRect = favoritesNeutralBounds?.let {
-            expandRect(translateRect(it, favoritesX, favoritesY), favoritesFramePaddingPx)
-        } ?: return 0f
-        val clockRect = clockNeutralBounds?.let {
-            translateRect(it, clockX, clockY)
-        } ?: return 0f
-        return intersectionArea(favoritesRect, clockRect)
-    }
-
-    fun isValidLayoutState(
-        favoritesX: Float,
-        favoritesY: Float,
-        clockX: Float,
-        clockY: Float
-    ): Boolean {
-        return hardConstraintsOk(favoritesX, favoritesY, clockX, clockY) &&
-            clockFavoritesOverlapArea(favoritesX, favoritesY, clockX, clockY) == 0f
     }
 
     /**
@@ -396,124 +361,149 @@ fun HomeScreen(
         return if (acceptable(baseOffset)) baseOffset else null
     }
 
-    fun findReachableClockOffsetY(baseY: Float, desiredY: Float): Float? = reachableOffset(
-        baseOffset = baseY,
-        desiredOffset = desiredY,
-        overlapAt = { y -> clockFavoritesOverlapArea(0f, currentFavOffsetY, 0f, y) },
-        hardOkAt = { y -> hardConstraintsOk(0f, currentFavOffsetY, 0f, y) }
-    )
+    /**
+     * Wendet eine 2D-Ziehbewegung auf [target] an. Achsen werden getrennt aufgelöst
+     * (dominante Achse zuerst, mindert Eck-Klemmen); je Achse sorgt [reachableOffset]
+     * dafür, dass keine neue Überlappung mit anderen Elementen oder Sperrzonen entsteht.
+     */
+    fun applyDrag(target: HomeEditTarget, drag: Offset) {
+        val cur = offsets[target] ?: Offset.Zero
 
-    fun findReachableFavoritesOffsetY(baseY: Float, desiredY: Float): Float? = reachableOffset(
-        baseOffset = baseY,
-        desiredOffset = desiredY,
-        overlapAt = { y -> clockFavoritesOverlapArea(0f, y, 0f, currentClockOffsetY) },
-        hardOkAt = { y -> hardConstraintsOk(0f, y, 0f, currentClockOffsetY) }
-    )
+        fun resolveX(fromX: Float, fromY: Float): Float {
+            val desired = clampOffset(target, fromX + drag.x, fromY).x
+            return reachableOffset(
+                baseOffset = fromX,
+                desiredOffset = desired,
+                overlapAt = { x -> totalOverlap(target, Offset(x, fromY)) },
+                hardOkAt = { x -> hardOk(target, Offset(x, fromY)) }
+            ) ?: fromX
+        }
+        fun resolveY(fromX: Float, fromY: Float): Float {
+            val desired = clampOffset(target, fromX, fromY + drag.y).y
+            return reachableOffset(
+                baseOffset = fromY,
+                desiredOffset = desired,
+                overlapAt = { y -> totalOverlap(target, Offset(fromX, y)) },
+                hardOkAt = { y -> hardOk(target, Offset(fromX, y)) }
+            ) ?: fromY
+        }
 
-    fun canMoveClockBy(deltaY: Float): Boolean {
-        if (deltaY == 0f) return false
-        val farProbe = max(rootSize.height.toFloat(), arrowProbeStepPx)
-        val probeDelta = if (deltaY > 0f) farProbe else -farProbe
-        val (_, clampedDesiredY) = clampClockToRoot(0f, currentClockOffsetY + probeDelta)
-        val reachableY = findReachableClockOffsetY(currentClockOffsetY, clampedDesiredY)
-        return reachableY != null && reachableY != currentClockOffsetY
-    }
+        val newX: Float
+        val newY: Float
+        if (abs(drag.x) >= abs(drag.y)) {
+            newX = resolveX(cur.x, cur.y)
+            newY = resolveY(newX, cur.y)
+        } else {
+            newY = resolveY(cur.x, cur.y)
+            newX = resolveX(cur.x, newY)
+        }
 
-    fun canMoveFavoritesBy(deltaY: Float): Boolean {
-        if (deltaY == 0f) return false
-        val farProbe = max(rootSize.height.toFloat(), arrowProbeStepPx)
-        val probeDelta = if (deltaY > 0f) farProbe else -farProbe
-        val (_, clampedDesiredY) = clampToRoot(0f, currentFavOffsetY + probeDelta, favoritesNeutralBounds)
-        val reachableY = findReachableFavoritesOffsetY(currentFavOffsetY, clampedDesiredY)
-        return reachableY != null && reachableY != currentFavOffsetY
-    }
-
-    val hasActiveContainerOverlap by remember(
-        isEditMode,
-        currentFavOffsetX,
-        currentFavOffsetY,
-        currentClockOffsetX,
-        currentClockOffsetY,
-        favoritesNeutralBounds,
-        clockNeutralBounds,
-        rootSize
-    ) {
-        derivedStateOf {
-            if (!isEditMode) return@derivedStateOf false
-
-            val currentFavoritesRect = favoritesNeutralBounds?.let {
-                expandRect(
-                    rect = translateRect(it, currentFavOffsetX, currentFavOffsetY),
-                    padding = favoritesFramePaddingPx
-                )
+        val moved = abs(newX - cur.x) + abs(newY - cur.y)
+        if (moved >= dragVisualDeadzonePx) {
+            offsets[target] = Offset(newX, newY)
+            lastBlockedHapticMs[target] = 0L
+            updateCollisionFeedback(false)
+        } else {
+            val hasIntent = abs(drag.x) > 0f || abs(drag.y) > 0f
+            val strongEnough = abs(drag.x) >= blockedDragHapticMinDeltaPx ||
+                abs(drag.y) >= blockedDragHapticMinDeltaPx
+            if (hasIntent && strongEnough && hapticEnabled) {
+                val now = SystemClock.uptimeMillis()
+                if (now - (lastBlockedHapticMs[target] ?: 0L) >= blockedDragHapticMinIntervalMs) {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    lastBlockedHapticMs[target] = now
+                }
+            } else {
+                lastBlockedHapticMs[target] = 0L
             }
-            val currentClockRect = clockNeutralBounds?.let {
-                translateRect(it, currentClockOffsetX, currentClockOffsetY)
-            }
-            val currentClockNavRect = currentClockRect?.let {
-                expandRect(it, clockNavCollisionPaddingPx)
-            }
-
-            if (currentFavoritesRect == null || currentClockRect == null) return@derivedStateOf false
-
-            val containerOverlap = intersects(currentFavoritesRect, currentClockRect)
-
-            val navigationBarZone = getNavigationBarForbiddenZone()
-            val navigationOverlap = intersects(currentFavoritesRect, navigationBarZone) ||
-                (currentClockNavRect != null && intersects(currentClockNavRect, navigationBarZone))
-
-            val bottomControlsOverlap = bottomControlsForbiddenZones.any { zone ->
-                intersects(currentFavoritesRect, zone) ||
-                    (currentClockNavRect != null && intersects(currentClockNavRect, zone))
-            }
-
-            containerOverlap || navigationOverlap || bottomControlsOverlap
+            updateCollisionFeedback(hasIntent)
         }
     }
 
-    val canMoveClockUpNow by remember(
-        isEditMode,
-        currentClockOffsetY,
-        currentFavOffsetY,
-        clockNeutralBounds,
-        favoritesNeutralBounds,
-        rootSize,
-        bottomControlsForbiddenZones
-    ) {
-        derivedStateOf { isEditMode && canMoveClockBy(-arrowProbeStepPx) }
+    fun editZIndex(target: HomeEditTarget): Float = when {
+        selectedEditTarget == target -> 1600f
+        selectedEditTarget == null -> 1500f
+        else -> 1400f
     }
-    val canMoveClockDownNow by remember(
-        isEditMode,
-        currentClockOffsetY,
-        currentFavOffsetY,
-        clockNeutralBounds,
-        favoritesNeutralBounds,
-        rootSize,
-        bottomControlsForbiddenZones
-    ) {
-        derivedStateOf { isEditMode && canMoveClockBy(arrowProbeStepPx) }
+
+    fun testTagFor(target: HomeEditTarget): String = when (target) {
+        HomeEditTarget.CLOCK -> "home_edit_target_clock"
+        HomeEditTarget.DATE -> "home_edit_target_date"
+        HomeEditTarget.WEATHER -> "home_edit_target_weather"
+        HomeEditTarget.FAVORITES -> "home_edit_target_favorites"
     }
-    val canMoveFavoritesUpNow by remember(
-        isEditMode,
-        currentFavOffsetY,
-        currentClockOffsetY,
-        favoritesNeutralBounds,
-        clockNeutralBounds,
-        rootSize,
-        bottomControlsForbiddenZones
-    ) {
-        derivedStateOf { isEditMode && canMoveFavoritesBy(-arrowProbeStepPx) }
-    }
-    val canMoveFavoritesDownNow by remember(
-        isEditMode,
-        currentFavOffsetY,
-        currentClockOffsetY,
-        favoritesNeutralBounds,
-        clockNeutralBounds,
-        rootSize,
-        bottomControlsForbiddenZones
-    ) {
-        derivedStateOf { isEditMode && canMoveFavoritesBy(arrowProbeStepPx) }
+
+    // Offset + Neutralbounds gelten in beiden Modi (gespeichertes Layout wird auch normal angezeigt).
+    fun Modifier.targetLayout(target: HomeEditTarget): Modifier = this
+        .zIndex(if (!isEditMode) 0f else editZIndex(target))
+        .offset {
+            val o = offsets[target] ?: Offset.Zero
+            IntOffset(o.x.roundToInt(), o.y.roundToInt())
+        }
+        .onGloballyPositioned { coords ->
+            val o = offsets[target] ?: Offset.Zero
+            neutralBounds[target] = translateRect(coords.boundsInRoot(), -o.x, -o.y)
+        }
+
+    // Auswahlrahmen + Tap/Drag-Gesten – nur im Edit-Modus.
+    fun Modifier.targetEditModifier(target: HomeEditTarget): Modifier {
+        if (!isEditMode) return this
+        val isSelected = selectedEditTarget == target
+        val showFrame = selectedEditTarget == null || isSelected
+        return this
+            .then(
+                if (showFrame) {
+                    Modifier.border(
+                        BorderStroke(
+                            1.dp,
+                            mainTextColor.copy(alpha = if (isSelected) 0.35f else 0.2f)
+                        ),
+                        RoundedCornerShape(20.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .testTag(testTagFor(target))
+            .pointerInput(isEditMode, target) {
+                detectTapGestures(
+                    onTap = {
+                        selectedEditTarget = target
+                        isEditTargetUserPinned = true
+                    }
+                )
+            }
+            .pointerInput(isEditMode, target) {
+                var owns = false
+                detectDragGestures(
+                    onDragStart = {
+                        owns = selectedEditTarget == null || selectedEditTarget == target
+                        if (owns) {
+                            selectedEditTarget = target
+                            isEditTargetUserPinned = false
+                            lastBlockedHapticMs[target] = 0L
+                        }
+                    },
+                    onDragEnd = {
+                        if (owns) {
+                            lastBlockedHapticMs[target] = 0L
+                            updateCollisionFeedback(false)
+                        }
+                        owns = false
+                    },
+                    onDragCancel = {
+                        if (owns) {
+                            lastBlockedHapticMs[target] = 0L
+                            updateCollisionFeedback(false)
+                        }
+                        owns = false
+                    }
+                ) { change, drag ->
+                    if (!owns || selectedEditTarget != target) return@detectDragGestures
+                    change.consume()
+                    applyDrag(target, drag)
+                }
+            }
     }
 
     LaunchedEffect(isSettingsOpen) {
@@ -526,20 +516,9 @@ fun HomeScreen(
     LaunchedEffect(isEditMode) {
         if (!isEditMode) {
             editControlsBounds = null
-            selectedEditTarget = null
-            isEditTargetUserPinned = false
-        } else {
-            currentFavOffsetX = 0f
-            currentClockOffsetX = 0f
-            lastValidFavOffsetX = 0f
-            lastValidClockOffsetX = 0f
-            currentFavOffsetY = favoritesOffsetY - editHintContentPaddingPx
-            currentClockOffsetY = clockOffsetY - editHintContentPaddingPx
-            lastValidFavOffsetY = currentFavOffsetY
-            lastValidClockOffsetY = currentClockOffsetY
-            selectedEditTarget = null
-            isEditTargetUserPinned = false
         }
+        selectedEditTarget = null
+        isEditTargetUserPinned = false
     }
 
     val rotation by animateFloatAsState(
@@ -568,24 +547,16 @@ fun HomeScreen(
                         detectTapGestures(
                             onTap = { tapOffset ->
                                 if (isEditMode && selectedEditTarget != null) {
-                                    val clockRect = clockNeutralBounds?.let {
-                                        translateRect(it, currentClockOffsetX, currentClockOffsetY)
+                                    val hitTarget = HomeEditTarget.entries.any { target ->
+                                        val rect = neutralBounds[target]?.let {
+                                            translateRect(it, offsets[target]?.x ?: 0f, offsets[target]?.y ?: 0f)
+                                        } ?: return@any false
+                                        val hitRect = expandRect(rect, framePadding(target) + editSelectionHitPaddingPx)
+                                        rectContains(hitRect, tapOffset)
                                     }
-                                    val favoritesRect = favoritesNeutralBounds?.let {
-                                        translateRect(it, currentFavOffsetX, currentFavOffsetY)
-                                    }
-                                    val expandedClockHitRect = clockRect?.let {
-                                        expandRect(it, editSelectionHitPaddingPx)
-                                    }
-                                    val expandedFavoritesHitRect = favoritesRect?.let {
-                                        expandRect(it, favoritesFramePaddingPx + editSelectionHitPaddingPx)
-                                    }
-
-                                    val hitClock = expandedClockHitRect?.let { rectContains(it, tapOffset) } == true
-                                    val hitFavorites = expandedFavoritesHitRect?.let { rectContains(it, tapOffset) } == true
                                     val hitEditControls = editControlsBounds?.let { rectContains(it, tapOffset) } == true
 
-                                    if (!hitClock && !hitFavorites && !hitEditControls) {
+                                    if (!hitTarget && !hitEditControls) {
                                         selectedEditTarget = null
                                         isEditTargetUserPinned = false
                                     }
@@ -604,386 +575,133 @@ fun HomeScreen(
             } else Modifier)
     ) {
         // --- Haupt-Layout ---
-        Column(
+        // Zwei voneinander unabhängige, bildschirmfüllende Ebenen: die obere Gruppe
+        // (Uhr/Datum/Wetter) ist oben verankert, die Favoriten sind mittig zentriert.
+        // Dadurch verschiebt das Ein-/Ausschalten des Wetters die Favoriten NICHT mehr –
+        // jedes Element folgt seiner festen Neutralposition plus gespeichertem Offset.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding() 
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
         ) {
-            Spacer(modifier = Modifier.height(30.dp))
-            
-            // 1. Uhr / Widget Bereich (Verschiebbar im Edit-Mode)
-            Box(
-                modifier = Modifier
-                    .then(if (isEditMode) Modifier.wrapContentWidth(Alignment.Start) else Modifier.fillMaxWidth())
-                    .zIndex(
-                        if (!isEditMode) {
-                            0f
-                        } else when (selectedEditTarget) {
-                            HomeEditTarget.CLOCK -> 1600f
-                            HomeEditTarget.FAVORITES -> 1400f
-                            null -> 1500f
-                        }
-                    )
-                    .offset { IntOffset(0, currentClockOffsetY.roundToInt()) }
-                    .onGloballyPositioned { coordinates ->
-                        val currentBounds = coordinates.boundsInRoot()
-                        clockNeutralBounds = translateRect(
-                            rect = currentBounds,
-                            x = -currentClockOffsetX,
-                            y = -currentClockOffsetY
-                        )
-                    }
-                    .then(if (isEditMode) {
-                        val isClockSelected = selectedEditTarget == HomeEditTarget.CLOCK
-                        val showClockFrame = selectedEditTarget == null || isClockSelected
-                        Modifier
-                            .then(
-                                if (showClockFrame) {
-                                    Modifier.border(
-                                        BorderStroke(
-                                            1.dp,
-                                            mainTextColor.copy(alpha = if (isClockSelected) 0.35f else 0.2f)
-                                        ),
-                                        RoundedCornerShape(20.dp)
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .testTag("home_edit_target_clock")
-                            .pointerInput(isEditMode) {
-                                if (!isEditMode) return@pointerInput
-                                detectTapGestures(
-                                    onTap = {
-                                        selectedEditTarget = HomeEditTarget.CLOCK
-                                        isEditTargetUserPinned = true
-                                    }
-                                )
-                            }
-                            .pointerInput(isEditMode) {
-                                if (!isEditMode) return@pointerInput
-                                var dragOwnsClockTarget = false
-                                detectVerticalDragGestures(
-                                    onDragStart = {
-                                        dragOwnsClockTarget = selectedEditTarget == null || selectedEditTarget == HomeEditTarget.CLOCK
-                                        if (dragOwnsClockTarget) {
-                                            selectedEditTarget = HomeEditTarget.CLOCK
-                                            isEditTargetUserPinned = false
-                                            lastBlockedClockHapticMs = 0L
-                                        }
-                                     },
-                                     onDragEnd = {
-                                        if (dragOwnsClockTarget) {
-                                            lastBlockedClockHapticMs = 0L
-                                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                        }
-                                        dragOwnsClockTarget = false
-                                     },
-                                     onDragCancel = {
-                                        if (dragOwnsClockTarget) {
-                                            lastBlockedClockHapticMs = 0L
-                                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                        }
-                                        dragOwnsClockTarget = false
-                                     }
-                                ) { change, dragAmount ->
-                                    if (!dragOwnsClockTarget || selectedEditTarget != HomeEditTarget.CLOCK) return@detectVerticalDragGestures
-                                     change.consume()
-                                     val desiredY = currentClockOffsetY + dragAmount
-                                     val (_, clampedDesiredY) = clampClockToRoot(0f, desiredY)
-                                     val reachableY = findReachableClockOffsetY(
-                                        baseY = currentClockOffsetY,
-                                        desiredY = clampedDesiredY
-                                    )
-                                    val movementDelta = reachableY?.let { abs(it - currentClockOffsetY) } ?: 0f
+            // Gemeinsamer Rückkehr-Launch-Callback für die Uhr-/Datums-Elemente.
+            val launchForReturn: (String, Rect?) -> Unit = { pkg, bounds ->
+                onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds)
+            }
 
-                                    if (reachableY != null && movementDelta >= dragVisualDeadzonePx) {
-                                        currentClockOffsetX = 0f
-                                        currentClockOffsetY = reachableY
-                                        lastValidClockOffsetX = 0f
-                                        lastValidClockOffsetY = reachableY
-                                        isClockNavigationBarBlocked = false
-                                        lastBlockedClockHapticMs = 0L
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    } else {
-                                        val hasDragIntent = abs(dragAmount) > 0f
-                                        val isBoundaryBlocked = hasDragIntent && abs(clampedDesiredY - currentClockOffsetY) < dragVisualDeadzonePx
-                                        val isCollisionBlocked = hasDragIntent && reachableY == null
-                                        val isBlocked = isBoundaryBlocked || isCollisionBlocked
+            // Obere Gruppe (oben verankert): Uhr, Datum, Wetter.
+            Column(modifier = Modifier.fillMaxSize()) {
+                Spacer(modifier = Modifier.height(30.dp))
 
-                                        if (isBlocked && hapticEnabled && abs(dragAmount) >= blockedDragHapticMinDeltaPx) {
-                                            val now = SystemClock.uptimeMillis()
-                                            if (now - lastBlockedClockHapticMs >= blockedDragHapticMinIntervalMs) {
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                lastBlockedClockHapticMs = now
-                                            }
-                                        } else {
-                                            lastBlockedClockHapticMs = 0L
-                                        }
-
-                                        updateCollisionFeedback(
-                                            clockBlocked = isBlocked,
-                                            favoritesBlocked = false
-                                        )
-                                    }
-                                }
-                            }
-                    } else Modifier)
-            ) {
-                val isClockSelected = isEditMode && selectedEditTarget == HomeEditTarget.CLOCK
-                val canMoveClockUp = isClockSelected && canMoveClockUpNow
-                val canMoveClockDown = isClockSelected && canMoveClockDownNow
-
+                // 1. Uhr (unabhängig verschiebbar)
                 Box(
-                    modifier = if (isEditMode) Modifier.padding(vertical = editHintContentPadding) else Modifier
+                    modifier = Modifier
+                        .wrapContentWidth(Alignment.Start)
+                        .targetLayout(HomeEditTarget.CLOCK)
+                        .targetEditModifier(HomeEditTarget.CLOCK)
                 ) {
-                    ClockHeader(
-                        onAppLaunchForReturn = { pkg, bounds -> onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds) },
+                    ClockText(
+                        time = currentTime,
+                        isPreview = isPreview || isEditMode,
                         returnIconPackage = returnIconPackage,
-                        isCompact = isEditMode,
-                        isPreview = isPreview || isEditMode
+                        onAppLaunchForReturn = launchForReturn
                     )
                 }
 
-                if (isClockSelected) {
+                // 2. Datum (unabhängig verschiebbar)
+                Box(
+                    modifier = Modifier
+                        .wrapContentWidth(Alignment.Start)
+                        .targetLayout(HomeEditTarget.DATE)
+                        .targetEditModifier(HomeEditTarget.DATE)
+                ) {
+                    DateText(
+                        time = currentTime,
+                        isPreview = isPreview || isEditMode,
+                        returnIconPackage = returnIconPackage,
+                        onAppLaunchForReturn = launchForReturn
+                    )
+                }
+
+                // 3. Wetter (unabhängig verschiebbar, nur wenn aktiviert)
+                if (LocalWeatherWidgetEnabled.current) {
                     Box(
                         modifier = Modifier
-                            .matchParentSize()
+                            .wrapContentWidth(Alignment.Start)
+                            .targetLayout(HomeEditTarget.WEATHER)
+                            .targetEditModifier(HomeEditTarget.WEATHER)
                     ) {
-                        if (canMoveClockUp) {
-                            Icon(
-                                imageVector = Icons.Rounded.KeyboardArrowUp,
-                                contentDescription = null,
-                                tint = mainTextColor.copy(alpha = 0.35f),
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(top = editHintArrowInset)
-                                    .size(editHintArrowSize)
-                                    .testTag("home_edit_hint_clock_up")
-                            )
-                        }
-                        if (canMoveClockDown) {
-                            Icon(
-                                imageVector = Icons.Rounded.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = mainTextColor.copy(alpha = 0.35f),
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = editHintClockDownInset)
-                                    .size(editHintArrowSize)
-                                    .testTag("home_edit_hint_clock_down")
-                            )
-                        }
+                        WeatherRow(isPreview = isPreview || isEditMode)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Favoriten-Ebene (unabhängig von der oberen Gruppe). Standardmäßig im unteren
+            // Drittel verankert (mehr Abstand zu den Widgets) – feste Gewichte, daher
+            // unabhängig vom Wetter-Schalter.
+            Column(modifier = Modifier.fillMaxSize()) {
+                Spacer(modifier = Modifier.weight(1.9f))
 
-            // 2. Favoriten-Liste (Verschiebbar im Edit-Mode)
-            Box(
-                modifier = Modifier
-                    .zIndex(
-                        if (!isEditMode) {
-                            0f
-                        } else when (selectedEditTarget) {
-                            HomeEditTarget.FAVORITES -> 1600f
-                            HomeEditTarget.CLOCK -> 1400f
-                            null -> 1500f
-                        }
-                    )
-                    .offset { IntOffset(0, currentFavOffsetY.roundToInt()) }
-                    .onGloballyPositioned { coordinates ->
-                        val currentBounds = coordinates.boundsInRoot()
-                        favoritesNeutralBounds = translateRect(
-                            rect = currentBounds,
-                            x = -currentFavOffsetX,
-                            y = -currentFavOffsetY
-                        )
-                    }
-                    .then(if (isEditMode) {
-                        val isFavoritesSelected = selectedEditTarget == HomeEditTarget.FAVORITES
-                        val showFavoritesFrame = selectedEditTarget == null || isFavoritesSelected
-                        Modifier
-                            .then(
-                                if (showFavoritesFrame) {
-                                    Modifier.border(
-                                        BorderStroke(
-                                            1.dp,
-                                            mainTextColor.copy(alpha = if (isFavoritesSelected) 0.35f else 0.2f)
-                                        ),
-                                        RoundedCornerShape(20.dp)
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .testTag("home_edit_target_favorites")
-                            .pointerInput(isEditMode) {
-                                if (!isEditMode) return@pointerInput
-                                detectTapGestures(
-                                    onTap = {
-                                        selectedEditTarget = HomeEditTarget.FAVORITES
-                                        isEditTargetUserPinned = true
-                                    }
+                // 4. Favoriten-Liste (unabhängig verschiebbar)
+                Box(
+                    modifier = Modifier
+                        .wrapContentWidth(Alignment.Start)
+                        .targetLayout(HomeEditTarget.FAVORITES)
+                        .targetEditModifier(HomeEditTarget.FAVORITES)
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(favoriteSpacing.spacing)
+                    ) {
+                        if (favorites.isEmpty()) {
+                            val intSrc = remember { MutableInteractionSource() }
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .designSurface(designStyle, CircleShape, isDarkTextEnabled, surfaceAccent)
+                                    .clip(CircleShape)
+                                    .then(
+                                        if (!isPreview) {
+                                            Modifier
+                                                .bounceClick(intSrc)
+                                                .clickable(
+                                                    interactionSource = intSrc,
+                                                    indication = null,
+                                                    enabled = !isEditMode
+                                                ) { onOpenFavoritesConfig() }
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = null, tint = mainTextColor)
+                            }
+                        } else {
+                            favorites.forEach { app ->
+                                FavoriteItem(
+                                    app = app,
+                                    showLabels = showLabels,
+                                    fontSize = fontSize.scale,
+                                    mainTextColor = mainTextColor,
+                                    returnIconPackage = returnIconPackage,
+                                    onAppLaunchForReturn = { pkg, bounds ->
+                                        onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds)
+                                    },
+                                    onShortcutRequested = { shortcutApp, bounds ->
+                                        selectedShortcutApp = shortcutApp
+                                        shortcutMenuBounds = bounds
+                                    },
+                                    isPreview = isPreview || isEditMode
                                 )
                             }
-                            .pointerInput(isEditMode) {
-                                if (!isEditMode) return@pointerInput
-                                var dragOwnsFavoritesTarget = false
-                                detectVerticalDragGestures(
-                                    onDragStart = {
-                                        dragOwnsFavoritesTarget = selectedEditTarget == null || selectedEditTarget == HomeEditTarget.FAVORITES
-                                        if (dragOwnsFavoritesTarget) {
-                                            selectedEditTarget = HomeEditTarget.FAVORITES
-                                            isEditTargetUserPinned = false
-                                            lastBlockedFavoritesHapticMs = 0L
-                                        }
-                                     },
-                                     onDragEnd = {
-                                        if (dragOwnsFavoritesTarget) {
-                                            lastBlockedFavoritesHapticMs = 0L
-                                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                        }
-                                        dragOwnsFavoritesTarget = false
-                                     },
-                                     onDragCancel = {
-                                        if (dragOwnsFavoritesTarget) {
-                                            lastBlockedFavoritesHapticMs = 0L
-                                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                        }
-                                        dragOwnsFavoritesTarget = false
-                                     }
-                                ) { change, dragAmount ->
-                                    if (!dragOwnsFavoritesTarget || selectedEditTarget != HomeEditTarget.FAVORITES) return@detectVerticalDragGestures
-                                     change.consume()
-                                     val desiredY = currentFavOffsetY + dragAmount
-                                     val (_, clampedDesiredY) = clampToRoot(0f, desiredY, favoritesNeutralBounds)
-                                     val reachableY = findReachableFavoritesOffsetY(
-                                        baseY = currentFavOffsetY,
-                                        desiredY = clampedDesiredY
-                                    )
-                                    val movementDelta = reachableY?.let { abs(it - currentFavOffsetY) } ?: 0f
-
-                                    if (reachableY != null && movementDelta >= dragVisualDeadzonePx) {
-                                        currentFavOffsetX = 0f
-                                        currentFavOffsetY = reachableY
-                                        lastValidFavOffsetX = 0f
-                                        lastValidFavOffsetY = reachableY
-                                        isFavoritesNavigationBarBlocked = false
-                                        lastBlockedFavoritesHapticMs = 0L
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-                                    } else {
-                                        val hasDragIntent = abs(dragAmount) > 0f
-                                        val isBoundaryBlocked = hasDragIntent && abs(clampedDesiredY - currentFavOffsetY) < dragVisualDeadzonePx
-                                        val isCollisionBlocked = hasDragIntent && reachableY == null
-                                        val isBlocked = isBoundaryBlocked || isCollisionBlocked
-
-                                        if (isBlocked && hapticEnabled && abs(dragAmount) >= blockedDragHapticMinDeltaPx) {
-                                            val now = SystemClock.uptimeMillis()
-                                            if (now - lastBlockedFavoritesHapticMs >= blockedDragHapticMinIntervalMs) {
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                lastBlockedFavoritesHapticMs = now
-                                            }
-                                        } else {
-                                            lastBlockedFavoritesHapticMs = 0L
-                                        }
-
-                                        updateCollisionFeedback(clockBlocked = false, favoritesBlocked = isBlocked)
-                                    }
-                                }
-                            }
-                    } else Modifier)
-            ) {
-                val isFavoritesSelected = isEditMode && selectedEditTarget == HomeEditTarget.FAVORITES
-                val canMoveFavoritesUp = isFavoritesSelected && canMoveFavoritesUpNow
-                val canMoveFavoritesDown = isFavoritesSelected && canMoveFavoritesDownNow
-
-                Column(
-                    modifier = if (isEditMode) Modifier.padding(vertical = editHintContentPadding) else Modifier,
-                    verticalArrangement = Arrangement.spacedBy(favoriteSpacing.spacing)
-                ) {
-                    if (favorites.isEmpty()) {
-                        val intSrc = remember { MutableInteractionSource() }
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .designSurface(designStyle, CircleShape, isDarkTextEnabled, surfaceAccent)
-                                .clip(CircleShape)
-                                .then(
-                                    if (!isPreview) {
-                                        Modifier
-                                            .bounceClick(intSrc)
-                                            .clickable(
-                                                interactionSource = intSrc,
-                                                indication = null,
-                                                enabled = !isEditMode
-                                            ) { onOpenFavoritesConfig() }
-                                    } else {
-                                        Modifier
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.Add, contentDescription = null, tint = mainTextColor)
-                        }
-                    } else {
-                        favorites.forEach { app ->
-                            FavoriteItem(
-                                app = app,
-                                showLabels = showLabels,
-                                fontSize = fontSize.scale,
-                                mainTextColor = mainTextColor,
-                                returnIconPackage = returnIconPackage,
-                                onAppLaunchForReturn = { pkg, bounds ->
-                                    onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds)
-                                },
-                                onShortcutRequested = { shortcutApp, bounds ->
-                                    selectedShortcutApp = shortcutApp
-                                    shortcutMenuBounds = bounds
-                                },
-                                isPreview = isPreview || isEditMode
-                            )
                         }
                     }
                 }
 
-                if (isFavoritesSelected) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                    ) {
-                        if (canMoveFavoritesUp) {
-                            Icon(
-                                imageVector = Icons.Rounded.KeyboardArrowUp,
-                                contentDescription = null,
-                                tint = mainTextColor.copy(alpha = 0.35f),
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(top = editHintArrowInset)
-                                    .size(editHintArrowSize)
-                                    .testTag("home_edit_hint_favorites_up")
-                            )
-                        }
-                        if (canMoveFavoritesDown) {
-                            Icon(
-                                imageVector = Icons.Rounded.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = mainTextColor.copy(alpha = 0.35f),
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = editHintArrowInset)
-                                    .size(editHintArrowSize)
-                                    .testTag("home_edit_hint_favorites_down")
-                            )
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.weight(1f))
             }
-
-            Spacer(modifier = Modifier.weight(1f))
         }
 
         // --- Edit Mode Kontrollen (Minimalistisches Menü am unteren Rand) ---
@@ -1013,19 +731,14 @@ fun HomeScreen(
                     EditControlButton(
                         icon = Icons.Rounded.Close,
                         onClick = {
-                            currentFavOffsetX = 0f
-                            currentFavOffsetY = favoritesOffsetY
-                            currentClockOffsetX = 0f
-                            currentClockOffsetY = clockOffsetY
-                            lastValidFavOffsetX = 0f
-                            lastValidFavOffsetY = favoritesOffsetY
-                            lastValidClockOffsetX = 0f
-                            lastValidClockOffsetY = clockOffsetY
+                            // Abbrechen: Live-Offsets auf gespeicherten Stand zurücksetzen.
+                            offsets[HomeEditTarget.CLOCK] = homeLayout.clock
+                            offsets[HomeEditTarget.DATE] = homeLayout.date
+                            offsets[HomeEditTarget.WEATHER] = homeLayout.weather
+                            offsets[HomeEditTarget.FAVORITES] = homeLayout.favorites
                             selectedEditTarget = null
                             isEditTargetUserPinned = false
-                            isClockNavigationBarBlocked = false
-                            isFavoritesNavigationBarBlocked = false
-                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
+                            updateCollisionFeedback(false)
                             onToggleEditMode()
                         },
                         sizeDp = 56.dp,
@@ -1036,25 +749,15 @@ fun HomeScreen(
                     EditControlButton(
                         icon = Icons.Rounded.Check,
                         onClick = {
-                            val savedFavoritesX = 0f
-                            val savedFavoritesY = currentFavOffsetY + editHintContentPaddingPx
-                            val savedClockX = 0f
-                            val savedClockY = currentClockOffsetY + editHintContentPaddingPx
-
-                            currentFavOffsetX = savedFavoritesX
-                            currentFavOffsetY = savedFavoritesY
-                            currentClockOffsetX = savedClockX
-                            currentClockOffsetY = savedClockY
-                            lastValidFavOffsetX = savedFavoritesX
-                            lastValidFavOffsetY = savedFavoritesY
-                            lastValidClockOffsetX = savedClockX
-                            lastValidClockOffsetY = savedClockY
-                            isClockNavigationBarBlocked = false
-                            isFavoritesNavigationBarBlocked = false
-                            updateCollisionFeedback(clockBlocked = false, favoritesBlocked = false)
-
-                            onSaveFavoritesOffset(savedFavoritesX, savedFavoritesY)
-                            onSaveClockOffset(savedClockX, savedClockY)
+                            updateCollisionFeedback(false)
+                            onSaveHomeLayout(
+                                HomeLayout(
+                                    clock = offsets[HomeEditTarget.CLOCK] ?: Offset.Zero,
+                                    date = offsets[HomeEditTarget.DATE] ?: Offset.Zero,
+                                    weather = offsets[HomeEditTarget.WEATHER] ?: Offset.Zero,
+                                    favorites = offsets[HomeEditTarget.FAVORITES] ?: Offset.Zero
+                                )
+                            )
                             Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
                             onToggleEditMode()
                         },
@@ -1337,7 +1040,8 @@ private fun FavoriteItem(
             )
     ) {
         Row(
-            modifier = Modifier.padding(6.dp),
+            // Nur vertikaler Innenabstand, damit die Icons links bündig mit Uhr/Datum stehen.
+            modifier = Modifier.padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -1373,100 +1077,126 @@ internal fun expandNotifications(context: Context) {
     }
 }
 
+/**
+ * Großes Uhrzeit-Element (eigenständig verschiebbar). [time] wird vom Aufrufer getickt.
+ */
 @Composable
-fun ClockHeader(
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
+fun ClockText(
+    time: java.util.Date,
+    isPreview: Boolean,
     returnIconPackage: String?,
-    isCompact: Boolean = false,
-    isPreview: Boolean = false
+    onAppLaunchForReturn: (String, Rect?) -> Unit
 ) {
     val context = LocalContext.current
     val fontSize = LocalFontSize.current
     val appFontWeight = LocalFontWeight.current
-    // Uhr/Datum nutzen die frei wählbare Startbildschirm-Schriftfarbe.
     val mainTextColor = LocalHomeTextColor.current
-    var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            currentTime = Calendar.getInstance().time
-            delay(30_000L)
-        }
-    }
 
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val dateFormat = remember { SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault()) }
     val intSrcTime = remember { MutableInteractionSource() }
-    val intSrcDate = remember { MutableInteractionSource() }
     val clockBounds = remember { mutableStateOf<Rect?>(null) }
-    val calendarBounds = remember { mutableStateOf<Rect?>(null) }
     var clockPackage by remember { mutableStateOf<String?>(null) }
-    var calendarPackage by remember { mutableStateOf<String?>(null) }
 
     val bounceScaleTime by animateFloatAsState(
         targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "ClockReturnBounce"
     )
+
+    Text(
+        text = timeFormat.format(time),
+        fontSize = 72.sp * fontSize.scale,
+        fontWeight = appFontWeight.weight,
+        letterSpacing = (-2).sp,
+        lineHeight = 72.sp * fontSize.scale,
+        // Entfernt das zusätzliche Font-Padding (enger Rahmen), behält aber die gewählte
+        // App-Schriftart bei, indem auf den aktuellen LocalTextStyle gemergt wird.
+        style = LocalTextStyle.current.merge(
+            TextStyle(
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.Both
+                )
+            )
+        ),
+        color = mainTextColor,
+        modifier = Modifier
+            .onGloballyPositioned { clockBounds.value = it.boundsInRoot() }
+            .graphicsLayer { scaleX = bounceScaleTime; scaleY = bounceScaleTime }
+            .clip(RoundedCornerShape(8.dp))
+            .then(
+                if (!isPreview) {
+                    Modifier
+                        .bounceClick(intSrcTime)
+                        .clickable(interactionSource = intSrcTime, indication = null) {
+                            launchClockApp(context, clockBounds.value, onAppLaunchForReturn) { clockPackage = it }
+                        }
+                } else {
+                    Modifier
+                }
+            )
+    )
+}
+
+/**
+ * Datums-Element (eigenständig verschiebbar). [time] wird vom Aufrufer getickt.
+ */
+@Composable
+fun DateText(
+    time: java.util.Date,
+    isPreview: Boolean,
+    returnIconPackage: String?,
+    onAppLaunchForReturn: (String, Rect?) -> Unit
+) {
+    val context = LocalContext.current
+    val fontSize = LocalFontSize.current
+    val appFontWeight = LocalFontWeight.current
+    val mainTextColor = LocalHomeTextColor.current
+
+    val dateFormat = remember { SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault()) }
+    val intSrcDate = remember { MutableInteractionSource() }
+    val calendarBounds = remember { mutableStateOf<Rect?>(null) }
+    var calendarPackage by remember { mutableStateOf<String?>(null) }
+
     val bounceScaleDate by animateFloatAsState(
         targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "CalendarReturnBounce"
     )
 
-    val headerModifier = if (isCompact) Modifier.wrapContentWidth(Alignment.Start) else Modifier.fillMaxWidth()
-
-    Column(modifier = headerModifier) {
-        Text(
-            text = timeFormat.format(currentTime),
-            fontSize = 72.sp * fontSize.scale,
-            fontWeight = appFontWeight.weight,
-            letterSpacing = (-2).sp,
-            color = mainTextColor,
-            modifier = Modifier
-                .onGloballyPositioned { clockBounds.value = it.boundsInRoot() }
-                .graphicsLayer { scaleX = bounceScaleTime; scaleY = bounceScaleTime }
-                .clip(RoundedCornerShape(8.dp))
-                .then(
-                    if (!isPreview) {
-                        Modifier
-                            .bounceClick(intSrcTime)
-                            .clickable(interactionSource = intSrcTime, indication = null) {
-                                launchClockApp(context, clockBounds.value, onAppLaunchForReturn) { clockPackage = it }
-                            }
-                    } else {
-                        Modifier
-                    }
+    Text(
+        text = dateFormat.format(time),
+        fontSize = 18.sp * fontSize.scale,
+        fontWeight = appFontWeight.weight,
+        lineHeight = 18.sp * fontSize.scale,
+        style = LocalTextStyle.current.merge(
+            TextStyle(
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.Both
                 )
-        )
-        Text(
-            text = dateFormat.format(currentTime),
-            fontSize = 18.sp * fontSize.scale,
-            fontWeight = appFontWeight.weight,
-            color = mainTextColor.copy(alpha = 0.7f),
-            modifier = Modifier
-                .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
-                .graphicsLayer { scaleX = bounceScaleDate; scaleY = bounceScaleDate }
-                .clip(RoundedCornerShape(8.dp))
-                .then(
-                    if (!isPreview) {
-                        Modifier
-                            .bounceClick(intSrcDate)
-                            .clickable(interactionSource = intSrcDate, indication = null) {
-                                launchCalendarApp(context, calendarBounds.value, onAppLaunchForReturn) { calendarPackage = it }
-                            }
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(horizontal = 4.dp, vertical = 2.dp)
-        )
-
-        // Schmales Wetter-Widget (Symbol + Temperatur) direkt unter dem Datum.
-        if (LocalWeatherWidgetEnabled.current) {
-            WeatherRow(isPreview = isPreview)
-        }
-    }
+            )
+        ),
+        color = mainTextColor.copy(alpha = 0.7f),
+        modifier = Modifier
+            .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
+            .graphicsLayer { scaleX = bounceScaleDate; scaleY = bounceScaleDate }
+            .clip(RoundedCornerShape(8.dp))
+            .then(
+                if (!isPreview) {
+                    Modifier
+                        .bounceClick(intSrcDate)
+                        .clickable(interactionSource = intSrcDate, indication = null) {
+                            launchCalendarApp(context, calendarBounds.value, onAppLaunchForReturn) { calendarPackage = it }
+                        }
+                } else {
+                    Modifier
+                }
+            )
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+    )
 }
 
 /**
@@ -1484,19 +1214,29 @@ fun WeatherRow(isPreview: Boolean = false) {
     val appFontWeight = LocalFontWeight.current
     val mainTextColor = LocalHomeTextColor.current
 
-    val weather by produceState<WeatherData?>(initialValue = null, isPreview) {
+    // Startwert aus dem prozessweiten Cache: zeigt beim Zurückkehren aus dem App-Drawer
+    // sofort den letzten Wert, statt kurz zu verschwinden.
+    val weather by produceState<WeatherData?>(initialValue = WeatherRepository.cached, isPreview) {
         if (isPreview) return@produceState
         val repo = WeatherRepository(context)
+        val refreshIntervalMs = 30 * 60_000L
         while (true) {
-            // GPS nur, falls die Berechtigung ohnehin erteilt ist; sonst grobe Position
-            // über die IP-Adresse (ohne Standortdienst/Berechtigung).
-            val location = repo.awaitLocation() ?: repo.ipLocation()
-            if (location != null) {
-                repo.fetch(location.first, location.second)?.let { value = it }
+            val cacheFresh = WeatherRepository.cached != null &&
+                WeatherRepository.cacheAgeMs < refreshIntervalMs
+            if (cacheFresh) {
+                // Cache noch aktuell – übernehmen, kein erneuter Netzwerkabruf.
+                value = WeatherRepository.cached
+            } else {
+                // GPS nur, falls die Berechtigung ohnehin erteilt ist; sonst grobe Position
+                // über die IP-Adresse (ohne Standortdienst/Berechtigung).
+                val location = repo.awaitLocation() ?: repo.ipLocation()
+                if (location != null) {
+                    repo.fetch(location.first, location.second)?.let { value = it }
+                }
             }
             // Schneller erneut versuchen, solange noch keine Daten vorliegen,
             // sonst regulär alle 30 Minuten aktualisieren.
-            delay(if (value == null) 20_000L else 30 * 60_000L)
+            delay(if (value == null) 20_000L else refreshIntervalMs)
         }
     }
 

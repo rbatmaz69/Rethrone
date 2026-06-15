@@ -8,6 +8,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
+import android.os.SystemClock
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.core.content.ContextCompat
 import com.composables.icons.lucide.Cloud
@@ -165,7 +166,7 @@ class WeatherRepository(private val context: Context) {
             val current = JSONObject(body).optJSONObject("current") ?: return@withContext null
             val temp = current.getDouble("temperature_2m").roundToInt()
             val code = current.getInt("weather_code")
-            WeatherData(temperatureC = temp, weatherCode = code)
+            WeatherData(temperatureC = temp, weatherCode = code).also { updateCache(it) }
         } catch (e: Exception) {
             null
         } finally {
@@ -174,6 +175,24 @@ class WeatherRepository(private val context: Context) {
     }
 
     companion object {
+        // Prozessweiter Cache: überlebt das Verlassen/Neubetreten der Composition
+        // (z. B. App-Drawer → Startseite), damit das Wetter nicht kurz verschwindet.
+        @Volatile
+        private var cachedData: WeatherData? = null
+        @Volatile
+        private var cachedAtElapsedMs: Long = 0L
+
+        val cached: WeatherData? get() = cachedData
+
+        /** Alter des Caches in Millisekunden (Long.MAX_VALUE, wenn leer). */
+        val cacheAgeMs: Long
+            get() = if (cachedData == null) Long.MAX_VALUE else SystemClock.elapsedRealtime() - cachedAtElapsedMs
+
+        private fun updateCache(data: WeatherData) {
+            cachedData = data
+            cachedAtElapsedMs = SystemClock.elapsedRealtime()
+        }
+
         /**
          * Bildet einen WMO-Wettercode (Open-Meteo) auf ein passendes Lucide-Icon ab.
          */

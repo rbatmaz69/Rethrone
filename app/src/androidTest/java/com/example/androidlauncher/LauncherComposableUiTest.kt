@@ -41,8 +41,7 @@ class LauncherComposableUiTest {
                     onOpenSizeConfig = {},
                     onOpenSystemSettings = {},
                     onOpenInfo = {},
-                    onSaveFavoritesOffset = { _, _ -> },
-                    onSaveClockOffset = { _, _ -> },
+                    onSaveHomeLayout = { },
                     onLaunchApp = { _, _, _ -> },
                     returnIconPackage = null
                 )

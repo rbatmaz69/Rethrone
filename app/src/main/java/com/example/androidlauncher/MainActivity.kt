@@ -85,6 +85,7 @@ import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
+import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
@@ -219,12 +220,8 @@ class MainActivity : ComponentActivity() {
             val searchHistory by searchSuggestionsManager.webHistory.collectAsState(initial = emptyList())
             val appUsageStats by searchSuggestionsManager.appUsageStats.collectAsState(initial = emptyMap())
 
-            // UI Offset States
-            val favoritesOffsetX by themeManager.favoritesOffsetX.collectAsState(initial = 0f)
-            val favoritesOffsetY by themeManager.favoritesOffsetY.collectAsState(initial = 0f)
-            // Uhrbereich (Uhr + Datum) wird als gemeinsame Einheit auf X/Y gehalten.
-            val clockOffsetX by themeManager.clockOffsetX.collectAsState(initial = 0f)
-            val clockOffsetY by themeManager.clockOffsetY.collectAsState(initial = 0f)
+            // Positionen der unabhängig verschiebbaren Startbildschirm-Elemente.
+            val homeLayout by themeManager.homeLayout.collectAsState(initial = HomeLayout())
 
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
@@ -1060,10 +1057,7 @@ class MainActivity : ComponentActivity() {
                                 isSettingsOpen = isSettingsOpen,
                                 isSearchOpen = isSearchOpen && !isSearchClosingState,
                                 isEditMode = isHomeEditMode,
-                                favoritesOffsetX = favoritesOffsetX,
-                                favoritesOffsetY = favoritesOffsetY,
-                                clockOffsetX = clockOffsetX,
-                                clockOffsetY = clockOffsetY,
+                                homeLayout = homeLayout,
                                 onOpenDrawer = { isDrawerOpen = true },
                                 onOpenSearch = {
                                     isSearchClosingState = false
@@ -1076,11 +1070,8 @@ class MainActivity : ComponentActivity() {
                                 onOpenSizeConfig = { isSizeConfigOpen = true },
                                 onOpenSystemSettings = { isEditConfigOpen = true },
                                 onOpenInfo = { isInfoOpen = true },
-                                onSaveFavoritesOffset = { x, y ->
-                                    scope.launch { themeManager.setFavoritesOffset(x, y) }
-                                },
-                                onSaveClockOffset = { x, y ->
-                                    scope.launch { themeManager.setClockOffset(x, y) }
+                                onSaveHomeLayout = { layout ->
+                                    scope.launch { themeManager.setHomeLayout(layout) }
                                 },
                                 onLaunchApp = { pkg, intent, bounds ->
                                     requestLauncherLaunch(
@@ -1260,8 +1251,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onResetHomeLayout = {
                                 scope.launch {
-                                    themeManager.setFavoritesOffset(0f, 0f)
-                                    themeManager.setClockOffset(0f, 0f)
+                                    themeManager.setHomeLayout(HomeLayout())
                                 }
                                 Toast.makeText(context, context.getString(R.string.home_layout_reset), Toast.LENGTH_SHORT).show()
                             },
@@ -1287,10 +1277,10 @@ class MainActivity : ComponentActivity() {
                             },
                             onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
                             isCustomHomeLayoutSet =
-                                abs(favoritesOffsetX) > 0.5f ||
-                                abs(favoritesOffsetY) > 0.5f ||
-                                abs(clockOffsetX) > 0.5f ||
-                                abs(clockOffsetY) > 0.5f,
+                                abs(homeLayout.clock.x) > 0.5f || abs(homeLayout.clock.y) > 0.5f ||
+                                abs(homeLayout.date.x) > 0.5f || abs(homeLayout.date.y) > 0.5f ||
+                                abs(homeLayout.weather.x) > 0.5f || abs(homeLayout.weather.y) > 0.5f ||
+                                abs(homeLayout.favorites.x) > 0.5f || abs(homeLayout.favorites.y) > 0.5f,
                             isCustomWallpaperSet = customWallpaperUri != null,
                             isShakeGesturesEnabled = isShakeGesturesEnabled,
                             onShakeGesturesToggled = { enabled ->
@@ -1356,10 +1346,7 @@ class MainActivity : ComponentActivity() {
                             isSettingsOpen = false,
                             isSearchOpen = false,
                             isEditMode = false,
-                            favoritesOffsetX = favoritesOffsetX,
-                            favoritesOffsetY = favoritesOffsetY,
-                            clockOffsetX = clockOffsetX,
-                            clockOffsetY = clockOffsetY,
+                            homeLayout = homeLayout,
                             onOpenDrawer = {},
                             onOpenSearch = {},
                             onToggleSettings = {},
@@ -1369,8 +1356,7 @@ class MainActivity : ComponentActivity() {
                             onOpenSizeConfig = {},
                             onOpenSystemSettings = {},
                             onOpenInfo = {},
-                            onSaveFavoritesOffset = { _, _ -> },
-                            onSaveClockOffset = { _, _ -> },
+                            onSaveHomeLayout = { },
                             onLaunchApp = { _, _, _ -> },
                             returnIconPackage = null,
                             searchButtonBounceToken = 0,

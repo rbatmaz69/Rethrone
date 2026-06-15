@@ -5,6 +5,7 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -62,11 +63,16 @@ class ThemeManager(private val context: Context) {
         private val WEATHER_WIDGET_KEY = booleanPreferencesKey("weather_widget_enabled")
 
         // Offset for UI elements (Relative to default position)
+        // Uhr, Datum, Wetter und Favoriten sind unabhängig auf X/Y verschiebbar.
+        // (clock/favorites nutzen die alten Keys weiter – kompatibel zu bereits gespeicherten Layouts.)
         private val FAVORITES_OFFSET_X_KEY = floatPreferencesKey("favorites_offset_x")
         private val FAVORITES_OFFSET_Y_KEY = floatPreferencesKey("favorites_offset_y")
-        // Uhrbereich kann als Einheit (Uhr + Datum) auf X/Y verschoben werden.
         private val CLOCK_OFFSET_X_KEY = floatPreferencesKey("clock_offset_x")
         private val CLOCK_OFFSET_Y_KEY = floatPreferencesKey("clock_offset_y")
+        private val DATE_OFFSET_X_KEY = floatPreferencesKey("date_offset_x")
+        private val DATE_OFFSET_Y_KEY = floatPreferencesKey("date_offset_y")
+        private val WEATHER_OFFSET_X_KEY = floatPreferencesKey("weather_offset_x")
+        private val WEATHER_OFFSET_Y_KEY = floatPreferencesKey("weather_offset_y")
     }
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
@@ -169,19 +175,16 @@ class ThemeManager(private val context: Context) {
     val wallpaperZoom: Flow<Float> = context.dataStore.data
         .map { it[WALLPAPER_ZOOM_KEY] ?: 1.0f }
 
-    val favoritesOffsetX: Flow<Float> = context.dataStore.data
-        .map { it[FAVORITES_OFFSET_X_KEY] ?: 0f }
-
-    val favoritesOffsetY: Flow<Float> = context.dataStore.data
-        .map { it[FAVORITES_OFFSET_Y_KEY] ?: 0f }
-
-    // X-Offset für die Uhr-/Datums-Einheit im Home-Edit-Modus.
-    val clockOffsetX: Flow<Float> = context.dataStore.data
-        .map { it[CLOCK_OFFSET_X_KEY] ?: 0f }
-
-    // Y-Offset für die Uhr-/Datums-Einheit im Home-Edit-Modus.
-    val clockOffsetY: Flow<Float> = context.dataStore.data
-        .map { it[CLOCK_OFFSET_Y_KEY] ?: 0f }
+    // Positionen aller unabhängig verschiebbaren Startbildschirm-Elemente.
+    val homeLayout: Flow<HomeLayout> = context.dataStore.data
+        .map { prefs ->
+            HomeLayout(
+                clock = Offset(prefs[CLOCK_OFFSET_X_KEY] ?: 0f, prefs[CLOCK_OFFSET_Y_KEY] ?: 0f),
+                date = Offset(prefs[DATE_OFFSET_X_KEY] ?: 0f, prefs[DATE_OFFSET_Y_KEY] ?: 0f),
+                weather = Offset(prefs[WEATHER_OFFSET_X_KEY] ?: 0f, prefs[WEATHER_OFFSET_Y_KEY] ?: 0f),
+                favorites = Offset(prefs[FAVORITES_OFFSET_X_KEY] ?: 0f, prefs[FAVORITES_OFFSET_Y_KEY] ?: 0f),
+            )
+        }
 
     /**
      * Observable flow for animations toggle.
@@ -286,18 +289,17 @@ class ThemeManager(private val context: Context) {
     suspend fun setWallpaperDim(dim: Float) { context.dataStore.edit { it[WALLPAPER_DIM_KEY] = dim } }
     suspend fun setWallpaperZoom(zoom: Float) { context.dataStore.edit { it[WALLPAPER_ZOOM_KEY] = zoom } }
 
-    suspend fun setFavoritesOffset(x: Float, y: Float) {
+    // Persistiert die Positionen aller verschiebbaren Startbildschirm-Elemente.
+    suspend fun setHomeLayout(layout: HomeLayout) {
         context.dataStore.edit {
-            it[FAVORITES_OFFSET_X_KEY] = x
-            it[FAVORITES_OFFSET_Y_KEY] = y
-        }
-    }
-
-    // Persistiert die Uhr-/Datums-Einheit gemeinsam auf X/Y.
-    suspend fun setClockOffset(x: Float, y: Float) {
-        context.dataStore.edit {
-            it[CLOCK_OFFSET_X_KEY] = x
-            it[CLOCK_OFFSET_Y_KEY] = y
+            it[CLOCK_OFFSET_X_KEY] = layout.clock.x
+            it[CLOCK_OFFSET_Y_KEY] = layout.clock.y
+            it[DATE_OFFSET_X_KEY] = layout.date.x
+            it[DATE_OFFSET_Y_KEY] = layout.date.y
+            it[WEATHER_OFFSET_X_KEY] = layout.weather.x
+            it[WEATHER_OFFSET_Y_KEY] = layout.weather.y
+            it[FAVORITES_OFFSET_X_KEY] = layout.favorites.x
+            it[FAVORITES_OFFSET_Y_KEY] = layout.favorites.y
         }
     }
 
