@@ -39,6 +39,7 @@ import com.composables.icons.lucide.Smartphone
 import com.composables.icons.lucide.Ban
 import com.composables.icons.lucide.BellOff
 import com.composables.icons.lucide.Camera
+import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.CloudSun
 import com.composables.icons.lucide.Clock
@@ -55,7 +56,7 @@ import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
-import com.example.androidlauncher.data.ShakeAction
+import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -80,13 +81,7 @@ fun EditConfigMenu(
     onOpenWallpaperAdjust: () -> Unit,
     isCustomHomeLayoutSet: Boolean,
     isCustomWallpaperSet: Boolean,
-    isShakeGesturesEnabled: Boolean,
-    onShakeGesturesToggled: (Boolean) -> Unit,
-    doubleShakeAction: ShakeAction,
-    onDoubleShakeActionChange: (ShakeAction) -> Unit,
-    apps: List<AppInfo>,
-    shakeOpenAppPackage: String?,
-    onShakeOpenAppPackageChange: (String?) -> Unit,
+    onOpenGesturesConfig: () -> Unit,
     isSmartSuggestionsEnabled: Boolean,
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     isAnimationsEnabled: Boolean,
@@ -415,68 +410,16 @@ fun EditConfigMenu(
             }
 
             item {
-                EditToggleItem(
-                    icon = Lucide.Smartphone,
-                    label = "Shake-Gesten",
-                    description = "2× Schütteln, um die gewählte Aktion auszulösen.",
-                    checked = isShakeGesturesEnabled,
-                    onCheckedChange = onShakeGesturesToggled,
+                EditMenuItem(
+                    icon = Lucide.Hand,
+                    label = "Gesten",
+                    onClick = onOpenGesturesConfig,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "shake_gestures_switch"
+                    testTag = "gestures_menu_item"
                 )
-            }
-
-            if (isShakeGesturesEnabled) {
-                item {
-                    EditActionSelectorItem(
-                        label = "Bei 2× Schütteln",
-                        selectedAction = doubleShakeAction,
-                        onActionSelected = onDoubleShakeActionChange,
-                        mainTextColor = mainTextColor,
-                        designStyle = designStyle,
-                        surfaceAccent = surfaceAccent,
-                        isDarkTextEnabled = isDarkTextEnabled,
-                        testTag = "double_shake_action_selector"
-                    )
-                }
-
-                if (doubleShakeAction == ShakeAction.OPEN_APP) {
-                    item {
-                        var showAppPicker by remember { mutableStateOf(false) }
-                        val selectedAppLabel = apps.firstOrNull { it.packageName == shakeOpenAppPackage }?.label
-
-                        EditMenuItem(
-                            icon = Lucide.LayoutGrid,
-                            label = "App wählen",
-                            onClick = { showAppPicker = true },
-                            statusLabel = selectedAppLabel ?: "Keine",
-                            mainTextColor = mainTextColor,
-                            designStyle = designStyle,
-                            surfaceAccent = surfaceAccent,
-                            isDarkTextEnabled = isDarkTextEnabled,
-                            testTag = "shake_open_app_picker"
-                        )
-
-                        if (showAppPicker) {
-                            ShakeAppPickerDialog(
-                                apps = apps,
-                                selectedPackage = shakeOpenAppPackage,
-                                onAppSelected = {
-                                    onShakeOpenAppPackageChange(it)
-                                    showAppPicker = false
-                                },
-                                onDismiss = { showAppPicker = false },
-                                mainTextColor = mainTextColor,
-                                designStyle = designStyle,
-                                surfaceAccent = surfaceAccent,
-                                isDarkTextEnabled = isDarkTextEnabled
-                            )
-                        }
-                    }
-                }
             }
 
             item {
@@ -776,36 +719,42 @@ private fun EditAppAccessSelectorItem(
     }
 }
 
-/** Icon + Anzeigename für eine [ShakeAction] (UI-Mapping; das Enum selbst bleibt rein). */
-private fun shakeActionIcon(action: ShakeAction): ImageVector = when (action) {
-    ShakeAction.NONE -> Lucide.Ban
-    ShakeAction.FLASHLIGHT -> Lucide.Flashlight
-    ShakeAction.CAMERA -> Lucide.Camera
-    ShakeAction.OPEN_APP -> Lucide.LayoutGrid
-    ShakeAction.LOCK_SCREEN -> Lucide.Lock
-    ShakeAction.TOGGLE_DND -> Lucide.BellOff
-    ShakeAction.OPEN_SETTINGS -> Lucide.Settings2
+/** Icon + Anzeigename für eine [GestureAction] (UI-Mapping; das Enum selbst bleibt rein). */
+internal fun gestureActionIcon(action: GestureAction): ImageVector = when (action) {
+    GestureAction.NONE -> Lucide.Ban
+    GestureAction.APP_DRAWER -> Lucide.LayoutGrid
+    GestureAction.SEARCH -> Lucide.Search
+    GestureAction.NOTIFICATIONS -> Lucide.Bell
+    GestureAction.FLASHLIGHT -> Lucide.Flashlight
+    GestureAction.CAMERA -> Lucide.Camera
+    GestureAction.OPEN_APP -> Lucide.Smartphone
+    GestureAction.LOCK_SCREEN -> Lucide.Lock
+    GestureAction.TOGGLE_DND -> Lucide.BellOff
+    GestureAction.OPEN_SETTINGS -> Lucide.Settings2
 }
 
-private fun shakeActionLabel(action: ShakeAction): String = when (action) {
-    ShakeAction.NONE -> "Aus"
-    ShakeAction.FLASHLIGHT -> "Taschenlampe"
-    ShakeAction.CAMERA -> "Kamera"
-    ShakeAction.OPEN_APP -> "App öffnen"
-    ShakeAction.LOCK_SCREEN -> "Bildschirm sperren"
-    ShakeAction.TOGGLE_DND -> "Nicht stören"
-    ShakeAction.OPEN_SETTINGS -> "Einstellungen"
+internal fun gestureActionLabel(action: GestureAction): String = when (action) {
+    GestureAction.NONE -> "Aus"
+    GestureAction.APP_DRAWER -> "App-Drawer"
+    GestureAction.SEARCH -> "Suche"
+    GestureAction.NOTIFICATIONS -> "Benachrichtigungen"
+    GestureAction.FLASHLIGHT -> "Taschenlampe"
+    GestureAction.CAMERA -> "Kamera"
+    GestureAction.OPEN_APP -> "App öffnen"
+    GestureAction.LOCK_SCREEN -> "Bildschirm sperren"
+    GestureAction.TOGGLE_DND -> "Nicht stören"
+    GestureAction.OPEN_SETTINGS -> "Einstellungen"
 }
 
 /**
- * Zeilen-Eintrag, der die aktuell gewählte Aktion einer Shake-Geste anzeigt und bei Klick
- * ein Dropdown mit allen [ShakeAction]-Optionen öffnet.
+ * Zeilen-Eintrag, der die aktuell gewählte Aktion einer Geste anzeigt und bei Klick
+ * ein Dropdown mit allen [GestureAction]-Optionen öffnet.
  */
 @Composable
-private fun EditActionSelectorItem(
+internal fun EditActionSelectorItem(
     label: String,
-    selectedAction: ShakeAction,
-    onActionSelected: (ShakeAction) -> Unit,
+    selectedAction: GestureAction,
+    onActionSelected: (GestureAction) -> Unit,
     mainTextColor: Color,
     designStyle: DesignStyle,
     surfaceAccent: Color,
@@ -834,7 +783,7 @@ private fun EditActionSelectorItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = shakeActionIcon(selectedAction),
+                imageVector = gestureActionIcon(selectedAction),
                 contentDescription = null,
                 tint = mainTextColor,
                 modifier = Modifier.size(24.dp)
@@ -848,7 +797,7 @@ private fun EditActionSelectorItem(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = shakeActionLabel(selectedAction),
+                text = gestureActionLabel(selectedAction),
                 color = mainTextColor.copy(alpha = 0.6f),
                 fontSize = 15.sp,
                 modifier = Modifier.padding(end = 8.dp)
@@ -864,12 +813,12 @@ private fun EditActionSelectorItem(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                ShakeAction.entries.forEach { action ->
+                GestureAction.entries.forEach { action ->
                     DropdownMenuItem(
-                        text = { Text(shakeActionLabel(action)) },
+                        text = { Text(gestureActionLabel(action)) },
                         leadingIcon = {
                             Icon(
-                                imageVector = shakeActionIcon(action),
+                                imageVector = gestureActionIcon(action),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -888,11 +837,11 @@ private fun EditActionSelectorItem(
 }
 
 /**
- * Dialog zum Auswählen der App, die bei [ShakeAction.OPEN_APP] gestartet wird.
+ * Dialog zum Auswählen der App, die bei [GestureAction.OPEN_APP] gestartet wird.
  * Bietet ein Suchfeld und eine Liste aller installierten Apps (Single-Select).
  */
 @Composable
-private fun ShakeAppPickerDialog(
+internal fun GestureAppPickerDialog(
     apps: List<AppInfo>,
     selectedPackage: String?,
     onAppSelected: (String) -> Unit,

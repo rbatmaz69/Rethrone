@@ -54,8 +54,11 @@ class ThemeManager(private val context: Context) {
         private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
         private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
         private val DOUBLE_SHAKE_ACTION_KEY = stringPreferencesKey("double_shake_action")
-        // Paketname der App, die bei ShakeAction.OPEN_APP gestartet wird.
+        // Paketname der App, die bei GestureAction.OPEN_APP (Schütteln) gestartet wird.
         private val SHAKE_OPEN_APP_PACKAGE_KEY = stringPreferencesKey("shake_open_app_package")
+        // Doppeltipp-Geste auf dem Startbildschirm.
+        private val DOUBLE_TAP_ACTION_KEY = stringPreferencesKey("double_tap_action")
+        private val DOUBLE_TAP_APP_PACKAGE_KEY = stringPreferencesKey("double_tap_app_package")
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
         private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
@@ -252,17 +255,33 @@ class ThemeManager(private val context: Context) {
     /**
      * Aktion für doppeltes Schütteln (einzige Shake-Geste). Default Taschenlampe.
      */
-    val doubleShakeAction: Flow<ShakeAction> = context.dataStore.data
+    val doubleShakeAction: Flow<GestureAction> = context.dataStore.data
         .map { preferences ->
-            val name = preferences[DOUBLE_SHAKE_ACTION_KEY] ?: ShakeAction.FLASHLIGHT.name
-            try { ShakeAction.valueOf(name) } catch (e: IllegalArgumentException) { ShakeAction.FLASHLIGHT }
+            val name = preferences[DOUBLE_SHAKE_ACTION_KEY] ?: GestureAction.FLASHLIGHT.name
+            try { GestureAction.valueOf(name) } catch (e: IllegalArgumentException) { GestureAction.FLASHLIGHT }
         }
 
     /**
-     * Paketname der App, die bei [ShakeAction.OPEN_APP] gestartet wird (null, wenn keine gewählt).
+     * Paketname der App, die bei [GestureAction.OPEN_APP] (Schütteln) gestartet wird (null, wenn keine gewählt).
      */
     val shakeOpenAppPackage: Flow<String?> = context.dataStore.data
         .map { preferences -> preferences[SHAKE_OPEN_APP_PACKAGE_KEY]?.takeIf { it.isNotBlank() } }
+
+    /**
+     * Aktion für die Doppeltipp-Geste auf dem Startbildschirm. Default: Bildschirm sperren
+     * (entspricht dem bisherigen, fest verdrahteten Verhalten).
+     */
+    val doubleTapAction: Flow<GestureAction> = context.dataStore.data
+        .map { preferences ->
+            val name = preferences[DOUBLE_TAP_ACTION_KEY] ?: GestureAction.LOCK_SCREEN.name
+            try { GestureAction.valueOf(name) } catch (e: IllegalArgumentException) { GestureAction.LOCK_SCREEN }
+        }
+
+    /**
+     * Paketname der App, die bei [GestureAction.OPEN_APP] (Doppeltippen) gestartet wird (null, wenn keine gewählt).
+     */
+    val doubleTapAppPackage: Flow<String?> = context.dataStore.data
+        .map { preferences -> preferences[DOUBLE_TAP_APP_PACKAGE_KEY]?.takeIf { it.isNotBlank() } }
 
     /**
      * Gewählte Art des App-Zugriffs. Default ist die Drawer-Liste (Niagara-Stil).
@@ -376,14 +395,14 @@ class ThemeManager(private val context: Context) {
     /**
      * Setzt die Aktion für doppeltes Schütteln.
      */
-    suspend fun setDoubleShakeAction(action: ShakeAction) {
+    suspend fun setDoubleShakeAction(action: GestureAction) {
         context.dataStore.edit { preferences ->
             preferences[DOUBLE_SHAKE_ACTION_KEY] = action.name
         }
     }
 
     /**
-     * Setzt das Paket der App, die bei [ShakeAction.OPEN_APP] gestartet wird (null löscht die Wahl).
+     * Setzt das Paket der App, die bei [GestureAction.OPEN_APP] (Schütteln) gestartet wird (null löscht die Wahl).
      */
     suspend fun setShakeOpenAppPackage(packageName: String?) {
         context.dataStore.edit { preferences ->
@@ -391,6 +410,28 @@ class ThemeManager(private val context: Context) {
                 preferences.remove(SHAKE_OPEN_APP_PACKAGE_KEY)
             } else {
                 preferences[SHAKE_OPEN_APP_PACKAGE_KEY] = packageName
+            }
+        }
+    }
+
+    /**
+     * Setzt die Aktion für die Doppeltipp-Geste.
+     */
+    suspend fun setDoubleTapAction(action: GestureAction) {
+        context.dataStore.edit { preferences ->
+            preferences[DOUBLE_TAP_ACTION_KEY] = action.name
+        }
+    }
+
+    /**
+     * Setzt das Paket der App, die bei [GestureAction.OPEN_APP] (Doppeltippen) gestartet wird (null löscht die Wahl).
+     */
+    suspend fun setDoubleTapAppPackage(packageName: String?) {
+        context.dataStore.edit { preferences ->
+            if (packageName.isNullOrBlank()) {
+                preferences.remove(DOUBLE_TAP_APP_PACKAGE_KEY)
+            } else {
+                preferences[DOUBLE_TAP_APP_PACKAGE_KEY] = packageName
             }
         }
     }

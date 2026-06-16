@@ -95,12 +95,14 @@ import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.IconQualityEvaluator
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.SearchSuggestionsManager
-import com.example.androidlauncher.data.ShakeAction
+import com.example.androidlauncher.data.GestureAction
+import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.AnimationsConfigMenu
+import com.example.androidlauncher.ui.GesturesConfigMenu
 import com.example.androidlauncher.ui.ThemeSelectionMenu
 import com.example.androidlauncher.ui.DesignStyleMenu
 import com.example.androidlauncher.ui.EditConfigMenu
@@ -210,8 +212,10 @@ class MainActivity : ComponentActivity() {
             val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
             val favoritesBorderStyle by themeManager.favoritesBorderStyle.collectAsState(initial = FavoritesBorderStyle.NONE)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
-            val doubleShakeAction by themeManager.doubleShakeAction.collectAsState(initial = ShakeAction.FLASHLIGHT)
+            val doubleShakeAction by themeManager.doubleShakeAction.collectAsState(initial = GestureAction.FLASHLIGHT)
             val shakeOpenAppPackage by themeManager.shakeOpenAppPackage.collectAsState(initial = null)
+            val doubleTapAction by themeManager.doubleTapAction.collectAsState(initial = GestureAction.LOCK_SCREEN)
+            val doubleTapAppPackage by themeManager.doubleTapAppPackage.collectAsState(initial = null)
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
             val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
@@ -249,7 +253,7 @@ class MainActivity : ComponentActivity() {
             var showUsageAccessPrompt by remember { mutableStateOf(false) }
             var hasShownUsageAccessPrompt by remember { mutableStateOf(false) }
             var pendingPermissionShakeAction by remember {
-                mutableStateOf<ShakeAction?>(null)
+                mutableStateOf<GestureAction?>(null)
             }
 
             val wallpaperPickerLauncher = rememberLauncherForActivityResult(
@@ -267,7 +271,7 @@ class MainActivity : ComponentActivity() {
                 val pendingAction = pendingPermissionShakeAction
                 pendingPermissionShakeAction = null
 
-                if (pendingAction != ShakeAction.FLASHLIGHT) {
+                if (pendingAction != GestureAction.FLASHLIGHT) {
                     return@rememberLauncherForActivityResult
                 }
 
@@ -325,10 +329,16 @@ class MainActivity : ComponentActivity() {
                 openDefaultLauncherSettings(context)
             }
 
-            fun runShakeAction(action: ShakeAction) {
+            // Geräte-/System-Aktionen einer Geste. Launcher-interne Aktionen
+            // (App-Drawer/Suche/Benachrichtigungen) werden im inneren
+            // dispatchGestureAction behandelt, da sie UI-State setzen.
+            fun runGestureAction(action: GestureAction, appPackage: String?) {
                 when (action) {
-                    ShakeAction.NONE -> Unit
-                    ShakeAction.FLASHLIGHT -> {
+                    GestureAction.NONE,
+                    GestureAction.APP_DRAWER,
+                    GestureAction.SEARCH,
+                    GestureAction.NOTIFICATIONS -> Unit
+                    GestureAction.FLASHLIGHT -> {
                         when (launcherDeviceActions.toggleFlashlight()) {
                             is FlashlightToggleResult.Success -> {
                                 launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
@@ -337,7 +347,7 @@ class MainActivity : ComponentActivity() {
                                 Toast.makeText(context, context.getString(R.string.flashlight_unsupported), Toast.LENGTH_SHORT).show()
                             }
                             FlashlightToggleResult.MissingPermission -> {
-                                pendingPermissionShakeAction = ShakeAction.FLASHLIGHT
+                                pendingPermissionShakeAction = GestureAction.FLASHLIGHT
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                             FlashlightToggleResult.Error -> {
@@ -345,7 +355,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    ShakeAction.CAMERA -> {
+                    GestureAction.CAMERA -> {
                         val didOpenCamera = launcherDeviceActions.openCamera(this@MainActivity)
                         if (didOpenCamera) {
                             launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
@@ -353,8 +363,8 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(context, context.getString(R.string.camera_app_not_found), Toast.LENGTH_SHORT).show()
                         }
                     }
-                    ShakeAction.OPEN_APP -> {
-                        val targetPackage = shakeOpenAppPackage
+                    GestureAction.OPEN_APP -> {
+                        val targetPackage = appPackage
                         if (targetPackage.isNullOrBlank()) {
                             Toast.makeText(context, context.getString(R.string.shake_no_app_selected), Toast.LENGTH_SHORT).show()
                         } else if (launcherDeviceActions.openApp(this@MainActivity, targetPackage)) {
@@ -363,7 +373,7 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(context, context.getString(R.string.shake_app_not_found), Toast.LENGTH_SHORT).show()
                         }
                     }
-                    ShakeAction.LOCK_SCREEN -> {
+                    GestureAction.LOCK_SCREEN -> {
                         if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
                             LauncherAccessibilityService.requestLockScreen(context)
                             launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
@@ -377,7 +387,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    ShakeAction.TOGGLE_DND -> {
+                    GestureAction.TOGGLE_DND -> {
                         when (launcherDeviceActions.toggleDoNotDisturb()) {
                             is DndToggleResult.Success -> {
                                 launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
@@ -391,7 +401,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    ShakeAction.OPEN_SETTINGS -> {
+                    GestureAction.OPEN_SETTINGS -> {
                         if (launcherDeviceActions.openSystemSettings(this@MainActivity)) {
                             launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
                         } else {
@@ -400,8 +410,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-
-            shakeManager.onDoubleShake = { runShakeAction(doubleShakeAction) }
 
             AndroidLauncherTheme(
                 colorTheme = currentTheme,
@@ -458,6 +466,21 @@ class MainActivity : ComponentActivity() {
                 var isSearchOpen by remember { mutableStateOf(false) }
                 var isSearchClosingState by remember { mutableStateOf(false) }
                 var isHomeEditMode by remember { mutableStateOf(false) }
+
+                // Zentraler Geste-Dispatch: Launcher-interne Aktionen setzen hier den
+                // UI-State, alles andere geht an runGestureAction (Geräte-/System-Aktionen).
+                fun dispatchGestureAction(action: GestureAction, appPackage: String?) {
+                    when (action) {
+                        GestureAction.APP_DRAWER -> isDrawerOpen = true
+                        GestureAction.SEARCH -> {
+                            isSearchClosingState = false
+                            isSearchOpen = true
+                        }
+                        GestureAction.NOTIFICATIONS -> expandNotifications(context)
+                        else -> runGestureAction(action, appPackage)
+                    }
+                }
+                shakeManager.onDoubleShake = { dispatchGestureAction(doubleShakeAction, shakeOpenAppPackage) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                 var isSearchLaunching by remember { mutableStateOf(false) }
                 var isAppLaunchAnimating by remember { mutableStateOf(false) }
@@ -475,6 +498,7 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isAnimationsConfigOpen by remember { mutableStateOf(false) }
+                var isGesturesConfigOpen by remember { mutableStateOf(false) }
                 var isDesignMenuOpen by remember { mutableStateOf(false) }
                 var isThemeMenuOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
@@ -942,20 +966,20 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(
-                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isAnimationsConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
+                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isAnimationsConfigOpen, isGesturesConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
                     isIconConfigOpen, isUninstallAppsOpen, isHiddenAppsOpen, isWallpaperConfigOpen, isInfoOpen,
                     selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
-                        isColorConfigOpen || isAnimationsConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
+                        isColorConfigOpen || isAnimationsConfigOpen || isGesturesConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
                         isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isWallpaperConfigOpen ||
                         isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
 
                 BackHandler(
-                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isAnimationsConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
+                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isAnimationsConfigOpen || isGesturesConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
                         isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isWallpaperConfigOpen || isInfoOpen ||
                         selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
@@ -974,6 +998,7 @@ class MainActivity : ComponentActivity() {
                         isThemeMenuOpen -> isThemeMenuOpen = false
                         isDesignMenuOpen -> isDesignMenuOpen = false
                         isAnimationsConfigOpen -> isAnimationsConfigOpen = false
+                        isGesturesConfigOpen -> isGesturesConfigOpen = false
                         isColorConfigOpen -> isColorConfigOpen = false
                         isSizeConfigOpen -> isSizeConfigOpen = false
                         isEditConfigOpen -> isEditConfigOpen = false
@@ -1092,6 +1117,9 @@ class MainActivity : ComponentActivity() {
                                     isSearchClosingState = false
                                     isSearchOpen = true
                                 },
+                                doubleTapAction = doubleTapAction,
+                                doubleTapAppPackage = doubleTapAppPackage,
+                                onGestureAction = { action, pkg -> dispatchGestureAction(action, pkg) },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onToggleEditMode = { isHomeEditMode = !isHomeEditMode },
                                 onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
@@ -1315,19 +1343,7 @@ class MainActivity : ComponentActivity() {
                                 abs(homeLayout.weather.x) > 0.5f || abs(homeLayout.weather.y) > 0.5f ||
                                 abs(homeLayout.favorites.x) > 0.5f || abs(homeLayout.favorites.y) > 0.5f,
                             isCustomWallpaperSet = customWallpaperUri != null,
-                            isShakeGesturesEnabled = isShakeGesturesEnabled,
-                            onShakeGesturesToggled = { enabled ->
-                                scope.launch { themeManager.setShakeGesturesEnabled(enabled) }
-                            },
-                            doubleShakeAction = doubleShakeAction,
-                            onDoubleShakeActionChange = { action ->
-                                scope.launch { themeManager.setDoubleShakeAction(action) }
-                            },
-                            apps = allApps,
-                            shakeOpenAppPackage = shakeOpenAppPackage,
-                            onShakeOpenAppPackageChange = { pkg ->
-                                scope.launch { themeManager.setShakeOpenAppPackage(pkg) }
-                            },
+                            onOpenGesturesConfig = { isGesturesConfigOpen = true },
                             isSmartSuggestionsEnabled = isSmartSuggestionsEnabled,
                             onSmartSuggestionsToggled = { enabled ->
                                 scope.launch { themeManager.setSmartSuggestionsEnabled(enabled) }
@@ -1397,6 +1413,27 @@ class MainActivity : ComponentActivity() {
                             isMenuAnimationEnabled = isMenuAnimationEnabled,
                             onMenuAnimationToggled = { scope.launch { themeManager.setMenuAnimationEnabled(it) } },
                             onClose = { isAnimationsConfigOpen = false }
+                        )
+                    }
+
+                    MenuOverlay(
+                        visible = isGesturesConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isGesturesConfigOpen = false }
+                    ) {
+                        GesturesConfigMenu(
+                            apps = allApps,
+                            doubleTapAction = doubleTapAction,
+                            onDoubleTapActionChange = { scope.launch { themeManager.setDoubleTapAction(it) } },
+                            doubleTapAppPackage = doubleTapAppPackage,
+                            onDoubleTapAppPackageChange = { scope.launch { themeManager.setDoubleTapAppPackage(it) } },
+                            isShakeGesturesEnabled = isShakeGesturesEnabled,
+                            onShakeGesturesToggled = { scope.launch { themeManager.setShakeGesturesEnabled(it) } },
+                            doubleShakeAction = doubleShakeAction,
+                            onDoubleShakeActionChange = { scope.launch { themeManager.setDoubleShakeAction(it) } },
+                            shakeOpenAppPackage = shakeOpenAppPackage,
+                            onShakeOpenAppPackageChange = { scope.launch { themeManager.setShakeOpenAppPackage(it) } },
+                            onClose = { isGesturesConfigOpen = false }
                         )
                     }
 

@@ -71,6 +71,7 @@ import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.FavoritesBorderStyle
+import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.WeatherData
 import com.example.androidlauncher.data.WeatherRepository
@@ -108,6 +109,9 @@ fun HomeScreen(
     homeLayout: HomeLayout = HomeLayout(),
     onOpenDrawer: () -> Unit,
     onOpenSearch: () -> Unit,
+    doubleTapAction: GestureAction = GestureAction.LOCK_SCREEN,
+    doubleTapAppPackage: String? = null,
+    onGestureAction: (GestureAction, String?) -> Unit = { _, _ -> },
     onToggleSettings: () -> Unit,
     onToggleEditMode: () -> Unit,
     onOpenFavoritesConfig: () -> Unit,
@@ -541,6 +545,13 @@ fun HomeScreen(
         isEditTargetUserPinned = false
     }
 
+    // Aktuelle Werte für die Doppeltipp-Geste: der pointerInput-Block unten wird nur
+    // bei isEditMode neu gestartet, würde sonst aber veraltete Werte „einfrieren".
+    // rememberUpdatedState sorgt dafür, dass die Geste immer den aktuellen Wert liest.
+    val currentDoubleTapAction by rememberUpdatedState(doubleTapAction)
+    val currentDoubleTapAppPackage by rememberUpdatedState(doubleTapAppPackage)
+    val currentOnGestureAction by rememberUpdatedState(onGestureAction)
+
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
         animationSpec = tween(if (menuAnimationsEnabled) 300 else 0, easing = EaseInOutCubic), label = ""
@@ -584,11 +595,7 @@ fun HomeScreen(
                             },
                             onDoubleTap = {
                                 if (isEditMode) return@detectTapGestures
-                                if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
-                                    LauncherAccessibilityService.requestLockScreen(context)
-                                } else {
-                                    Toast.makeText(context, "Accessibility Service erforderlich", Toast.LENGTH_SHORT).show()
-                                }
+                                currentOnGestureAction(currentDoubleTapAction, currentDoubleTapAppPackage)
                             }
                         )
                     }
