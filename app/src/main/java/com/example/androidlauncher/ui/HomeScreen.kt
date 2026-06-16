@@ -74,6 +74,9 @@ import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.WeatherData
 import com.example.androidlauncher.data.WeatherRepository
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
 import kotlinx.coroutines.delay
@@ -161,11 +164,26 @@ fun HomeScreen(
 
     // Tickt die Uhrzeit für die getrennten Uhr-/Datums-Elemente.
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
+    val clockLifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
         while (true) {
             currentTime = Calendar.getInstance().time
-            delay(30_000L)
+            // Exakt bis zum nächsten Minutenwechsel warten, damit die Anzeige
+            // minutengenau mit der echten Uhr umspringt (statt bis zu 30s versetzt).
+            val now = System.currentTimeMillis()
+            delay(60_000L - (now % 60_000L))
         }
+    }
+    // Sofort aktualisieren, sobald der Launcher wieder in den Vordergrund kommt –
+    // sonst zeigt er nach längerer Pause kurz die alte Zeit.
+    DisposableEffect(clockLifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                currentTime = Calendar.getInstance().time
+            }
+        }
+        clockLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { clockLifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     var searchButtonBounds by remember { mutableStateOf<Rect?>(null) }
