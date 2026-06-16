@@ -58,9 +58,17 @@ class ThemeManager(private val context: Context) {
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
         private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
+        // Einzelne Animationsarten (greifen nur, wenn der Master oben aktiv ist; Standard: an).
+        private val ANIMATION_APP_OPEN_KEY = booleanPreferencesKey("animation_app_open")
+        private val ANIMATION_APP_CLOSE_KEY = booleanPreferencesKey("animation_app_close")
+        private val ANIMATION_MENUS_KEY = booleanPreferencesKey("animation_menus")
         private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
         // Wetter-Widget unter Uhr/Datum (Standard: an).
         private val WEATHER_WIDGET_KEY = booleanPreferencesKey("weather_widget_enabled")
+        // Uhr-Widget (Standard: an).
+        private val CLOCK_WIDGET_KEY = booleanPreferencesKey("clock_widget_enabled")
+        // Kalender-/Datum-Widget (Standard: an).
+        private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
 
         // Offset for UI elements (Relative to default position)
         // Uhr, Datum, Wetter und Favoriten sind unabhängig auf X/Y verschiebbar.
@@ -193,10 +201,40 @@ class ThemeManager(private val context: Context) {
         .map { it[ANIMATIONS_ENABLED_KEY] ?: true }
 
     /**
+     * Observable flow für die App-Öffnen-Animation (Aufzieh-Effekt). Default: an.
+     */
+    val isAppOpenAnimationEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[ANIMATION_APP_OPEN_KEY] ?: true }
+
+    /**
+     * Observable flow für die App-Schließen-/Rückkehr-Animation (Schrumpfen + Bounce). Default: an.
+     */
+    val isAppCloseAnimationEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[ANIMATION_APP_CLOSE_KEY] ?: true }
+
+    /**
+     * Observable flow für Menü-/Einstellungsmenü-Animationen. Default: an.
+     */
+    val isMenuAnimationEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[ANIMATION_MENUS_KEY] ?: true }
+
+    /**
      * Observable flow für das Wetter-Widget (Symbol + Temperatur unter der Uhr). Default: an.
      */
     val isWeatherWidgetEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[WEATHER_WIDGET_KEY] ?: true }
+
+    /**
+     * Observable flow für das Uhr-Widget. Default: an.
+     */
+    val isClockWidgetEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[CLOCK_WIDGET_KEY] ?: true }
+
+    /**
+     * Observable flow für das Kalender-/Datum-Widget. Default: an.
+     */
+    val isCalendarWidgetEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[CALENDAR_WIDGET_KEY] ?: true }
 
     /**
      * Observable flow for shake gesture toggle.
@@ -379,11 +417,56 @@ class ThemeManager(private val context: Context) {
     }
 
     /**
+     * Schaltet die App-Öffnen-Animation ein/aus.
+     */
+    suspend fun setAppOpenAnimationEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[ANIMATION_APP_OPEN_KEY] = enabled
+        }
+    }
+
+    /**
+     * Schaltet die App-Schließen-/Rückkehr-Animation ein/aus.
+     */
+    suspend fun setAppCloseAnimationEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[ANIMATION_APP_CLOSE_KEY] = enabled
+        }
+    }
+
+    /**
+     * Schaltet Menü-/Einstellungsmenü-Animationen ein/aus.
+     */
+    suspend fun setMenuAnimationEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[ANIMATION_MENUS_KEY] = enabled
+        }
+    }
+
+    /**
      * Schaltet das Wetter-Widget ein/aus.
      */
     suspend fun setWeatherWidgetEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[WEATHER_WIDGET_KEY] = enabled
+        }
+    }
+
+    /**
+     * Schaltet das Uhr-Widget ein/aus.
+     */
+    suspend fun setClockWidgetEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[CLOCK_WIDGET_KEY] = enabled
+        }
+    }
+
+    /**
+     * Schaltet das Kalender-/Datum-Widget ein/aus.
+     */
+    suspend fun setCalendarWidgetEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[CALENDAR_WIDGET_KEY] = enabled
         }
     }
 }

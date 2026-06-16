@@ -930,7 +930,7 @@ fun AppItem(
     val intSrc = remember { MutableInteractionSource() }
     var itemBounds by remember { mutableStateOf<Rect?>(null) }
     var iconBounds by remember { mutableStateOf<Rect?>(null) }
-    val animationsEnabled = com.example.androidlauncher.ui.theme.LocalAnimationsEnabled.current
+    val animationsEnabled = com.example.androidlauncher.ui.theme.LocalAppCloseAnimationEnabled.current
     val bounceScale by animateFloatAsState(targetValue = if (!animationsEnabled) 1f else if (bouncePackage == app.packageName) 1.2f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "DrawerReturnBounce")
     val itemWidth = when {
         isInFolder -> when (iconSize) {

@@ -89,7 +89,7 @@ fun SettingsPaletteMenu(
         val total = settingsItems.size
         val animStates = List(total) { remember { Animatable(0f) } }
 
-        val animationsEnabled = com.example.androidlauncher.ui.theme.LocalAnimationsEnabled.current
+        val animationsEnabled = com.example.androidlauncher.ui.theme.LocalMenuAnimationEnabled.current
 
         settingsItems.forEachIndexed { index, _ ->
             LaunchedEffect(isSettingsOpen) {

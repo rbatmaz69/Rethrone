@@ -129,6 +129,7 @@ fun HomeScreen(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     val animationsEnabled = LocalAnimationsEnabled.current
+    val menuAnimationsEnabled = LocalMenuAnimationEnabled.current
     val density = androidx.compose.ui.platform.LocalDensity.current
 
     // Schriftfarbe nur auf dem Startbildschirm frei wählbar.
@@ -523,7 +524,7 @@ fun HomeScreen(
 
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
-        animationSpec = tween(if (animationsEnabled) 300 else 0, easing = EaseInOutCubic), label = ""
+        animationSpec = tween(if (menuAnimationsEnabled) 300 else 0, easing = EaseInOutCubic), label = ""
     )
 
     Box(
@@ -595,34 +596,38 @@ fun HomeScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 Spacer(modifier = Modifier.height(30.dp))
 
-                // 1. Uhr (unabhängig verschiebbar)
-                Box(
-                    modifier = Modifier
-                        .wrapContentWidth(Alignment.Start)
-                        .targetLayout(HomeEditTarget.CLOCK)
-                        .targetEditModifier(HomeEditTarget.CLOCK)
-                ) {
-                    ClockText(
-                        time = currentTime,
-                        isPreview = isPreview || isEditMode,
-                        returnIconPackage = returnIconPackage,
-                        onAppLaunchForReturn = launchForReturn
-                    )
+                // 1. Uhr (unabhängig verschiebbar, nur wenn aktiviert)
+                if (LocalClockWidgetEnabled.current) {
+                    Box(
+                        modifier = Modifier
+                            .wrapContentWidth(Alignment.Start)
+                            .targetLayout(HomeEditTarget.CLOCK)
+                            .targetEditModifier(HomeEditTarget.CLOCK)
+                    ) {
+                        ClockText(
+                            time = currentTime,
+                            isPreview = isPreview || isEditMode,
+                            returnIconPackage = returnIconPackage,
+                            onAppLaunchForReturn = launchForReturn
+                        )
+                    }
                 }
 
-                // 2. Datum (unabhängig verschiebbar)
-                Box(
-                    modifier = Modifier
-                        .wrapContentWidth(Alignment.Start)
-                        .targetLayout(HomeEditTarget.DATE)
-                        .targetEditModifier(HomeEditTarget.DATE)
-                ) {
-                    DateText(
-                        time = currentTime,
-                        isPreview = isPreview || isEditMode,
-                        returnIconPackage = returnIconPackage,
-                        onAppLaunchForReturn = launchForReturn
-                    )
+                // 2. Datum (unabhängig verschiebbar, nur wenn aktiviert)
+                if (LocalCalendarWidgetEnabled.current) {
+                    Box(
+                        modifier = Modifier
+                            .wrapContentWidth(Alignment.Start)
+                            .targetLayout(HomeEditTarget.DATE)
+                            .targetEditModifier(HomeEditTarget.DATE)
+                    ) {
+                        DateText(
+                            time = currentTime,
+                            isPreview = isPreview || isEditMode,
+                            returnIconPackage = returnIconPackage,
+                            onAppLaunchForReturn = launchForReturn
+                        )
+                    }
                 }
 
                 // 3. Wetter (unabhängig verschiebbar, nur wenn aktiviert)
@@ -994,7 +999,7 @@ private fun FavoriteItem(
     val context = LocalContext.current
     val intSrc = remember { MutableInteractionSource() }
     val bounceScale by animateFloatAsState(
-        targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage == app.packageName) 1.2f else 1f,
+        targetValue = if (!LocalAppCloseAnimationEnabled.current) 1f else if (returnIconPackage == app.packageName) 1.2f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "HomeReturnBounce"
     )
@@ -1098,7 +1103,7 @@ fun ClockText(
     var clockPackage by remember { mutableStateOf<String?>(null) }
 
     val bounceScaleTime by animateFloatAsState(
-        targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f,
+        targetValue = if (!LocalAppCloseAnimationEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "ClockReturnBounce"
     )
@@ -1160,7 +1165,7 @@ fun DateText(
     var calendarPackage by remember { mutableStateOf<String?>(null) }
 
     val bounceScaleDate by animateFloatAsState(
-        targetValue = if (!LocalAnimationsEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f,
+        targetValue = if (!LocalAppCloseAnimationEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "CalendarReturnBounce"
     )

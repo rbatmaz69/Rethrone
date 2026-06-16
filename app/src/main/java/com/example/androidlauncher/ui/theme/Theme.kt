@@ -49,9 +49,24 @@ val LocalHapticFeedbackEnabled = staticCompositionLocalOf { true }
  */
 val LocalAnimationsEnabled = staticCompositionLocalOf { true }
 /**
+ * CompositionLocals für einzelne Animationsarten. Diese sind bereits mit dem
+ * Master (LocalAnimationsEnabled) verknüpft: ist der Master aus, sind alle false.
+ */
+val LocalAppOpenAnimationEnabled = staticCompositionLocalOf { true }
+val LocalAppCloseAnimationEnabled = staticCompositionLocalOf { true }
+val LocalMenuAnimationEnabled = staticCompositionLocalOf { true }
+/**
  * CompositionLocal für das Wetter-Widget (Symbol + Temperatur unter der Uhr).
  */
 val LocalWeatherWidgetEnabled = staticCompositionLocalOf { true }
+/**
+ * CompositionLocal für das Uhr-Widget.
+ */
+val LocalClockWidgetEnabled = staticCompositionLocalOf { true }
+/**
+ * CompositionLocal für das Kalender-/Datum-Widget.
+ */
+val LocalCalendarWidgetEnabled = staticCompositionLocalOf { true }
 
 @Composable
 fun AndroidLauncherTheme(
@@ -68,7 +83,12 @@ fun AndroidLauncherTheme(
     appFont: AppFont = AppFont.SYSTEM_DEFAULT,
     hapticFeedbackEnabled: Boolean = true,
     animationsEnabled: Boolean = true,
+    appOpenAnimationEnabled: Boolean = true,
+    appCloseAnimationEnabled: Boolean = true,
+    menuAnimationEnabled: Boolean = true,
     weatherWidgetEnabled: Boolean = true,
+    clockWidgetEnabled: Boolean = true,
+    calendarWidgetEnabled: Boolean = true,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -136,7 +156,12 @@ fun AndroidLauncherTheme(
         LocalAppFont provides appFont,
         LocalHapticFeedbackEnabled provides hapticFeedbackEnabled,
         LocalAnimationsEnabled provides animationsEnabled,
-        LocalWeatherWidgetEnabled provides weatherWidgetEnabled
+        LocalAppOpenAnimationEnabled provides (animationsEnabled && appOpenAnimationEnabled),
+        LocalAppCloseAnimationEnabled provides (animationsEnabled && appCloseAnimationEnabled),
+        LocalMenuAnimationEnabled provides (animationsEnabled && menuAnimationEnabled),
+        LocalWeatherWidgetEnabled provides weatherWidgetEnabled,
+        LocalClockWidgetEnabled provides clockWidgetEnabled,
+        LocalCalendarWidgetEnabled provides calendarWidgetEnabled
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

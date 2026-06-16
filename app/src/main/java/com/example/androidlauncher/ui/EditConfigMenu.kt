@@ -41,6 +41,8 @@ import com.composables.icons.lucide.BellOff
 import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.CloudSun
+import com.composables.icons.lucide.Clock
+import com.composables.icons.lucide.Calendar
 import com.composables.icons.lucide.Flashlight
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.List
@@ -89,8 +91,13 @@ fun EditConfigMenu(
     onSmartSuggestionsToggled: (Boolean) -> Unit,
     isAnimationsEnabled: Boolean,
     onAnimationsToggled: (Boolean) -> Unit,
+    onOpenAnimationsConfig: () -> Unit,
     isWeatherWidgetEnabled: Boolean,
     onWeatherWidgetToggled: (Boolean) -> Unit,
+    isClockWidgetEnabled: Boolean,
+    onClockWidgetToggled: (Boolean) -> Unit,
+    isCalendarWidgetEnabled: Boolean,
+    onCalendarWidgetToggled: (Boolean) -> Unit,
     appAccessMode: AppAccessMode,
     onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
@@ -172,17 +179,46 @@ fun EditConfigMenu(
             }
 
             item {
-                EditToggleItem(
-                    icon = Lucide.Smartphone, // Temporarily using Smartphone or something else, but we need an icon for animation
+                EditMenuItem(
+                    icon = Lucide.Smartphone,
                     label = "Animationen",
-                    description = "App-Start und sonstige Übergänge",
-                    checked = isAnimationsEnabled,
-                    onCheckedChange = { onAnimationsToggled(it) },
+                    onClick = onOpenAnimationsConfig,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "animations_switch"
+                    statusLabel = if (isAnimationsEnabled) null else "Aus",
+                    testTag = "animations_menu_item"
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.Clock,
+                    label = "Uhr-Widget",
+                    description = "Zeigt die Uhrzeit auf der Startseite",
+                    checked = isClockWidgetEnabled,
+                    onCheckedChange = { onClockWidgetToggled(it) },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "clock_widget_switch"
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.Calendar,
+                    label = "Kalender-Widget",
+                    description = "Zeigt das Datum auf der Startseite",
+                    checked = isCalendarWidgetEnabled,
+                    onCheckedChange = { onCalendarWidgetToggled(it) },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "calendar_widget_switch"
                 )
             }
 
@@ -574,7 +610,7 @@ fun EditMenuItem(
 }
 
 @Composable
-private fun EditToggleItem(
+fun EditToggleItem(
     icon: ImageVector,
     label: String,
     description: String,
@@ -584,10 +620,13 @@ private fun EditToggleItem(
     designStyle: DesignStyle,
     surfaceAccent: Color,
     isDarkTextEnabled: Boolean,
-    switchTestTag: String
+    switchTestTag: String,
+    enabled: Boolean = true
 ) {
     val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     val toggle: (Boolean) -> Unit = { haptics.toggle(it); onCheckedChange(it) }
+    // Ausgegraut, wenn deaktiviert (z. B. wenn der Master-Schalter aus ist).
+    val contentColor = if (enabled) mainTextColor else mainTextColor.copy(alpha = 0.35f)
     val backgroundModifier = Modifier.designSurface(
         designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
@@ -599,7 +638,7 @@ private fun EditToggleItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
-            .clickable { toggle(!checked) },
+            .clickable(enabled = enabled) { toggle(!checked) },
         color = Color.Transparent
     ) {
         Row(
@@ -609,21 +648,21 @@ private fun EditToggleItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = mainTextColor,
+                tint = contentColor,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = label,
-                    color = mainTextColor,
+                    color = contentColor,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
-                    color = mainTextColor.copy(alpha = 0.6f),
+                    color = contentColor.copy(alpha = if (enabled) 0.6f else 0.35f),
                     fontSize = 13.sp,
                     lineHeight = 18.sp
                 )
@@ -633,6 +672,7 @@ private fun EditToggleItem(
                 modifier = Modifier.testTag(switchTestTag),
                 checked = checked,
                 onCheckedChange = toggle,
+                enabled = enabled,
                 colors = LiquidGlass.switchColors(isDarkTextEnabled, designStyle.isGlassLike)
             )
         }

@@ -54,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -98,6 +99,7 @@ import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
+import com.example.androidlauncher.ui.AnimationsConfigMenu
 import com.example.androidlauncher.ui.ThemeSelectionMenu
 import com.example.androidlauncher.ui.DesignStyleMenu
 import com.example.androidlauncher.ui.EditConfigMenu
@@ -121,6 +123,7 @@ import com.example.androidlauncher.ui.openDefaultLauncherSettings
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
+import com.example.androidlauncher.ui.theme.LocalMenuAnimationEnabled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -210,7 +213,17 @@ class MainActivity : ComponentActivity() {
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
             val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
+            val isAppOpenAnimationEnabled by themeManager.isAppOpenAnimationEnabled.collectAsState(initial = true)
+            val isAppCloseAnimationEnabled by themeManager.isAppCloseAnimationEnabled.collectAsState(initial = true)
+            val isMenuAnimationEnabled by themeManager.isMenuAnimationEnabled.collectAsState(initial = true)
+            // Master UND Einzel: Animation läuft nur, wenn beide aktiv sind.
+            val appOpenAnimActive = isAnimationsEnabled && isAppOpenAnimationEnabled
+            val appCloseAnimActive = isAnimationsEnabled && isAppCloseAnimationEnabled
+            // Frischer Zugriff aus dem (einmalig erstellten) Lifecycle-Observer.
+            val appCloseAnimActiveRef = rememberUpdatedState(appCloseAnimActive)
             val isWeatherWidgetEnabled by themeManager.isWeatherWidgetEnabled.collectAsState(initial = true)
+            val isClockWidgetEnabled by themeManager.isClockWidgetEnabled.collectAsState(initial = true)
+            val isCalendarWidgetEnabled by themeManager.isCalendarWidgetEnabled.collectAsState(initial = true)
             val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
@@ -402,7 +415,12 @@ class MainActivity : ComponentActivity() {
                 appFont = currentAppFont,
                 hapticFeedbackEnabled = isHapticFeedbackEnabled,
                 animationsEnabled = isAnimationsEnabled,
-                weatherWidgetEnabled = isWeatherWidgetEnabled
+                appOpenAnimationEnabled = isAppOpenAnimationEnabled,
+                appCloseAnimationEnabled = isAppCloseAnimationEnabled,
+                menuAnimationEnabled = isMenuAnimationEnabled,
+                weatherWidgetEnabled = isWeatherWidgetEnabled,
+                clockWidgetEnabled = isClockWidgetEnabled,
+                calendarWidgetEnabled = isCalendarWidgetEnabled
             ) {
                 // Determine whether to use dark or light text/colors dynamically
                 val lifecycleOwner = LocalLifecycleOwner.current
@@ -453,6 +471,7 @@ class MainActivity : ComponentActivity() {
                 val launchBounceLeadMs = 120L
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
+                var isAnimationsConfigOpen by remember { mutableStateOf(false) }
                 var isDesignMenuOpen by remember { mutableStateOf(false) }
                 var isThemeMenuOpen by remember { mutableStateOf(false) }
                 var isSizeConfigOpen by remember { mutableStateOf(false) }
@@ -560,10 +579,16 @@ class MainActivity : ComponentActivity() {
                                     isInfoOpen = false
                                     selectedFolderForConfig = null
                                  }
-                                activeReturnAnimation = animation
-                                returnIconPackage = null
-                                returnBounceTargetPackage = animation.packageName
-                                returnBounceToken += 1
+                                if (appCloseAnimActiveRef.value) {
+                                    activeReturnAnimation = animation
+                                    returnIconPackage = null
+                                    returnBounceTargetPackage = animation.packageName
+                                    returnBounceToken += 1
+                                } else {
+                                    // Rückkehr-Animation deaktiviert: kein Schrumpfen/Bounce,
+                                    // nur Zustand aufräumen.
+                                    activeReturnAnimation = null
+                                }
                                 pendingReturnAnimation = null
                                 pendingReturnAnimationStartedWallClockMs = 0L
                                 ReturnOriginStore.clear(context, animation.launchedPackageName)
@@ -592,7 +617,7 @@ class MainActivity : ComponentActivity() {
 
                 // Inhalt synchron zum schrumpfenden Rückkehr-Panel zurückholen.
                 LaunchedEffect(activeReturnAnimation) {
-                    if (activeReturnAnimation != null && isAnimationsEnabled) {
+                    if (activeReturnAnimation != null && appCloseAnimActive) {
                         contentRevealProgress.snapTo(1f)
                         contentRevealProgress.animateTo(
                             0f,
@@ -752,14 +777,14 @@ class MainActivity : ComponentActivity() {
                     ReturnOriginStore.save(context, packageName, returnAnimation)
                     isAppLaunchAnimating = true
                     
-                    if (isAnimationsEnabled) {
+                    if (appOpenAnimActive) {
                         activeLaunchBackground = overlayColor
                         activeLaunchBackgroundBrush = overlayBrush
                     }
 
                     scope.launch {
                         try {
-                            if (isAnimationsEnabled) {
+                            if (appOpenAnimActive) {
                                 // 1) Gedrücktes Icon poppt zuerst, damit sichtbar ist,
                                 //    was getippt wurde (Bounce auch beim Öffnen).
                                 launchIconPackage = returnPackageName
@@ -780,7 +805,7 @@ class MainActivity : ComponentActivity() {
                             if (trackAppLaunch && isSmartSuggestionsEnabled) {
                                 searchSuggestionsManager.recordAppLaunch(packageName)
                             }
-                            if (isAnimationsEnabled) {
+                            if (appOpenAnimActive) {
                                 delay(searchLaunchSettleAfterStartMs)
                             }
                         } finally {
@@ -914,20 +939,20 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(
-                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
+                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isAnimationsConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
                     isIconConfigOpen, isUninstallAppsOpen, isHiddenAppsOpen, isWallpaperConfigOpen, isInfoOpen,
                     selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
-                        isColorConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
+                        isColorConfigOpen || isAnimationsConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
                         isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isWallpaperConfigOpen ||
                         isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
 
                 BackHandler(
-                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
+                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isAnimationsConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
                         isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isWallpaperConfigOpen || isInfoOpen ||
                         selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
@@ -945,6 +970,7 @@ class MainActivity : ComponentActivity() {
                         isFavoritesConfigOpen -> isFavoritesConfigOpen = false
                         isThemeMenuOpen -> isThemeMenuOpen = false
                         isDesignMenuOpen -> isDesignMenuOpen = false
+                        isAnimationsConfigOpen -> isAnimationsConfigOpen = false
                         isColorConfigOpen -> isColorConfigOpen = false
                         isSizeConfigOpen -> isSizeConfigOpen = false
                         isEditConfigOpen -> isEditConfigOpen = false
@@ -1303,9 +1329,18 @@ class MainActivity : ComponentActivity() {
                             onAnimationsToggled = { enabled ->
                                 scope.launch { themeManager.setAnimationsEnabled(enabled) }
                             },
+                            onOpenAnimationsConfig = { isAnimationsConfigOpen = true },
                             isWeatherWidgetEnabled = isWeatherWidgetEnabled,
                             onWeatherWidgetToggled = { enabled ->
                                 scope.launch { themeManager.setWeatherWidgetEnabled(enabled) }
+                            },
+                            isClockWidgetEnabled = isClockWidgetEnabled,
+                            onClockWidgetToggled = { enabled ->
+                                scope.launch { themeManager.setClockWidgetEnabled(enabled) }
+                            },
+                            isCalendarWidgetEnabled = isCalendarWidgetEnabled,
+                            onCalendarWidgetToggled = { enabled ->
+                                scope.launch { themeManager.setCalendarWidgetEnabled(enabled) }
                             },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->
@@ -1335,6 +1370,26 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onClose = { isEditConfigOpen = false }
+                        )
+                    }
+
+                    // Untermenü der Animationen – nach dem Edit-Menü komponiert, damit es
+                    // darüber liegt (das Edit-Menü bleibt geöffnet im Hintergrund).
+                    MenuOverlay(
+                        visible = isAnimationsConfigOpen,
+                        backgroundColor = menuBackgroundColor,
+                        onClose = { isAnimationsConfigOpen = false }
+                    ) {
+                        AnimationsConfigMenu(
+                            isAnimationsEnabled = isAnimationsEnabled,
+                            onAnimationsToggled = { scope.launch { themeManager.setAnimationsEnabled(it) } },
+                            isAppOpenAnimationEnabled = isAppOpenAnimationEnabled,
+                            onAppOpenAnimationToggled = { scope.launch { themeManager.setAppOpenAnimationEnabled(it) } },
+                            isAppCloseAnimationEnabled = isAppCloseAnimationEnabled,
+                            onAppCloseAnimationToggled = { scope.launch { themeManager.setAppCloseAnimationEnabled(it) } },
+                            isMenuAnimationEnabled = isMenuAnimationEnabled,
+                            onMenuAnimationToggled = { scope.launch { themeManager.setMenuAnimationEnabled(it) } },
+                            onClose = { isAnimationsConfigOpen = false }
                         )
                     }
 
@@ -1668,7 +1723,7 @@ private fun MenuOverlay(
     onClose: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val animationsEnabled = LocalAnimationsEnabled.current
+    val animationsEnabled = LocalMenuAnimationEnabled.current
     val actualEnterSlideDuration = if (animationsEnabled) enterSlideDuration else 0
     val actualEnterFadeDuration = if (animationsEnabled) enterFadeDuration else 0
     val actualExitSlideDuration = if (animationsEnabled) exitSlideDuration else 0
