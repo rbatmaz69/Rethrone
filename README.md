@@ -1,18 +1,26 @@
 <div align="center">
 
-<img src="Tulpe_minimalist.png" alt="Rethrone Logo" width="160" />
+[<img src="https://flagcdn.com/32x24/gb.png" alt="English"/> **English**](README.md) &nbsp;·&nbsp;
+[<img src="https://flagcdn.com/32x24/de.png" alt="Deutsch"/> Deutsch](README.de.md) &nbsp;·&nbsp;
+[<img src="https://flagcdn.com/32x24/tr.png" alt="Türkçe"/> Türkçe](README.tr.md) &nbsp;·&nbsp;
+[<img src="https://flagcdn.com/32x24/it.png" alt="Italiano"/> Italiano](README.it.md) &nbsp;·&nbsp;
+[<img src="https://flagcdn.com/32x24/sa.png" alt="العربية"/> العربية](README.ar.md)
+
+<br/>
+
+<img src="Tulpe-Photoroom.png" alt="Rethrone Logo" width="160" />
 
 ```
-  ____      _   _                          
- |  _ \ ___| |_| |__  _ __ ___  _ __   ___ 
+  ____      _   _
+ |  _ \ ___| |_| |__  _ __ ___  _ __   ___
  | |_) / _ \ __| '_ \| '__/ _ \| '_ \ / _ \
  |  _ <  __/ |_| | | | | | (_) | | | |  __/
  |_| \_\___|\__|_| |_|_|  \___/|_| |_|\___|
 ```
 
-### 👑 Lang lebe der Homescreen.
+### 👑 Long live the homescreen.
 
-*Ein eleganter, blitzschneller Minimalist-Launcher für Android — komplett in **Jetpack Compose** von Grund auf neu gebaut. Kein Ballast, keine Werbung, nur eine extrem saubere Oberfläche mit Fokus auf Ästhetik und Geschwindigkeit.*
+*An elegant, lightning-fast minimalist launcher for Android — built from the ground up entirely in **Jetpack Compose**. No bloat, no ads, just an extremely clean interface focused on aesthetics and speed.*
 
 <br/>
 
@@ -28,77 +36,104 @@
 
 ---
 
-## ✨ Was Rethrone kann
+## ✨ What Rethrone can do
 
-> 🪶 **Minimalistisches Design** — Fokus auf Typografie, Platz und klare Linien. Nichts lenkt ab.
+> 🪶 **Minimalist design** — Focused on typography, whitespace and clean lines. Nothing distracts.
 
-> 🧊 **Liquid Glass & Themes** — Fünf elegante Farbthemen (Gelb, Blau, Rot, Grün, Lila), ein freies **Color-Wheel** für jede beliebige Farbe und der moderne *Liquid-Glass*-Effekt.
+> 🧊 **Liquid Glass & themes** — Five elegant color themes (yellow, blue, red, green, purple), a free **color wheel** for any color you like, and the modern *Liquid Glass* effect.
 
-> 🌗 **Dynamische Kontraste** — Dark- und Light-Text-Modus für optimale Lesbarkeit auf jedem Wallpaper.
+> 🌗 **Dynamic contrast** — Dark and light text modes for optimal readability on any wallpaper.
 
-> 🔤 **Volle Typo-Kontrolle** — Eigene Schriftarten, Schriftstärke und global einstellbare Icon- & Schriftgrößen.
+> 🔤 **Full typography control** — Custom fonts, font weight and globally adjustable icon & text sizes.
 
-> 🖼️ **Wallpaper-Studio** — Hintergrund setzen und direkt im Launcher zuschneiden (uCrop).
+> 🖼️ **Wallpaper studio** — Set a wallpaper and crop it right inside the launcher (uCrop).
 
-> ✒️ **Custom Line-Art Icons** — Integrierte minimalistische Lucide-Symbole für ein einheitliches Erscheinungsbild.
+> ✒️ **Custom line-art icons** — Integrated minimalist Lucide icons for a consistent look.
 
-> 🎬 **Return-Animation** — Hochwertige, iOS-ähnliche Animationen, die Icons exakt an ihre Ursprungsposition zurückführen.
+> 🎬 **Return animation** — High-quality, iOS-like animations that bring icons back exactly to their origin.
 
 <details>
-<summary><b>📂 Smart App Drawer & Suche</b> — zum Aufklappen</summary>
+<summary><b>🏠 Configurable home widgets</b> — click to expand</summary>
 
 <br/>
 
-- **Niagara-Style A–Z-Scrubber** für blitzschnelle Navigation durch alle Apps.
-- **Ordner** zum Organisieren deiner Apps.
-- **Favoriten-Liste** direkt auf dem Home-Screen — optional mit oder ohne Labels.
-- **Hybrid-Suche** mit intelligenten Vorschlägen.
+- **Clock, calendar (date) and weather** can each be toggled on/off individually.
+- **Weather** sits in the **top-right corner** by default, just below the status bar.
+- Every widget is **freely movable** via the home-screen edit mode (drag & drop).
+- The clock stays **in sync** with the system time and updates exactly on the minute.
 
 </details>
 
 <details>
-<summary><b>🗂️ App-Verwaltung</b> — zum Aufklappen</summary>
+<summary><b>🎬 Granular animation control</b> — click to expand</summary>
 
 <br/>
 
-- Apps **direkt aus dem Launcher deinstallieren**.
-- **App-Shortcuts** per Long-Press (Deep-Links direkt in App-Funktionen).
-- Kontextmenü pro App für schnelle Aktionen.
+- A **master switch** to turn all animations on or off.
+- A dedicated **"Animations" submenu** to toggle individual animation types:
+  **app open**, **app close / return**, and **menus & settings menu**.
 
 </details>
 
 <details>
-<summary><b>🤙 Gesten & Geräte-Aktionen</b> — zum Aufklappen</summary>
+<summary><b>📂 Smart app drawer & search</b> — click to expand</summary>
 
 <br/>
 
-- **Wisch-Gesten:** nach oben für den App-Drawer, nach unten für das Benachrichtigungsfeld.
-- **Shake-Gesten** mit frei konfigurierbaren Aktionen (z.B. Taschenlampe).
-- **Benachrichtigungs-Integration** auf dem Home-Screen.
+- **Niagara-style A–Z scrubber** for lightning-fast navigation through all apps.
+- **Folders** with an **edit mode** to reorder apps via drag & drop.
+- **Favorites list** right on the home screen — optionally with or without labels.
+- **Configurable favorites outline** — choose a border style (none, black, white, accent, subtle).
+- **Hybrid search** with smart suggestions.
 
 </details>
 
-> ℹ️ **Info-Bereich** — Transparenter Zugriff auf App-Version, Lizenzen und Entwicklerinformationen.
+<details>
+<summary><b>🗂️ App management</b> — click to expand</summary>
+
+<br/>
+
+- **Uninstall apps directly** from the launcher.
+- **App shortcuts** via long-press (deep links straight into app functions).
+- Per-app context menu for quick actions.
+
+</details>
+
+<details>
+<summary><b>🤙 Gestures & device actions</b> — click to expand</summary>
+
+<br/>
+
+- **Configurable gestures** via a dedicated **"Gestures" submenu**: freely assign an
+  action to **double-tap** (and to **shake**).
+- Available actions: **app drawer**, **search**, **lock screen**, **notifications**,
+  **flashlight**, **camera**, **do not disturb**, **open a specific app**, **settings**.
+- **Swipe gestures:** swipe up for the app drawer, swipe down for the notification shade.
+- **Notification integration** on the home screen.
+
+</details>
+
+> ℹ️ **Info section** — Transparent access to app version, licenses and developer information.
 
 ---
 
-## 🛠 Tech Stack
+## 🛠 Tech stack
 
 | | |
 |---|---|
-| 🟣 **Sprache** | Kotlin `2.2.10` |
-| 🎨 **UI-Framework** | Jetpack Compose (BOM `2024.09.00`) |
-| 🧱 **Design** | Material 3 Components |
+| 🟣 **Language** | Kotlin `2.2.10` |
+| 🎨 **UI framework** | Jetpack Compose (BOM `2024.09.00`) |
+| 🧱 **Design** | Material 3 components |
 | 🏗️ **Build** | Android Gradle Plugin `9.2.1` |
 | ✒️ **Icons** | [Lucide Icons](https://lucide.dev/) `1.1.0` |
-| ✂️ **Bild-Zuschnitt** | [uCrop](https://github.com/Yalantis/uCrop) `2.2.8` |
+| ✂️ **Image cropping** | [uCrop](https://github.com/Yalantis/uCrop) `2.2.8` |
 | 📱 **SDK** | compile/target `36` · min `26` |
 | 🔍 **Linter** | [detekt](https://detekt.dev/) `1.23.8` |
 | 📊 **Coverage** | [Kover](https://github.com/Kotlin/kotlinx-kover) `0.9.8` |
 
 ---
 
-## 👥 Entwickler
+## 👥 Developers
 
 | 🧑‍💻 | |
 |---|---|
@@ -107,91 +142,91 @@
 
 ---
 
-## 📄 Lizenz
+## 📄 License
 
-Dieses Projekt unterliegt einer **Custom Non-Commercial License**.
+This project is under a **Custom Non-Commercial License**.
 
-- ✅ **Erlaubt:** Kostenlose Nutzung und Installation der APK für private Zwecke. Einsicht und Modifikation des Quellcodes für private Zwecke.
-- ❌ **Verboten:** Jegliche kommerzielle Nutzung, Verkauf, kostenpflichtige Weitergabe oder Monetarisierung (z.B. Werbung).
+- ✅ **Allowed:** Free use and installation of the APK for private purposes. Viewing and modifying the source code for private purposes.
+- ❌ **Forbidden:** Any commercial use, sale, paid distribution or monetization (e.g. ads).
 
 ---
 
-## 📁 Projektstruktur
+## 📁 Project structure
 
 ```text
 .
-├── app                      # 👑 Hauptmodul der Anwendung
+├── app                      # 👑 Main application module
 │   ├── src
 │   │   ├── main
-│   │   │   ├── java         # Kotlin Quellcode
+│   │   │   ├── java         # Kotlin source code
 │   │   │   │   └── com.example.androidlauncher
-│   │   │   │       ├── data       # Datenmodelle & Manager (AppInfo, FolderManager, ThemeManager …)
-│   │   │   │       ├── ui         # UI-Komponenten in Compose (AppDrawer, Menüs, Wallpaper-Crop …)
-│   │   │   │       │   └── theme  # Design System (Farben, Typografie)
-│   │   │   │       ├── *Service   # Notification- & Accessibility-Services, Shake-/Return-Logik
-│   │   │   │       └── MainActivity.kt  # Einstiegspunkt & Navigation
-│   │   │   └── res          # Android Ressourcen (Icons, Strings, XML)
-│   │   └── test             # JVM Unit-Tests
-│   └── build.gradle.kts     # Modulspezifische Gradle Konfiguration
-├── config                   # Konfigurationsdateien
-│   └── detekt               # Detekt (Linter) Konfiguration
-├── gradle                   # Gradle Wrapper und Version Catalog
-│   └── libs.versions.toml   # Zentrale Verwaltung von Abhängigkeiten (Version Catalog)
-├── build.gradle.kts         # Projektweite Gradle Konfiguration
-├── settings.gradle.kts      # Projekt-Einstellungen & inkludierte Module
-└── README.md                # Du bist hier 👋
+│   │   │   │       ├── data       # Data models & managers (AppInfo, FolderManager, ThemeManager …)
+│   │   │   │       ├── ui         # Compose UI components (AppDrawer, menus, wallpaper crop …)
+│   │   │   │       │   └── theme  # Design system (colors, typography)
+│   │   │   │       ├── *Service   # Notification & accessibility services, shake/return logic
+│   │   │   │       └── MainActivity.kt  # Entry point & navigation
+│   │   │   └── res          # Android resources (icons, strings, XML)
+│   │   └── test             # JVM unit tests
+│   └── build.gradle.kts     # Module-specific Gradle configuration
+├── config                   # Configuration files
+│   └── detekt               # Detekt (linter) configuration
+├── gradle                   # Gradle wrapper and version catalog
+│   └── libs.versions.toml   # Central dependency management (version catalog)
+├── build.gradle.kts         # Project-wide Gradle configuration
+├── settings.gradle.kts      # Project settings & included modules
+└── README.md                # You are here 👋
 ```
 
 ---
 
-## 🚀 Entwicklung
+## 🚀 Development
 
-### 🧰 Voraussetzungen
-- Android Studio (aktuelle stabile Version)
+### 🧰 Requirements
+- Android Studio (current stable version)
 - JDK 17
-- Gradle-Wrapper/Daemon ebenfalls mit JDK 17
+- Gradle wrapper/daemon also on JDK 17
 
-### 🔨 Projekt bauen
+### 🔨 Build the project
 ```bash
 ./gradlew assembleDebug
 ```
 
-### ▶️ Debug-App installieren (Standard)
+### ▶️ Install the debug app (default)
 ```bash
-./gradlew run        # Alias für :app:installDebug
+./gradlew run        # alias for :app:installDebug
 ```
 
-### ⚡ Release-App testen — schnell & über WLAN
+### ⚡ Test the release app — fast & over Wi-Fi
 
-Der Release-Build läuft mit R8/Minify und ohne `debuggable`-Overhead und ist daher **spürbar schneller** als Debug. Er wird mit dem Debug-Keystore signiert → über WLAN installierbar und als In-Place-Update *neben* dem Debug-Build (keine Deinstallation nötig).
+The release build runs with R8/minify and without `debuggable` overhead, so it is **noticeably faster** than debug. It is signed with the debug keystore → installable over Wi-Fi and as an in-place update *next to* the debug build (no uninstall needed).
 
 ```bash
-# 1) Handy per WLAN-Debugging verbinden (Android 11+)
-#    Codes aus: Entwickleroptionen → WLAN-Debugging → Mit Pairing-Code koppeln
-adb pair    <handy-ip>:<pair-port> <pairing-code>
-adb connect <handy-ip>:<debug-port>
-adb devices                                   # Gerät sollte gelistet sein
+# 1) Connect your phone via Wi-Fi debugging (Android 11+)
+#    Codes from: Developer options → Wireless debugging → Pair device with pairing code
+adb pair    <phone-ip>:<pair-port> <pairing-code>
+adb connect <phone-ip>:<debug-port>
+adb devices                                   # device should be listed
 
-# 2) Release bauen & installieren
+# 2) Build & install release
 ./gradlew installRelease
 
-# 3) Launcher starten (oder einfach die Home-Taste drücken)
+# 3) Launch the launcher (or just press the home button)
 adb shell am start -n com.example.androidlauncher/.MainActivity
 ```
 
-> 💡 Wegen aktivem ProGuard/R8 die App nach einem Release-Build einmal komplett durchklicken. Fehlt zur Laufzeit eine Klasse, eine passende `-keep`-Regel in `app/proguard-rules.pro` ergänzen.
+> 💡 Because ProGuard/R8 is active, click through the whole app once after a release build. If a class is missing at runtime, add a matching `-keep` rule in `app/proguard-rules.pro`.
 
-### 🧪 Tests ausführen
+### 🧪 Run tests
 ```bash
 ./gradlew :app:testDebugUnitTest
 ```
 
-### 📊 Coverage erzeugen
+### 📊 Generate coverage
 ```bash
 ./gradlew koverXmlReportDebug koverLogDebug
 ```
 
-### 🔍 Linter ausführen
+### 🔍 Run the linter
 ```bash
 ./gradlew detekt
 ```
@@ -200,12 +235,12 @@ adb shell am start -n com.example.androidlauncher/.MainActivity
 
 ## 🩺 Troubleshooting
 
-- `./gradlew clean build` ist erfolgreich, auch wenn `stripDebugDebugSymbols`/`stripReleaseDebugSymbols` meldet, dass bestimmte `.so`-Dateien nicht gestript werden können. Das sind in diesem Kontext nur Warnungen.
-- Wenn `./gradlew clean run` vorher mit `Task 'run' not found` abgebrochen ist: der Root-Task `run` ist nun als Alias für `:app:installDebug` vorhanden.
-- Nutze immer den Wrapper (`./gradlew`) statt `gradle`, damit die im Projekt festgelegte Version aus `gradle/wrapper/gradle-wrapper.properties` verwendet wird.
-- Die Warnung zu `HAPTIC_FEEDBACK_ENABLED` in `ThemeManager.kt` ist eine Deprecation-Warnung und kein Build-Blocker.
-- Die zahlreichen AGP-Deprecation-`WARNING`s bei `installRelease` sind harmlos — solange `BUILD SUCCESSFUL` erscheint, ist alles in Ordnung.
-- Für detaillierte Plugin-/Gradle-Warnungen:
+- `./gradlew clean build` succeeds even if `stripDebugDebugSymbols`/`stripReleaseDebugSymbols` reports that certain `.so` files cannot be stripped. In this context these are only warnings.
+- If `./gradlew clean run` previously aborted with `Task 'run' not found`: the root `run` task now exists as an alias for `:app:installDebug`.
+- Always use the wrapper (`./gradlew`) instead of `gradle`, so the version pinned in `gradle/wrapper/gradle-wrapper.properties` is used.
+- The `HAPTIC_FEEDBACK_ENABLED` warning in `ThemeManager.kt` is a deprecation warning and not a build blocker.
+- The many AGP deprecation `WARNING`s during `installRelease` are harmless — as long as `BUILD SUCCESSFUL` appears, everything is fine.
+- For detailed plugin/Gradle warnings:
 ```bash
 ./gradlew --warning-mode all help
 ```
@@ -214,8 +249,8 @@ adb shell am start -n com.example.androidlauncher/.MainActivity
 
 ## 🤖 CI (GitHub Actions)
 
-- **`android.yml`** — läuft bei **Push auf `main`** und bei **Pull Requests auf `main` / `develop`**. Enthält Detekt-Lint, Unit-Tests und eine Coverage-Summary im Actions-Tab.
-- **`release.yml`** — separater Workflow rund um Release-Artefakte.
+- **`android.yml`** — runs on **push to `main`** and on **pull requests to `main` / `develop`**. Includes Detekt lint, unit tests and a coverage summary in the Actions tab.
+- **`release.yml`** — separate workflow around release artifacts.
 
 <div align="center">
 
