@@ -591,8 +591,20 @@ fun AppDrawer(
                                             .padding(horizontal = folderLayoutSpec.titleSidePaddingDp.dp)
                                     )
                                 }
+
+                                IconButton(
+                                    onClick = { isEditMode = !isEditMode },
+                                    modifier = Modifier.align(Alignment.CenterEnd).size(32.dp)
+                                ) {
+                                    Icon(
+                                        if (isEditMode) Lucide.Check else Lucide.Pencil,
+                                        contentDescription = "EditMode",
+                                        tint = mainTextColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
-                            
+
                             val folderTitleSpacing = when (iconSize) {
                                 IconSize.SMALL -> 5.dp
                                 IconSize.STANDARD -> 8.dp
