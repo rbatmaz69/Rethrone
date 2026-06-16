@@ -83,6 +83,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
@@ -207,6 +208,7 @@ class MainActivity : ComponentActivity() {
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val hiddenApps by themeManager.hiddenApps.collectAsState(initial = emptySet())
             val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
+            val favoritesBorderStyle by themeManager.favoritesBorderStyle.collectAsState(initial = FavoritesBorderStyle.NONE)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
             val doubleShakeAction by themeManager.doubleShakeAction.collectAsState(initial = ShakeAction.FLASHLIGHT)
             val shakeOpenAppPackage by themeManager.shakeOpenAppPackage.collectAsState(initial = null)
@@ -412,6 +414,7 @@ class MainActivity : ComponentActivity() {
                 homeTextColor = homeTextColor,
                 showFavoriteLabels = showFavoriteLabels,
                 designStyle = designStyle,
+                favoritesBorderStyle = favoritesBorderStyle,
                 appFont = currentAppFont,
                 hapticFeedbackEnabled = isHapticFeedbackEnabled,
                 animationsEnabled = isAnimationsEnabled,
@@ -1131,6 +1134,10 @@ class MainActivity : ComponentActivity() {
                             showFavoriteLabels = showFavoriteLabels,
                             onShowLabelsToggled = { show ->
                                 scope.launch { themeManager.setShowFavoriteLabels(show) }
+                            },
+                            favoritesBorderStyle = favoritesBorderStyle,
+                            onBorderStyleSelected = { style ->
+                                scope.launch { themeManager.setFavoritesBorderStyle(style) }
                             },
                             onConfirm = { newFavs ->
                                 scope.launch { favoritesManager.saveFavorites(newFavs) }

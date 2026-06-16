@@ -46,6 +46,7 @@ class ThemeManager(private val context: Context) {
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
         private val DESIGN_STYLE_KEY = stringPreferencesKey("design_style")
+        private val FAVORITES_BORDER_KEY = stringPreferencesKey("favorites_border_style")
         private val APP_FONT_KEY = stringPreferencesKey("app_font")
         private val CUSTOM_WALLPAPER_KEY = stringPreferencesKey("custom_wallpaper_uri")
         private val WALLPAPER_BLUR_KEY = floatPreferencesKey("wallpaper_blur")
@@ -164,6 +165,10 @@ class ThemeManager(private val context: Context) {
                 }
             }
         }
+
+    /** Gewählte Umrandung der Favoriten-Box (Standard: keine). */
+    val favoritesBorderStyle: Flow<FavoritesBorderStyle> = context.dataStore.data
+        .map { FavoritesBorderStyle.fromKey(it[FAVORITES_BORDER_KEY]) }
 
     val selectedAppFont: Flow<AppFont> = context.dataStore.data
         .map { preferences ->
@@ -321,6 +326,7 @@ class ThemeManager(private val context: Context) {
             it[LIQUID_GLASS_KEY] = style.isGlassLike
         }
     }
+    suspend fun setFavoritesBorderStyle(style: FavoritesBorderStyle) { context.dataStore.edit { it[FAVORITES_BORDER_KEY] = style.name } }
     suspend fun setAppFont(font: AppFont) { context.dataStore.edit { it[APP_FONT_KEY] = font.name } }
     suspend fun setCustomWallpaperUri(uri: String?) { context.dataStore.edit { if (uri == null) it.remove(CUSTOM_WALLPAPER_KEY) else it[CUSTOM_WALLPAPER_KEY] = uri } }
     suspend fun setWallpaperBlur(blur: Float) { context.dataStore.edit { it[WALLPAPER_BLUR_KEY] = blur } }

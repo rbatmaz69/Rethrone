@@ -70,6 +70,7 @@ import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.WeatherData
 import com.example.androidlauncher.data.WeatherRepository
@@ -656,7 +657,23 @@ fun HomeScreen(
                         .targetLayout(HomeEditTarget.FAVORITES)
                         .targetEditModifier(HomeEditTarget.FAVORITES)
                 ) {
+                    // Optionale Umrandung der Favoriten-Box (reiner Umriss, innen transparent).
+                    val favoritesBorderColor = when (LocalFavoritesBorderStyle.current) {
+                        FavoritesBorderStyle.NONE -> null
+                        FavoritesBorderStyle.BLACK -> Color.Black.copy(alpha = 0.85f)
+                        FavoritesBorderStyle.WHITE -> Color.White.copy(alpha = 0.85f)
+                        FavoritesBorderStyle.ACCENT -> colorTheme.accentColor(isDarkTextEnabled)
+                        FavoritesBorderStyle.SUBTLE -> mainTextColor.copy(alpha = 0.25f)
+                    }
+                    val favoritesBoxModifier = if (favoritesBorderColor != null) {
+                        Modifier
+                            .border(BorderStroke(1.5.dp, favoritesBorderColor), RoundedCornerShape(28.dp))
+                            .padding(10.dp)
+                    } else {
+                        Modifier
+                    }
                     Column(
+                        modifier = favoritesBoxModifier,
                         verticalArrangement = Arrangement.spacedBy(favoriteSpacing.spacing)
                     ) {
                         if (favorites.isEmpty()) {

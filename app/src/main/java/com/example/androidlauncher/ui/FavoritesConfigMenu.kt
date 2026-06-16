@@ -7,7 +7,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,6 +69,7 @@ import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -94,6 +98,8 @@ fun FavoritesConfigMenu(
     initialFavoritePackages: List<String>,
     showFavoriteLabels: Boolean,
     onShowLabelsToggled: (Boolean) -> Unit,
+    favoritesBorderStyle: FavoritesBorderStyle,
+    onBorderStyleSelected: (FavoritesBorderStyle) -> Unit,
     onConfirm: (List<String>) -> Unit,
     onClose: () -> Unit
 ) {
@@ -180,6 +186,28 @@ fun FavoritesConfigMenu(
                     }
                 }
             )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Umrandung der Favoriten-Box
+        Text("Umrandung", color = grayTone, fontSize = 14.sp)
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FavoritesBorderStyle.entries.forEach { style ->
+                FavoritesBorderChip(
+                    style = style,
+                    isSelected = style == favoritesBorderStyle,
+                    mainTextColor = mainTextColor,
+                    accentColor = LocalColorTheme.current.accentColor(isDarkTextEnabled),
+                    onClick = { onBorderStyleSelected(style) }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -410,5 +438,55 @@ private fun FavoriteOrderItem(
                 )
             }
         }
+    }
+}
+
+/** Vorschau-Chip für eine [FavoritesBorderStyle]-Variante mit Live-Umriss. */
+@Composable
+private fun FavoritesBorderChip(
+    style: FavoritesBorderStyle,
+    isSelected: Boolean,
+    mainTextColor: Color,
+    accentColor: Color,
+    onClick: () -> Unit
+) {
+    val previewBorderColor = when (style) {
+        FavoritesBorderStyle.NONE -> mainTextColor.copy(alpha = 0.12f)
+        FavoritesBorderStyle.BLACK -> Color.Black.copy(alpha = 0.85f)
+        FavoritesBorderStyle.WHITE -> Color.White.copy(alpha = 0.85f)
+        FavoritesBorderStyle.ACCENT -> accentColor
+        FavoritesBorderStyle.SUBTLE -> mainTextColor.copy(alpha = 0.25f)
+    }
+    val previewShape = RoundedCornerShape(14.dp)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(64.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(mainTextColor.copy(alpha = if (isSelected) 0.12f else 0.05f), previewShape)
+                .border(BorderStroke(1.5.dp, previewBorderColor), previewShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(18.dp))
+            } else if (style == FavoritesBorderStyle.NONE) {
+                Text("Ø", color = mainTextColor.copy(alpha = 0.4f), fontSize = 16.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            style.displayName,
+            color = if (isSelected) mainTextColor else mainTextColor.copy(alpha = 0.6f),
+            fontSize = 11.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
@@ -39,6 +40,7 @@ val LocalIconColor = staticCompositionLocalOf { Color.White }
 val LocalHomeTextColor = staticCompositionLocalOf { Color.White }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
 val LocalDesignStyle = staticCompositionLocalOf { DesignStyle.GLASS }
+val LocalFavoritesBorderStyle = staticCompositionLocalOf { FavoritesBorderStyle.NONE }
 val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
 /**
  * CompositionLocal for haptic feedback enabled state.
@@ -80,6 +82,7 @@ fun AndroidLauncherTheme(
     homeTextColor: Color = Color.White,
     showFavoriteLabels: Boolean = false,
     designStyle: DesignStyle = DesignStyle.GLASS,
+    favoritesBorderStyle: FavoritesBorderStyle = FavoritesBorderStyle.NONE,
     appFont: AppFont = AppFont.SYSTEM_DEFAULT,
     hapticFeedbackEnabled: Boolean = true,
     animationsEnabled: Boolean = true,
@@ -153,6 +156,7 @@ fun AndroidLauncherTheme(
         LocalHomeTextColor provides homeTextColor,
         LocalShowFavoriteLabels provides showFavoriteLabels,
         LocalDesignStyle provides designStyle,
+        LocalFavoritesBorderStyle provides favoritesBorderStyle,
         LocalAppFont provides appFont,
         LocalHapticFeedbackEnabled provides hapticFeedbackEnabled,
         LocalAnimationsEnabled provides animationsEnabled,
