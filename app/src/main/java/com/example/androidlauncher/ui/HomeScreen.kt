@@ -631,16 +631,20 @@ fun HomeScreen(
                     }
                 }
 
-                // 3. Wetter (unabhängig verschiebbar, nur wenn aktiviert)
-                if (LocalWeatherWidgetEnabled.current) {
-                    Box(
-                        modifier = Modifier
-                            .wrapContentWidth(Alignment.Start)
-                            .targetLayout(HomeEditTarget.WEATHER)
-                            .targetEditModifier(HomeEditTarget.WEATHER)
-                    ) {
-                        WeatherRow(isPreview = isPreview || isEditMode)
-                    }
+            }
+
+            // 3. Wetter: standardmäßig rechts oben in der Ecke (unter der Statusleiste,
+            // auf Höhe der Uhr), weiterhin frei verschiebbar. Eigene Ebene, damit es
+            // unabhängig von Uhr/Datum positioniert ist.
+            if (LocalWeatherWidgetEnabled.current) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 30.dp)
+                        .targetLayout(HomeEditTarget.WEATHER)
+                        .targetEditModifier(HomeEditTarget.WEATHER)
+                ) {
+                    WeatherRow(isPreview = isPreview || isEditMode)
                 }
             }
 
