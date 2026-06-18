@@ -121,6 +121,10 @@ fun HomeAppScrubber(
     // Schrittweite (px pro Buchstabe) für relatives Scrubbing – kleinere Werte = empfindlicher.
     val minStepPx = with(density) { 10.dp.toPx() }
     val maxStepPx = with(density) { 28.dp.toPx() }
+    // X-Totzone mit Hysterese: Der Daumen macht beim Scrubben eine Bogenbewegung und driftet leicht nach
+    // links – das darf nicht in den App-Auswahl-Modus umschalten. Eintritt > Austritt.
+    val enterListThresholdPx = with(density) { 96.dp.toPx() } // so weit links der Leiste → App-Auswahl
+    val exitListThresholdPx = with(density) { 32.dp.toPx() }  // wieder so nah an der Leiste → Scrubben
 
     var active by remember { mutableStateOf(false) }
     var stripBounds by remember { mutableStateOf(Rect.Zero) }
@@ -231,9 +235,19 @@ fun HomeAppScrubber(
                                 if (sb.height <= 0f) return
                                 val rootX = sb.left + localPos.x
                                 val rootY = sb.top + localPos.y
-                                if (rootX >= sb.left) {
-                                    // Finger über der Leiste → relativ durch die Buchstaben blättern.
+                                // Moduswechsel mit Hysterese: erst ein klar nach links gezogener Finger
+                                // (über die Liste) wechselt in die App-Auswahl; zurück nur, wenn der Finger
+                                // wieder nahe an die Leiste kommt. So unterbricht die Bogenbewegung des
+                                // Daumens das Scrubbing nicht.
+                                if (!inListMode && rootX < sb.left - enterListThresholdPx) {
+                                    inListMode = true
+                                } else if (inListMode && rootX >= sb.left - exitListThresholdPx) {
                                     inListMode = false
+                                    lastScrubY = rootY   // Sprung der Buchstaben beim Zurückwechseln vermeiden
+                                    accumPx = 0f
+                                }
+                                if (!inListMode) {
+                                    // Finger über der Leiste → relativ durch die Buchstaben blättern.
                                     thumbY = rootY
                                     accumPx += rootY - lastScrubY
                                     lastScrubY = rootY
@@ -258,8 +272,7 @@ fun HomeAppScrubber(
                                     val maxTop = (rootHeightPx - listH).coerceAtLeast(0f)
                                     listTopYPx = (rootY - listH / 2f).coerceIn(0f, maxTop)
                                 } else {
-                                    // Finger links der Leiste → App in der Liste wählen
-                                    if (!inListMode) inListMode = true
+                                    // App-Auswahl-Modus → App in der Liste über die Y-Position wählen
                                     val count = (ordered[letters[currentLetterIndex]] ?: emptyList()).size
                                     val rel = rootY - listTopYPx
                                     val idx = (rel / rowHeightPx).toInt()
