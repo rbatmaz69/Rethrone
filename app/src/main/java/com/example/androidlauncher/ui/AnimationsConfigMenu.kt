@@ -24,6 +24,7 @@ import com.composables.icons.lucide.Maximize2
 import com.composables.icons.lucide.Menu
 import com.composables.icons.lucide.Minimize2
 import com.composables.icons.lucide.Sparkles
+import com.composables.icons.lucide.Star
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
@@ -46,6 +47,8 @@ fun AnimationsConfigMenu(
     onAppCloseAnimationToggled: (Boolean) -> Unit,
     isMenuAnimationEnabled: Boolean,
     onMenuAnimationToggled: (Boolean) -> Unit,
+    isFavoritesAnimationEnabled: Boolean,
+    onFavoritesAnimationToggled: (Boolean) -> Unit,
     animationSpeed: Float,
     onAnimationSpeedChanged: (Float) -> Unit,
     onClose: () -> Unit
@@ -186,6 +189,22 @@ fun AnimationsConfigMenu(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "animation_menus_switch",
+                    enabled = isAnimationsEnabled
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.Star,
+                    label = "Favoriten-Leiste",
+                    description = "Vergrößern der App beim Rüberfahren über die Leiste",
+                    checked = isFavoritesAnimationEnabled,
+                    onCheckedChange = { onFavoritesAnimationToggled(it) },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "animation_favorites_switch",
                     enabled = isAnimationsEnabled
                 )
             }

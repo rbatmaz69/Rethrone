@@ -1128,8 +1128,10 @@ private fun FavoriteItem(
     val context = LocalContext.current
     val intSrc = remember { MutableInteractionSource() }
     // Hervorhebung beim Rüberfahren: nur Vergrößerung, kein Hintergrund.
+    // Abschaltbar über die Animationseinstellungen (Favoriten-Leiste).
+    val favoritesAnimationEnabled = LocalFavoritesAnimationEnabled.current
     val hoverScale by animateFloatAsState(
-        targetValue = if (isHovered) 1.12f else 1f,
+        targetValue = if (isHovered && favoritesAnimationEnabled) 1.12f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "FavHoverScale"
     )

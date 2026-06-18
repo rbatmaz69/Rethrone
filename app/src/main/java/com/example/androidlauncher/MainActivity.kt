@@ -226,6 +226,7 @@ class MainActivity : ComponentActivity() {
             val isAppOpenAnimationEnabled by themeManager.isAppOpenAnimationEnabled.collectAsState(initial = true)
             val isAppCloseAnimationEnabled by themeManager.isAppCloseAnimationEnabled.collectAsState(initial = true)
             val isMenuAnimationEnabled by themeManager.isMenuAnimationEnabled.collectAsState(initial = true)
+            val isFavoritesAnimationEnabled by themeManager.isFavoritesAnimationEnabled.collectAsState(initial = true)
             val animationSpeed by themeManager.animationSpeed.collectAsState(initial = 1f)
             // Master UND Einzel: Animation läuft nur, wenn beide aktiv sind.
             val appOpenAnimActive = isAnimationsEnabled && isAppOpenAnimationEnabled
@@ -434,6 +435,7 @@ class MainActivity : ComponentActivity() {
                 appOpenAnimationEnabled = isAppOpenAnimationEnabled,
                 appCloseAnimationEnabled = isAppCloseAnimationEnabled,
                 menuAnimationEnabled = isMenuAnimationEnabled,
+                favoritesAnimationEnabled = isFavoritesAnimationEnabled,
                 animationSpeed = animationSpeed,
                 weatherWidgetEnabled = isWeatherWidgetEnabled,
                 clockWidgetEnabled = isClockWidgetEnabled,
@@ -1418,6 +1420,8 @@ class MainActivity : ComponentActivity() {
                             onAppCloseAnimationToggled = { scope.launch { themeManager.setAppCloseAnimationEnabled(it) } },
                             isMenuAnimationEnabled = isMenuAnimationEnabled,
                             onMenuAnimationToggled = { scope.launch { themeManager.setMenuAnimationEnabled(it) } },
+                            isFavoritesAnimationEnabled = isFavoritesAnimationEnabled,
+                            onFavoritesAnimationToggled = { scope.launch { themeManager.setFavoritesAnimationEnabled(it) } },
                             animationSpeed = animationSpeed,
                             onAnimationSpeedChanged = { scope.launch { themeManager.setAnimationSpeed(it) } },
                             onClose = { isAnimationsConfigOpen = false }

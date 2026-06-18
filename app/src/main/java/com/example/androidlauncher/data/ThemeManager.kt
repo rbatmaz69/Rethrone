@@ -66,6 +66,7 @@ class ThemeManager(private val context: Context) {
         private val ANIMATION_APP_OPEN_KEY = booleanPreferencesKey("animation_app_open")
         private val ANIMATION_APP_CLOSE_KEY = booleanPreferencesKey("animation_app_close")
         private val ANIMATION_MENUS_KEY = booleanPreferencesKey("animation_menus")
+        private val ANIMATION_FAVORITES_KEY = booleanPreferencesKey("animation_favorites")
         // Globaler Tempo-Faktor für alle Animationen (1.0 = normal, 2.0 = doppelt so schnell,
         // 0.5 = halbes Tempo). Standard: 1.0.
         private val ANIMATION_SPEED_KEY = floatPreferencesKey("animation_speed")
@@ -228,6 +229,12 @@ class ThemeManager(private val context: Context) {
      */
     val isMenuAnimationEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[ANIMATION_MENUS_KEY] ?: true }
+
+    /**
+     * Observable flow für die Favoriten-Leisten-Animation (Vergrößern beim Rüberfahren). Default: an.
+     */
+    val isFavoritesAnimationEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[ANIMATION_FAVORITES_KEY] ?: true }
 
     /**
      * Globaler Tempo-Faktor für Animationen (0.5×–2×). Default: 1×.
@@ -496,6 +503,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setMenuAnimationEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[ANIMATION_MENUS_KEY] = enabled
+        }
+    }
+
+    /**
+     * Schaltet die Favoriten-Leisten-Animation (Vergrößern beim Rüberfahren) ein/aus.
+     */
+    suspend fun setFavoritesAnimationEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[ANIMATION_FAVORITES_KEY] = enabled
         }
     }
 
