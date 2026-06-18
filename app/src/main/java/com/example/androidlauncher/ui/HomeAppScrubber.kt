@@ -122,10 +122,12 @@ fun HomeAppScrubber(
     // Schrittweite (px pro Buchstabe) für relatives Scrubbing – kleinere Werte = empfindlicher.
     val minStepPx = with(density) { 10.dp.toPx() }
     val maxStepPx = with(density) { 28.dp.toPx() }
-    // X-Totzone mit Hysterese: Der Daumen macht beim Scrubben eine Bogenbewegung und driftet leicht nach
-    // links – das darf nicht in den App-Auswahl-Modus umschalten. Eintritt > Austritt.
-    val enterListThresholdPx = with(density) { 96.dp.toPx() } // so weit links der Leiste → App-Auswahl
-    val exitListThresholdPx = with(density) { 32.dp.toPx() }  // wieder so nah an der Leiste → Scrubben
+    // App-Auswahl per Bewegungs-Absicht statt fester X-Distanz: eine bewusst nach links gerichtete,
+    // eher waagerechte Bewegung wechselt schnell in die Auswahl; die senkrechte Bogenbewegung beim
+    // Scrubben nicht. Werte sind UX-Tuning (kleiner = reaktiver).
+    val commitEnterPx = with(density) { 28.dp.toPx() }       // Links-Bewegung bis App-Auswahl aktiv
+    val scrubFreezePx = with(density) { 12.dp.toPx() }       // ab hier Buchstabe einfrieren (kein Wechsel mehr)
+    val exitListThresholdPx = with(density) { 32.dp.toPx() } // wieder so nah an der Leiste → Scrubben
 
     var active by remember { mutableStateOf(false) }
     var stripBounds by remember { mutableStateOf(Rect.Zero) }
@@ -138,6 +140,9 @@ fun HomeAppScrubber(
     var lastScrubY by remember { mutableStateOf(0f) }
     var accumPx by remember { mutableStateOf(0f) }
     var thumbY by remember { mutableStateOf(0f) }
+    // Bewegungs-Absicht nach links (px) + letzte Finger-X, um Scrubben von „in die Liste ziehen" zu trennen.
+    var lastX by remember { mutableStateOf(0f) }
+    var commitAccum by remember { mutableStateOf(0f) }
     // -1 = oberste Grenze signalisiert, 1 = unterste, 0 = keine / wieder freigegeben
     var edgeSignaled by remember { mutableStateOf(0) }
 
@@ -246,7 +251,9 @@ fun HomeAppScrubber(
                             inListMode = false
                             // Relatives Scrubbing: ab Druckpunkt zählen, aktueller Buchstabe bleibt.
                             lastScrubY = stripBounds.top + down.position.y
+                            lastX = stripBounds.left + down.position.x
                             accumPx = 0f
+                            commitAccum = 0f
                             edgeSignaled = 0
                             thumbY = stripBounds.top + down.position.y
 
@@ -255,22 +262,36 @@ fun HomeAppScrubber(
                                 if (sb.height <= 0f) return
                                 val rootX = sb.left + localPos.x
                                 val rootY = sb.top + localPos.y
-                                // Moduswechsel mit Hysterese: erst ein klar nach links gezogener Finger
-                                // (über die Liste) wechselt in die App-Auswahl; zurück nur, wenn der Finger
-                                // wieder nahe an die Leiste kommt. So unterbricht die Bogenbewegung des
-                                // Daumens das Scrubbing nicht.
-                                if (!inListMode && rootX < sb.left - enterListThresholdPx) {
+                                val dx = rootX - lastX
+                                val dy = rootY - lastScrubY
+                                lastX = rootX
+                                lastScrubY = rootY
+                                thumbY = rootY
+
+                                // Bewegungs-Absicht erkennen: eine nach links gerichtete, eher waagerechte
+                                // Bewegung ist der Wunsch nach App-Auswahl → baut commitAccum auf. Senkrechtes
+                                // Scrubben oder Bewegung nach rechts baut ihn wieder ab. Dadurch unterbricht die
+                                // (senkrechte) Bogenbewegung das Scrubbing nicht, ein bewusster Links-Wisch
+                                // wechselt aber sofort – ohne vorher den Buchstaben zu ändern.
+                                if (dx < 0f && -dx >= kotlin.math.abs(dy)) {
+                                    commitAccum = (commitAccum - dx).coerceAtMost(commitEnterPx)
+                                } else {
+                                    commitAccum = (commitAccum - kotlin.math.abs(dy) - dx.coerceAtLeast(0f))
+                                        .coerceAtLeast(0f)
+                                }
+
+                                // Eintritt in die App-Auswahl über die Absicht, Austritt über die Position.
+                                if (!inListMode && commitAccum >= commitEnterPx) {
                                     inListMode = true
                                 } else if (inListMode && rootX >= sb.left - exitListThresholdPx) {
                                     inListMode = false
-                                    lastScrubY = rootY   // Sprung der Buchstaben beim Zurückwechseln vermeiden
+                                    commitAccum = 0f
                                     accumPx = 0f
                                 }
-                                if (!inListMode) {
-                                    // Finger über der Leiste → relativ durch die Buchstaben blättern.
-                                    thumbY = rootY
-                                    accumPx += rootY - lastScrubY
-                                    lastScrubY = rootY
+
+                                if (!inListMode && commitAccum < scrubFreezePx) {
+                                    // Buchstaben-Scrubbing (kein Links-Commit aktiv).
+                                    accumPx += dy
                                     val denom = (letters.size - 1).coerceAtLeast(1)
                                     val stepPx = (0.32f * rootHeightPx / denom).coerceIn(minStepPx, maxStepPx)
                                     var idx = currentLetterIndex
@@ -291,13 +312,16 @@ fun HomeAppScrubber(
                                     val listH = count * rowHeightPx
                                     val maxTop = (rootHeightPx - listH).coerceAtLeast(0f)
                                     listTopYPx = (rootY - listH / 2f).coerceIn(0f, maxTop)
-                                } else {
+                                } else if (inListMode) {
                                     // App-Auswahl-Modus → App in der Liste über die Y-Position wählen
                                     val count = (ordered[letters[currentLetterIndex]] ?: emptyList()).size
                                     val rel = rootY - listTopYPx
                                     val idx = (rel / rowHeightPx).toInt()
                                     val newHover = if (idx in 0 until count) idx else -1
                                     if (newHover != hoveredIndex) { hoveredIndex = newHover; if (newHover >= 0) tick() }
+                                } else {
+                                    // Links-Commit im Gange: Buchstabe eingefroren, noch keine App gewählt.
+                                    hoveredIndex = -1
                                 }
                             }
 
