@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -181,25 +182,44 @@ fun HomeAppScrubber(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     currentApps.forEachIndexed { index, app ->
                         val isHovered = inListMode && index == hoveredIndex
-                        Row(
+                        // Animierte „Auswahl-Pille": gefüllt, leicht vergrößert, fettes Label – hebt klar
+                        // hervor, welche App beim Loslassen gestartet wird.
+                        val hl by animateFloatAsState(
+                            targetValue = if (isHovered) 1f else 0f,
+                            label = "ScrubberHover"
+                        )
+                        val scale by animateFloatAsState(
+                            targetValue = if (isHovered) 1.06f else 1f,
+                            label = "ScrubberHoverScale"
+                        )
+                        // Äußere Box bleibt 52 dp hoch – die Treffer-Erkennung rechnet mit rowHeightPx.
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp)
-                                .background(if (isHovered) highlightColor.copy(alpha = 0.30f) else Color.Transparent)
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            AppIconView(app, customIcons = customIcons)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            androidx.compose.material3.Text(
-                                text = app.label,
-                                fontSize = 15.sp * fontSize.scale,
-                                fontFamily = appFont.fontFamily,
-                                fontWeight = fontWeight.weight,
-                                color = mainTextColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(highlightColor.copy(alpha = 0.85f * hl))
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AppIconView(app, customIcons = customIcons)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                androidx.compose.material3.Text(
+                                    text = app.label,
+                                    fontSize = 15.sp * fontSize.scale,
+                                    fontFamily = appFont.fontFamily,
+                                    fontWeight = if (isHovered) FontWeight.Bold else fontWeight.weight,
+                                    color = mainTextColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
