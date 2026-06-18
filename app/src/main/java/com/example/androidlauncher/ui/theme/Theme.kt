@@ -58,6 +58,11 @@ val LocalAppOpenAnimationEnabled = staticCompositionLocalOf { true }
 val LocalAppCloseAnimationEnabled = staticCompositionLocalOf { true }
 val LocalMenuAnimationEnabled = staticCompositionLocalOf { true }
 /**
+ * Globaler Tempo-Faktor für Animationen (1f = normal, 2f = doppelt so schnell,
+ * 0.5f = halbes Tempo). Wird von appTween/appSpring & den Menü-Übergängen genutzt.
+ */
+val LocalAnimationSpeed = staticCompositionLocalOf { 1f }
+/**
  * CompositionLocal für das Wetter-Widget (Symbol + Temperatur unter der Uhr).
  */
 val LocalWeatherWidgetEnabled = staticCompositionLocalOf { true }
@@ -89,6 +94,7 @@ fun AndroidLauncherTheme(
     appOpenAnimationEnabled: Boolean = true,
     appCloseAnimationEnabled: Boolean = true,
     menuAnimationEnabled: Boolean = true,
+    animationSpeed: Float = 1f,
     weatherWidgetEnabled: Boolean = true,
     clockWidgetEnabled: Boolean = true,
     calendarWidgetEnabled: Boolean = true,
@@ -163,6 +169,7 @@ fun AndroidLauncherTheme(
         LocalAppOpenAnimationEnabled provides (animationsEnabled && appOpenAnimationEnabled),
         LocalAppCloseAnimationEnabled provides (animationsEnabled && appCloseAnimationEnabled),
         LocalMenuAnimationEnabled provides (animationsEnabled && menuAnimationEnabled),
+        LocalAnimationSpeed provides animationSpeed,
         LocalWeatherWidgetEnabled provides weatherWidgetEnabled,
         LocalClockWidgetEnabled provides clockWidgetEnabled,
         LocalCalendarWidgetEnabled provides calendarWidgetEnabled

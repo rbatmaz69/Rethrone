@@ -125,6 +125,7 @@ import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.openDefaultLauncherSettings
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalMenuAnimationEnabled
 import kotlinx.coroutines.Dispatchers
@@ -132,6 +133,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Haupt-Activity des Launchers.
@@ -162,7 +164,9 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        intent?.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+        // Hinweis: FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS nachträglich am erhaltenen Intent zu setzen, hat keine
+        // Wirkung – das Flag zählt nur, wenn der Aufrufer es vor startActivity() setzt. Recents-Ausschluss
+        // läuft über das Manifest (excludeFromRecents=true) + enforceExcludeFromRecents() unten.
         logHomeIntent(intent)
 
         // Material You: Wallpaper-Farben für das DYNAMIC-Theme laden + auf Wechsel lauschen.
@@ -222,6 +226,7 @@ class MainActivity : ComponentActivity() {
             val isAppOpenAnimationEnabled by themeManager.isAppOpenAnimationEnabled.collectAsState(initial = true)
             val isAppCloseAnimationEnabled by themeManager.isAppCloseAnimationEnabled.collectAsState(initial = true)
             val isMenuAnimationEnabled by themeManager.isMenuAnimationEnabled.collectAsState(initial = true)
+            val animationSpeed by themeManager.animationSpeed.collectAsState(initial = 1f)
             // Master UND Einzel: Animation läuft nur, wenn beide aktiv sind.
             val appOpenAnimActive = isAnimationsEnabled && isAppOpenAnimationEnabled
             val appCloseAnimActive = isAnimationsEnabled && isAppCloseAnimationEnabled
@@ -429,6 +434,7 @@ class MainActivity : ComponentActivity() {
                 appOpenAnimationEnabled = isAppOpenAnimationEnabled,
                 appCloseAnimationEnabled = isAppCloseAnimationEnabled,
                 menuAnimationEnabled = isMenuAnimationEnabled,
+                animationSpeed = animationSpeed,
                 weatherWidgetEnabled = isWeatherWidgetEnabled,
                 clockWidgetEnabled = isClockWidgetEnabled,
                 calendarWidgetEnabled = isCalendarWidgetEnabled
@@ -457,10 +463,10 @@ class MainActivity : ComponentActivity() {
                 // Beim Öffnen poppt das gedrückte Icon kurz, bevor das Panel es
                 // verdeckt – symmetrisch zum Rückkehr-Bounce.
                 var launchIconPackage by remember { mutableStateOf<String?>(null) }
-                val returnOverlayDurationMs = 260L
+                val returnOverlayDurationMs = (260L / animationSpeed).toLong()
                 // Bounce erst nach Abschluss des Schließen-Panels (260ms), damit er nicht
                 // gegen das noch schrumpfende Panel läuft.
-                val returnBounceDelayMs = 270L
+                val returnBounceDelayMs = (270L / animationSpeed).toLong()
                 var isDrawerOpen by remember { mutableStateOf(false) }
                 var isSettingsOpen by remember { mutableStateOf(false) }
                 var isSearchOpen by remember { mutableStateOf(false) }
@@ -490,11 +496,11 @@ class MainActivity : ComponentActivity() {
                 // Treibt das leichte Zurücktreten (Skalieren/Abdunkeln) des Homescreen-/Drawer-Inhalts,
                 // damit das Start-/Rückkehr-Panel nicht als lose Schicht über eingefrorenem Inhalt wirkt.
                 val contentRevealProgress = remember { Animatable(0f) }
-                val searchLaunchDurationMs = 260L
-                val searchLaunchSettleAfterStartMs = 30L
+                val searchLaunchDurationMs = (260L / animationSpeed).toLong()
+                val searchLaunchSettleAfterStartMs = (30L / animationSpeed).toLong()
                 // Kurzer Vorlauf, in dem nur das gedrückte Icon poppt, bevor das
                 // wachsende Panel es verdeckt.
-                val launchBounceLeadMs = 120L
+                val launchBounceLeadMs = (120L / animationSpeed).toLong()
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isAnimationsConfigOpen by remember { mutableStateOf(false) }
@@ -1019,8 +1025,8 @@ class MainActivity : ComponentActivity() {
                     )
 
                     val animationsEnabled = LocalAnimationsEnabled.current
-                    val slideTweenDuration = if (animationsEnabled) 300 else 0
-                    val fadeTweenDuration = if (animationsEnabled) 200 else 0
+                    val slideTweenDuration = if (animationsEnabled) (300 / animationSpeed).roundToInt() else 0
+                    val fadeTweenDuration = if (animationsEnabled) (200 / animationSpeed).roundToInt() else 0
 
                     AnimatedContent(
                         modifier = Modifier.graphicsLayer {
@@ -1412,6 +1418,8 @@ class MainActivity : ComponentActivity() {
                             onAppCloseAnimationToggled = { scope.launch { themeManager.setAppCloseAnimationEnabled(it) } },
                             isMenuAnimationEnabled = isMenuAnimationEnabled,
                             onMenuAnimationToggled = { scope.launch { themeManager.setMenuAnimationEnabled(it) } },
+                            animationSpeed = animationSpeed,
+                            onAnimationSpeedChanged = { scope.launch { themeManager.setAnimationSpeed(it) } },
                             onClose = { isAnimationsConfigOpen = false }
                         )
                     }
@@ -1680,10 +1688,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun enforceExcludeFromRecents() {
-        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-        val tasks = am.appTasks
-        if (!tasks.isNullOrEmpty()) {
-            tasks[0].setExcludeFromRecents(true)
+        // Alle App-Tasks ausschließen (nicht nur tasks[0]), damit auch vereinzelt entstehende Tasks
+        // verschwinden. Auf manchen OEMs steuert der System-Launcher die Übersicht selbst – dort ist das
+        // Verhalten ggf. nicht beeinflussbar, deshalb defensiv mit try/catch.
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+            am.appTasks.forEach { it.setExcludeFromRecents(true) }
+        } catch (_: Exception) {
         }
     }
 
@@ -1768,10 +1779,11 @@ private fun MenuOverlay(
     content: @Composable () -> Unit
 ) {
     val animationsEnabled = LocalMenuAnimationEnabled.current
-    val actualEnterSlideDuration = if (animationsEnabled) enterSlideDuration else 0
-    val actualEnterFadeDuration = if (animationsEnabled) enterFadeDuration else 0
-    val actualExitSlideDuration = if (animationsEnabled) exitSlideDuration else 0
-    val actualExitFadeDuration = if (animationsEnabled) exitFadeDuration else 0
+    val speed = LocalAnimationSpeed.current
+    val actualEnterSlideDuration = if (animationsEnabled) (enterSlideDuration / speed).roundToInt() else 0
+    val actualEnterFadeDuration = if (animationsEnabled) (enterFadeDuration / speed).roundToInt() else 0
+    val actualExitSlideDuration = if (animationsEnabled) (exitSlideDuration / speed).roundToInt() else 0
+    val actualExitFadeDuration = if (animationsEnabled) (exitFadeDuration / speed).roundToInt() else 0
 
     AnimatedVisibility(
         visible = visible,
@@ -1800,11 +1812,11 @@ private fun MenuOverlay(
                     dismiss.snapTo(ev.progress * 0.20f) // Live-„Peek" während der Geste
                 }
                 // Commit: von der aktuellen Position weiter ganz hinausgleiten, dann schließen.
-                dismiss.animateTo(1f, animationSpec = tween(220, easing = EaseInCubic))
+                dismiss.animateTo(1f, animationSpec = tween((220 / speed).roundToInt(), easing = EaseInCubic))
                 onClose()
             } catch (e: CancellationException) {
                 // Abbruch: zurückfedern.
-                dismiss.animateTo(0f, animationSpec = RethroneSprings.effects())
+                dismiss.animateTo(0f, animationSpec = RethroneSprings.effects(speed))
             }
         }
 

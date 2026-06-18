@@ -27,16 +27,22 @@ import androidx.compose.ui.unit.IntOffset
  */
 object RethroneSprings {
 
-    /** Räumliche Bewegung (Position/Größe): spürbar federnd. */
-    fun <T> spatial(): androidx.compose.animation.core.SpringSpec<T> = spring(
+    /**
+     * Räumliche Bewegung (Position/Größe): spürbar federnd.
+     * [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> spatial(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
         dampingRatio = Spring.DampingRatioLowBouncy,
-        stiffness = Spring.StiffnessMediumLow
+        stiffness = Spring.StiffnessMediumLow * stiffnessScale
     )
 
-    /** Effekte (Alpha/Farbe): weich, aber ohne Nachschwingen. */
-    fun <T> effects(): androidx.compose.animation.core.SpringSpec<T> = spring(
+    /**
+     * Effekte (Alpha/Farbe): weich, aber ohne Nachschwingen.
+     * [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> effects(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
+        stiffness = Spring.StiffnessMedium * stiffnessScale
     )
 }
 
@@ -53,15 +59,16 @@ fun rememberMenuEnter(
     fromBottom: Boolean = true
 ): EnterTransition {
     if (!animationsEnabled) return EnterTransition.None
+    val speed = LocalAnimationSpeed.current
     val scale = scaleIn(
-        animationSpec = RethroneSprings.spatial(),
+        animationSpec = RethroneSprings.spatial(speed),
         initialScale = 0.92f,
         transformOrigin = TransformOrigin(0.5f, if (fromBottom) 1f else 0.5f)
     )
-    val fade = fadeIn(animationSpec = RethroneSprings.effects())
+    val fade = fadeIn(animationSpec = RethroneSprings.effects(speed))
     return if (fromBottom) {
         scale + fade + slideInVertically(
-            animationSpec = RethroneSprings.spatial<IntOffset>(),
+            animationSpec = RethroneSprings.spatial<IntOffset>(speed),
             initialOffsetY = { it / 6 }
         )
     } else {
@@ -78,15 +85,16 @@ fun rememberMenuExit(
     toBottom: Boolean = true
 ): ExitTransition {
     if (!animationsEnabled) return ExitTransition.None
+    val speed = LocalAnimationSpeed.current
     val scale = scaleOut(
-        animationSpec = RethroneSprings.effects(),
+        animationSpec = RethroneSprings.effects(speed),
         targetScale = 0.92f,
         transformOrigin = TransformOrigin(0.5f, if (toBottom) 1f else 0.5f)
     )
-    val fade = fadeOut(animationSpec = RethroneSprings.effects())
+    val fade = fadeOut(animationSpec = RethroneSprings.effects(speed))
     return if (toBottom) {
         scale + fade + slideOutVertically(
-            animationSpec = RethroneSprings.effects<IntOffset>(),
+            animationSpec = RethroneSprings.effects<IntOffset>(speed),
             targetOffsetY = { it / 6 }
         )
     } else {

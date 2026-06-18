@@ -66,6 +66,9 @@ class ThemeManager(private val context: Context) {
         private val ANIMATION_APP_OPEN_KEY = booleanPreferencesKey("animation_app_open")
         private val ANIMATION_APP_CLOSE_KEY = booleanPreferencesKey("animation_app_close")
         private val ANIMATION_MENUS_KEY = booleanPreferencesKey("animation_menus")
+        // Globaler Tempo-Faktor für alle Animationen (1.0 = normal, 2.0 = doppelt so schnell,
+        // 0.5 = halbes Tempo). Standard: 1.0.
+        private val ANIMATION_SPEED_KEY = floatPreferencesKey("animation_speed")
         private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
         // Wetter-Widget unter Uhr/Datum (Standard: an).
         private val WEATHER_WIDGET_KEY = booleanPreferencesKey("weather_widget_enabled")
@@ -225,6 +228,12 @@ class ThemeManager(private val context: Context) {
      */
     val isMenuAnimationEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[ANIMATION_MENUS_KEY] ?: true }
+
+    /**
+     * Globaler Tempo-Faktor für Animationen (0.5×–2×). Default: 1×.
+     */
+    val animationSpeed: Flow<Float> = context.dataStore.data
+        .map { (it[ANIMATION_SPEED_KEY] ?: 1f).coerceIn(0.5f, 2f) }
 
     /**
      * Observable flow für das Wetter-Widget (Symbol + Temperatur unter der Uhr). Default: an.
@@ -487,6 +496,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setMenuAnimationEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[ANIMATION_MENUS_KEY] = enabled
+        }
+    }
+
+    /**
+     * Setzt den globalen Animations-Tempo-Faktor (auf 0.5×–2× begrenzt).
+     */
+    suspend fun setAnimationSpeed(speed: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[ANIMATION_SPEED_KEY] = speed.coerceIn(0.5f, 2f)
         }
     }
 

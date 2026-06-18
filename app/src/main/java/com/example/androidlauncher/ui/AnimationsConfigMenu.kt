@@ -7,6 +7,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +46,8 @@ fun AnimationsConfigMenu(
     onAppCloseAnimationToggled: (Boolean) -> Unit,
     isMenuAnimationEnabled: Boolean,
     onMenuAnimationToggled: (Boolean) -> Unit,
+    animationSpeed: Float,
+    onAnimationSpeedChanged: (Float) -> Unit,
     onClose: () -> Unit
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
@@ -94,6 +98,38 @@ fun AnimationsConfigMenu(
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "animations_master_switch"
                 )
+            }
+
+            // Globaler Tempo-Regler (greift nur, wenn der Master aktiv ist).
+            item {
+                val sliderEnabled = isAnimationsEnabled
+                val contentAlpha = if (sliderEnabled) 1f else 0.35f
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                        .testTag("animation_speed_slider")
+                ) {
+                    Text(
+                        "Geschwindigkeit · ${"%.1f".format(animationSpeed)}×",
+                        color = mainTextColor.copy(alpha = contentAlpha),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Slider(
+                        value = animationSpeed,
+                        onValueChange = onAnimationSpeedChanged,
+                        valueRange = 0.5f..2f,
+                        // 0,5×–2× in 0,1-Schritten → 15 Stufen, 14 Zwischenpunkte.
+                        steps = 14,
+                        enabled = sliderEnabled,
+                        colors = SliderDefaults.colors(
+                            thumbColor = mainTextColor,
+                            activeTrackColor = mainTextColor,
+                            inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
+                        )
+                    )
+                }
             }
 
             item {
