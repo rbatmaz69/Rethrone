@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -93,6 +95,10 @@ fun HomeAppScrubber(
     val fontWeight = LocalFontWeight.current
     val appFont = LocalAppFont.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
+    // Custom-Icons genau einmal pro Leiste sammeln (nicht pro Zeile in AppIconView), sonst würde beim
+    // schnellen Scrubben pro Buchstabenwechsel je Zeile ein neuer IconManager + DataStore-Flow aufgesetzt.
+    val iconManager = remember { IconManager(context) }
+    val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     // Direkt berechnet (nicht via remember(colorTheme,…)): bei CUSTOM/DYNAMIC ändern sich
     // die Farben über den Holder, ohne dass sich der Enum-Key ändert – sonst bliebe die
@@ -166,7 +172,7 @@ fun HomeAppScrubber(
                                 .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AppIconView(app, customIcons = null)
+                            AppIconView(app, customIcons = customIcons)
                             Spacer(modifier = Modifier.width(12.dp))
                             androidx.compose.material3.Text(
                                 text = app.label,
