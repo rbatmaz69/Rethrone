@@ -747,10 +747,14 @@ fun HomeScreen(
                                                 scrubbing = true
                                             }
                                             if (scrubbing) {
-                                                // Finger weit über oder unter der Leiste → Scrubben abbrechen.
-                                                val marginPx = 56.dp.toPx()
-                                                if (change.position.y < -marginPx ||
-                                                    change.position.y > size.height + marginPx
+                                                // Finger weit außerhalb der Leiste (oben/unten ODER
+                                                // seitlich) → Scrubben abbrechen.
+                                                val marginY = 56.dp.toPx()
+                                                val marginX = 120.dp.toPx()
+                                                if (change.position.y < -marginY ||
+                                                    change.position.y > size.height + marginY ||
+                                                    change.position.x < -marginX ||
+                                                    change.position.x > size.width + marginX
                                                 ) {
                                                     hoveredFavIndex = -1
                                                     break
