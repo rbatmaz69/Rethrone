@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.SystemClock
 import android.provider.AlarmClock
 import android.provider.CalendarContract
+import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -14,6 +15,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -45,12 +47,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -701,8 +706,82 @@ fun HomeScreen(
                     } else {
                         Modifier
                     }
+                    // --- Niagara-artiges „Rüberfahren" über die Favoriten-Leiste ---
+                    // Finger vertikal über die Leiste ziehen → App unter dem Finger wird
+                    // hervorgehoben (+ Vibration), beim Loslassen öffnet sie sich.
+                    val favView = LocalView.current
+                    val touchSlop = LocalViewConfiguration.current.touchSlop
+                    var hoveredFavIndex by remember { mutableIntStateOf(-1) }
+                    val favItemBounds = remember(favorites) { mutableStateMapOf<Int, Rect>() }
+                    var favColumnTop by remember { mutableFloatStateOf(0f) }
+                    val favScrubEnabled = !isPreview && !isEditMode && favorites.isNotEmpty()
+                    val favScrubModifier = if (favScrubEnabled) {
+                        Modifier
+                            .onGloballyPositioned { favColumnTop = it.boundsInRoot().top }
+                            .pointerInput(favorites) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val down = awaitFirstDown(
+                                            requireUnconsumed = false,
+                                            pass = PointerEventPass.Initial
+                                        )
+                                        val start = down.position
+                                        var scrubbing = false
+                                        while (true) {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                            if (!change.pressed) {
+                                                if (scrubbing && hoveredFavIndex in favorites.indices) {
+                                                    val app = favorites[hoveredFavIndex]
+                                                    context.packageManager
+                                                        .getLaunchIntentForPackage(app.packageName)
+                                                        ?.let { intent ->
+                                                            onLaunchApp(app.packageName, intent, favItemBounds[hoveredFavIndex])
+                                                        }
+                                                }
+                                                break
+                                            }
+                                            val dy = change.position.y - start.y
+                                            val dx = change.position.x - start.x
+                                            if (!scrubbing && abs(dy) > touchSlop && abs(dy) > abs(dx)) {
+                                                scrubbing = true
+                                            }
+                                            if (scrubbing) {
+                                                // Finger weit über oder unter der Leiste → Scrubben abbrechen.
+                                                val marginPx = 56.dp.toPx()
+                                                if (change.position.y < -marginPx ||
+                                                    change.position.y > size.height + marginPx
+                                                ) {
+                                                    hoveredFavIndex = -1
+                                                    break
+                                                }
+                                                val rootY = favColumnTop + change.position.y
+                                                // Nächstgelegene App wählen (auch in den Lücken zwischen den Items).
+                                                val idx = favorites.indices.minByOrNull { i ->
+                                                    favItemBounds[i]?.let { abs(rootY - (it.top + it.bottom) / 2f) }
+                                                        ?: Float.MAX_VALUE
+                                                } ?: -1
+                                                if (idx != hoveredFavIndex) {
+                                                    hoveredFavIndex = idx
+                                                    if (idx >= 0 && hapticEnabled) {
+                                                        favView.performHapticFeedback(
+                                                            HapticFeedbackConstants.KEYBOARD_TAP,
+                                                            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+                                                        )
+                                                    }
+                                                }
+                                                change.consume()
+                                            }
+                                        }
+                                        hoveredFavIndex = -1
+                                    }
+                                }
+                            }
+                    } else {
+                        Modifier
+                    }
                     Column(
-                        modifier = favoritesBoxModifier,
+                        modifier = favoritesBoxModifier.then(favScrubModifier),
                         verticalArrangement = Arrangement.spacedBy(favoriteSpacing.spacing)
                     ) {
                         if (favorites.isEmpty()) {
@@ -730,13 +809,15 @@ fun HomeScreen(
                                 Icon(Icons.Rounded.Add, contentDescription = null, tint = mainTextColor)
                             }
                         } else {
-                            favorites.forEach { app ->
+                            favorites.forEachIndexed { index, app ->
                                 FavoriteItem(
                                     app = app,
                                     showLabels = showLabels,
                                     fontSize = fontSize.scale,
                                     mainTextColor = mainTextColor,
                                     returnIconPackage = returnIconPackage,
+                                    isHovered = index == hoveredFavIndex,
+                                    onBoundsChanged = { favItemBounds[index] = it },
                                     onAppLaunchForReturn = { pkg, bounds ->
                                         onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds)
                                     },
@@ -1038,12 +1119,20 @@ private fun FavoriteItem(
     fontSize: Float,
     mainTextColor: Color,
     returnIconPackage: String?,
+    isHovered: Boolean = false,
+    onBoundsChanged: (Rect) -> Unit = {},
     onAppLaunchForReturn: (String, Rect?) -> Unit,
     onShortcutRequested: (AppInfo, Rect?) -> Unit,
     isPreview: Boolean = false
 ) {
     val context = LocalContext.current
     val intSrc = remember { MutableInteractionSource() }
+    // Hervorhebung beim Rüberfahren: nur Vergrößerung, kein Hintergrund.
+    val hoverScale by animateFloatAsState(
+        targetValue = if (isHovered) 1.12f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "FavHoverScale"
+    )
     val bounceScale by animateFloatAsState(
         targetValue = if (!LocalAppCloseAnimationEnabled.current) 1f else if (returnIconPackage == app.packageName) 1.2f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
@@ -1063,8 +1152,18 @@ private fun FavoriteItem(
         color = Color.Transparent,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
-            .onGloballyPositioned { coordinates -> itemBounds.value = coordinates.boundsInRoot() }
-            .graphicsLayer { translationX = animatedOffset }
+            .onGloballyPositioned { coordinates ->
+                val b = coordinates.boundsInRoot()
+                itemBounds.value = b
+                onBoundsChanged(b)
+            }
+            .graphicsLayer {
+                translationX = animatedOffset
+                scaleX = hoverScale
+                scaleY = hoverScale
+                // Linksbündig vergrößern, damit das Icon nicht zur Seite wandert.
+                transformOrigin = TransformOrigin(0f, 0.5f)
+            }
             .then(
                 if (!isPreview) {
                     Modifier
