@@ -1,6 +1,7 @@
 package com.example.androidlauncher.ui
 
 import android.content.Intent
+import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -132,6 +133,8 @@ fun HomeAppScrubber(
     var lastScrubY by remember { mutableStateOf(0f) }
     var accumPx by remember { mutableStateOf(0f) }
     var thumbY by remember { mutableStateOf(0f) }
+    // -1 = oberste Grenze signalisiert, 1 = unterste, 0 = keine / wieder freigegeben
+    var edgeSignaled by remember { mutableStateOf(0) }
 
     val barAlpha by animateFloatAsState(targetValue = if (active) 1f else 0f, label = "ScrubberBarAlpha")
 
@@ -143,6 +146,16 @@ fun HomeAppScrubber(
             @Suppress("DEPRECATION")
             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         }
+    }
+
+    // Deutlich anderes Feedback an der obersten/untersten Listengrenze („geht nicht weiter").
+    fun edgeTick() {
+        if (!hapticEnabled) return
+        val constant = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            HapticFeedbackConstants.REJECT          // API 30+: „geht nicht weiter"
+        else HapticFeedbackConstants.LONG_PRESS     // Fallback (kräftiger als KEYBOARD_TAP)
+        @Suppress("DEPRECATION")
+        view.performHapticFeedback(constant)
     }
 
     Box(
@@ -210,6 +223,7 @@ fun HomeAppScrubber(
                             // Relatives Scrubbing: ab Druckpunkt zählen, aktueller Buchstabe bleibt.
                             lastScrubY = stripBounds.top + down.position.y
                             accumPx = 0f
+                            edgeSignaled = 0
                             thumbY = stripBounds.top + down.position.y
 
                             fun handle(localPos: Offset) {
@@ -228,8 +242,16 @@ fun HomeAppScrubber(
                                     var idx = currentLetterIndex
                                     while (accumPx >= stepPx) { idx++; accumPx -= stepPx }
                                     while (accumPx <= -stepPx) { idx--; accumPx += stepPx }
-                                    idx = idx.coerceIn(0, letters.size - 1)
-                                    if (idx != currentLetterIndex) { currentLetterIndex = idx; tick() }
+                                    val last = letters.size - 1
+                                    val clamped = idx.coerceIn(0, last)
+                                    if (clamped != currentLetterIndex) { currentLetterIndex = clamped; tick() }
+                                    when {
+                                        idx < 0 && currentLetterIndex == 0 ->
+                                            if (edgeSignaled != -1) { edgeTick(); edgeSignaled = -1 }
+                                        idx > last && currentLetterIndex == last ->
+                                            if (edgeSignaled != 1) { edgeTick(); edgeSignaled = 1 }
+                                        else -> edgeSignaled = 0   // weg von der Grenze → wieder scharf
+                                    }
                                     hoveredIndex = -1
                                     val count = (ordered[letters[currentLetterIndex]] ?: emptyList()).size
                                     val listH = count * rowHeightPx
