@@ -1142,6 +1142,9 @@ private fun FavoriteItem(
     )
     val itemBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
     val iconBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
+    // Icon-Größe ist (anders als die Icon-Position) unabhängig von der Swipe-Verschiebung
+    // und dient als stabiler Anker für das Shortcut-Menü.
+    var iconSize by remember(app.packageName) { mutableStateOf(IntSize.Zero) }
 
     var horizontalOffset by remember { mutableFloatStateOf(0f) }
     val animatedOffset by animateFloatAsState(
@@ -1172,7 +1175,21 @@ private fun FavoriteItem(
                         .pointerInput(app.packageName) {
                             detectHorizontalDragGestures(
                                 onDragEnd = {
-                                    if (horizontalOffset > 150f) onShortcutRequested(app, itemBounds.value)
+                                    if (horizontalOffset > 150f) {
+                                        // Stabilen Anker nur fürs Icon bauen: Position aus dem
+                                        // (unverschobenen) itemBounds, Breite/Höhe aus der Icon-Größe.
+                                        // So verdeckt das Menü das Logo nicht – egal ob Labels an sind.
+                                        val ib = itemBounds.value
+                                        val anchor = if (ib != null && iconSize.width > 0) {
+                                            Rect(
+                                                left = ib.left,
+                                                top = ib.center.y - iconSize.height / 2f,
+                                                right = ib.left + iconSize.width,
+                                                bottom = ib.center.y + iconSize.height / 2f
+                                            )
+                                        } else ib
+                                        onShortcutRequested(app, anchor)
+                                    }
                                     horizontalOffset = 0f
                                 },
                                 onDragCancel = { horizontalOffset = 0f },
@@ -1200,7 +1217,10 @@ private fun FavoriteItem(
             Box(
                 modifier = Modifier
                     .graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }
-                    .onGloballyPositioned { iconBounds.value = it.boundsInRoot() }
+                    .onGloballyPositioned {
+                        iconBounds.value = it.boundsInRoot()
+                        iconSize = it.size
+                    }
             ) {
                 AppIconView(app, showBadge = true)
             }
