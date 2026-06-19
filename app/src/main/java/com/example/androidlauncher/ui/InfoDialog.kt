@@ -2,7 +2,6 @@ package com.example.androidlauncher.ui
 
 import android.content.Intent
 import androidx.core.net.toUri
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -30,7 +29,6 @@ import com.example.androidlauncher.ui.theme.LocalFontWeight
 
 @Composable
 fun InfoDialog(
-    customWallpaperUri: String? = null,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -39,18 +37,14 @@ fun InfoDialog(
     val fontWeight = LocalFontWeight.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val secondaryTextColor = if (isDarkTextEnabled) Color(0xFF2B2B2B) else Color.White.copy(alpha = 0.72f)
-    val backgroundBrush = remember(colorTheme, isDarkTextEnabled) {
-        colorTheme.menuBrush(isDarkTextEnabled, alpha = 0.95f)
-    }
     val linkColor = remember(colorTheme, isDarkTextEnabled) {
         colorTheme.accentColor(isDarkTextEnabled)
     }
     val scrollState = rememberScrollState()
 
+    // Hintergrund (Wallpaper + Theme-Verlauf) stellt das gemeinsame MenuOverlay bereit –
+    // identisch zu allen anderen Einstellungsmenüs (kein eigener Verlauf, kein Hero-Motiv).
     Box(modifier = Modifier.fillMaxSize()) {
-        SystemWallpaperView(customWallpaperUri)
-        Box(modifier = Modifier.fillMaxSize().background(backgroundBrush))
-
         Column(
             modifier = Modifier
                 .fillMaxSize()

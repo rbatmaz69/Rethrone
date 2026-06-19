@@ -1,31 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Hintergrundbild für das Standard-Theme „Tulpe".
-  Heller „Sonnengruß"-Verlauf: cremeweiß → weiches Sonnengelb (linear-gradient(160deg, …)).
-  Die Tulpen-Silhouette wird separat als zentriertes, warm getöntes Hero-Motiv über diesen
-  Verlauf gelegt (siehe ColorTheme.heroImageRes / heroTint / SystemWallpaperView).
-  Oberer, fast weißer Bereich (#FFFDF6) bleibt top lesbar für Uhr/Datum in dunkler Schrift.
+  Einfarbige Fläche „Sonnen-Creme" (#FFE6A7) für eine warme, aufgeräumte Startseite.
+  Die Tulpen-Silhouette wird separat als zentriertes, warm getöntes Hero-Motiv über diese
+  Fläche gelegt (siehe ColorTheme.heroImageRes / heroTint / SystemWallpaperView).
+  Heller, warmer Ton bleibt top lesbar für Uhr/Datum in dunkler Schrift.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="360dp"
     android:height="720dp"
     android:viewportWidth="1080"
     android:viewportHeight="2160">
 
-    <!-- Voll-Rechteck mit linearem 4-Stopp-Verlauf, Richtung ≈ 160° -->
-    <path android:pathData="M0,0 L1080,0 L1080,2160 L0,2160 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="130" android:startY="-48"
-                android:endX="950" android:endY="3288">
-                <item android:offset="0.0" android:color="#FFFFFDF6" />
-                <item android:offset="0.40" android:color="#FFFFF1C0" />
-                <item android:offset="0.75" android:color="#FFFFE08A" />
-                <item android:offset="1.0" android:color="#FFFFCB6E" />
-            </gradient>
-        </aapt:attr>
-    </path>
+    <!-- Voll-Rechteck, einfarbig (Sonnen-Creme, volle Deckkraft) -->
+    <path
+        android:pathData="M0,0 L1080,0 L1080,2160 L0,2160 Z"
+        android:fillColor="#FFFFE6A7" />
 
 </vector>

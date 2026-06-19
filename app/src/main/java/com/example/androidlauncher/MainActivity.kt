@@ -1560,7 +1560,6 @@ class MainActivity : ComponentActivity() {
                         onClose = { isInfoOpen = false }
                     ) {
                         InfoDialog(
-                            customWallpaperUri = customWallpaperUri,
                             onClose = { isInfoOpen = false }
                         )
                     }
