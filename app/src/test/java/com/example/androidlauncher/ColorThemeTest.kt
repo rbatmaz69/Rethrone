@@ -16,8 +16,17 @@ class ColorThemeTest {
     }
 
     @Test
-    fun `total number of color themes is 76`() {
-        assertEquals(76, ColorTheme.entries.size)
+    fun `total number of color themes is 77`() {
+        assertEquals(77, ColorTheme.entries.size)
+    }
+
+    @Test
+    fun `soft sand theme exists with expected name`() {
+        val softSand = ColorTheme.entries.firstOrNull { it.name == "SOFT_SAND" }
+        assertTrue("Expected SOFT_SAND theme to exist", softSand != null)
+        assertEquals("Tulpe", softSand!!.themeName)
+        assertTrue("Expected SOFT_SAND to ship a background image", softSand.backgroundRes != null)
+        assertTrue("Expected SOFT_SAND to ship a hero image", softSand.heroImageRes != null)
     }
 
     @Test

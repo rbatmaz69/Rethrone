@@ -55,11 +55,8 @@ fun SizeConfigMenu(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val secondaryTextColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
 
-    val backgroundBrush = colorTheme.menuBrush(isDarkTextEnabled, alpha = 0.95f)
+    // Hintergrund (Wallpaper + Theme-Verlauf) stellt das gemeinsame MenuOverlay bereit.
     Box(modifier = Modifier.fillMaxSize()) {
-        SystemWallpaperView(customWallpaperUri)
-        Box(modifier = Modifier.fillMaxSize().background(backgroundBrush))
-
         Column(
             modifier = Modifier
                 .fillMaxSize()

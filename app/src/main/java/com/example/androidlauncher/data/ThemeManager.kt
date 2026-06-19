@@ -93,9 +93,9 @@ class ThemeManager(private val context: Context) {
 
     val selectedTheme: Flow<ColorTheme> = context.dataStore.data
         .map { preferences ->
-            // Standard: helles Papier-Theme "Tagespapier" für Neuinstallationen.
-            val themeName = preferences[THEME_KEY] ?: ColorTheme.PAPER_DAYLIGHT.name
-            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.PAPER_DAYLIGHT }
+            // Standard: warmes Theme "Tulpe" (Amber-Verlauf + schwarze Tulpen-Silhouette) für Neuinstallationen.
+            val themeName = preferences[THEME_KEY] ?: ColorTheme.SOFT_SAND.name
+            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.SOFT_SAND }
         }
 
     val selectedFontSize: Flow<FontSize> = context.dataStore.data
@@ -126,13 +126,15 @@ class ThemeManager(private val context: Context) {
     val isDarkTextEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[DARK_TEXT_KEY] ?: true }
 
-    // Frei wählbare Iconfarbe (gilt überall). Default Weiß.
+    // Frei wählbare Iconfarbe (gilt überall). Default: warmes Karamell-Braun,
+    // passend zum sonnigen Standard-Theme "Tulpe" (Lucide-Fallback-Glyphen lesbar).
     val iconColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[ICON_COLOR_KEY] ?: Color.White.toArgb()) }
+        .map { Color(it[ICON_COLOR_KEY] ?: 0xFF513A14.toInt()) }
 
-    // Frei wählbare Schriftfarbe – nur Startbildschirm. Default Weiß.
+    // Frei wählbare Schriftfarbe – nur Startbildschirm. Default: warmes Karamell-Braun,
+    // damit Uhr/Datum über dem hellen oberen Bereich des Tulpe-Verlaufs gut lesbar sind.
     val homeTextColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[HOME_TEXT_COLOR_KEY] ?: Color.White.toArgb()) }
+        .map { Color(it[HOME_TEXT_COLOR_KEY] ?: 0xFF513A14.toInt()) }
 
     // CUSTOM-Theme: frei wählbare Flächenfarben (Default: dunkel, kontraststark zu Weiß).
     val customBackgroundColor: Flow<Color> = context.dataStore.data

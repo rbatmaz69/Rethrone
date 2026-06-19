@@ -127,6 +127,8 @@ import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
+import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalMenuAnimationEnabled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -196,15 +198,16 @@ class MainActivity : ComponentActivity() {
                 favoritesManager.migrateFromSharedPreferences(context)
             }
 
-            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SIGNATURE)
+            val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SOFT_SAND)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentFontWeight by themeManager.selectedFontWeight.collectAsState(initial = FontWeightLevel.NORMAL)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
             val currentFavoriteSpacing by themeManager.selectedFavoriteSpacing.collectAsState(initial = FavoriteSpacing.STANDARD)
             val currentAppFont by themeManager.selectedAppFont.collectAsState(initial = AppFont.SYSTEM_DEFAULT)
-            val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = false)
-            val iconColor by themeManager.iconColor.collectAsState(initial = Color.White)
-            val homeTextColor by themeManager.homeTextColor.collectAsState(initial = Color.White)
+            // Initiale Werte passend zum warmen Standard-Theme "Tulpe" (vermeidet weißes Aufblitzen).
+            val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = true)
+            val iconColor by themeManager.iconColor.collectAsState(initial = Color(0xFF2C2A28))
+            val homeTextColor by themeManager.homeTextColor.collectAsState(initial = Color(0xFF2C2A28))
             val customBackgroundColor by themeManager.customBackgroundColor.collectAsState(initial = ColorTheme.FallbackCustomBackground)
             val customMenuColor by themeManager.customMenuColor.collectAsState(initial = ColorTheme.FallbackCustomMenu)
             // CUSTOM-Theme: gewählte Flächenfarben in den Holder spiegeln (treibt die Farb-Pipeline).
@@ -443,7 +446,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 // Determine whether to use dark or light text/colors dynamically
                 val lifecycleOwner = LocalLifecycleOwner.current
-                val menuBackgroundColor = currentTheme.menuSurfaceColor(isDarkTextEnabled)
                 val searchLaunchOverlayColor = Color.Black
                 val launchOverlayBrush: Brush? = null
                 val returnOverlayBrush: Brush? = null
@@ -1159,7 +1161,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isFavoritesConfigOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         enableDragToClose = false,
                         onClose = { isFavoritesConfigOpen = false }
                     ) {
@@ -1185,7 +1187,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = selectedFolderForConfig != null,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         enableDragToClose = false,
                         onClose = { selectedFolderForConfig = null }
                     ) {
@@ -1221,7 +1223,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isColorConfigOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isColorConfigOpen = false }
                     ) {
                         ColorConfigMenu(
@@ -1245,7 +1247,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isThemeMenuOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isThemeMenuOpen = false }
                     ) {
                         ThemeSelectionMenu(
@@ -1260,7 +1262,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isDesignMenuOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isDesignMenuOpen = false }
                     ) {
                         DesignStyleMenu(
@@ -1277,7 +1279,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isSizeConfigOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isSizeConfigOpen = false }
                     ) {
                         SizeConfigMenu(
@@ -1298,7 +1300,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isFontSelectionOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isFontSelectionOpen = false }
                     ) {
                         FontSelectionMenu(
@@ -1310,7 +1312,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isEditConfigOpen && !isWallpaperCropOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isEditConfigOpen = false }
                     ) {
                         EditConfigMenu(
@@ -1408,7 +1410,7 @@ class MainActivity : ComponentActivity() {
                     // darüber liegt (das Edit-Menü bleibt geöffnet im Hintergrund).
                     MenuOverlay(
                         visible = isAnimationsConfigOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isAnimationsConfigOpen = false }
                     ) {
                         AnimationsConfigMenu(
@@ -1430,7 +1432,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isGesturesConfigOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isGesturesConfigOpen = false }
                     ) {
                         GesturesConfigMenu(
@@ -1478,7 +1480,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isWallpaperConfigOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isWallpaperConfigOpen = false }
                     ) {
                         WallpaperConfigMenu(
@@ -1496,7 +1498,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isIconConfigOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isIconConfigOpen = false }
                     ) {
                         IconConfigMenu(
@@ -1526,7 +1528,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isUninstallAppsOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isUninstallAppsOpen = false }
                     ) {
                         UninstallAppsMenu(
@@ -1538,7 +1540,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isHiddenAppsOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isHiddenAppsOpen = false }
                     ) {
                         HiddenAppsMenu(
@@ -1554,7 +1556,7 @@ class MainActivity : ComponentActivity() {
 
                     MenuOverlay(
                         visible = isInfoOpen,
-                        backgroundColor = menuBackgroundColor,
+                        customWallpaperUri = customWallpaperUri,
                         onClose = { isInfoOpen = false }
                     ) {
                         InfoDialog(
@@ -1771,7 +1773,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MenuOverlay(
     visible: Boolean,
-    backgroundColor: Color,
+    customWallpaperUri: String?,
     enableDragToClose: Boolean = true,
     enterSlideDuration: Int = 300,
     enterFadeDuration: Int = 200,
@@ -1788,6 +1790,13 @@ private fun MenuOverlay(
     val actualEnterFadeDuration = if (animationsEnabled) (enterFadeDuration / speed).roundToInt() else 0
     val actualExitSlideDuration = if (animationsEnabled) (exitSlideDuration / speed).roundToInt() else 0
     val actualExitFadeDuration = if (animationsEnabled) (exitFadeDuration / speed).roundToInt() else 0
+
+    // Verlaufs-Hintergrund identisch zum „Farben"-Menü (ColorConfigMenu.backgroundBrush).
+    val overlayTheme = LocalColorTheme.current
+    val overlayDarkText = LocalDarkTextEnabled.current
+    val overlayBackgroundBrush = remember(overlayTheme, overlayDarkText) {
+        overlayTheme.backgroundBrush(overlayDarkText, alpha = 0.95f)
+    }
 
     AnimatedVisibility(
         visible = visible,
@@ -1861,8 +1870,13 @@ private fun MenuOverlay(
                         Modifier
                     }
                 )
-                .background(backgroundColor)
         ) {
+            // Einheitlicher Hintergrund für ALLE Einstellungsmenüs: derselbe Farbverlauf
+            // wie im „Farben"-Menü (Wallpaper/Theme-Hintergrund + Theme-Verlaufs-Brush).
+            // Das Hero-Motiv (Tulpe) bleibt dem Startbildschirm vorbehalten (showHero = false).
+            SystemWallpaperView(customWallpaperUri, showHero = false)
+            Box(modifier = Modifier.fillMaxSize().background(overlayBackgroundBrush))
+
             content()
         }
     }

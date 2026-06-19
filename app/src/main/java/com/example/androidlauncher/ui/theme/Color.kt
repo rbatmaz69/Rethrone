@@ -1,8 +1,10 @@
 package com.example.androidlauncher.ui.theme
 
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.CustomColorHolder
 import com.example.androidlauncher.data.DynamicColorHolder
 import kotlin.math.max
@@ -40,7 +42,16 @@ enum class ColorTheme(
     val darkBackgroundBlend: Float = 0.40f,
     val darkMenuBlend: Float = 0.32f,
     val darkSearchBlend: Float = 0.46f,
-    val darkAnimationBlend: Float = 0.30f
+    val darkAnimationBlend: Float = 0.30f,
+    // Optionales, mit dem Theme ausgeliefertes Hintergrundbild (VectorDrawable).
+    // Wird von SystemWallpaperView gezeigt, wenn kein eigenes Wallpaper gesetzt ist.
+    @DrawableRes val backgroundRes: Int? = null,
+    // Optionales, zentriertes Hero-Motiv (z.B. Tulpen-Silhouette), das über dem
+    // Hintergrund liegt. Wird nur gezeigt, wenn kein eigenes Wallpaper gesetzt ist.
+    @DrawableRes val heroImageRes: Int? = null,
+    // Optionale Tönung des Hero-Motivs (z.B. um eine schwarze Silhouette warm einzufärben).
+    // null ⇒ Motiv wird unverändert (Originalfarben) gezeigt.
+    val heroTint: Color? = null
 ) {
     SIGNATURE(
         "Signature",
@@ -704,6 +715,33 @@ enum class ColorTheme(
         Color.White,
         Color(0xFF100E0A),
         highlight = Color(0xFFB8B2A6)
+    ),
+
+    // ── Tulpe-Theme (Standard bei Neuinstallation) ──
+    // Heller „Sonnengruß"-Look: Hintergrund ist ein 4-Stopp-Verlauf (bg_soft_sand),
+    // cremeweiß → weiches Sonnengelb, mit zentrierter, warm-amber getönter Tulpen-Silhouette
+    // als Hero-Motiv (heroImageRes + heroTint). Wirkt beim ersten Öffnen freundlich und hell.
+    // Menü-/Suchflächen bleiben hell-cremig, damit dunkle Schrift gut lesbar ist.
+    // Auf den „dunkler Text"-Modus ausgelegt (starke Dunkel-Blends).
+    SOFT_SAND(
+        "Tulpe",
+        Color(0xFFFFF1C0),               // primary  – helles Butter (oberer Verlauf)
+        Color(0xFFFFCB6E),               // secondary – warmes Gold (Akzentquelle)
+        Color.Black,                     // tertiary
+        Color(0xFF1F1608),               // drawerBackground – warmer Dunkel-Anker (nur Hell-Text-Fallback)
+        artGradient = listOf(Color(0xFFFFFDF6), Color(0xFFFFF1C0), Color(0xFFFFE08A), Color(0xFFFFCB6E)),
+        menuGradient = listOf(Color(0xFFFFFDF6), Color(0xFFFFF6E4), Color(0xFFFFEFD0)),
+        searchGradient = listOf(Color(0xFFFFFDF6), Color(0xFFFFF6E6), Color(0xFFFFF0D6)),
+        animationGradient = listOf(Color(0xFFFFF1C0), Color(0xFFFFE08A), Color(0xFFFFCB6E)),
+        highlight = Color(0xFFFFFEF8),
+        isArtTheme = true,
+        darkBackgroundBlend = 0.64f,
+        darkMenuBlend = 0.62f,
+        darkSearchBlend = 0.66f,
+        darkAnimationBlend = 0.60f,
+        backgroundRes = R.drawable.bg_soft_sand,
+        heroImageRes = R.drawable.ic_tulip_silhouette,
+        heroTint = Color(0xFFB5762A)     // warmes Amber – tönt die schwarze Silhouette weich ein
     ),
 
     // ── Material You: Farben aus dem Hintergrundbild (Laufzeit-Seed) ──

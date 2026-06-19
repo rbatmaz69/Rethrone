@@ -56,9 +56,6 @@ fun ColorConfigMenu(
 ) {
     val fontWeight = LocalFontWeight.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val backgroundBrush = remember(selectedTheme, isDarkTextEnabled) {
-        selectedTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.95f)
-    }
     // Welcher Farbwähler ist gerade offen: "text", "icon", "bg", "menu" oder null.
     var activePicker by remember { mutableStateOf<String?>(null) }
     // Ob die Wallpaper-Farbpinzette gerade aktiv ist (überdeckt den Picker-Dialog).
@@ -67,9 +64,8 @@ fun ColorConfigMenu(
         selectedTheme.menuSurfaceColor(isDarkTextEnabled)
     }
 
+    // Hintergrund (Wallpaper + Theme-Verlauf) stellt das gemeinsame MenuOverlay bereit.
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
-        SystemWallpaperView(customWallpaperUri)
-        Box(modifier = Modifier.fillMaxSize().background(backgroundBrush))
 
         Column(
             modifier = Modifier
@@ -282,9 +278,6 @@ fun ThemeSelectionMenu(
 ) {
     val fontWeight = LocalFontWeight.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val backgroundBrush = remember(selectedTheme, isDarkTextEnabled) {
-        selectedTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.95f)
-    }
     val orderedThemes = remember {
         ColorTheme.entries.sortedWith(
             // "Eigene Farbe" und "Dynamisch" ganz vorne, dann Art-Themes, dann alphabetisch.
@@ -295,9 +288,8 @@ fun ThemeSelectionMenu(
         )
     }
 
+    // Hintergrund (Wallpaper + Theme-Verlauf) stellt das gemeinsame MenuOverlay bereit.
     Box(modifier = Modifier.fillMaxSize().testTag("theme_selection_menu")) {
-        SystemWallpaperView(customWallpaperUri)
-        Box(modifier = Modifier.fillMaxSize().background(backgroundBrush))
 
         Column(
             modifier = Modifier
