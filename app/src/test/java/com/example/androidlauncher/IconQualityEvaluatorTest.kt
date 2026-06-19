@@ -7,7 +7,6 @@ import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.data.IconAlphaMask
 import com.example.androidlauncher.data.IconQualityEvaluator
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import kotlin.math.pow
@@ -17,8 +16,7 @@ class IconQualityEvaluatorTest {
     @Test
     fun `serialized fallback roundtrips with current version`() {
         val fallback = AutoIconFallback(
-            type = AutoIconFallbackType.LUCIDE,
-            lucideIconName = "Chrome",
+            type = AutoIconFallbackType.NEUTRAL,
             reason = "full_bleed_square"
         )
 
@@ -38,24 +36,23 @@ class IconQualityEvaluatorTest {
 
     @Test
     fun `invalid serialized version is ignored`() {
-        val restored = AutoIconFallback.deserialize("LUCIDE|999|Chrome|full_bleed_square")
+        val restored = AutoIconFallback.deserialize("NEUTRAL|1|full_bleed_square")
         assertNull(restored)
     }
 
     @Test
-    fun `full bleed square chrome icon gets lucide fallback`() {
+    fun `full bleed square icon gets neutral fallback`() {
         val result = IconQualityEvaluator.evaluate(
             mask = filledMask(),
             packageName = "com.android.chrome",
             label = "Chrome"
         )
 
-        assertEquals(AutoIconFallbackType.LUCIDE, result.type)
-        assertEquals("Chrome", result.lucideIconName)
+        assertEquals(AutoIconFallbackType.NEUTRAL, result.type)
     }
 
     @Test
-    fun `tiny unreadable icon gets neutral fallback when no mapping exists`() {
+    fun `tiny unreadable icon gets neutral fallback`() {
         val result = IconQualityEvaluator.evaluate(
             mask = singleDotMask(),
             packageName = "com.example.unknown",
@@ -63,7 +60,6 @@ class IconQualityEvaluatorTest {
         )
 
         assertEquals(AutoIconFallbackType.NEUTRAL, result.type)
-        assertNull(result.lucideIconName)
     }
 
     @Test
@@ -110,19 +106,7 @@ class IconQualityEvaluatorTest {
             explicitRule = AutoIconRule(mode = AutoIconRuleMode.FORCE_FALLBACK, reason = "user_config")
         )
 
-        assertEquals(AutoIconFallbackType.LUCIDE, result.type)
-        assertEquals("NotebookPen", result.lucideIconName)
-    }
-
-    @Test
-    fun `keyword mapping can suggest lucide fallback for notes app`() {
-        val iconName = IconQualityEvaluator.resolveLucideFallbackName(
-            packageName = "com.example.notes",
-            label = "My Notes"
-        )
-
-        assertNotNull(iconName)
-        assertEquals("NotebookPen", iconName)
+        assertEquals(AutoIconFallbackType.NEUTRAL, result.type)
     }
 
     private fun filledMask(): IconAlphaMask {

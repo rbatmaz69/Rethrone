@@ -14,42 +14,8 @@ private val DEFAULT_AUTO_ICON_RULES: Map<String, AutoIconRule> = mapOf(
     "org.mozilla.klar" to AutoIconRule(AutoIconRuleMode.KEEP_ORIGINAL, reason = "default_firefox_brand")
 )
 
-private val FALLBACK_LUCIDE_PACKAGE_MAP: Map<String, String> = mapOf(
-    "com.android.chrome" to "Chrome",
-    "com.android.vending" to "Play",
-    "com.google.android.youtube" to "Youtube",
-    "com.google.android.apps.youtube.music" to "Music",
-    "com.google.android.calendar" to "Calendar",
-    "com.android.calendar" to "Calendar",
-    "com.android.camera" to "Camera",
-    "com.google.android.GoogleCamera" to "Camera",
-    "com.google.android.calculator" to "Calculator",
-    "com.google.android.googlequicksearchbox" to "Mic",
-    "com.google.android.apps.nbu.files" to "FolderOpen",
-    "com.example.androidlauncher" to "Crown"
-)
-
-private val FALLBACK_LUCIDE_KEYWORDS: List<Pair<Regex, String>> = listOf(
-    Regex("calendar|kalender", RegexOption.IGNORE_CASE) to "Calendar",
-    Regex("camera|kamera", RegexOption.IGNORE_CASE) to "Camera",
-    Regex("music|musik|spotify|audio", RegexOption.IGNORE_CASE) to "Music",
-    Regex("youtube|video", RegexOption.IGNORE_CASE) to "Youtube",
-    Regex("chrome|browser", RegexOption.IGNORE_CASE) to "Chrome",
-    Regex("calculator|rechner", RegexOption.IGNORE_CASE) to "Calculator",
-    Regex("files|dateien|file manager", RegexOption.IGNORE_CASE) to "FolderOpen",
-    Regex("mail|gmail|email", RegexOption.IGNORE_CASE) to "Mail",
-    Regex("maps|karten|navigation", RegexOption.IGNORE_CASE) to "Map",
-    Regex("phone|telefon|dialer", RegexOption.IGNORE_CASE) to "Phone",
-    Regex("message|nachrichten|sms|chat", RegexOption.IGNORE_CASE) to "MessageCircle",
-    Regex("settings|einstellungen", RegexOption.IGNORE_CASE) to "Settings",
-    Regex("clock|uhr|alarm", RegexOption.IGNORE_CASE) to "Clock",
-    Regex("gallery|photos|fotos|bilder", RegexOption.IGNORE_CASE) to "Image",
-    Regex("notes|notizen", RegexOption.IGNORE_CASE) to "NotebookPen"
-)
-
 enum class AutoIconFallbackType {
     ORIGINAL,
-    LUCIDE,
     NEUTRAL
 }
 
@@ -77,7 +43,6 @@ data class AutoIconRule(
 
 data class AutoIconFallback(
     val type: AutoIconFallbackType,
-    val lucideIconName: String? = null,
     val reason: String = "kept_original",
     val analysisVersion: Int = CURRENT_ANALYSIS_VERSION
 ) {
@@ -86,24 +51,22 @@ data class AutoIconFallback(
     fun serialize(): String = listOf(
         type.name,
         analysisVersion.toString(),
-        lucideIconName.orEmpty(),
         reason
     ).joinToString(AUTO_ICON_SERIALIZATION_DELIMITER)
 
     companion object {
-        const val CURRENT_ANALYSIS_VERSION = 1
+        const val CURRENT_ANALYSIS_VERSION = 2
 
         fun deserialize(raw: String): AutoIconFallback? {
-            val parts = raw.split(AUTO_ICON_SERIALIZATION_DELIMITER, limit = 4)
-            if (parts.size != 4) return null
+            val parts = raw.split(AUTO_ICON_SERIALIZATION_DELIMITER, limit = 3)
+            if (parts.size != 3) return null
             val type = parts[0].let { runCatching { AutoIconFallbackType.valueOf(it) }.getOrNull() } ?: return null
             val version = parts[1].toIntOrNull() ?: return null
             if (version != CURRENT_ANALYSIS_VERSION) return null
             return AutoIconFallback(
                 type = type,
                 analysisVersion = version,
-                lucideIconName = parts[2].ifBlank { null },
-                reason = parts[3].ifBlank { "unknown" }
+                reason = parts[2].ifBlank { "unknown" }
             )
         }
     }
@@ -133,7 +96,7 @@ object IconQualityEvaluator {
                 return AutoIconFallback(type = AutoIconFallbackType.ORIGINAL, reason = "configured_keep_original")
             }
             AutoIconRuleMode.FORCE_FALLBACK -> {
-                return fallbackFor(packageName, label, reason = "configured_force_fallback")
+                return fallbackFor(reason = "configured_force_fallback")
             }
             AutoIconRuleMode.FOLLOW_HEURISTIC,
             null -> Unit
@@ -193,7 +156,7 @@ object IconQualityEvaluator {
         }
 
         if (visibleCount == 0) {
-            return fallbackFor(packageName, label, reason = "empty_mask")
+            return fallbackFor(reason = "empty_mask")
         }
 
         val bboxWidth = maxX - minX + 1
@@ -221,7 +184,7 @@ object IconQualityEvaluator {
 
         val isTinyOrUnreadable = fillRatio < 0.035f || (centerCoverage < 0.025f && fillRatio < 0.08f)
         if (isTinyOrUnreadable) {
-            return fallbackFor(packageName, label, reason = "too_small_or_low_center_weight")
+            return fallbackFor(reason = "too_small_or_low_center_weight")
         }
 
         val isFullBleedSquare = bboxWidthRatio > 0.86f &&
@@ -229,7 +192,7 @@ object IconQualityEvaluator {
             edgeTouchSides >= 3 &&
             cornerCoverage > 0.16f
         if (isFullBleedSquare) {
-            return fallbackFor(packageName, label, reason = "full_bleed_square")
+            return fallbackFor(reason = "full_bleed_square")
         }
 
         val isDenseLowDetailBlock = fillRatio > 0.50f &&
@@ -239,7 +202,7 @@ object IconQualityEvaluator {
             aspectDelta < 0.18f &&
             alphaVariance < 0.028
         if (isDenseLowDetailBlock) {
-            return fallbackFor(packageName, label, reason = "dense_low_detail_block")
+            return fallbackFor(reason = "dense_low_detail_block")
         }
 
         return AutoIconFallback(type = AutoIconFallbackType.ORIGINAL, reason = "quality_ok")
@@ -265,28 +228,8 @@ object IconQualityEvaluator {
 
     fun resolveDefaultRule(packageName: String): AutoIconRule? = DEFAULT_AUTO_ICON_RULES[packageName]
 
-    fun resolveLucideFallbackName(packageName: String, label: String): String? {
-        FALLBACK_LUCIDE_PACKAGE_MAP[packageName]?.let { return it }
-        val haystack = "$packageName $label"
-        return FALLBACK_LUCIDE_KEYWORDS.firstNotNullOfOrNull { (pattern, iconName) ->
-            iconName.takeIf { pattern.containsMatchIn(haystack) }
-        }
-    }
-
-    private fun fallbackFor(packageName: String, label: String, reason: String): AutoIconFallback {
-        val lucideIconName = resolveLucideFallbackName(packageName, label)
-        return if (lucideIconName != null) {
-            AutoIconFallback(
-                type = AutoIconFallbackType.LUCIDE,
-                lucideIconName = lucideIconName,
-                reason = reason
-            )
-        } else {
-            AutoIconFallback(
-                type = AutoIconFallbackType.NEUTRAL,
-                reason = reason
-            )
-        }
+    private fun fallbackFor(reason: String): AutoIconFallback {
+        return AutoIconFallback(type = AutoIconFallbackType.NEUTRAL, reason = reason)
     }
 }
 

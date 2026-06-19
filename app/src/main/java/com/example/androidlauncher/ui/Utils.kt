@@ -317,7 +317,6 @@ fun AppIconView(
 
     val manualLucideIcon = resolvedCustomIcons[app.packageName]?.let(::getLucideIconByName)
     val autoFallback = app.autoIconFallback
-    val autoLucideIcon = autoFallback?.lucideIconName?.let(::getLucideIconByName)
 
     Box(
         modifier = modifier.size(iconSize),
@@ -327,14 +326,6 @@ fun AppIconView(
             manualLucideIcon != null -> {
                 Icon(
                     imageVector = manualLucideIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(iconSize * 0.65f),
-                    tint = tintColor
-                )
-            }
-            autoFallback?.type == AutoIconFallbackType.LUCIDE && autoLucideIcon != null -> {
-                Icon(
-                    imageVector = autoLucideIcon,
                     contentDescription = null,
                     modifier = Modifier.size(iconSize * 0.65f),
                     tint = tintColor

@@ -642,7 +642,6 @@ private fun buildIconStatusLabel(app: AppInfo, explicitRule: AutoIconRule?): Str
     }
     return ruleLabel ?: when (app.autoIconFallback?.type) {
         com.example.androidlauncher.data.AutoIconFallbackType.ORIGINAL -> "Auto · Original"
-        com.example.androidlauncher.data.AutoIconFallbackType.LUCIDE -> "Auto · Lucide ${app.autoIconFallback.lucideIconName.orEmpty()}".trim()
         com.example.androidlauncher.data.AutoIconFallbackType.NEUTRAL -> "Auto · Neutraler Container"
         null -> null
     }
