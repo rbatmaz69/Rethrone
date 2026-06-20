@@ -146,7 +146,8 @@ class ThemeManager(private val context: Context) {
     // Ausgeblendete Apps (Paketnamen). Werden überall aus der Anzeige gefiltert.
     val hiddenApps: Flow<Set<String>> = context.dataStore.data
         .map { prefs ->
-            val raw = prefs[HIDDEN_APPS_KEY] ?: ""
+            // Wert ist verschlüsselt abgelegt; decryptOrLegacy migriert alten Klartext transparent.
+            val raw = CryptoManager.decryptOrLegacy(prefs[HIDDEN_APPS_KEY])
             if (raw.isEmpty()) emptySet() else raw.split(",").filter { it.isNotEmpty() }.toSet()
         }
 
@@ -283,7 +284,7 @@ class ThemeManager(private val context: Context) {
      * Paketname der App, die bei [GestureAction.OPEN_APP] (Schütteln) gestartet wird (null, wenn keine gewählt).
      */
     val shakeOpenAppPackage: Flow<String?> = context.dataStore.data
-        .map { preferences -> preferences[SHAKE_OPEN_APP_PACKAGE_KEY]?.takeIf { it.isNotBlank() } }
+        .map { preferences -> CryptoManager.decryptOrLegacy(preferences[SHAKE_OPEN_APP_PACKAGE_KEY]).takeIf { it.isNotBlank() } }
 
     /**
      * Aktion für die Doppeltipp-Geste auf dem Startbildschirm. Default: Bildschirm sperren
@@ -299,7 +300,7 @@ class ThemeManager(private val context: Context) {
      * Paketname der App, die bei [GestureAction.OPEN_APP] (Doppeltippen) gestartet wird (null, wenn keine gewählt).
      */
     val doubleTapAppPackage: Flow<String?> = context.dataStore.data
-        .map { preferences -> preferences[DOUBLE_TAP_APP_PACKAGE_KEY]?.takeIf { it.isNotBlank() } }
+        .map { preferences -> CryptoManager.decryptOrLegacy(preferences[DOUBLE_TAP_APP_PACKAGE_KEY]).takeIf { it.isNotBlank() } }
 
     /**
      * Gewählte Art des App-Zugriffs. Default ist die Drawer-Liste (Niagara-Stil).
@@ -353,7 +354,7 @@ class ThemeManager(private val context: Context) {
     suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }
     suspend fun setCustomBackgroundColor(color: Color) { context.dataStore.edit { it[CUSTOM_BG_COLOR_KEY] = color.toArgb() } }
     suspend fun setCustomMenuColor(color: Color) { context.dataStore.edit { it[CUSTOM_MENU_COLOR_KEY] = color.toArgb() } }
-    suspend fun setHiddenApps(packages: Set<String>) { context.dataStore.edit { it[HIDDEN_APPS_KEY] = packages.joinToString(",") } }
+    suspend fun setHiddenApps(packages: Set<String>) { context.dataStore.edit { it[HIDDEN_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) } }
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
     suspend fun setDesignStyle(style: DesignStyle) {
@@ -427,7 +428,7 @@ class ThemeManager(private val context: Context) {
             if (packageName.isNullOrBlank()) {
                 preferences.remove(SHAKE_OPEN_APP_PACKAGE_KEY)
             } else {
-                preferences[SHAKE_OPEN_APP_PACKAGE_KEY] = packageName
+                preferences[SHAKE_OPEN_APP_PACKAGE_KEY] = CryptoManager.encrypt(packageName)
             }
         }
     }
@@ -449,7 +450,7 @@ class ThemeManager(private val context: Context) {
             if (packageName.isNullOrBlank()) {
                 preferences.remove(DOUBLE_TAP_APP_PACKAGE_KEY)
             } else {
-                preferences[DOUBLE_TAP_APP_PACKAGE_KEY] = packageName
+                preferences[DOUBLE_TAP_APP_PACKAGE_KEY] = CryptoManager.encrypt(packageName)
             }
         }
     }

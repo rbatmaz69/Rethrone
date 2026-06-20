@@ -37,14 +37,19 @@ class SearchSuggestionsManager(
         private const val EMPTY_JSON_ARRAY = "[]"
     }
 
+    // Suchverlauf und App-Nutzung sind sensibel und werden verschlüsselt abgelegt.
+    // decryptOrLegacy migriert alten Klartext aus früheren Versionen transparent.
+    private fun decodeStored(stored: String?): String =
+        CryptoManager.decryptOrLegacy(stored).ifEmpty { EMPTY_JSON_ARRAY }
+
     val webHistory: Flow<List<SearchHistoryEntry>> = dataStore.data
         .map { preferences ->
-            parseHistoryEntries(preferences[WEB_HISTORY_KEY] ?: EMPTY_JSON_ARRAY)
+            parseHistoryEntries(decodeStored(preferences[WEB_HISTORY_KEY]))
         }
 
     val appUsageStats: Flow<Map<String, AppUsageStats>> = dataStore.data
         .map { preferences ->
-            parseAppUsageEntries(preferences[APP_USAGE_KEY] ?: EMPTY_JSON_ARRAY)
+            parseAppUsageEntries(decodeStored(preferences[APP_USAGE_KEY]))
                 .associateBy { it.packageName }
         }
 
@@ -53,9 +58,9 @@ class SearchSuggestionsManager(
         if (trimmedQuery.isEmpty()) return
 
         dataStore.edit { preferences ->
-            val currentEntries = parseHistoryEntries(preferences[WEB_HISTORY_KEY] ?: EMPTY_JSON_ARRAY)
+            val currentEntries = parseHistoryEntries(decodeStored(preferences[WEB_HISTORY_KEY]))
             val updatedEntries = upsertHistoryEntry(currentEntries, trimmedQuery, timestamp)
-            preferences[WEB_HISTORY_KEY] = serializeHistoryEntries(updatedEntries)
+            preferences[WEB_HISTORY_KEY] = CryptoManager.encrypt(serializeHistoryEntries(updatedEntries))
         }
     }
 
@@ -63,9 +68,9 @@ class SearchSuggestionsManager(
         if (packageName.isBlank()) return
 
         dataStore.edit { preferences ->
-            val currentEntries = parseAppUsageEntries(preferences[APP_USAGE_KEY] ?: EMPTY_JSON_ARRAY)
+            val currentEntries = parseAppUsageEntries(decodeStored(preferences[APP_USAGE_KEY]))
             val updatedEntries = upsertAppUsageEntry(currentEntries, packageName, timestamp)
-            preferences[APP_USAGE_KEY] = serializeAppUsageEntries(updatedEntries)
+            preferences[APP_USAGE_KEY] = CryptoManager.encrypt(serializeAppUsageEntries(updatedEntries))
         }
     }
 
@@ -74,9 +79,9 @@ class SearchSuggestionsManager(
         if (normalizedQuery.isEmpty()) return
 
         dataStore.edit { preferences ->
-            val currentEntries = parseHistoryEntries(preferences[WEB_HISTORY_KEY] ?: EMPTY_JSON_ARRAY)
+            val currentEntries = parseHistoryEntries(decodeStored(preferences[WEB_HISTORY_KEY]))
             val updatedEntries = currentEntries.filterNot { normalize(it.query) == normalizedQuery }
-            preferences[WEB_HISTORY_KEY] = serializeHistoryEntries(updatedEntries)
+            preferences[WEB_HISTORY_KEY] = CryptoManager.encrypt(serializeHistoryEntries(updatedEntries))
         }
     }
 
