@@ -114,7 +114,7 @@ fun PatternLockView(
 }
 
 /** Liefert den Knotenindex (0..8) nahe der Berührung oder null. */
-private fun hitNode(offset: Offset, size: Float): Int? {
+internal fun hitNode(offset: Offset, size: Float): Int? {
     if (size <= 0f) return null
     val step = size / 3f
     val col = (offset.x / step).toInt().coerceIn(0, 2)

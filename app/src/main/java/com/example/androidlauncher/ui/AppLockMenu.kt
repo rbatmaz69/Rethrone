@@ -415,7 +415,7 @@ private fun LockSecretSetup(
 }
 
 /** Gemeinsame Logik für Erst-/Bestätigungseingabe von PIN und Muster. */
-private inline fun handleEntry(
+internal inline fun handleEntry(
     entered: String,
     firstEntry: String?,
     minLength: Int,

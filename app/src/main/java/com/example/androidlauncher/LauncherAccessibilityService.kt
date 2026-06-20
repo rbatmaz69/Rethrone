@@ -69,12 +69,19 @@ class LauncherAccessibilityService : AccessibilityService() {
      * Sitzung entsperrt ist – falls ja, wird die [AppLockActivity] über die App gelegt.
      */
     private fun enforceAppLock(packageName: String) {
-        if (isTransientSystemPackage(packageName)) return
-        val isOwnApp = packageName == applicationContext.packageName
+        val isTransient = isTransientSystemPackage(packageName)
+        if (isTransient) return
         val alreadyUnlocked = AppLockManager.isUnlocked(packageName)
         // Nur das aktuelle Vordergrund-Paket bleibt entsperrt; verlassene Apps werden neu gesperrt.
         AppLockManager.retainOnly(packageName)
-        if (!isOwnApp && packageName in lockedAppsCache && !alreadyUnlocked) {
+        val shouldLock = shouldShowLockScreen(
+            packageName = packageName,
+            ownPackage = applicationContext.packageName,
+            lockedApps = lockedAppsCache,
+            alreadyUnlocked = alreadyUnlocked,
+            isTransient = isTransient
+        )
+        if (shouldLock) {
             val intent = Intent(this, AppLockActivity::class.java).apply {
                 putExtra(AppLockActivity.EXTRA_PACKAGE, packageName)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
@@ -134,10 +141,6 @@ class LauncherAccessibilityService : AccessibilityService() {
         }.apply()
     }
 
-    private fun isTransientSystemPackage(packageName: String): Boolean {
-        return packageName == "com.android.systemui" || packageName.contains("systemui")
-    }
-
     /**
      * Führt die globale Aktion zum Sperren des Bildschirms aus.
      */
@@ -161,6 +164,25 @@ class LauncherAccessibilityService : AccessibilityService() {
         private const val KEY_LAST_FOREGROUND_UPDATE_AT = "last_foreground_update_at"
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        internal fun isTransientSystemPackage(packageName: String): Boolean {
+            return packageName == "com.android.systemui" || packageName.contains("systemui")
+        }
+
+        /**
+         * Reine Entscheidungslogik (ohne Android-Seiteneffekte, daher unit-testbar): Soll für das
+         * gerade in den Vordergrund gekommene Paket der Sperrbildschirm gezeigt werden?
+         */
+        internal fun shouldShowLockScreen(
+            packageName: String,
+            ownPackage: String,
+            lockedApps: Set<String>,
+            alreadyUnlocked: Boolean,
+            isTransient: Boolean
+        ): Boolean = !isTransient &&
+            packageName != ownPackage &&
+            packageName in lockedApps &&
+            !alreadyUnlocked
 
         /**
          * Prüft, ob der Accessibility Service in den Systemeinstellungen aktiviert wurde.
