@@ -57,9 +57,9 @@ class DataModelsTest {
     fun `FontWeightLevel of clamps and labels by range`() {
         assertEquals(FontWeightLevel.MIN, FontWeightLevel.of(0).weightValue)
         assertEquals(FontWeightLevel.MAX, FontWeightLevel.of(2000).weightValue)
-        assertEquals("Normal", FontWeightLevel.of(400).label)
-        assertEquals("Bold", FontWeightLevel.of(700).label)
-        assertEquals("Black", FontWeightLevel.of(900).label)
+        assertEquals(R.string.font_weight_normal, FontWeightLevel.of(400).labelRes)
+        assertEquals(R.string.font_weight_bold, FontWeightLevel.of(700).labelRes)
+        assertEquals(R.string.font_weight_black, FontWeightLevel.of(900).labelRes)
     }
 
     // ---- AppInfo Tests ----

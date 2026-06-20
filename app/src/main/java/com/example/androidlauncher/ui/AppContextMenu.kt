@@ -22,7 +22,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
@@ -188,7 +190,7 @@ fun AppContextMenu(
                     Column(modifier = Modifier.padding(8.dp)) {
                         ContextMenuItem(
                             icon = Lucide.Info,
-                            text = "App-Info",
+                            text = stringResource(R.string.ctx_app_info),
                             color = mainTextColor,
                             onClick = { onAppInfo(); dismissWithAnimation() }
                         )
@@ -197,7 +199,7 @@ fun AppContextMenu(
 
                         ContextMenuItem(
                             icon = if (isFavorite) Lucide.StarOff else Lucide.Star,
-                            text = if (isFavorite) "Vom Home entfernen" else "Zu Favoriten hinzufügen",
+                            text = if (isFavorite) stringResource(R.string.ctx_remove_from_home) else stringResource(R.string.ctx_add_to_favorites),
                             color = if (isFavorite) favoriteHighlightColor else mainTextColor,
                             onClick = { onToggleFavorite(); dismissWithAnimation() }
                         )
@@ -206,7 +208,7 @@ fun AppContextMenu(
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
                             ContextMenuItem(
                                 icon = Lucide.FolderInput,
-                                text = "In Ordner verschieben",
+                                text = stringResource(R.string.ctx_move_to_folder),
                                 color = mainTextColor,
                                 onClick = { onMoveToFolder(); dismissWithAnimation() }
                             )
@@ -216,7 +218,7 @@ fun AppContextMenu(
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
                             ContextMenuItem(
                                 icon = Lucide.FolderOutput,
-                                text = "Aus Ordner entfernen",
+                                text = stringResource(R.string.ctx_remove_from_folder),
                                 color = mainTextColor,
                                 onClick = { onRemoveFromFolder(); dismissWithAnimation() }
                             )
@@ -226,7 +228,7 @@ fun AppContextMenu(
 
                         ContextMenuItem(
                             icon = Lucide.Trash2,
-                            text = "Deinstallieren",
+                            text = stringResource(R.string.uninstall),
                             color = Color(0xFFEF5350),
                             onClick = { onUninstall(); dismissWithAnimation() }
                         )

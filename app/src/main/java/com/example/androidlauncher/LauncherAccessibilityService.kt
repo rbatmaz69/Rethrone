@@ -149,7 +149,7 @@ class LauncherAccessibilityService : AccessibilityService() {
             // GLOBAL_ACTION_LOCK_SCREEN wurde in API 28 eingeführt
             performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
         } else {
-            Toast.makeText(this, "Sperren erst ab Android 9 (API 28) unterstützt", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.lock_requires_android_9), Toast.LENGTH_SHORT).show()
         }
     }
 

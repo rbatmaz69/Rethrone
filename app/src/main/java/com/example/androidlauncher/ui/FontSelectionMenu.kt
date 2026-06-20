@@ -23,7 +23,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -64,10 +66,10 @@ fun FontSelectionMenu(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Zurück", tint = mainTextColor)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = mainTextColor)
             }
             Text(
-                text = "Schriftart auswählen",
+                text = stringResource(R.string.choose_font),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Medium,
                 color = mainTextColor,
@@ -92,7 +94,7 @@ fun FontSelectionMenu(
             StableSearchFieldContent(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = "Schriftart suchen...",
+                placeholder = stringResource(R.string.font_search_hint),
                 textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
                 textColor = mainTextColor,
                 placeholderColor = grayTone,

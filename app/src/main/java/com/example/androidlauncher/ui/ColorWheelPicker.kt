@@ -25,7 +25,9 @@ import androidx.compose.material.icons.rounded.Colorize
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 
 /** Wandelt HSV (h:0..360, s/v:0..1) in eine Compose-Farbe. */
 private fun hsvToColor(h: Float, s: Float, v: Float): Color =
@@ -148,7 +150,7 @@ fun ColorWheelPicker(
                 IconButton(onClick = onEyedropper) {
                     Icon(
                         imageVector = Icons.Rounded.Colorize,
-                        contentDescription = "Farbpinzette",
+                        contentDescription = stringResource(R.string.cd_eyedropper),
                         tint = mainTextColor
                     )
                 }

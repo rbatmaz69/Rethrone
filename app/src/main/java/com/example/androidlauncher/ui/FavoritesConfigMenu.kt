@@ -159,7 +159,7 @@ fun FavoritesConfigMenu(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("App-Titel", color = grayTone, fontSize = 14.sp)
+            Text(stringResource(R.string.favorites_app_titles), color = grayTone, fontSize = 14.sp)
 
             val symbolColor = if (isDarkTextEnabled) Color.White else Color.Black
 
@@ -191,7 +191,7 @@ fun FavoritesConfigMenu(
         Spacer(modifier = Modifier.height(20.dp))
 
         // Umrandung der Favoriten-Box
-        Text("Umrandung", color = grayTone, fontSize = 14.sp)
+        Text(stringResource(R.string.favorites_border), color = grayTone, fontSize = 14.sp)
         Spacer(modifier = Modifier.height(12.dp))
         Row(
             modifier = Modifier
@@ -483,7 +483,7 @@ private fun FavoritesBorderChip(
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            style.displayName,
+            stringResource(style.labelRes),
             color = if (isSelected) mainTextColor else mainTextColor.copy(alpha = 0.6f),
             fontSize = 11.sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center

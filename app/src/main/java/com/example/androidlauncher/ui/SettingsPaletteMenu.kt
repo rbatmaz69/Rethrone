@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import com.example.androidlauncher.R
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
@@ -67,15 +69,13 @@ fun SettingsPaletteMenu(
     val mainTextColor = LocalHomeTextColor.current
     val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     
-    val settingsItems = remember {
-        listOf(
-            PaletteMenuItem("themes", Lucide.Palette, "Themes", onOpenColorConfig),
-            PaletteMenuItem("size", Lucide.ALargeSmall, "Größe", onOpenSizeConfig),
-            PaletteMenuItem("favorites", Icons.Rounded.Star, "Favorites", onOpenFavoritesConfig),
-            PaletteMenuItem("edit", Lucide.Pencil, "Bearbeiten", onOpenSystemSettings),
-            PaletteMenuItem("info", Icons.Rounded.Info, "Info", onOpenInfo),
-        )
-    }
+    val settingsItems = listOf(
+        PaletteMenuItem("themes", Lucide.Palette, stringResource(R.string.label_themes), onOpenColorConfig),
+        PaletteMenuItem("size", Lucide.ALargeSmall, stringResource(R.string.label_size), onOpenSizeConfig),
+        PaletteMenuItem("favorites", Icons.Rounded.Star, stringResource(R.string.favorites_title), onOpenFavoritesConfig),
+        PaletteMenuItem("edit", Lucide.Pencil, stringResource(R.string.edit_config_title), onOpenSystemSettings),
+        PaletteMenuItem("info", Icons.Rounded.Info, stringResource(R.string.label_info), onOpenInfo),
+    )
 
     val radius = 110f 
     val startAngle = 85f 

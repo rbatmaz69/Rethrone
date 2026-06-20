@@ -25,7 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.example.androidlauncher.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
@@ -135,13 +137,13 @@ fun EditConfigMenu(
         ) {
             @Suppress("DEPRECATION")
             Text(
-                "Bearbeiten",
+                stringResource(R.string.edit_config_title),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Light,
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
@@ -155,7 +157,7 @@ fun EditConfigMenu(
         ) {
             item {
                 EditSectionHeader(
-                    title = "Allgemein",
+                    title = stringResource(R.string.section_general),
                     mainTextColor = mainTextColor
                 )
             }
@@ -163,8 +165,8 @@ fun EditConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.Smartphone,
-                    label = "Haptisches Feedback",
-                    description = "Vibration bei Interaktionen wie Favoritenbearbeitung",
+                    label = stringResource(R.string.haptic_feedback),
+                    description = stringResource(R.string.haptic_feedback_desc),
                     checked = isHapticFeedbackEnabled,
                     onCheckedChange = { onHapticFeedbackToggled(it) },
                     mainTextColor = mainTextColor,
@@ -178,13 +180,13 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Smartphone,
-                    label = "Animationen",
+                    label = stringResource(R.string.label_animations),
                     onClick = onOpenAnimationsConfig,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    statusLabel = if (isAnimationsEnabled) null else "Aus",
+                    statusLabel = if (isAnimationsEnabled) null else stringResource(R.string.status_off),
                     testTag = "animations_menu_item"
                 )
             }
@@ -192,8 +194,8 @@ fun EditConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.Clock,
-                    label = "Uhr-Widget",
-                    description = "Zeigt die Uhrzeit auf der Startseite",
+                    label = stringResource(R.string.clock_widget),
+                    description = stringResource(R.string.clock_widget_desc),
                     checked = isClockWidgetEnabled,
                     onCheckedChange = { onClockWidgetToggled(it) },
                     mainTextColor = mainTextColor,
@@ -207,8 +209,8 @@ fun EditConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.Calendar,
-                    label = "Kalender-Widget",
-                    description = "Zeigt das Datum auf der Startseite",
+                    label = stringResource(R.string.calendar_widget),
+                    description = stringResource(R.string.calendar_widget_desc),
                     checked = isCalendarWidgetEnabled,
                     onCheckedChange = { onCalendarWidgetToggled(it) },
                     mainTextColor = mainTextColor,
@@ -222,8 +224,8 @@ fun EditConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.CloudSun,
-                    label = "Wetter-Widget",
-                    description = "Zeigt Symbol und Temperatur unter der Uhr",
+                    label = stringResource(R.string.weather_widget),
+                    description = stringResource(R.string.weather_widget_desc),
                     checked = isWeatherWidgetEnabled,
                     onCheckedChange = { onWeatherWidgetToggled(it) },
                     mainTextColor = mainTextColor,
@@ -236,7 +238,7 @@ fun EditConfigMenu(
 
             item {
                 EditAppAccessSelectorItem(
-                    label = "App-Zugriff",
+                    label = stringResource(R.string.app_access_label),
                     selectedMode = appAccessMode,
                     onModeSelected = onAppAccessModeChange,
                     mainTextColor = mainTextColor,
@@ -250,7 +252,7 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Pencil,
-                    label = "Startbildschirm-Layout anpassen",
+                    label = stringResource(R.string.edit_home_layout),
                     onClick = onOpenHomeLayoutEdit,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
@@ -265,7 +267,7 @@ fun EditConfigMenu(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Close,
-                                    contentDescription = "Reset Home Layout",
+                                    contentDescription = stringResource(R.string.cd_reset_home_layout),
                                     tint = mainTextColor.copy(alpha = 0.6f),
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -284,7 +286,7 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Settings2,
-                    label = "App-Icons anpassen",
+                    label = stringResource(R.string.edit_app_icons),
                     onClick = onOpenIconConfig,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
@@ -296,7 +298,7 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Image,
-                    label = "Wallpaper ändern",
+                    label = stringResource(R.string.change_wallpaper),
                     onClick = onChangeWallpaper,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
@@ -307,7 +309,7 @@ fun EditConfigMenu(
                             IconButton(onClick = onResetWallpaper) {
                                 Icon(
                                     imageVector = Icons.Rounded.Close,
-                                    contentDescription = "Remove Wallpaper",
+                                    contentDescription = stringResource(R.string.cd_remove_wallpaper),
                                     tint = mainTextColor.copy(alpha = 0.6f),
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -327,7 +329,7 @@ fun EditConfigMenu(
                 item {
                     EditMenuItem(
                         icon = Lucide.Settings2,
-                        label = "Hintergrund anpassen",
+                        label = stringResource(R.string.adjust_wallpaper),
                         onClick = onOpenWallpaperAdjust,
                         mainTextColor = mainTextColor,
                         designStyle = designStyle,
@@ -339,7 +341,7 @@ fun EditConfigMenu(
 
             item {
                 EditSectionHeader(
-                    title = "Apps",
+                    title = stringResource(R.string.section_apps),
                     mainTextColor = mainTextColor
                 )
             }
@@ -347,7 +349,7 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Icons.Rounded.VisibilityOff,
-                    label = "Apps ausblenden",
+                    label = stringResource(R.string.hide_apps),
                     onClick = onOpenHiddenApps,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
@@ -360,7 +362,7 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Icons.Rounded.Lock,
-                    label = "App-Sperre",
+                    label = stringResource(R.string.app_lock),
                     onClick = onOpenAppLock,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
@@ -373,7 +375,7 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Trash2,
-                    label = "Apps deinstallieren",
+                    label = stringResource(R.string.uninstall_apps),
                     onClick = onOpenUninstallApps,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
@@ -385,7 +387,7 @@ fun EditConfigMenu(
 
             item {
                 EditSectionHeader(
-                    title = "Suche",
+                    title = stringResource(R.string.section_search),
                     mainTextColor = mainTextColor
                 )
             }
@@ -393,8 +395,8 @@ fun EditConfigMenu(
             item {
                 EditToggleItem(
                     icon = Icons.Rounded.Search,
-                    label = "Intelligente Suchvorschläge",
-                    description = "Lernt aus App-Starts und Websuchen. Alles bleibt lokal auf dem Gerät.",
+                    label = stringResource(R.string.smart_suggestions),
+                    description = stringResource(R.string.smart_suggestions_desc),
                     checked = isSmartSuggestionsEnabled,
                     onCheckedChange = onSmartSuggestionsToggled,
                     mainTextColor = mainTextColor,
@@ -408,7 +410,7 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Trash2,
-                    label = "Suchverlauf löschen",
+                    label = stringResource(R.string.clear_search_history),
                     onClick = onClearSearchHistory,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
@@ -419,7 +421,7 @@ fun EditConfigMenu(
 
             item {
                 EditSectionHeader(
-                    title = "Gesten",
+                    title = stringResource(R.string.label_gestures),
                     mainTextColor = mainTextColor
                 )
             }
@@ -427,7 +429,7 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Hand,
-                    label = "Gesten",
+                    label = stringResource(R.string.label_gestures),
                     onClick = onOpenGesturesConfig,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
@@ -439,7 +441,7 @@ fun EditConfigMenu(
 
             item {
                 EditSectionHeader(
-                    title = "Zugriffe",
+                    title = stringResource(R.string.section_permissions),
                     mainTextColor = mainTextColor
                 )
             }
@@ -447,9 +449,9 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.House,
-                    label = "Standard-Launcher",
+                    label = stringResource(R.string.default_launcher),
                     onClick = onOpenDefaultLauncher,
-                    statusLabel = if (isDefaultLauncherSet) "An" else "Aus",
+                    statusLabel = if (isDefaultLauncherSet) stringResource(R.string.status_on) else stringResource(R.string.status_off),
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
@@ -461,11 +463,11 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Bell,
-                    label = "Benachrichtigung",
+                    label = stringResource(R.string.notifications_label),
                     onClick = {
                         openNotificationSettings(context)
                     },
-                    statusLabel = if (isNotificationEnabled) "An" else "Aus",
+                    statusLabel = if (isNotificationEnabled) stringResource(R.string.status_on) else stringResource(R.string.status_off),
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
@@ -476,11 +478,11 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Hand,
-                    label = "Bedienungshilfen",
+                    label = stringResource(R.string.accessibility_label),
                     onClick = {
                         openAccessibilitySettings(context)
                     },
-                    statusLabel = if (isAccessibilityEnabled) "An" else "Aus",
+                    statusLabel = if (isAccessibilityEnabled) stringResource(R.string.status_on) else stringResource(R.string.status_off),
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
@@ -491,11 +493,11 @@ fun EditConfigMenu(
             item {
                 EditMenuItem(
                     icon = Lucide.Shield,
-                    label = "Nutzungszugriff",
+                    label = stringResource(R.string.usage_access_label),
                     onClick = {
                         ForegroundAppResolver.openUsageAccessSettings(context)
                     },
-                    statusLabel = if (isUsageAccessEnabled) "An" else "Aus",
+                    statusLabel = if (isUsageAccessEnabled) stringResource(R.string.status_on) else stringResource(R.string.status_off),
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
@@ -695,7 +697,7 @@ private fun EditAppAccessSelectorItem(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = selectedMode.label,
+                text = stringResource(selectedMode.labelRes),
                 color = mainTextColor.copy(alpha = 0.6f),
                 fontSize = 15.sp,
                 modifier = Modifier.padding(end = 8.dp)
@@ -713,7 +715,7 @@ private fun EditAppAccessSelectorItem(
             ) {
                 AppAccessMode.entries.forEach { mode ->
                     DropdownMenuItem(
-                        text = { Text(mode.label) },
+                        text = { Text(stringResource(mode.labelRes)) },
                         leadingIcon = {
                             Icon(
                                 imageVector = appAccessModeIcon(mode),
@@ -748,18 +750,21 @@ internal fun gestureActionIcon(action: GestureAction): ImageVector = when (actio
     GestureAction.OPEN_SETTINGS -> Lucide.Settings2
 }
 
-internal fun gestureActionLabel(action: GestureAction): String = when (action) {
-    GestureAction.NONE -> "Aus"
-    GestureAction.APP_DRAWER -> "App-Drawer"
-    GestureAction.SEARCH -> "Suche"
-    GestureAction.NOTIFICATIONS -> "Benachrichtigungen"
-    GestureAction.FLASHLIGHT -> "Taschenlampe"
-    GestureAction.CAMERA -> "Kamera"
-    GestureAction.OPEN_APP -> "App öffnen"
-    GestureAction.LOCK_SCREEN -> "Bildschirm sperren"
-    GestureAction.TOGGLE_DND -> "Nicht stören"
-    GestureAction.OPEN_SETTINGS -> "Einstellungen"
-}
+@Composable
+internal fun gestureActionLabel(action: GestureAction): String = stringResource(
+    when (action) {
+        GestureAction.NONE -> R.string.gesture_action_none
+        GestureAction.APP_DRAWER -> R.string.gesture_action_app_drawer
+        GestureAction.SEARCH -> R.string.gesture_action_search
+        GestureAction.NOTIFICATIONS -> R.string.gesture_action_notifications
+        GestureAction.FLASHLIGHT -> R.string.gesture_action_flashlight
+        GestureAction.CAMERA -> R.string.gesture_action_camera
+        GestureAction.OPEN_APP -> R.string.gesture_action_open_app
+        GestureAction.LOCK_SCREEN -> R.string.gesture_action_lock_screen
+        GestureAction.TOGGLE_DND -> R.string.gesture_action_toggle_dnd
+        GestureAction.OPEN_SETTINGS -> R.string.gesture_action_open_settings
+    }
+)
 
 /**
  * Zeilen-Eintrag, der die aktuell gewählte Aktion einer Geste anzeigt und bei Klick
@@ -879,7 +884,7 @@ internal fun GestureAppPickerDialog(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "App wählen",
+                    text = stringResource(R.string.choose_app),
                     color = mainTextColor,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
@@ -889,7 +894,7 @@ internal fun GestureAppPickerDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Suchen", color = mainTextColor.copy(alpha = 0.5f)) },
+                    placeholder = { Text(stringResource(R.string.search), color = mainTextColor.copy(alpha = 0.5f)) },
                     leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.6f)) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(

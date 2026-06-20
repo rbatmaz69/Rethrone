@@ -19,9 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.ColorTheme
@@ -57,9 +59,9 @@ fun DesignStyleMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Design", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(stringResource(R.string.label_design), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
@@ -140,13 +142,13 @@ private fun DesignStyleTile(
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
-            style.displayName,
+            stringResource(style.titleRes),
             color = mainTextColor,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            style.description,
+            stringResource(style.descRes),
             color = secondaryTextColor,
             fontSize = 11.sp,
             modifier = Modifier.padding(top = 2.dp)

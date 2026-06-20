@@ -76,7 +76,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import com.example.androidlauncher.LauncherLogic
@@ -264,14 +266,14 @@ fun AppDrawer(
                         },
                         modifier = Modifier.testTag("app_drawer_search_toggle")
                     ) {
-                        Icon(Icons.Rounded.Search, contentDescription = "Suche", tint = mainTextColor)
+                        Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.cd_search), tint = mainTextColor)
                     }
                     if (searchQuery.isBlank()) {
                         var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
                         var folderNameInput by remember { mutableStateOf("") }
 
                         IconButton(onClick = { isCreateFolderDialogOpen = true }) {
-                            Icon(Lucide.FolderPlus, contentDescription = "Create Folder", tint = mainTextColor)
+                            Icon(Lucide.FolderPlus, contentDescription = stringResource(R.string.cd_create_folder), tint = mainTextColor)
                         }
                         
                         if (isCreateFolderDialogOpen) {
@@ -294,7 +296,7 @@ fun AppDrawer(
                                 ) {
                                     Column(modifier = Modifier.padding(24.dp)) {
                                         Text(
-                                            text = "Neuer Ordner",
+                                            text = stringResource(R.string.new_folder),
                                             style = MaterialTheme.typography.headlineSmall,
                                             color = mainTextColor
                                         )
@@ -323,7 +325,7 @@ fun AppDrawer(
                                                 decorationBox = { innerTextField ->
                                                     if (folderNameInput.isEmpty()) {
                                                         Text(
-                                                            "Name eingeben",
+                                                            stringResource(R.string.folder_name_hint),
                                                             color = mainTextColor.copy(alpha = 0.4f),
                                                             fontSize = 16.sp
                                                         )
@@ -341,14 +343,14 @@ fun AppDrawer(
                                         ) {
                                             @Suppress("DEPRECATION")
                                             TextButton(onClick = { isCreateFolderDialogOpen = false }) {
-                                                Text("Abbrechen", color = Color.Gray)
+                                                Text(stringResource(R.string.cancel), color = Color.Gray)
                                             }
                                             @Suppress("DEPRECATION")
                                             TextButton(onClick = {
                                                 if (folderNameInput.isNotBlank()) {
                                                     val nameExists = folders.any { it.name == folderNameInput }
                                                     if (nameExists) {
-                                                        Toast.makeText(context, "Ordner mit diesem Namen existiert bereits", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(context, context.getString(R.string.folder_name_exists), Toast.LENGTH_SHORT).show()
                                                     } else {
                                                         val newFolder = LauncherLogic.createNewFolder(folderNameInput)
                                                         onOpenFolderConfig(newFolder)
@@ -357,7 +359,7 @@ fun AppDrawer(
                                                     }
                                                 }
                                             }) {
-                                                Text("Erstellen", color = mainTextColor)
+                                                Text(stringResource(R.string.create), color = mainTextColor)
                                             }
                                         }
                                     }
@@ -366,7 +368,7 @@ fun AppDrawer(
                         }
                     }
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
                     }
                 }
             }
@@ -600,7 +602,7 @@ fun AppDrawer(
                                 ) {
                                     Icon(
                                         if (isEditMode) Lucide.Check else Lucide.Pencil,
-                                        contentDescription = "EditMode",
+                                        contentDescription = stringResource(R.string.cd_edit_mode),
                                         tint = mainTextColor,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -819,7 +821,7 @@ fun AppDrawer(
             AppContextMenu(
                 isFavorite = isFavorite(currentMenuApp.packageName), targetBounds = menuAppBounds, onDismiss = { menuApp = null }, onToggleFavorite = { onToggleFavorite(currentMenuApp.packageName) },
                 onAppInfo = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null) }) },
-                onUninstall = { try { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null); flags = Intent.FLAG_ACTIVITY_NEW_TASK }) } catch (_: Exception) { Toast.makeText(context, "Deinstallation konnte nicht gestartet werden", Toast.LENGTH_SHORT).show() } },
+                onUninstall = { try { context.startActivity(Intent(Intent.ACTION_DELETE).apply { data = Uri.fromParts("package", currentMenuApp.packageName, null); flags = Intent.FLAG_ACTIVITY_NEW_TASK }) } catch (_: Exception) { Toast.makeText(context, context.getString(R.string.uninstall_failed), Toast.LENGTH_SHORT).show() } },
                 onMoveToFolder = if (folders.isNotEmpty()) { { folderSelectionApp = currentMenuApp; showFolderSelection = true } } else null,
                 onRemoveFromFolder = folders.find { it.appPackageNames.contains(currentMenuApp.packageName) }?.let { folder -> { onUpdateFolders(LauncherLogic.removeAppFromFolder(folders, folder.id, currentMenuApp.packageName)) } }
             )
@@ -835,7 +837,7 @@ fun AppDrawer(
                 }
                 Surface(modifier = Modifier.fillMaxWidth(0.8f).wrapContentHeight().then(dialogBorderModifier), shape = RoundedCornerShape(28.dp), color = menuSurfaceColor.copy(alpha = 0.98f), shadowElevation = 16.dp) {
                      Column(modifier = Modifier.padding(20.dp)) {
-                        Text("In Ordner verschieben", fontSize = 18.sp * fontSize.scale, fontWeight = fontWeight.weight, color = mainTextColor, modifier = Modifier.padding(bottom = 16.dp))
+                        Text(stringResource(R.string.ctx_move_to_folder), fontSize = 18.sp * fontSize.scale, fontWeight = fontWeight.weight, color = mainTextColor, modifier = Modifier.padding(bottom = 16.dp))
                         folders.forEach { folder ->
                             @Suppress("DEPRECATION")
                             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onUpdateFolders(LauncherLogic.addAppToFolder(folders, folder.id, folderSelectionApp!!.packageName)); showFolderSelection = false; menuApp = null }.padding(vertical = 14.dp, horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -845,7 +847,7 @@ fun AppDrawer(
                             }
                         }
                         @Suppress("DEPRECATION")
-                        TextButton(onClick = { showFolderSelection = false }, modifier = Modifier.align(Alignment.End).padding(top = 8.dp)) { Text("Abbrechen", color = Color.Gray) }
+                        TextButton(onClick = { showFolderSelection = false }, modifier = Modifier.align(Alignment.End).padding(top = 8.dp)) { Text(stringResource(R.string.cancel), color = Color.Gray) }
                     }
                 }
             }

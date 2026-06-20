@@ -1,6 +1,8 @@
 package com.example.androidlauncher.data
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.text.font.FontWeight
+import com.example.androidlauncher.R
 
 /**
  * Stufenlos einstellbare Schriftstärke (100–900).
@@ -12,16 +14,17 @@ value class FontWeightLevel(val weightValue: Int) {
     /** Die zugehörige Compose-[FontWeight]. */
     val weight: FontWeight get() = FontWeight(weightValue.coerceIn(MIN, MAX))
 
-    /** Anzeigename, abgeleitet aus dem Stärkewert. */
-    val label: String
+    /** Lokalisierte Anzeigename-Ressource, abgeleitet aus dem Stärkewert. */
+    @get:StringRes
+    val labelRes: Int
         get() = when {
-            weightValue <= 250 -> "Thin"
-            weightValue <= 350 -> "Light"
-            weightValue <= 450 -> "Normal"
-            weightValue <= 550 -> "Medium"
-            weightValue <= 650 -> "SemiBold"
-            weightValue <= 750 -> "Bold"
-            else -> "Black"
+            weightValue <= 250 -> R.string.font_weight_thin
+            weightValue <= 350 -> R.string.font_weight_light
+            weightValue <= 450 -> R.string.font_weight_normal
+            weightValue <= 550 -> R.string.font_weight_medium
+            weightValue <= 650 -> R.string.font_weight_semibold
+            weightValue <= 750 -> R.string.font_weight_bold
+            else -> R.string.font_weight_black
         }
 
     companion object {

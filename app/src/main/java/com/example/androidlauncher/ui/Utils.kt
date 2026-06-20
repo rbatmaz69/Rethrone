@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.zIndex
 import com.composables.icons.lucide.Lucide
+import com.example.androidlauncher.R
 import com.example.androidlauncher.NotificationService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconFallbackType
@@ -547,7 +548,7 @@ fun launchAppNoTransition(context: Context, intent: Intent) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         } catch (_: Exception) {
-            Toast.makeText(context, "App konnte nicht gestartet werden", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.shake_app_not_found), Toast.LENGTH_SHORT).show()
         }
     }
 }
@@ -708,6 +709,6 @@ fun launchShortcut(context: Context, packageName: String, shortcutId: String) {
     try {
         launcherApps.startShortcut(packageName, shortcutId, null, null, Process.myUserHandle())
     } catch (_: Exception) {
-        Toast.makeText(context, "Shortcut konnte nicht geöffnet werden", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.shortcut_open_failed), Toast.LENGTH_SHORT).show()
     }
 }

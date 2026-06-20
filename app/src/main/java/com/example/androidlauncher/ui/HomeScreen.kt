@@ -66,8 +66,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.androidlauncher.R
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Sun
@@ -894,7 +896,7 @@ fun HomeScreen(
                                     favorites = offsets[HomeEditTarget.FAVORITES] ?: Offset.Zero
                                 )
                             )
-                            Toast.makeText(context, "Position gespeichert", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.position_saved), Toast.LENGTH_SHORT).show()
                             onToggleEditMode()
                         },
                         sizeDp = 56.dp,
@@ -1003,7 +1005,7 @@ fun HomeScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Search,
-                                contentDescription = "Search",
+                                contentDescription = stringResource(R.string.cd_search),
                                 tint = mainTextColor,
                                 modifier = Modifier.size(28.dp)
                             )
@@ -1512,7 +1514,7 @@ private fun launchClockApp(
         }
         context.startActivity(intent)
     } catch (_: Exception) {
-        Toast.makeText(context, "Uhr-App nicht gefunden", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.clock_app_not_found), Toast.LENGTH_SHORT).show()
     }
 }
 

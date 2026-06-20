@@ -20,7 +20,9 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import kotlinx.coroutines.delay
@@ -70,7 +72,7 @@ fun DrawerSearchField(
         StableSearchFieldContent(
             value = searchQuery,
             onValueChange = onValueChange,
-            placeholder = "Apps durchsuchen...",
+            placeholder = stringResource(R.string.search_apps),
             textStyle = androidx.compose.ui.text.TextStyle(
                 color = mainTextColor,
                 fontSize = 16.sp * fontScale

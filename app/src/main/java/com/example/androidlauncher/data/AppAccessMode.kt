@@ -1,5 +1,8 @@
 package com.example.androidlauncher.data
 
+import androidx.annotation.StringRes
+import com.example.androidlauncher.R
+
 /**
  * Art des App-Zugriffs auf der Startseite.
  *
@@ -10,8 +13,8 @@ package com.example.androidlauncher.data
  * - [HOME_LIST]: keine hochziehbare Übersicht; stattdessen eine A–Z-Schnellleiste direkt am rechten
  *   Rand der Startseite (Berühren + Gleiten + Loslassen startet die App).
  */
-enum class AppAccessMode(val label: String) {
-    DRAWER_GRID("App-Drawer: Grid"),
-    DRAWER_LIST("App-Drawer: Liste"),
-    HOME_LIST("Startseiten-Liste")
+enum class AppAccessMode(@StringRes val labelRes: Int) {
+    DRAWER_GRID(R.string.app_access_drawer_grid),
+    DRAWER_LIST(R.string.app_access_drawer_list),
+    HOME_LIST(R.string.app_access_home_list)
 }

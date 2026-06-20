@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.annotation.StringRes
 import com.example.androidlauncher.R
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -156,22 +157,22 @@ fun InfoDialog(
     }
 }
 
-private data class AppFeature(val title: String, val description: String)
+private data class AppFeature(@StringRes val titleRes: Int, @StringRes val descRes: Int)
 
 private val APP_FEATURES: List<AppFeature> = listOf(
-    AppFeature("Favoritenleiste", "Schnellzugriff auf deine wichtigsten Apps – mit optionalen Animationen und Apptiteln."),
-    AppFeature("App-Drawer", "Alphabetische Liste aller Apps im Niagara-Stil mit schnellem A–Z-Scrubber."),
-    AppFeature("Hybride Suche", "Findet Apps, Kontakte und Aktionen schnell über eine zentrale Suche."),
-    AppFeature("Ordner", "Apps in anpassbaren Ordnern gruppieren und übersichtlich organisieren."),
-    AppFeature("App-Shortcuts", "Direkter Zugriff auf App-Verknüpfungen per langem Druck."),
-    AppFeature("Gesten", "Wischgesten frei mit Aktionen belegen für eine schnelle Bedienung."),
-    AppFeature("Icon-Anpassung", "Eigene Lucide-Icons wählen oder automatische, neutrale Fallback-Icons nutzen."),
-    AppFeature("Designs & Farben", "Farbthemen, Akzentfarben und Schriftgewicht individuell einstellen."),
-    AppFeature("Größen", "Icon- und Textgrößen flexibel an den eigenen Geschmack anpassen."),
-    AppFeature("Animationen", "Bewegungseffekte nach Wunsch ein- oder ausschalten."),
-    AppFeature("Wallpaper-Pipette", "Akzentfarbe direkt aus dem Hintergrundbild übernehmen."),
-    AppFeature("Versteckte Apps", "Einzelne Apps aus der Übersicht ausblenden."),
-    AppFeature("Apps deinstallieren", "Apps bequem direkt aus dem Launcher entfernen.")
+    AppFeature(R.string.feature_favorites_title, R.string.feature_favorites_desc),
+    AppFeature(R.string.feature_drawer_title, R.string.feature_drawer_desc),
+    AppFeature(R.string.feature_search_title, R.string.feature_search_desc),
+    AppFeature(R.string.feature_folders_title, R.string.feature_folders_desc),
+    AppFeature(R.string.feature_shortcuts_title, R.string.feature_shortcuts_desc),
+    AppFeature(R.string.feature_gestures_title, R.string.feature_gestures_desc),
+    AppFeature(R.string.feature_icons_title, R.string.feature_icons_desc),
+    AppFeature(R.string.feature_themes_title, R.string.feature_themes_desc),
+    AppFeature(R.string.feature_sizes_title, R.string.feature_sizes_desc),
+    AppFeature(R.string.feature_animations_title, R.string.feature_animations_desc),
+    AppFeature(R.string.feature_eyedropper_title, R.string.feature_eyedropper_desc),
+    AppFeature(R.string.feature_hidden_title, R.string.feature_hidden_desc),
+    AppFeature(R.string.feature_uninstall_title, R.string.feature_uninstall_desc)
 )
 
 @Composable
@@ -192,7 +193,7 @@ fun FeaturesSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Funktionen",
+                text = stringResource(R.string.label_features),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
                 color = mainTextColor
@@ -215,14 +216,14 @@ fun FeaturesSection(
                 APP_FEATURES.forEach { feature ->
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = feature.title,
+                            text = stringResource(feature.titleRes),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = mainTextColor
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = feature.description,
+                            text = stringResource(feature.descRes),
                             fontSize = 13.sp,
                             color = secondaryTextColor,
                             lineHeight = 18.sp

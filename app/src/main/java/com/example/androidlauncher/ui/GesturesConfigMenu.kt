@@ -17,9 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.LayoutGrid
@@ -70,9 +72,9 @@ fun GesturesConfigMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Gesten", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(stringResource(R.string.label_gestures), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
@@ -85,10 +87,10 @@ fun GesturesConfigMenu(
             contentPadding = PaddingValues(top = 24.dp, bottom = 8.dp)
         ) {
             // --- Doppeltippen ---
-            item { GestureSectionHeader("Doppeltippen", mainTextColor) }
+            item { GestureSectionHeader(stringResource(R.string.gestures_section_double_tap), mainTextColor) }
             item {
                 EditActionSelectorItem(
-                    label = "Beim Doppeltippen",
+                    label = stringResource(R.string.gestures_on_double_tap),
                     selectedAction = doubleTapAction,
                     onActionSelected = onDoubleTapActionChange,
                     mainTextColor = mainTextColor,
@@ -104,9 +106,9 @@ fun GesturesConfigMenu(
                     val selectedLabel = apps.firstOrNull { it.packageName == doubleTapAppPackage }?.label
                     EditMenuItem(
                         icon = Lucide.Smartphone,
-                        label = "App wählen",
+                        label = stringResource(R.string.choose_app),
                         onClick = { showPicker = true },
-                        statusLabel = selectedLabel ?: "Keine",
+                        statusLabel = selectedLabel ?: stringResource(R.string.none),
                         mainTextColor = mainTextColor,
                         designStyle = designStyle,
                         surfaceAccent = surfaceAccent,
@@ -129,12 +131,12 @@ fun GesturesConfigMenu(
             }
 
             // --- Schütteln ---
-            item { GestureSectionHeader("Schütteln", mainTextColor) }
+            item { GestureSectionHeader(stringResource(R.string.gestures_section_shake), mainTextColor) }
             item {
                 EditToggleItem(
                     icon = Lucide.Hand,
-                    label = "Shake-Gesten",
-                    description = "2× Schütteln, um die gewählte Aktion auszulösen.",
+                    label = stringResource(R.string.gestures_shake_toggle),
+                    description = stringResource(R.string.gestures_shake_desc),
                     checked = isShakeGesturesEnabled,
                     onCheckedChange = onShakeGesturesToggled,
                     mainTextColor = mainTextColor,
@@ -147,7 +149,7 @@ fun GesturesConfigMenu(
             if (isShakeGesturesEnabled) {
                 item {
                     EditActionSelectorItem(
-                        label = "Bei 2× Schütteln",
+                        label = stringResource(R.string.gestures_on_double_shake),
                         selectedAction = doubleShakeAction,
                         onActionSelected = onDoubleShakeActionChange,
                         mainTextColor = mainTextColor,
@@ -163,9 +165,9 @@ fun GesturesConfigMenu(
                         val selectedLabel = apps.firstOrNull { it.packageName == shakeOpenAppPackage }?.label
                         EditMenuItem(
                             icon = Lucide.LayoutGrid,
-                            label = "App wählen",
+                            label = stringResource(R.string.choose_app),
                             onClick = { showPicker = true },
-                            statusLabel = selectedLabel ?: "Keine",
+                            statusLabel = selectedLabel ?: stringResource(R.string.none),
                             mainTextColor = mainTextColor,
                             designStyle = designStyle,
                             surfaceAccent = surfaceAccent,

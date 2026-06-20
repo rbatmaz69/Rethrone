@@ -1,50 +1,351 @@
 <resources>
     <string name="app_name">Rethrone</string>
-    <!-- App-Sperre -->
-    <string name="app_lock_unlock_title">App entsperren</string>
-    <string name="app_lock_unlock_subtitle">Authentifiziere dich, um die App zu öffnen</string>
-    <string name="show_app_titles">App-Titel anzeigen</string>
-    <string name="favorites_title">Favoriten</string>
-    <string name="favorites_count">%1$d von %2$d ausgewählt</string>
-    <string name="search_apps">Apps suchen...</string>
-    <string name="order_label">Reihenfolge</string>
-    <string name="all_apps_label">Alle Apps</string>
-    <string name="max_favorites_reached">Maximal 8 erlaubt</string>
-    <string name="no_selection">Keine Auswahl</string>
 
-    <!-- Info Strings -->
-    <string name="info_title">Informationen</string>
+    <!-- App lock -->
+    <string name="app_lock_unlock_title">Unlock app</string>
+    <string name="app_lock_unlock_subtitle">Authenticate to open the app</string>
+    <string name="show_app_titles">Show app titles</string>
+    <string name="favorites_title">Favorites</string>
+    <string name="favorites_count">%1$d of %2$d selected</string>
+    <string name="search_apps">Search apps…</string>
+    <string name="order_label">Order</string>
+    <string name="all_apps_label">All apps</string>
+    <string name="max_favorites_reached">Maximum 8 allowed</string>
+    <string name="no_selection">No selection</string>
+
+    <!-- Info -->
+    <string name="info_title">Information</string>
     <string name="app_version">Version %1$s (Build %2$d)</string>
-    <string name="developer_label">Entwickler</string>
+    <string name="developer_label">Developer</string>
     <string name="developer_name">Refik Bilal Batmaz &amp; Vinisan Kunasegaran</string>
-    <string name="github_repo">GitHub Repository</string>
-    <string name="license_label">Lizenz</string>
-    <string name="license_text">Custom Non-Commercial License\n\nNutzung frei für private Zwecke. Kommerzielle Nutzung und Weiterverkauf untersagt.</string>
-    <string name="libraries_label">Open Source Libraries</string>
-    <string name="privacy_label">Datenschutz</string>
-    <string name="privacy_text">Diese App sammelt keinerlei Nutzerdaten. Alle Einstellungen werden lokal auf dem Gerät gespeichert.</string>
-    <string name="close">Schließen</string>
-    <string name="accessibility_description">Ermöglicht Gesten wie Doppelklick zum Sperren des Bildschirms.</string>
-    <string name="default_launcher_warning">Bitte setze Rethrone als Standard-Launcher, damit Home-Intents zuverlässig ankommen.</string>
+    <string name="github_repo">GitHub repository</string>
+    <string name="license_label">License</string>
+    <string name="license_text">Custom Non-Commercial License\n\nFree for private use. Commercial use and resale are prohibited.</string>
+    <string name="libraries_label">Open source libraries</string>
+    <string name="privacy_label">Privacy</string>
+    <string name="privacy_text">This app collects no user data whatsoever. All settings are stored locally on the device.</string>
+    <string name="close">Close</string>
+    <string name="accessibility_description">Enables gestures such as double-tap to lock the screen.</string>
+    <string name="accessibility_service_label">Rethrone Launcher Gestures</string>
+    <string name="default_launcher_warning">Please set Rethrone as the default launcher so Home intents arrive reliably.</string>
 
-    <!-- Toast & Dialog Strings -->
-    <string name="flashlight_permission_required">Kamerazugriff wird für die Taschenlampe benötigt</string>
-    <string name="flashlight_unsupported">Keine Taschenlampe verfügbar</string>
-    <string name="flashlight_error">Taschenlampe konnte nicht geändert werden</string>
-    <string name="camera_app_not_found">Keine Kamera-App gefunden</string>
-    <string name="shake_no_app_selected">Keine App für die Geste ausgewählt</string>
-    <string name="shake_app_not_found">App konnte nicht gestartet werden</string>
-    <string name="shake_lock_needs_accessibility">Zum Sperren bitte die Bedienungshilfe aktivieren</string>
-    <string name="shake_dnd_needs_permission">Zugriff auf „Nicht stören“ benötigt</string>
-    <string name="shake_dnd_unsupported">„Nicht stören“ wird nicht unterstützt</string>
-    <string name="shake_settings_not_found">Einstellungen konnten nicht geöffnet werden</string>
-    <string name="shake_choose_app">App wählen</string>
-    <string name="home_layout_reset">Startbildschirm-Layout zurückgesetzt</string>
-    <string name="wallpaper_removed">Hintergrund entfernt</string>
-    <string name="search_history_cleared">Suchverlauf gelöscht</string>
-    <string name="write_settings_permission_required">Bitte erlauben Sie dem Launcher, Systemeinstellungen zu ändern</string>
-    <string name="usage_access_title">Nutzungszugriff aktivieren</string>
-    <string name="usage_access_description">Damit die Rückkehranimation nach dem Öffnen über Recents exakt zur richtigen App-Position zurückgeht, aktiviere bitte den Nutzungszugriff für den Launcher.</string>
-    <string name="open">Öffnen</string>
-    <string name="later">Später</string>
+    <!-- Toast &amp; dialog messages -->
+    <string name="flashlight_permission_required">Camera access is required for the flashlight</string>
+    <string name="flashlight_unsupported">No flashlight available</string>
+    <string name="flashlight_error">The flashlight could not be changed</string>
+    <string name="camera_app_not_found">No camera app found</string>
+    <string name="shake_no_app_selected">No app selected for the gesture</string>
+    <string name="shake_app_not_found">The app could not be launched</string>
+    <string name="shake_lock_needs_accessibility">Please enable the accessibility service to lock</string>
+    <string name="shake_dnd_needs_permission">Access to “Do not disturb” required</string>
+    <string name="shake_dnd_unsupported">“Do not disturb” is not supported</string>
+    <string name="shake_settings_not_found">Settings could not be opened</string>
+    <string name="home_layout_reset">Home screen layout reset</string>
+    <string name="wallpaper_removed">Wallpaper removed</string>
+    <string name="search_history_cleared">Search history cleared</string>
+    <string name="write_settings_permission_required">Please allow the launcher to change system settings</string>
+    <string name="usage_access_title">Enable usage access</string>
+    <string name="usage_access_description">For the return animation to land exactly on the right app position after opening from Recents, please enable usage access for the launcher.</string>
+    <string name="open">Open</string>
+    <string name="later">Later</string>
+
+    <!-- Generic actions &amp; labels -->
+    <string name="cancel">Cancel</string>
+    <string name="apply">Apply</string>
+    <string name="delete">Delete</string>
+    <string name="create">Create</string>
+    <string name="confirm">Confirm</string>
+    <string name="next">Next</string>
+    <string name="done">Done</string>
+    <string name="button_done">Done</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Search…</string>
+    <string name="preview">Preview</string>
+    <string name="none">None</string>
+    <string name="active">Active</string>
+    <string name="customize">Customize</string>
+    <string name="status_on">On</string>
+    <string name="status_off">Off</string>
+    <string name="unlock">Unlock</string>
+    <string name="use_biometric">Use biometrics</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="enter_key">ENTER</string>
+    <string name="web_search">Web search</string>
+    <string name="more_apps">More apps</string>
+    <string name="selected_header">Selected</string>
+    <string name="new_folder">New folder</string>
+    <string name="choose_app">Choose app</string>
+    <string name="choose_font">Choose font</string>
+    <string name="clear_selection">Clear selection</string>
+
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_close">Close</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_clear">Clear</string>
+    <string name="cd_save">Save</string>
+    <string name="cd_confirm">Confirm</string>
+    <string name="cd_delete">Delete</string>
+    <string name="cd_eyedropper">Color picker</string>
+    <string name="cd_create_folder">Create folder</string>
+    <string name="cd_delete_folder">Delete folder</string>
+    <string name="cd_edit_mode">Edit mode</string>
+    <string name="cd_remove_history">Remove history entry</string>
+    <string name="cd_reset_home_layout">Reset home layout</string>
+    <string name="cd_remove_wallpaper">Remove wallpaper</string>
+
+    <!-- Settings palette / section titles -->
+    <string name="label_themes">Themes</string>
+    <string name="label_size">Size</string>
+    <string name="label_design">Design</string>
+    <string name="label_gestures">Gestures</string>
+    <string name="label_animations">Animations</string>
+    <string name="label_info">Info</string>
+    <string name="label_features">Features</string>
+    <string name="edit_config_title">Edit</string>
+    <string name="section_general">General</string>
+    <string name="section_apps">Apps</string>
+    <string name="section_search">Search</string>
+    <string name="section_permissions">Permissions</string>
+
+    <!-- Edit menu items -->
+    <string name="haptic_feedback">Haptic feedback</string>
+    <string name="haptic_feedback_desc">Vibration on interactions such as editing favorites</string>
+    <string name="clock_widget">Clock widget</string>
+    <string name="clock_widget_desc">Shows the time on the home screen</string>
+    <string name="calendar_widget">Calendar widget</string>
+    <string name="calendar_widget_desc">Shows the date on the home screen</string>
+    <string name="weather_widget">Weather widget</string>
+    <string name="weather_widget_desc">Shows an icon and temperature below the clock</string>
+    <string name="app_access_label">App access</string>
+    <string name="edit_home_layout">Customize home screen layout</string>
+    <string name="edit_app_icons">Customize app icons</string>
+    <string name="change_wallpaper">Change wallpaper</string>
+    <string name="adjust_wallpaper">Adjust wallpaper</string>
+    <string name="hide_apps">Hide apps</string>
+    <string name="app_lock">App lock</string>
+    <string name="uninstall_apps">Uninstall apps</string>
+    <string name="smart_suggestions">Smart search suggestions</string>
+    <string name="smart_suggestions_desc">Learns from app launches and web searches. Everything stays local on the device.</string>
+    <string name="clear_search_history">Clear search history</string>
+    <string name="default_launcher">Default launcher</string>
+    <string name="notifications_label">Notifications</string>
+    <string name="accessibility_label">Accessibility</string>
+    <string name="usage_access_label">Usage access</string>
+
+    <!-- App access modes -->
+    <string name="app_access_drawer_grid">App drawer: Grid</string>
+    <string name="app_access_drawer_list">App drawer: List</string>
+    <string name="app_access_home_list">Home screen list</string>
+
+    <!-- Gesture actions -->
+    <string name="gesture_action_none">Off</string>
+    <string name="gesture_action_app_drawer">App drawer</string>
+    <string name="gesture_action_search">Search</string>
+    <string name="gesture_action_notifications">Notifications</string>
+    <string name="gesture_action_flashlight">Flashlight</string>
+    <string name="gesture_action_camera">Camera</string>
+    <string name="gesture_action_open_app">Open app</string>
+    <string name="gesture_action_lock_screen">Lock screen</string>
+    <string name="gesture_action_toggle_dnd">Do not disturb</string>
+    <string name="gesture_action_open_settings">Settings</string>
+
+    <!-- Gestures menu -->
+    <string name="gestures_section_double_tap">Double tap</string>
+    <string name="gestures_on_double_tap">On double tap</string>
+    <string name="gestures_section_shake">Shake</string>
+    <string name="gestures_shake_toggle">Shake gestures</string>
+    <string name="gestures_shake_desc">Shake twice to trigger the selected action.</string>
+    <string name="gestures_on_double_shake">On double shake</string>
+
+    <!-- Colors menu -->
+    <string name="color_config_title">Colors</string>
+    <string name="color_label_home_text">Text color (home)</string>
+    <string name="color_label_icon">Icon color</string>
+    <string name="color_label_background">Background color</string>
+    <string name="color_label_menu">Menu color</string>
+    <string name="color_section_appearance">Appearance</string>
+
+    <!-- Themes -->
+    <string name="theme_name_dynamic">Dynamic</string>
+    <string name="theme_name_custom">Custom color</string>
+    <string name="theme_badge_art">ART</string>
+    <string name="theme_desc_custom">Choose your own surface colors</string>
+    <string name="theme_desc_dynamic">Colors from your wallpaper (Material You)</string>
+    <string name="theme_desc_art">Multicolor atmospheric gradient</string>
+    <string name="theme_desc_classic">Classic minimalist palette</string>
+
+    <!-- Design styles -->
+    <string name="design_style_glass_name">Liquid Glass</string>
+    <string name="design_style_glass_desc">Frosted, translucent glass</string>
+    <string name="design_style_flat_name">Standard</string>
+    <string name="design_style_flat_desc">Simple, semi-transparent background</string>
+    <string name="design_style_minimal_name">Minimal</string>
+    <string name="design_style_minimal_desc">No background — text &amp; icons only</string>
+    <string name="design_style_outline_name">Outline</string>
+    <string name="design_style_outline_desc">Just a thin border, transparent inside</string>
+    <string name="design_style_solid_name">Solid</string>
+    <string name="design_style_solid_desc">Opaque, tinted cards</string>
+    <string name="design_style_tinted_name">Tinted</string>
+    <string name="design_style_tinted_desc">Glass tinted in the theme color</string>
+
+    <!-- Favorites border styles -->
+    <string name="border_style_none">None</string>
+    <string name="border_style_black">Black</string>
+    <string name="border_style_white">White</string>
+    <string name="border_style_accent">Accent color</string>
+    <string name="border_style_subtle">Subtle</string>
+    <string name="favorites_app_titles">App titles</string>
+    <string name="favorites_border">Border</string>
+
+    <!-- Animations menu -->
+    <string name="anim_all">All animations</string>
+    <string name="anim_all_desc">Master switch for all animations</string>
+    <string name="anim_speed_label">Speed · %1$s×</string>
+    <string name="anim_individual">Individual animations</string>
+    <string name="anim_app_open">Open app</string>
+    <string name="anim_app_open_desc">Zoom-in animation when launching an app</string>
+    <string name="anim_app_close">Close app / return</string>
+    <string name="anim_app_close_desc">Shrinking back to the icon and bounce effect</string>
+    <string name="anim_menus">Menus &amp; settings menu</string>
+    <string name="anim_menus_desc">Menu transitions and the circular settings menu</string>
+    <string name="anim_favorites">Favorites bar</string>
+    <string name="anim_favorites_desc">Enlarging the app when hovering over the bar</string>
+
+    <!-- Wallpaper menu -->
+    <string name="wallpaper_preview_home">Home preview</string>
+    <string name="wallpaper_blur">Blur</string>
+    <string name="wallpaper_dim">Dimming</string>
+    <string name="wallpaper_zoom">Zoom</string>
+    <string name="wallpaper_reset_effects">Reset effects</string>
+    <string name="eyedropper_hint">Tap or drag to pick a color from the wallpaper</string>
+
+    <!-- Size / font menu -->
+    <string name="size_config_title">Design &amp; font</string>
+    <string name="preview_favorite">Favorite</string>
+    <string name="font_label">Font</string>
+    <string name="font_search_hint">Search fonts…</string>
+    <string name="font_size_label">Font size · %1$d%%</string>
+    <string name="font_weight_label">Font weight · %1$d · %2$s</string>
+    <string name="icon_size_label">Icon size · %1$ddp</string>
+    <string name="icon_spacing_label">Icon spacing · %1$ddp</string>
+    <string name="font_weight_thin">Thin</string>
+    <string name="font_weight_light">Light</string>
+    <string name="font_weight_normal">Normal</string>
+    <string name="font_weight_medium">Medium</string>
+    <string name="font_weight_semibold">SemiBold</string>
+    <string name="font_weight_bold">Bold</string>
+    <string name="font_weight_black">Black</string>
+
+    <!-- Hidden apps -->
+    <string name="hidden_apps_desc">Checked apps are hidden in the launcher.</string>
+
+    <!-- Folders -->
+    <string name="folder_name_hint">Folder name</string>
+    <string name="folder_apps_selected">%1$d apps selected</string>
+    <string name="folder_delete_title">Delete folder?</string>
+    <string name="folder_delete_message">Do you really want to remove this folder? The apps remain available in the app drawer.</string>
+    <string name="folder_name_required">Please enter a name</string>
+    <string name="folder_name_exists">A folder with this name already exists</string>
+
+    <!-- App context menu -->
+    <string name="ctx_app_info">App info</string>
+    <string name="ctx_remove_from_home">Remove from home</string>
+    <string name="ctx_add_to_favorites">Add to favorites</string>
+    <string name="ctx_move_to_folder">Move to folder</string>
+    <string name="ctx_remove_from_folder">Remove from folder</string>
+
+    <!-- Uninstall -->
+    <string name="uninstall_count">Uninstall (%1$d)</string>
+    <string name="uninstall_one_title">Uninstall app?</string>
+    <string name="uninstall_one_message">“%1$s” will be removed from this device.</string>
+    <string name="uninstall_many_title">Uninstall apps?</string>
+    <string name="uninstall_many_message">%1$d apps will be removed one after another. Please confirm each app in the system dialog.</string>
+    <string name="uninstall_failed">Uninstall could not be started</string>
+
+    <!-- App lock -->
+    <string name="app_lock_desc">Checked apps require a code before opening.</string>
+    <string name="lock_change_code">Change code (%1$s)</string>
+    <string name="lock_set_code">Set code</string>
+    <string name="lock_unlock_biometric">Unlock with biometrics</string>
+    <string name="lock_no_biometric">No biometrics/device lock set up</string>
+    <string name="lock_choose_method">How do you want to lock?</string>
+    <string name="lock_pin_code">PIN code</string>
+    <string name="lock_pattern">Pattern</string>
+    <string name="lock_draw_pattern">Draw pattern</string>
+    <string name="lock_confirm_pattern">Confirm pattern</string>
+    <string name="lock_enter_pin">Enter PIN</string>
+    <string name="lock_confirm_pin">Confirm PIN</string>
+    <string name="lock_min_4_points">At least 4 dots</string>
+    <string name="lock_pattern_mismatch">Pattern does not match</string>
+    <string name="lock_min_4_digits">At least 4 digits</string>
+    <string name="lock_pin_mismatch">PIN does not match</string>
+    <string name="lock_accessibility_required">Accessibility service required</string>
+    <string name="lock_accessibility_desc">The app lock only works when the Rethrone service is enabled in Accessibility. Tap to enable.</string>
+    <string name="lock_wrong_code">Wrong code</string>
+    <string name="lock_locked_hint">Locked — unlock to open</string>
+    <string name="lock_requires_android_9">Locking is only supported from Android 9 (API 28)</string>
+
+    <!-- Icon config -->
+    <string name="icon_options">Icon options</string>
+    <string name="icon_pick_title">Choose icon</string>
+    <string name="icon_search_hint">Search icons…</string>
+    <string name="icon_manual_status">Manual · %1$s</string>
+    <string name="icon_manual_override_active">Manual override active: %1$s</string>
+    <string name="icon_direct_actions">Direct actions</string>
+    <string name="icon_auto_rules">Automatic rules</string>
+    <string name="icon_pick_lucide_title">Choose Lucide icon</string>
+    <string name="icon_pick_lucide_sub">Assign a custom icon directly to this app</string>
+    <string name="icon_reanalyze_title">Re-analyze auto</string>
+    <string name="icon_reanalyze_sub">Re-checks original, shape and legibility</string>
+    <string name="icon_keep_original_title">Always keep original</string>
+    <string name="icon_keep_original_sub">Overrides the heuristic and shows the real app icon</string>
+    <string name="icon_force_fallback_title">Prefer automatic fallback</string>
+    <string name="icon_force_fallback_sub">Forces Lucide or a neutral container</string>
+    <string name="icon_follow_heuristic_title">Use heuristic only</string>
+    <string name="icon_follow_heuristic_sub">Let the decision be made automatically again</string>
+    <string name="icon_clear_rule_title">Remove saved rule</string>
+    <string name="icon_clear_rule_sub">Falls back to the launcher\'s default logic</string>
+    <string name="icon_reset_manual_title">Remove manual override</string>
+    <string name="icon_reset_manual_sub">Uses the launcher\'s automatic decision again</string>
+    <string name="icon_rule_keep_original">Rule · Prefer original</string>
+    <string name="icon_rule_force_fallback">Rule · Prefer fallback</string>
+    <string name="icon_rule_follow_heuristic">Rule · Heuristic only</string>
+    <string name="icon_auto_original">Auto · Original</string>
+    <string name="icon_auto_neutral">Auto · Neutral container</string>
+
+    <!-- Misc toasts -->
+    <string name="position_saved">Position saved</string>
+    <string name="clock_app_not_found">Clock app not found</string>
+    <string name="shortcut_open_failed">The shortcut could not be opened</string>
+    <string name="image_load_error">Error loading the image</string>
+    <string name="image_save_error">Error while saving</string>
+
+    <!-- Features list (Info dialog) -->
+    <string name="feature_favorites_title">Favorites bar</string>
+    <string name="feature_favorites_desc">Quick access to your most important apps — with optional animations and app titles.</string>
+    <string name="feature_drawer_title">App drawer</string>
+    <string name="feature_drawer_desc">Alphabetical list of all apps in Niagara style with a fast A–Z scrubber.</string>
+    <string name="feature_search_title">Hybrid search</string>
+    <string name="feature_search_desc">Quickly finds apps, contacts and actions through a central search.</string>
+    <string name="feature_folders_title">Folders</string>
+    <string name="feature_folders_desc">Group apps into customizable folders and keep them tidy.</string>
+    <string name="feature_shortcuts_title">App shortcuts</string>
+    <string name="feature_shortcuts_desc">Direct access to app shortcuts via long press.</string>
+    <string name="feature_gestures_title">Gestures</string>
+    <string name="feature_gestures_desc">Freely assign actions to swipe gestures for fast operation.</string>
+    <string name="feature_icons_title">Icon customization</string>
+    <string name="feature_icons_desc">Choose your own Lucide icons or use automatic, neutral fallback icons.</string>
+    <string name="feature_themes_title">Designs &amp; colors</string>
+    <string name="feature_themes_desc">Customize color themes, accent colors and font weight.</string>
+    <string name="feature_sizes_title">Sizes</string>
+    <string name="feature_sizes_desc">Flexibly adjust icon and text sizes to your taste.</string>
+    <string name="feature_animations_title">Animations</string>
+    <string name="feature_animations_desc">Turn motion effects on or off as you like.</string>
+    <string name="feature_eyedropper_title">Wallpaper eyedropper</string>
+    <string name="feature_eyedropper_desc">Pick the accent color directly from the wallpaper.</string>
+    <string name="feature_hidden_title">Hidden apps</string>
+    <string name="feature_hidden_desc">Hide individual apps from the overview.</string>
+    <string name="feature_uninstall_title">Uninstall apps</string>
+    <string name="feature_uninstall_desc">Conveniently remove apps directly from the launcher.</string>
 </resources>

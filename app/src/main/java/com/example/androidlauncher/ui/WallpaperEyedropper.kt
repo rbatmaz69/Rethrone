@@ -31,7 +31,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -120,7 +122,7 @@ fun WallpaperEyedropper(
 
         // Hinweis oben
         Text(
-            text = "Tippe oder ziehe, um eine Farbe vom Hintergrund zu wählen",
+            text = stringResource(R.string.eyedropper_hint),
             color = Color.White,
             fontSize = 14.sp,
             modifier = Modifier
@@ -159,14 +161,14 @@ fun WallpaperEyedropper(
                 modifier = Modifier.weight(1f)
             )
             TextButton(onClick = onCancel) {
-                Text("Abbrechen", color = Color.White)
+                Text(stringResource(R.string.cancel), color = Color.White)
             }
             Button(
                 onClick = { onPicked(picked) },
                 colors = ButtonDefaults.buttonColors(containerColor = picked)
             ) {
                 Text(
-                    "Übernehmen",
+                    stringResource(R.string.apply),
                     color = if (picked.luminance() > 0.5f) Color.Black else Color.White
                 )
             }

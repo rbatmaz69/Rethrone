@@ -49,7 +49,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.androidlauncher.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -186,7 +188,7 @@ fun WallpaperCropScreen(
 
                 withContext(Dispatchers.Main) {
                     if (original == null) {
-                        Toast.makeText(context, "Fehler beim Laden des Bildes", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.image_load_error), Toast.LENGTH_SHORT).show()
                         onCancel()
                         return@withContext
                     }
@@ -196,7 +198,7 @@ fun WallpaperCropScreen(
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Fehler beim Laden des Bildes", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.image_load_error), Toast.LENGTH_SHORT).show()
                     onCancel()
                 }
             }
@@ -347,7 +349,7 @@ fun WallpaperCropScreen(
                         .background(Color.Black.copy(alpha = 0.5f)),
                     colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)
                 ) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Abbrechen")
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cancel))
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -371,7 +373,7 @@ fun WallpaperCropScreen(
                                     if (resultUri != null) {
                                         pendingCroppedUri = resultUri
                                     } else {
-                                        Toast.makeText(context, "Fehler beim Speichern", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.image_save_error), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -388,7 +390,7 @@ fun WallpaperCropScreen(
                         .background(Color.White),
                     colors = IconButtonDefaults.iconButtonColors(contentColor = Color.Black)
                 ) {
-                    Icon(Icons.Rounded.Check, contentDescription = "Speichern")
+                    Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_save))
                 }
             }
         }

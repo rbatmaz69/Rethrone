@@ -1,6 +1,7 @@
 package com.example.androidlauncher.ui.theme
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -51,7 +52,10 @@ enum class ColorTheme(
     @DrawableRes val heroImageRes: Int? = null,
     // Optionale Tönung des Hero-Motivs (z.B. um eine schwarze Silhouette warm einzufärben).
     // null ⇒ Motiv wird unverändert (Originalfarben) gezeigt.
-    val heroTint: Color? = null
+    val heroTint: Color? = null,
+    // Optionaler, lokalisierter Anzeigename. Nur für funktionale (nicht Marken-)Themes
+    // wie [DYNAMIC]/[CUSTOM] gesetzt; sonst wird der Markenname [themeName] gezeigt.
+    @StringRes val themeNameRes: Int? = null
 ) {
     SIGNATURE(
         "Signature",
@@ -748,7 +752,7 @@ enum class ColorTheme(
     // Felder sind nur Fallback-Platzhalter; die echten Werte liefert DynamicColorHolder
     // über die resolved*-Accessoren. Höhere Dunkel-Blends sichern Hell-Text-Kontrast.
     DYNAMIC(
-        "Dynamisch",
+        "Dynamic",
         Color(0xFF6D5DBE),
         Color(0xFF625B71),
         Color.White,
@@ -757,19 +761,21 @@ enum class ColorTheme(
         darkBackgroundBlend = 0.50f,
         darkMenuBlend = 0.42f,
         darkSearchBlend = 0.52f,
-        darkAnimationBlend = 0.42f
+        darkAnimationBlend = 0.42f,
+        themeNameRes = R.string.theme_name_dynamic
     ),
 
     // ── Eigene Farbe: zwei frei gewählte Flächenfarben (Laufzeit, via CustomColorHolder) ──
     // Felder sind Platzhalter; die echten Werte liefert cust(). Flächen werden FAITHFUL
     // dargestellt (kein Anchor-Re-Toning) – der Nutzer wählt Kontrast über die Textfarbe.
     CUSTOM(
-        "Eigene Farbe",
+        "Custom color",
         Color(0xFFFFFFFF),
         Color(0xFFFFFFFF),
         Color.White,
         Color(0xFFF4EEE2),
-        highlight = Color(0xFFE8E2D6)
+        highlight = Color(0xFFE8E2D6),
+        themeNameRes = R.string.theme_name_custom
     );
 
     val lightBackground: Color

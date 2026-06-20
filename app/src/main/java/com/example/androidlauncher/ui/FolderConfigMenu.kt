@@ -30,7 +30,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
@@ -120,16 +122,16 @@ fun FolderConfigMenu(
                     cursorBrush = SolidColor(mainTextColor),
                     decorationBox = {
                         if (folderName.isEmpty()) {
-                            Text("Ordnername", color = mainTextColor.copy(alpha = 0.4f), fontSize = 24.sp, fontFamily = appFont.fontFamily)
+                            Text(stringResource(R.string.folder_name_hint), color = mainTextColor.copy(alpha = 0.4f), fontSize = 24.sp, fontFamily = appFont.fontFamily)
                         }
                         it()
                     }
                 )
-                Text("${selectedPackages.size} Apps ausgewählt", fontSize = 14.sp, color = grayTone)
+                Text(stringResource(R.string.folder_apps_selected, selectedPackages.size), fontSize = 14.sp, color = grayTone)
             }
             Row {
                 IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(Lucide.Trash2, contentDescription = "Ordner löschen", tint = Color.Red.copy(alpha = 0.8f))
+                    Icon(Lucide.Trash2, contentDescription = stringResource(R.string.cd_delete_folder), tint = Color.Red.copy(alpha = 0.8f))
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, contentDescription = null, tint = mainTextColor) }
             }
@@ -148,7 +150,7 @@ fun FolderConfigMenu(
             StableSearchFieldContent(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = "Apps suchen...",
+                placeholder = stringResource(R.string.search_apps),
                 textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 15.sp),
                 textColor = mainTextColor,
                 placeholderColor = grayTone,
@@ -171,7 +173,7 @@ fun FolderConfigMenu(
         ) {
             // Selected Apps Header & List
             if (displaySelectedApps.isNotEmpty()) {
-                item { Text("Ausgewählt", color = grayTone, fontSize = 12.sp) }
+                item { Text(stringResource(R.string.selected_header), color = grayTone, fontSize = 12.sp) }
                 items(items = displaySelectedApps, key = { it.packageName }) { app ->
                     AppSelectionItem(
                         app = app,
@@ -192,7 +194,7 @@ fun FolderConfigMenu(
 
             // Unselected Apps Header & List
             if (displayUnselectedApps.isNotEmpty()) {
-                item { Text("Weitere Apps", color = grayTone, fontSize = 12.sp) }
+                item { Text(stringResource(R.string.more_apps), color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(items = displayUnselectedApps, key = { _, app -> app.packageName }) { index, app ->
                     val isAlreadyInAnotherFolder = app.packageName in appsInOtherFolders
                     
@@ -238,16 +240,16 @@ fun FolderConfigMenu(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Ordner löschen?", color = mainTextColor) },
-            text = { Text("Möchtest du diesen Ordner wirklich entfernen? Die Apps bleiben weiterhin im AppDrawer verfügbar.", color = mainTextColor.copy(alpha = 0.8f)) },
+            title = { Text(stringResource(R.string.folder_delete_title), color = mainTextColor) },
+            text = { Text(stringResource(R.string.folder_delete_message), color = mainTextColor.copy(alpha = 0.8f)) },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(folder.id)
                     showDeleteConfirm = false
-                }) { Text("Löschen", color = Color.Red) }
+                }) { Text(stringResource(R.string.delete), color = Color.Red) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Abbrechen", color = Color.Gray) }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.cancel), color = Color.Gray) }
             },
             containerColor = colorTheme.drawerBackground
         )
@@ -277,7 +279,7 @@ fun FolderConfigMenu(
                             val finalPackages = selectedPackages.distinct()
                             onConfirm(folder.copy(name = folderName, appPackageNames = finalPackages))
                         } else {
-                            Toast.makeText(context, "Bitte Namen eingeben", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.folder_name_required), Toast.LENGTH_SHORT).show()
                         }
                     }
                 ),
@@ -285,7 +287,7 @@ fun FolderConfigMenu(
         ) {
             Icon(
                 Icons.Rounded.Check,
-                contentDescription = "Bestätigen",
+                contentDescription = stringResource(R.string.cd_confirm),
                 tint = checkmarkColor,
                 modifier = Modifier.size(28.dp)
             )

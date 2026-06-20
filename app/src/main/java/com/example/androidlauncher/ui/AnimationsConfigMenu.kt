@@ -19,9 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Maximize2
 import com.composables.icons.lucide.Menu
@@ -81,9 +83,9 @@ fun AnimationsConfigMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Animationen", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(stringResource(R.string.label_animations), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
@@ -99,8 +101,8 @@ fun AnimationsConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.Sparkles,
-                    label = "Alle Animationen",
-                    description = "Hauptschalter für sämtliche Animationen",
+                    label = stringResource(R.string.anim_all),
+                    description = stringResource(R.string.anim_all_desc),
                     checked = isAnimationsEnabled,
                     onCheckedChange = { onAnimationsToggled(it) },
                     mainTextColor = mainTextColor,
@@ -122,7 +124,7 @@ fun AnimationsConfigMenu(
                         .testTag("animation_speed_slider")
                 ) {
                     Text(
-                        "Geschwindigkeit · ${"%.1f".format(animationSpeed)}×",
+                        stringResource(R.string.anim_speed_label, "%.1f".format(animationSpeed)),
                         color = mainTextColor.copy(alpha = contentAlpha),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
@@ -149,7 +151,7 @@ fun AnimationsConfigMenu(
 
             item {
                 Text(
-                    "Einzelne Animationen",
+                    stringResource(R.string.anim_individual),
                     color = mainTextColor.copy(alpha = if (isAnimationsEnabled) 0.7f else 0.35f),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
@@ -160,8 +162,8 @@ fun AnimationsConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.Maximize2,
-                    label = "App öffnen",
-                    description = "Aufzieh-Animation beim Starten einer App",
+                    label = stringResource(R.string.anim_app_open),
+                    description = stringResource(R.string.anim_app_open_desc),
                     checked = isAppOpenAnimationEnabled,
                     onCheckedChange = { onAppOpenAnimationToggled(it) },
                     mainTextColor = mainTextColor,
@@ -176,8 +178,8 @@ fun AnimationsConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.Minimize2,
-                    label = "App schließen / Rückkehr",
-                    description = "Zurückschrumpfen zum Icon und Bounce-Effekt",
+                    label = stringResource(R.string.anim_app_close),
+                    description = stringResource(R.string.anim_app_close_desc),
                     checked = isAppCloseAnimationEnabled,
                     onCheckedChange = { onAppCloseAnimationToggled(it) },
                     mainTextColor = mainTextColor,
@@ -192,8 +194,8 @@ fun AnimationsConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.Menu,
-                    label = "Menüs & Einstellungsmenü",
-                    description = "Übergänge der Menüs und das kreisförmige Einstellungsmenü",
+                    label = stringResource(R.string.anim_menus),
+                    description = stringResource(R.string.anim_menus_desc),
                     checked = isMenuAnimationEnabled,
                     onCheckedChange = { onMenuAnimationToggled(it) },
                     mainTextColor = mainTextColor,
@@ -208,8 +210,8 @@ fun AnimationsConfigMenu(
             item {
                 EditToggleItem(
                     icon = Lucide.Star,
-                    label = "Favoriten-Leiste",
-                    description = "Vergrößern der App beim Rüberfahren über die Leiste",
+                    label = stringResource(R.string.anim_favorites),
+                    description = stringResource(R.string.anim_favorites_desc),
                     checked = isFavoritesAnimationEnabled,
                     onCheckedChange = { onFavoritesAnimationToggled(it) },
                     mainTextColor = mainTextColor,

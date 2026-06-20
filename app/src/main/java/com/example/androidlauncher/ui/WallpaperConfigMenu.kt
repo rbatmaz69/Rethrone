@@ -14,8 +14,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 // SystemWallpaperView ist im selben Paket (ui)
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
@@ -53,13 +55,13 @@ fun WallpaperConfigMenu(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Hintergrund anpassen",
+                stringResource(R.string.adjust_wallpaper),
                 fontSize = 28.sp,
                 fontWeight = fontWeight.weight,
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Schließen", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
@@ -108,16 +110,16 @@ fun WallpaperConfigMenu(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Vorschau Startseite", fontSize = 12.sp, color = secondaryTextColor)
+                Text(stringResource(R.string.wallpaper_preview_home), fontSize = 12.sp, color = secondaryTextColor)
             }
         }
 
         Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
 
         // Controls
-        ControlSlider(label = "Unschärfe", value = blurLevel, onValueChange = onBlurChange, range = 0f..25f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
-        ControlSlider(label = "Abdunkelung", value = dimLevel, onValueChange = onDimChange, range = 0f..0.8f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
-        ControlSlider(label = "Zoom", value = zoomLevel, onValueChange = onZoomChange, range = 1.0f..2.0f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
+        ControlSlider(label = stringResource(R.string.wallpaper_blur), value = blurLevel, onValueChange = onBlurChange, range = 0f..25f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
+        ControlSlider(label = stringResource(R.string.wallpaper_dim), value = dimLevel, onValueChange = onDimChange, range = 0f..0.8f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
+        ControlSlider(label = stringResource(R.string.wallpaper_zoom), value = zoomLevel, onValueChange = onZoomChange, range = 1.0f..2.0f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
         
         Spacer(modifier = Modifier.weight(0.2f).heightIn(min = 8.dp, max = 16.dp))
         
@@ -131,7 +133,7 @@ fun WallpaperConfigMenu(
             colors = ButtonDefaults.buttonColors(containerColor = mainTextColor.copy(alpha = 0.1f)),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("Effekte zurücksetzen", color = mainTextColor)
+            Text(stringResource(R.string.wallpaper_reset_effects), color = mainTextColor)
         }
     }
 }

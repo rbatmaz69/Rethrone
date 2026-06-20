@@ -17,9 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 // SystemWallpaperView ist im selben Paket (ui)
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.FavoriteSpacing
@@ -77,20 +79,20 @@ fun SizeConfigMenu(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Design & Schriftart",
+                    text = stringResource(R.string.size_config_title),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Light,
                     color = mainTextColor
                 )
                 IconButton(onClick = onClose) {
-                    Icon(imageVector = Icons.Rounded.Close, contentDescription = "Schließen", tint = mainTextColor)
+                    Icon(imageVector = Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
                 }
             }
             
             // Proportionale Abstände durch Weights in den Spacern
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
             
-            Text("Vorschau", color = secondaryTextColor, fontSize = 14.sp)
+            Text(stringResource(R.string.preview), color = secondaryTextColor, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(8.dp))
             
             // Vorschau-Box mit flexibler Höhe aber Fokus auf deinen 240dp
@@ -112,7 +114,7 @@ fun SizeConfigMenu(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(32.dp * currentIconSize.scale).background(mainTextColor.copy(alpha = 0.3f), CircleShape))
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("Favorit", color = mainTextColor, fontSize = (16.sp * currentFontSize.scale), fontWeight = FontWeight.Normal)
+                            Text(stringResource(R.string.preview_favorite), color = mainTextColor, fontSize = (16.sp * currentFontSize.scale), fontWeight = FontWeight.Normal)
                         }
                     }
                 }
@@ -120,7 +122,7 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
             
-            Text(text = "Schriftart", color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+            Text(text = stringResource(R.string.font_label), color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
             val fontButtonModifier = Modifier.designSurface(
                 designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
             )
@@ -131,7 +133,7 @@ fun SizeConfigMenu(
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text(text = "Schriftart wählen", fontSize = 16.sp, color = mainTextColor)
+                        Text(text = stringResource(R.string.choose_font), fontSize = 16.sp, color = mainTextColor)
                         Text(text = currentAppFont.label, fontSize = 12.sp, color = mainTextColor.copy(alpha = 0.6f), fontFamily = currentAppFont.fontFamily)
                     }
                     Icon(imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.6f))
@@ -150,7 +152,7 @@ fun SizeConfigMenu(
             var lastIconSize by remember { mutableStateOf(currentIconSize) }
             var lastSpacing by remember { mutableStateOf(currentFavoriteSpacing) }
 
-            Text("Schriftgröße · ${(currentFontSize.scale * 100).roundToInt()}%", color = secondaryTextColor, fontSize = 12.sp)
+            Text(stringResource(R.string.font_size_label, (currentFontSize.scale * 100).roundToInt()), color = secondaryTextColor, fontSize = 12.sp)
             Slider(
                 value = currentFontSize.scale,
                 onValueChange = {
@@ -165,7 +167,7 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Schriftstärke · ${currentFontWeight.weightValue} · ${currentFontWeight.label}", color = secondaryTextColor, fontSize = 12.sp)
+            Text(stringResource(R.string.font_weight_label, currentFontWeight.weightValue, stringResource(currentFontWeight.labelRes)), color = secondaryTextColor, fontSize = 12.sp)
             Slider(
                 value = currentFontWeight.weightValue.toFloat(),
                 onValueChange = {
@@ -180,7 +182,7 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Icon-Größe · ${currentIconSize.size.value.roundToInt()}dp", color = secondaryTextColor, fontSize = 12.sp)
+            Text(stringResource(R.string.icon_size_label, currentIconSize.size.value.roundToInt()), color = secondaryTextColor, fontSize = 12.sp)
             Slider(
                 value = currentIconSize.size.value,
                 onValueChange = {
@@ -195,7 +197,7 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Icon-Abstand · ${currentFavoriteSpacing.spacing.value.roundToInt()}dp", color = secondaryTextColor, fontSize = 12.sp)
+            Text(stringResource(R.string.icon_spacing_label, currentFavoriteSpacing.spacing.value.roundToInt()), color = secondaryTextColor, fontSize = 12.sp)
             Slider(
                 value = currentFavoriteSpacing.spacing.value,
                 onValueChange = {

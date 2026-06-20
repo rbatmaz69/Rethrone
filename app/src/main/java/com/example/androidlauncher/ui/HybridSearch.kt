@@ -57,7 +57,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppUsageStats
@@ -317,7 +319,7 @@ fun HybridSearch(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "Apps",
+                        text = stringResource(R.string.section_apps),
                         color = mainTextColor.copy(alpha = 0.6f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -353,7 +355,7 @@ fun HybridSearch(
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     Text(
-                        text = "Websuche",
+                        text = stringResource(R.string.web_search),
                         color = mainTextColor.copy(alpha = 0.6f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -414,7 +416,7 @@ fun HybridSearch(
                 Box(modifier = Modifier.weight(1f)) {
                     if (query.isEmpty()) {
                         Text(
-                            text = "Suchen...",
+                            text = stringResource(R.string.search_hint),
                             color = mainTextColor.copy(alpha = 0.38f),
                             fontSize = 17.sp
                         )
@@ -477,7 +479,7 @@ fun HybridSearch(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
-                            contentDescription = "Clear",
+                            contentDescription = stringResource(R.string.cd_clear),
                             tint = mainTextColor.copy(alpha = 0.42f),
                             modifier = Modifier.size(18.dp)
                         )
@@ -671,7 +673,7 @@ private fun SearchHistoryItem(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Close,
-                contentDescription = "Verlaufseintrag entfernen",
+                contentDescription = stringResource(R.string.cd_remove_history),
                 tint = mainTextColor.copy(alpha = 0.42f),
                 modifier = Modifier.size(16.dp)
             )
@@ -768,7 +770,7 @@ fun WebSearchItem(
             )
         }
         Text(
-            text = "ENTER",
+            text = stringResource(R.string.enter_key),
             color = mainTextColor.copy(alpha = 0.38f),
             fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,

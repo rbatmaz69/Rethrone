@@ -63,7 +63,7 @@
 
         <service
             android:name=".LauncherAccessibilityService"
-            android:label="Minimalist Launcher Gestures"
+            android:label="@string/accessibility_service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">
             <intent-filter>

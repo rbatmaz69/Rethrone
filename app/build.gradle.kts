@@ -37,6 +37,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    androidResources {
+        // Nur die offiziell gepflegten Sprachen mit ausliefern. Verhindert APK-Bloat durch
+        // Bibliotheks-Übersetzungen und hält den Sprachensatz konsistent. Englisch (values/)
+        // dient als Fallback für nicht unterstützte Systemsprachen.
+        localeFilters += listOf("en", "de", "fr", "es", "it")
+    }
+
     signingConfigs {
         // Nur anlegen, wenn Credentials vorhanden sind (ENV oder local.properties).
         val storeFilePath = signingProperty("KEYSTORE_FILE", "release.storeFile")

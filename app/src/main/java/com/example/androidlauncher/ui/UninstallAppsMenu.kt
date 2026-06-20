@@ -23,7 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.composables.icons.lucide.Lucide
@@ -142,7 +144,7 @@ fun UninstallAppsMenu(
                 }
             )
         } catch (_: Exception) {
-            Toast.makeText(context, "Deinstallation konnte nicht gestartet werden", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.uninstall_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -191,13 +193,13 @@ fun UninstallAppsMenu(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Apps deinstallieren",
+                stringResource(R.string.uninstall_apps),
                 fontSize = 24.sp,
                 fontWeight = fontWeight.weight,
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
@@ -214,7 +216,7 @@ fun UninstallAppsMenu(
             StableSearchFieldContent(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = "Apps durchsuchen...",
+                placeholder = stringResource(R.string.search_apps),
                 textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
                 textColor = mainTextColor,
                 placeholderColor = mainTextColor.copy(alpha = 0.4f),
@@ -260,7 +262,7 @@ fun UninstallAppsMenu(
                     onClick = { selectedPackages.clear() },
                     modifier = Modifier.testTag("uninstall_clear_selection")
                 ) {
-                    Text("Auswahl aufheben", color = mainTextColor.copy(alpha = 0.7f))
+                    Text(stringResource(R.string.clear_selection), color = mainTextColor.copy(alpha = 0.7f))
                 }
                 Button(
                     onClick = { pendingConfirmation = selectedPackages.toList() },
@@ -272,7 +274,7 @@ fun UninstallAppsMenu(
                 ) {
                     Icon(Lucide.Trash2, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Deinstallieren (${selectedPackages.size})")
+                    Text(stringResource(R.string.uninstall_count, selectedPackages.size))
                 }
             }
         }
@@ -285,11 +287,11 @@ fun UninstallAppsMenu(
             val label = filteredApps.firstOrNull { it.packageName == packages.first() }?.label
                 ?: uninstallableApps.firstOrNull { it.packageName == packages.first() }?.label
                 ?: packages.first()
-            title = "App deinstallieren?"
-            message = "„$label\" wird von diesem Gerät entfernt."
+            title = stringResource(R.string.uninstall_one_title)
+            message = stringResource(R.string.uninstall_one_message, label)
         } else {
-            title = "Apps deinstallieren?"
-            message = "${packages.size} Apps werden nacheinander entfernt. Bitte bestätige jede App im System-Dialog."
+            title = stringResource(R.string.uninstall_many_title)
+            message = stringResource(R.string.uninstall_many_message, packages.size)
         }
 
         AlertDialog(
@@ -305,12 +307,12 @@ fun UninstallAppsMenu(
                     },
                     modifier = Modifier.testTag("uninstall_confirm_button")
                 ) {
-                    Text("Deinstallieren", color = DestructiveColor)
+                    Text(stringResource(R.string.uninstall), color = DestructiveColor)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingConfirmation = null }) {
-                    Text("Abbrechen")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -410,7 +412,7 @@ private fun UninstallAppRow(
                     onClick = onRequestUninstall,
                     modifier = Modifier.testTag("uninstall_button_${app.packageName}")
                 ) {
-                    Icon(Lucide.Trash2, contentDescription = "Deinstallieren", tint = DestructiveColor, modifier = Modifier.size(22.dp))
+                    Icon(Lucide.Trash2, contentDescription = stringResource(R.string.uninstall), tint = DestructiveColor, modifier = Modifier.size(22.dp))
                 }
             }
         }

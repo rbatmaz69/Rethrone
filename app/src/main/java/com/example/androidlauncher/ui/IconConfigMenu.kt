@@ -32,7 +32,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.composables.icons.lucide.*
@@ -101,13 +104,13 @@ fun IconConfigMenu(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "App-Icons anpassen",
+                stringResource(R.string.edit_app_icons),
                 fontSize = 28.sp,
                 fontWeight = fontWeight.weight,
                 color = mainTextColor
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
@@ -124,7 +127,7 @@ fun IconConfigMenu(
             StableSearchFieldContent(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = "Apps durchsuchen...",
+                placeholder = stringResource(R.string.search_apps),
                 textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
                 textColor = mainTextColor,
                 placeholderColor = mainTextColor.copy(alpha = 0.4f),
@@ -189,15 +192,15 @@ fun IconConfigMenu(
                                 Text(app.label, color = mainTextColor, fontSize = 16.sp, fontWeight = fontWeight.weight)
                                 when {
                                     customIconName != null -> {
-                                        Text("Manuell · $customIconName", color = mainTextColor.copy(alpha = 0.55f), fontSize = 12.sp)
+                                        Text(stringResource(R.string.icon_manual_status, customIconName), color = mainTextColor.copy(alpha = 0.55f), fontSize = 12.sp)
                                     }
                                     autoStatus != null -> {
-                                        Text(autoStatus, color = secondaryTextColor, fontSize = 12.sp)
+                                        Text(stringResource(autoStatus), color = secondaryTextColor, fontSize = 12.sp)
                                     }
                                 }
                             }
                             Text(
-                                text = "Anpassen",
+                                text = stringResource(R.string.customize),
                                 color = mainTextColor.copy(alpha = 0.72f),
                                 fontSize = 12.sp
                             )
@@ -256,7 +259,7 @@ private fun IconActionDialog(
     app: AppInfo,
     customIconName: String?,
     explicitRule: AutoIconRule?,
-    currentStatus: String?,
+    @StringRes currentStatus: Int?,
     onPickLucide: () -> Unit,
     onResetManual: () -> Unit,
     onSelectRule: (AutoIconRuleMode?) -> Unit,
@@ -389,14 +392,14 @@ private fun IconActionDialog(
                                         fontWeight = fontWeight.weight
                                     )
                                     Text(
-                                        text = "Icon-Optionen",
+                                        text = stringResource(R.string.icon_options),
                                         color = secondaryTextColor,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
                             }
                             IconButton(onClick = ::dismissSheet) {
-                                Icon(Icons.Rounded.Close, contentDescription = "Schließen", tint = mainTextColor)
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
                             }
                         }
 
@@ -410,7 +413,7 @@ private fun IconActionDialog(
                         ) {
                             currentStatus?.let {
                                 Text(
-                                    text = it,
+                                    text = stringResource(it),
                                     color = mainTextColor,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = fontWeight.weight
@@ -423,7 +426,7 @@ private fun IconActionDialog(
                             )
                             if (customIconName != null) {
                                 Text(
-                                    text = "Manueller Override aktiv: $customIconName",
+                                    text = stringResource(R.string.icon_manual_override_active, customIconName),
                                     color = secondaryTextColor,
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -432,14 +435,14 @@ private fun IconActionDialog(
 
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(
-                                text = "Direkte Aktionen",
+                                text = stringResource(R.string.icon_direct_actions),
                                 color = secondaryTextColor,
                                 style = MaterialTheme.typography.labelLarge
                             )
                             IconActionButton(
                                 icon = Lucide.Palette,
-                                title = "Lucide-Icon auswählen",
-                                subtitle = "Weise dieser App direkt ein eigenes Icon zu",
+                                title = stringResource(R.string.icon_pick_lucide_title),
+                                subtitle = stringResource(R.string.icon_pick_lucide_sub),
                                 testTag = "icon_action_pick_lucide",
                                 onClick = {
                                     dismissSheet()
@@ -452,8 +455,8 @@ private fun IconActionDialog(
                             )
                             IconActionButton(
                                 icon = Lucide.RefreshCcw,
-                                title = "Auto neu analysieren",
-                                subtitle = "Prüft Original, Form und Lesbarkeit erneut",
+                                title = stringResource(R.string.icon_reanalyze_title),
+                                subtitle = stringResource(R.string.icon_reanalyze_sub),
                                 testTag = "icon_action_reanalyze",
                                 onClick = {
                                     dismissSheet()
@@ -469,14 +472,14 @@ private fun IconActionDialog(
 
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(
-                                text = "Automatische Regeln",
+                                text = stringResource(R.string.icon_auto_rules),
                                 color = secondaryTextColor,
                                 style = MaterialTheme.typography.labelLarge
                             )
                             IconActionButton(
                                 icon = Lucide.ShieldCheck,
-                                title = "Original immer behalten",
-                                subtitle = "Überschreibt die Heuristik und zeigt das echte App-Icon",
+                                title = stringResource(R.string.icon_keep_original_title),
+                                subtitle = stringResource(R.string.icon_keep_original_sub),
                                 testTag = "icon_action_keep_original",
                                 onClick = {
                                     dismissSheet()
@@ -489,8 +492,8 @@ private fun IconActionDialog(
                             )
                             IconActionButton(
                                 icon = Lucide.Replace,
-                                title = "Automatischen Fallback bevorzugen",
-                                subtitle = "Erzwingt Lucide oder neutralen Container",
+                                title = stringResource(R.string.icon_force_fallback_title),
+                                subtitle = stringResource(R.string.icon_force_fallback_sub),
                                 testTag = "icon_action_force_fallback",
                                 onClick = {
                                     dismissSheet()
@@ -503,8 +506,8 @@ private fun IconActionDialog(
                             )
                             IconActionButton(
                                 icon = Lucide.Search,
-                                title = "Nur Heuristik verwenden",
-                                subtitle = "Entscheidung wieder automatisch treffen lassen",
+                                title = stringResource(R.string.icon_follow_heuristic_title),
+                                subtitle = stringResource(R.string.icon_follow_heuristic_sub),
                                 testTag = "icon_action_follow_heuristic",
                                 onClick = {
                                     dismissSheet()
@@ -518,8 +521,8 @@ private fun IconActionDialog(
                             if (explicitRule != null) {
                                 IconActionButton(
                                     icon = Lucide.Eraser,
-                                    title = "Gespeicherte Regel entfernen",
-                                    subtitle = "Fällt auf die Standardlogik des Launchers zurück",
+                                    title = stringResource(R.string.icon_clear_rule_title),
+                                    subtitle = stringResource(R.string.icon_clear_rule_sub),
                                     testTag = "icon_action_clear_rule",
                                     onClick = {
                                         dismissSheet()
@@ -536,8 +539,8 @@ private fun IconActionDialog(
                             HorizontalDivider(color = mainTextColor.copy(alpha = 0.08f))
                             IconActionButton(
                                 icon = Lucide.Trash2,
-                                title = "Manuellen Override entfernen",
-                                subtitle = "Nutzt wieder die automatische Entscheidung des Launchers",
+                                title = stringResource(R.string.icon_reset_manual_title),
+                                subtitle = stringResource(R.string.icon_reset_manual_sub),
                                 testTag = "icon_action_reset_manual",
                                 onClick = {
                                     dismissSheet()
@@ -626,7 +629,7 @@ private fun IconActionButton(
         }
         if (isSelected) {
             Text(
-                text = "Aktiv",
+                text = stringResource(R.string.active),
                 color = accentColor,
                 style = MaterialTheme.typography.labelMedium
             )
@@ -634,16 +637,17 @@ private fun IconActionButton(
     }
 }
 
-private fun buildIconStatusLabel(app: AppInfo, explicitRule: AutoIconRule?): String? {
+@StringRes
+private fun buildIconStatusLabel(app: AppInfo, explicitRule: AutoIconRule?): Int? {
     val ruleLabel = when (explicitRule?.mode) {
-        AutoIconRuleMode.KEEP_ORIGINAL -> "Regel · Original bevorzugen"
-        AutoIconRuleMode.FORCE_FALLBACK -> "Regel · Fallback bevorzugen"
-        AutoIconRuleMode.FOLLOW_HEURISTIC -> "Regel · Nur Heuristik"
+        AutoIconRuleMode.KEEP_ORIGINAL -> R.string.icon_rule_keep_original
+        AutoIconRuleMode.FORCE_FALLBACK -> R.string.icon_rule_force_fallback
+        AutoIconRuleMode.FOLLOW_HEURISTIC -> R.string.icon_rule_follow_heuristic
         null -> null
     }
     return ruleLabel ?: when (app.autoIconFallback?.type) {
-        com.example.androidlauncher.data.AutoIconFallbackType.ORIGINAL -> "Auto · Original"
-        com.example.androidlauncher.data.AutoIconFallbackType.NEUTRAL -> "Auto · Neutraler Container"
+        com.example.androidlauncher.data.AutoIconFallbackType.ORIGINAL -> R.string.icon_auto_original
+        com.example.androidlauncher.data.AutoIconFallbackType.NEUTRAL -> R.string.icon_auto_neutral
         null -> null
     }
 }
@@ -694,9 +698,9 @@ fun LucideIconPicker(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
                     }
-                    Text("Icon wählen", fontSize = 20.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+                    Text(stringResource(R.string.icon_pick_title), fontSize = 20.sp, fontWeight = fontWeight.weight, color = mainTextColor)
                     Spacer(modifier = Modifier.width(48.dp)) // Placeholder for balance
                 }
 
@@ -712,7 +716,7 @@ fun LucideIconPicker(
                         StableSearchFieldContent(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = "Icons suchen...",
+                            placeholder = stringResource(R.string.icon_search_hint),
                             textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
                             textColor = mainTextColor,
                             placeholderColor = mainTextColor.copy(alpha = 0.4f),

@@ -22,7 +22,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.example.androidlauncher.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -76,7 +78,7 @@ fun ColorConfigMenu(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Farben", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+                Text(stringResource(R.string.color_config_title), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
                 IconButton(onClick = onClose) {
                     Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
                 }
@@ -84,17 +86,17 @@ fun ColorConfigMenu(
 
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
 
-            Text("Farben", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
+            Text(stringResource(R.string.color_config_title), color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
             ColorPickerRow(
-                label = "Schriftfarbe (Startseite)",
+                label = stringResource(R.string.color_label_home_text),
                 color = homeTextColor,
                 mainTextColor = mainTextColor,
                 onClick = { activePicker = "text" }
             )
             Spacer(modifier = Modifier.height(10.dp))
             ColorPickerRow(
-                label = "Iconfarbe",
+                label = stringResource(R.string.color_label_icon),
                 color = iconColor,
                 mainTextColor = mainTextColor,
                 onClick = { activePicker = "icon" }
@@ -104,14 +106,14 @@ fun ColorConfigMenu(
             if (selectedTheme == ColorTheme.CUSTOM) {
                 Spacer(modifier = Modifier.height(10.dp))
                 ColorPickerRow(
-                    label = "Hintergrundfarbe",
+                    label = stringResource(R.string.color_label_background),
                     color = customBackgroundColor,
                     mainTextColor = mainTextColor,
                     onClick = { activePicker = "bg" }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 ColorPickerRow(
-                    label = "Menüfarbe",
+                    label = stringResource(R.string.color_label_menu),
                     color = customMenuColor,
                     mainTextColor = mainTextColor,
                     onClick = { activePicker = "menu" }
@@ -120,7 +122,7 @@ fun ColorConfigMenu(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text("Darstellung", color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
+            Text(stringResource(R.string.color_section_appearance), color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
             Spacer(modifier = Modifier.height(12.dp))
 
             // Antippbare Zeile → Theme-Untermenü.
@@ -135,9 +137,9 @@ fun ColorConfigMenu(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Themen", color = mainTextColor, fontSize = 16.sp)
+                Text(stringResource(R.string.label_themes), color = mainTextColor, fontSize = 16.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(selectedTheme.themeName, color = mainTextColor.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Text(selectedTheme.themeNameRes?.let { stringResource(it) } ?: selectedTheme.themeName, color = mainTextColor.copy(alpha = 0.6f), fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -162,9 +164,9 @@ fun ColorConfigMenu(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Design", color = mainTextColor, fontSize = 16.sp)
+                Text(stringResource(R.string.label_design), color = mainTextColor, fontSize = 16.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(designStyle.displayName, color = mainTextColor.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Text(stringResource(designStyle.titleRes), color = mainTextColor.copy(alpha = 0.6f), fontSize = 14.sp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -180,10 +182,10 @@ fun ColorConfigMenu(
 
         if (activePicker != null) {
             val (pickerTitle, pickerColor, pickerOnChange) = when (activePicker) {
-                "text" -> Triple("Schriftfarbe (Startseite)", homeTextColor, onHomeTextColorChange)
-                "icon" -> Triple("Iconfarbe", iconColor, onIconColorChange)
-                "bg" -> Triple("Hintergrundfarbe", customBackgroundColor, onCustomBackgroundChange)
-                else -> Triple("Menüfarbe", customMenuColor, onCustomMenuChange)
+                "text" -> Triple(stringResource(R.string.color_label_home_text), homeTextColor, onHomeTextColorChange)
+                "icon" -> Triple(stringResource(R.string.color_label_icon), iconColor, onIconColorChange)
+                "bg" -> Triple(stringResource(R.string.color_label_background), customBackgroundColor, onCustomBackgroundChange)
+                else -> Triple(stringResource(R.string.color_label_menu), customMenuColor, onCustomMenuChange)
             }
             if (eyedropperActive) {
                 WallpaperEyedropper(
@@ -259,7 +261,7 @@ fun ColorPickerDialog(
             )
             Spacer(modifier = Modifier.height(20.dp))
             TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                Text("Fertig", color = mainTextColor, fontSize = 16.sp)
+                Text(stringResource(R.string.button_done), color = mainTextColor, fontSize = 16.sp)
             }
         }
     }
@@ -300,7 +302,7 @@ fun ThemeSelectionMenu(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Themen", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+                Text(stringResource(R.string.label_themes), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
                 IconButton(onClick = onClose) {
                     Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
                 }
@@ -372,11 +374,11 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
             
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(theme.themeName, color = mainTextColor, fontSize = 16.sp)
+                    Text(theme.themeNameRes?.let { stringResource(it) } ?: theme.themeName, color = mainTextColor, fontSize = 16.sp)
                     if (theme.isArtTheme) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "ART",
+                            text = stringResource(R.string.theme_badge_art),
                             color = mainTextColor.copy(alpha = 0.65f),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -389,10 +391,10 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
                 }
                 Text(
                     text = when {
-                        theme == ColorTheme.CUSTOM -> "Eigene Flächenfarben selbst wählen"
-                        theme == ColorTheme.DYNAMIC -> "Farben aus deinem Hintergrundbild (Material You)"
-                        theme.isArtTheme -> "Mehrfarbiger Atmosphären-Verlauf"
-                        else -> "Klassische minimalistische Palette"
+                        theme == ColorTheme.CUSTOM -> stringResource(R.string.theme_desc_custom)
+                        theme == ColorTheme.DYNAMIC -> stringResource(R.string.theme_desc_dynamic)
+                        theme.isArtTheme -> stringResource(R.string.theme_desc_art)
+                        else -> stringResource(R.string.theme_desc_classic)
                     },
                     color = mainTextColor.copy(alpha = 0.55f),
                     fontSize = 12.sp

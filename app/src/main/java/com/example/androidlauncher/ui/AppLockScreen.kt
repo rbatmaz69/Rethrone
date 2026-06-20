@@ -40,7 +40,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import androidx.compose.foundation.Image
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
@@ -128,7 +130,7 @@ fun AppLockScreen(
         Text(appLabel, color = textColor, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(4.dp))
         Text(
-            if (showError) "Falscher Code" else "Gesperrt – zum Öffnen entsperren",
+            if (showError) stringResource(R.string.lock_wrong_code) else stringResource(R.string.lock_locked_hint),
             color = if (showError) Color(0xFFE0584F) else textColor.copy(alpha = 0.6f),
             fontSize = 14.sp
         )
@@ -167,7 +169,7 @@ fun AppLockScreen(
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Entsperren", color = textColor, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(R.string.unlock), color = textColor, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
 
@@ -182,7 +184,7 @@ fun AppLockScreen(
             ) {
                 Icon(Icons.Rounded.Fingerprint, contentDescription = null, tint = accentColor, modifier = Modifier.size(28.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Biometrie verwenden", color = textColor.copy(alpha = 0.8f), fontSize = 14.sp)
+                Text(stringResource(R.string.use_biometric), color = textColor.copy(alpha = 0.8f), fontSize = 14.sp)
             }
         }
     }

@@ -16,7 +16,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
@@ -68,15 +70,15 @@ fun HiddenAppsMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Apps ausblenden", fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(stringResource(R.string.hide_apps), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "Angehakte Apps werden im Launcher versteckt.",
+            stringResource(R.string.hidden_apps_desc),
             color = mainTextColor.copy(alpha = 0.6f),
             fontSize = 13.sp
         )
@@ -91,7 +93,7 @@ fun HiddenAppsMenu(
             StableSearchFieldContent(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = "Apps durchsuchen...",
+                placeholder = stringResource(R.string.search_apps),
                 textStyle = androidx.compose.ui.text.TextStyle(color = mainTextColor, fontSize = 16.sp),
                 textColor = mainTextColor,
                 placeholderColor = mainTextColor.copy(alpha = 0.4f),

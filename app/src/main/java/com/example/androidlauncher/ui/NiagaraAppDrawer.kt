@@ -59,7 +59,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -224,10 +226,10 @@ fun NiagaraAppDrawer(
                         },
                         modifier = Modifier.testTag("niagara_search_toggle")
                     ) {
-                        Icon(Icons.Rounded.Search, contentDescription = "Suche", tint = mainTextColor)
+                        Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.cd_search), tint = mainTextColor)
                     }
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = mainTextColor)
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
                     }
                 }
             }
@@ -420,7 +422,7 @@ fun NiagaraAppDrawer(
                             }
                         )
                     } catch (_: Exception) {
-                        Toast.makeText(context, "Deinstallation konnte nicht gestartet werden", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.uninstall_failed), Toast.LENGTH_SHORT).show()
                     }
                 }
             )
