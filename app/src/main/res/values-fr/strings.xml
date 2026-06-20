@@ -348,4 +348,39 @@
     <string name="feature_hidden_desc">Masquez certaines apps de la vue d\'ensemble.</string>
     <string name="feature_uninstall_title">Désinstaller des apps</string>
     <string name="feature_uninstall_desc">Supprimez facilement des apps directement depuis le lanceur.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Ignorer</string>
+    <string name="onboarding_next">Suivant</string>
+    <string name="onboarding_finish">Commencer</string>
+    <string name="onboarding_allow">Autoriser</string>
+    <string name="onboarding_status_active">Actif</string>
+    <string name="onboarding_welcome_title">Bienvenue dans Rethrone</string>
+    <string name="onboarding_welcome_desc">Un écran d\'accueil sobre et minimaliste, entièrement à votre image. Configurons-le en quelques étapes.</string>
+    <string name="onboarding_default_title">Faire de Rethrone votre accueil</string>
+    <string name="onboarding_default_desc">Définissez Rethrone comme lanceur par défaut pour qu\'il s\'ouvre à chaque appui sur le bouton d\'accueil.</string>
+    <string name="onboarding_default_action">Définir par défaut</string>
+    <string name="onboarding_permissions_title">Quelques autorisations</string>
+    <string name="onboarding_permissions_desc">Chacune active une fonction optionnelle. N\'accordez que ce que vous voulez — chacune est facultative.</string>
+    <string name="onboarding_perm_usage_title">Accès à l\'utilisation</string>
+    <string name="onboarding_perm_usage_desc">Alimente les suggestions d\'apps intelligentes selon vos habitudes.</string>
+    <string name="onboarding_perm_accessibility_title">Accessibilité</string>
+    <string name="onboarding_perm_accessibility_desc">Nécessaire pour verrouiller des apps par code, schéma ou biométrie.</string>
+    <string name="onboarding_perm_location_title">Localisation (approximative)</string>
+    <string name="onboarding_perm_location_desc">Permet au widget météo d\'afficher les conditions près de vous.</string>
+    <string name="onboarding_personalize_title">Personnalisez</string>
+    <string name="onboarding_personalize_desc">Choisissez un style. Tout se règle plus tard dans les paramètres.</string>
+    <string name="onboarding_personalize_design">Style des surfaces</string>
+    <string name="onboarding_favorites_title">Choisissez vos favoris</string>
+    <string name="onboarding_favorites_desc">Choisissez les apps de votre barre d\'accueil. Touchez pour ajouter ou retirer.</string>
+    <string name="onboarding_gestures_title">Gestes rapides</string>
+    <string name="onboarding_gestures_desc">Quelques gestes pour utiliser Rethrone en un éclair.</string>
+    <string name="onboarding_gesture_swipe_title">Balayer vers le haut</string>
+    <string name="onboarding_gesture_swipe_desc">Ouvre le tiroir avec toutes vos apps.</string>
+    <string name="onboarding_gesture_doubletap_title">Double appui</string>
+    <string name="onboarding_gesture_doubletap_desc">Appuyez deux fois sur l\'écran d\'accueil pour votre action choisie.</string>
+    <string name="onboarding_gesture_shake_title">Secouer</string>
+    <string name="onboarding_gesture_shake_desc">Secouez le téléphone pour une action rapide comme la lampe.</string>
+    <string name="onboarding_finish_title">Tout est prêt</string>
+    <string name="onboarding_finish_desc">Profitez de votre nouvel écran d\'accueil. Tout est modifiable à tout moment dans les paramètres.</string>
 </resources>

@@ -99,6 +99,7 @@ import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
+import com.example.androidlauncher.ui.onboarding.OnboardingFlow
 import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
 import com.example.androidlauncher.ui.AnimationsConfigMenu
@@ -245,6 +246,9 @@ class MainActivity : ComponentActivity() {
             val isClockWidgetEnabled by themeManager.isClockWidgetEnabled.collectAsState(initial = true)
             val isCalendarWidgetEnabled by themeManager.isCalendarWidgetEnabled.collectAsState(initial = true)
             val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
+            // Erststart-Onboarding: Default true vermeidet Aufblitzen für Bestandsnutzer,
+            // bis der echte Wert aus DataStore geladen ist.
+            val onboardingCompleted by themeManager.isOnboardingCompleted.collectAsState(initial = true)
 
             val customWallpaperUri by themeManager.customWallpaperUri.collectAsState(initial = null)
             val wallpaperBlur by themeManager.wallpaperBlur.collectAsState(initial = 0f)
@@ -1709,6 +1713,22 @@ class MainActivity : ComponentActivity() {
                                 TextButton(onClick = { showUsageAccessPrompt = false }) {
                                     Text(stringResource(R.string.later))
                                 }
+                            }
+                        )
+                    }
+
+                    // Erststart-Onboarding als oberste Ebene über dem gesamten UI-Baum.
+                    if (!onboardingCompleted) {
+                        OnboardingFlow(
+                            themeManager = themeManager,
+                            apps = visibleApps,
+                            favoritePackages = favoritePackages,
+                            onFavoritesChange = { newFavorites ->
+                                scope.launch { favoritesManager.saveFavorites(newFavorites) }
+                            },
+                            onRequestDefaultLauncher = { requestDefaultLauncher() },
+                            onComplete = {
+                                scope.launch { themeManager.setOnboardingCompleted(true) }
                             }
                         )
                     }

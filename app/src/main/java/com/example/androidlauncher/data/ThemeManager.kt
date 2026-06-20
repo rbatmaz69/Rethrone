@@ -93,6 +93,8 @@ class ThemeManager(private val context: Context) {
         private val CLOCK_WIDGET_KEY = booleanPreferencesKey("clock_widget_enabled")
         // Kalender-/Datum-Widget (Standard: an).
         private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
+        // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
+        private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
 
         // Offset for UI elements (Relative to default position)
         // Uhr, Datum, Wetter und Favoriten sind unabhängig auf X/Y verschiebbar.
@@ -264,6 +266,12 @@ class ThemeManager(private val context: Context) {
                 favorites = Offset(prefs[FAVORITES_OFFSET_X_KEY] ?: 0f, prefs[FAVORITES_OFFSET_Y_KEY] ?: 0f),
             )
         }
+
+    /**
+     * Observable flow, ob das Erststart-Onboarding bereits abgeschlossen wurde. Default: false.
+     */
+    val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data
+        .map { it[ONBOARDING_COMPLETED_KEY] ?: false }
 
     /**
      * Observable flow for animations toggle.
@@ -472,6 +480,15 @@ class ThemeManager(private val context: Context) {
         
         // Also update internally to stay consistent
         context.dataStore.edit { it[HAPTIC_FEEDBACK_KEY] = enabled }
+    }
+
+    /**
+     * Markiert das Erststart-Onboarding als abgeschlossen (oder setzt es zurück).
+     */
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[ONBOARDING_COMPLETED_KEY] = completed
+        }
     }
 
     /**

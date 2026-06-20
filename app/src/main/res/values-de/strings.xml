@@ -348,4 +348,39 @@
     <string name="feature_hidden_desc">Einzelne Apps aus der Übersicht ausblenden.</string>
     <string name="feature_uninstall_title">Apps deinstallieren</string>
     <string name="feature_uninstall_desc">Apps bequem direkt aus dem Launcher entfernen.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Überspringen</string>
+    <string name="onboarding_next">Weiter</string>
+    <string name="onboarding_finish">Los geht\'s</string>
+    <string name="onboarding_allow">Erlauben</string>
+    <string name="onboarding_status_active">Aktiv</string>
+    <string name="onboarding_welcome_title">Willkommen bei Rethrone</string>
+    <string name="onboarding_welcome_desc">Ein ruhiger, minimalistischer Startbildschirm – ganz nach deinem Geschmack. Richten wir ihn in wenigen Schritten ein.</string>
+    <string name="onboarding_default_title">Rethrone zur Start-App machen</string>
+    <string name="onboarding_default_desc">Lege Rethrone als Standard-Launcher fest, damit es bei jedem Druck auf die Home-Taste erscheint.</string>
+    <string name="onboarding_default_action">Als Standard festlegen</string>
+    <string name="onboarding_permissions_title">Ein paar Berechtigungen</string>
+    <string name="onboarding_permissions_desc">Jede schaltet eine optionale Funktion frei. Erteile nur, was du möchtest – jede ist überspringbar.</string>
+    <string name="onboarding_perm_usage_title">Nutzungszugriff</string>
+    <string name="onboarding_perm_usage_desc">Treibt smarte App-Vorschläge auf Basis deiner Gewohnheiten an.</string>
+    <string name="onboarding_perm_accessibility_title">Bedienungshilfen</string>
+    <string name="onboarding_perm_accessibility_desc">Nötig, um einzelne Apps mit PIN, Muster oder Biometrie zu sperren.</string>
+    <string name="onboarding_perm_location_title">Standort (grob)</string>
+    <string name="onboarding_perm_location_desc">Lässt das Wetter-Widget die Lage in deiner Nähe anzeigen.</string>
+    <string name="onboarding_personalize_title">Mach es zu deinem</string>
+    <string name="onboarding_personalize_desc">Wähle einen Look. Alles lässt sich später in den Einstellungen feinjustieren.</string>
+    <string name="onboarding_personalize_design">Oberflächen-Stil</string>
+    <string name="onboarding_favorites_title">Favoriten auswählen</string>
+    <string name="onboarding_favorites_desc">Wähle die Apps für deine Startbildschirm-Leiste. Zum Hinzufügen/Entfernen antippen.</string>
+    <string name="onboarding_gestures_title">Schnelle Gesten</string>
+    <string name="onboarding_gestures_desc">Ein paar Griffe, die Rethrone flott machen.</string>
+    <string name="onboarding_gesture_swipe_title">Nach oben wischen</string>
+    <string name="onboarding_gesture_swipe_desc">Öffnet den App-Drawer mit allen Apps.</string>
+    <string name="onboarding_gesture_doubletap_title">Doppeltippen</string>
+    <string name="onboarding_gesture_doubletap_desc">Tippe zweimal auf den Startbildschirm für deine gewählte Aktion.</string>
+    <string name="onboarding_gesture_shake_title">Schütteln</string>
+    <string name="onboarding_gesture_shake_desc">Schüttle dein Handy für eine schnelle Aktion wie die Taschenlampe.</string>
+    <string name="onboarding_finish_title">Alles bereit</string>
+    <string name="onboarding_finish_desc">Viel Freude mit deinem neuen Startbildschirm. Alles ist jederzeit in den Einstellungen änderbar.</string>
 </resources>
