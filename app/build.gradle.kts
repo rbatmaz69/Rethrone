@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApp)
@@ -9,26 +10,52 @@ plugins {
     alias(libs.plugins.kover)
 }
 
+// Signing-Credentials niemals im Repo: gelesen aus Umgebungsvariablen (CI) mit Vorrang,
+// sonst aus der nicht-versionierten local.properties (lokale Release-Builds).
+val keystoreProperties = Properties().apply {
+    val localProps = rootProject.file("local.properties")
+    if (localProps.exists()) {
+        localProps.inputStream().use { load(it) }
+    }
+}
+fun signingProperty(envName: String, propName: String): String? =
+    System.getenv(envName) ?: keystoreProperties.getProperty(propName)
+
 android {
     namespace = "com.example.androidlauncher"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.androidlauncher"
+        // Eindeutige, dauerhafte Play-Store-ID (nicht mehr der com.example.*-Platzhalter).
+        // namespace bleibt bewusst getrennt, um kein Package-Rename auszulösen.
+        applicationId = "com.rethrone.launcher"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        // Nur anlegen, wenn Credentials vorhanden sind (ENV oder local.properties).
+        val storeFilePath = signingProperty("KEYSTORE_FILE", "release.storeFile")
+        if (storeFilePath != null) {
+            create("release") {
+                storeFile = file(storeFilePath)
+                storePassword = signingProperty("KEYSTORE_PASSWORD", "release.storePassword")
+                keyAlias = signingProperty("KEY_ALIAS", "release.keyAlias")
+                keyPassword = signingProperty("KEY_PASSWORD", "release.keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Mit dem Debug-Keystore signieren, damit der Release-Build per ADB
-            // (auch über WLAN) installierbar ist und in-place neben dem Debug-Build
-            // aktualisiert werden kann (gleiche Signatur, gleiche applicationId).
-            signingConfig = signingConfigs.getByName("debug")
+            // Mit dem eigenen Release-Keystore signieren, sobald Credentials vorliegen
+            // (CI über GitHub-Secrets oder lokal über local.properties). Andernfalls Fallback
+            // auf die Debug-Signatur für reine Dev-Installationen per ADB.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

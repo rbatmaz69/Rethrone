@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Erzwingt verschlüsselten Datenverkehr für die gesamte App.
+   Cleartext (HTTP) ist verboten – alle Netzaufrufe (Wetter-API api.open-meteo.com,
+   Geolokalisierung ipwho.is) laufen ohnehin bereits über HTTPS.
+   Kein Cert-Pinning: beide Endpunkte sind keyless und öffentlich; Pinning würde nur
+   Wartungsrisiko bei CA-Rotation erzeugen, ohne echten Sicherheitsgewinn.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
