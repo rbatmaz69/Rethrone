@@ -29,6 +29,7 @@ import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import kotlin.math.roundToInt
 
 /**
  * Konfigurationsmenü für Schrift- und Icon-Größen.
@@ -133,51 +134,49 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
             
-            // Slider Bereich
-            Text("Schriftgröße", color = secondaryTextColor, fontSize = 12.sp)
-            val fontSizeOptions = FontSize.entries
+            // Slider Bereich – stufenlos/feinstufig wie der Animationsgeschwindigkeits-Slider.
+            val sliderColors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
+
+            Text("Schriftgröße · ${(currentFontSize.scale * 100).roundToInt()}%", color = secondaryTextColor, fontSize = 12.sp)
             Slider(
-                value = fontSizeOptions.indexOf(currentFontSize).toFloat(),
-                onValueChange = { onFontSizeSelected(fontSizeOptions[it.toInt()]) },
-                valueRange = 0f..(fontSizeOptions.size - 1).toFloat(),
-                steps = fontSizeOptions.size - 2,
-                colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
+                value = currentFontSize.scale,
+                onValueChange = { onFontSizeSelected(FontSize.of(it)) },
+                valueRange = FontSize.MIN..FontSize.MAX,
+                steps = 99, // 0,60–1,60 in 1%-Schritten
+                colors = sliderColors
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Schriftstärke", color = secondaryTextColor, fontSize = 12.sp)
-            val fontWeightOptions = FontWeightLevel.entries
+            Text("Schriftstärke · ${currentFontWeight.weightValue} · ${currentFontWeight.label}", color = secondaryTextColor, fontSize = 12.sp)
             Slider(
-                value = fontWeightOptions.indexOf(currentFontWeight).toFloat(),
-                onValueChange = { onFontWeightSelected(fontWeightOptions[it.toInt()]) },
-                valueRange = 0f..(fontWeightOptions.size - 1).toFloat(),
-                steps = fontWeightOptions.size - 2,
-                colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
+                value = currentFontWeight.weightValue.toFloat(),
+                onValueChange = { onFontWeightSelected(FontWeightLevel.of(it.roundToInt())) },
+                valueRange = FontWeightLevel.MIN.toFloat()..FontWeightLevel.MAX.toFloat(),
+                steps = 31, // 100–900 in 25er-Schritten
+                colors = sliderColors
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Icon-Größe", color = secondaryTextColor, fontSize = 12.sp)
-            val iconSizeOptions = IconSize.entries
+            Text("Icon-Größe · ${currentIconSize.size.value.roundToInt()}dp", color = secondaryTextColor, fontSize = 12.sp)
             Slider(
-                value = iconSizeOptions.indexOf(currentIconSize).toFloat(),
-                onValueChange = { onIconSizeSelected(iconSizeOptions[it.toInt()]) },
-                valueRange = 0f..(iconSizeOptions.size - 1).toFloat(),
-                steps = iconSizeOptions.size - 2,
-                colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
+                value = currentIconSize.size.value,
+                onValueChange = { onIconSizeSelected(IconSize.of(it.dp)) },
+                valueRange = IconSize.MIN.value..IconSize.MAX.value,
+                steps = 43, // 28–72 dp in 1-dp-Schritten
+                colors = sliderColors
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Icon-Abstand", color = secondaryTextColor, fontSize = 12.sp)
-            val favoriteSpacingOptions = FavoriteSpacing.entries
+            Text("Icon-Abstand · ${currentFavoriteSpacing.spacing.value.roundToInt()}dp", color = secondaryTextColor, fontSize = 12.sp)
             Slider(
-                value = favoriteSpacingOptions.indexOf(currentFavoriteSpacing).toFloat(),
-                onValueChange = { onFavoriteSpacingSelected(favoriteSpacingOptions[it.toInt()]) },
-                valueRange = 0f..(favoriteSpacingOptions.size - 1).toFloat(),
-                steps = favoriteSpacingOptions.size - 2,
-                colors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
+                value = currentFavoriteSpacing.spacing.value,
+                onValueChange = { onFavoriteSpacingSelected(FavoriteSpacing.of(it.dp)) },
+                valueRange = FavoriteSpacing.MIN.value..FavoriteSpacing.MAX.value,
+                steps = 47, // 0–48 dp in 1-dp-Schritten
+                colors = sliderColors
             )
         }
     }

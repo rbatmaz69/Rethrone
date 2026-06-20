@@ -8,6 +8,8 @@ import android.provider.Settings
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -30,10 +32,16 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
 class ThemeManager(private val context: Context) {
     companion object {
         private val THEME_KEY = stringPreferencesKey("selected_theme")
-        private val FONT_SIZE_KEY = stringPreferencesKey("font_size")
-        private val FONT_WEIGHT_KEY = stringPreferencesKey("font_weight")
-        private val ICON_SIZE_KEY = stringPreferencesKey("icon_size")
-        private val FAVORITE_SPACING_KEY = stringPreferencesKey("favorite_icon_spacing")
+        // Neue stufenlose numerische Keys.
+        private val FONT_SIZE_SCALE_KEY = floatPreferencesKey("font_size_scale")
+        private val FONT_WEIGHT_VALUE_KEY = intPreferencesKey("font_weight_value")
+        private val ICON_SIZE_DP_KEY = floatPreferencesKey("icon_size_dp")
+        private val FAVORITE_SPACING_DP_KEY = floatPreferencesKey("favorite_spacing_dp")
+        // Alte String-Keys (Enum-Namen) – nur noch zur einmaligen Migration gelesen.
+        private val LEGACY_FONT_SIZE_KEY = stringPreferencesKey("font_size")
+        private val LEGACY_FONT_WEIGHT_KEY = stringPreferencesKey("font_weight")
+        private val LEGACY_ICON_SIZE_KEY = stringPreferencesKey("icon_size")
+        private val LEGACY_FAVORITE_SPACING_KEY = stringPreferencesKey("favorite_icon_spacing")
         private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
         // ARGB-Werte für frei wählbare Icon-/Schriftfarbe (Default Weiß).
         private val ICON_COLOR_KEY = intPreferencesKey("icon_color")
@@ -106,28 +114,50 @@ class ThemeManager(private val context: Context) {
             try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.SOFT_SAND }
         }
 
+    // ── Sanfte Migration alter Enum-Namen (String) auf die neuen numerischen Werte ──
+    private fun legacyFontSizeScale(name: String?): Float? = when (name) {
+        "SMALL" -> 0.85f; "STANDARD" -> 1.0f; "LARGE" -> 1.2f; else -> null
+    }
+    private fun legacyFontWeightValue(name: String?): Int? = when (name) {
+        "LIGHT" -> 300; "NORMAL" -> 400; "BOLD" -> 700; else -> null
+    }
+    private fun legacyIconSizeDp(name: String?): Float? = when (name) {
+        "SMALL" -> 40f; "STANDARD" -> 48f; "LARGE" -> 56f; else -> null
+    }
+    private fun legacyFavoriteSpacingDp(name: String?): Float? = when (name) {
+        "ENG" -> 4f; "KOMPAKT" -> 8f; "STANDARD" -> 12f; "LOCKER" -> 20f; "WEIT" -> 28f; else -> null
+    }
+
     val selectedFontSize: Flow<FontSize> = context.dataStore.data
         .map { preferences ->
-            val fontSizeName = preferences[FONT_SIZE_KEY] ?: FontSize.STANDARD.name
-            try { FontSize.valueOf(fontSizeName) } catch (e: IllegalArgumentException) { FontSize.STANDARD }
+            val scale = preferences[FONT_SIZE_SCALE_KEY]
+                ?: legacyFontSizeScale(preferences[LEGACY_FONT_SIZE_KEY])
+                ?: FontSize.STANDARD.scale
+            FontSize.of(scale)
         }
 
     val selectedFontWeight: Flow<FontWeightLevel> = context.dataStore.data
         .map { preferences ->
-            val fontWeightName = preferences[FONT_WEIGHT_KEY] ?: FontWeightLevel.NORMAL.name
-            try { FontWeightLevel.valueOf(fontWeightName) } catch (e: IllegalArgumentException) { FontWeightLevel.NORMAL }
+            val value = preferences[FONT_WEIGHT_VALUE_KEY]
+                ?: legacyFontWeightValue(preferences[LEGACY_FONT_WEIGHT_KEY])
+                ?: FontWeightLevel.NORMAL.weightValue
+            FontWeightLevel.of(value)
         }
 
     val selectedIconSize: Flow<IconSize> = context.dataStore.data
         .map { preferences ->
-            val iconSizeName = preferences[ICON_SIZE_KEY] ?: IconSize.STANDARD.name
-            try { IconSize.valueOf(iconSizeName) } catch (e: IllegalArgumentException) { IconSize.STANDARD }
+            val sizeDp = preferences[ICON_SIZE_DP_KEY]
+                ?: legacyIconSizeDp(preferences[LEGACY_ICON_SIZE_KEY])
+                ?: IconSize.STANDARD.size.value
+            IconSize.of(sizeDp.dp)
         }
 
     val selectedFavoriteSpacing: Flow<FavoriteSpacing> = context.dataStore.data
         .map { preferences ->
-            val name = preferences[FAVORITE_SPACING_KEY] ?: FavoriteSpacing.STANDARD.name
-            try { FavoriteSpacing.valueOf(name) } catch (e: IllegalArgumentException) { FavoriteSpacing.STANDARD }
+            val spacingDp = preferences[FAVORITE_SPACING_DP_KEY]
+                ?: legacyFavoriteSpacingDp(preferences[LEGACY_FAVORITE_SPACING_KEY])
+                ?: FavoriteSpacing.STANDARD.spacing.value
+            FavoriteSpacing.of(spacingDp.dp)
         }
 
     // Standard: dunkler Text – passend zum hellen Default-Theme "Tagespapier".
@@ -371,10 +401,10 @@ class ThemeManager(private val context: Context) {
     }.distinctUntilChanged()
 
     suspend fun setTheme(theme: ColorTheme) { context.dataStore.edit { it[THEME_KEY] = theme.name } }
-    suspend fun setFontSize(fontSize: FontSize) { context.dataStore.edit { it[FONT_SIZE_KEY] = fontSize.name } }
-    suspend fun setFontWeight(fontWeight: FontWeightLevel) { context.dataStore.edit { it[FONT_WEIGHT_KEY] = fontWeight.name } }
-    suspend fun setIconSize(iconSize: IconSize) { context.dataStore.edit { it[ICON_SIZE_KEY] = iconSize.name } }
-    suspend fun setFavoriteSpacing(spacing: FavoriteSpacing) { context.dataStore.edit { it[FAVORITE_SPACING_KEY] = spacing.name } }
+    suspend fun setFontSize(scale: Float) { context.dataStore.edit { it[FONT_SIZE_SCALE_KEY] = scale.coerceIn(FontSize.MIN, FontSize.MAX) } }
+    suspend fun setFontWeight(value: Int) { context.dataStore.edit { it[FONT_WEIGHT_VALUE_KEY] = value.coerceIn(FontWeightLevel.MIN, FontWeightLevel.MAX) } }
+    suspend fun setIconSize(size: Dp) { context.dataStore.edit { it[ICON_SIZE_DP_KEY] = size.coerceIn(IconSize.MIN, IconSize.MAX).value } }
+    suspend fun setFavoriteSpacing(spacing: Dp) { context.dataStore.edit { it[FAVORITE_SPACING_DP_KEY] = spacing.coerceIn(FavoriteSpacing.MIN, FavoriteSpacing.MAX).value } }
     suspend fun setDarkTextEnabled(enabled: Boolean) { context.dataStore.edit { it[DARK_TEXT_KEY] = enabled } }
     suspend fun setIconColor(color: Color) { context.dataStore.edit { it[ICON_COLOR_KEY] = color.toArgb() } }
     suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }

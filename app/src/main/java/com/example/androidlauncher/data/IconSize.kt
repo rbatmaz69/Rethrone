@@ -4,13 +4,24 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Enum representing available icon size options.
- * @property label Display name of the size option.
- * @property size The Dp size of the app icon.
- * @property scale Relative scale factor for previews.
+ * Stufenlos einstellbare App-Icon-Größe.
+ *
+ * @property size Die Dp-Größe des App-Icons.
+ * @property scale Relativer Skalierungsfaktor (bezogen auf 48dp) für Vorschauen.
  */
-enum class IconSize(val label: String, val size: Dp, val scale: Float) {
-    SMALL("Klein", 40.dp, 0.83f),
-    STANDARD("Standard", 48.dp, 1.0f),
-    LARGE("Groß", 56.dp, 1.17f)
+data class IconSize(val size: Dp) {
+    val scale: Float get() = size / 48.dp
+
+    companion object {
+        val MIN = 28.dp
+        val MAX = 72.dp
+
+        val STANDARD = IconSize(48.dp)
+        // Presets für Tests/Defaults und Abwärtskompatibilität.
+        val SMALL = IconSize(40.dp)
+        val LARGE = IconSize(56.dp)
+
+        /** Erzeugt einen auf [MIN]..[MAX] begrenzten Wert. */
+        fun of(size: Dp) = IconSize(size.coerceIn(MIN, MAX))
+    }
 }

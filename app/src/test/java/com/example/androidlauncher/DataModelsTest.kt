@@ -2,7 +2,9 @@ package com.example.androidlauncher
 
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FolderInfo
+import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
+import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
 import org.junit.Assert.*
 import org.junit.Test
@@ -11,57 +13,53 @@ import androidx.compose.ui.unit.dp
 class DataModelsTest {
 
     @Test
-    fun `font sizes expose expected labels and scales`() {
-        assertEquals("Klein", FontSize.SMALL.label)
+    fun `FontSize presets expose expected scales`() {
         assertEquals(0.85f, FontSize.SMALL.scale, 0.0001f)
-
-        assertEquals("Standard", FontSize.STANDARD.label)
         assertEquals(1.0f, FontSize.STANDARD.scale, 0.0001f)
-
-        assertEquals("Groß", FontSize.LARGE.label)
         assertEquals(1.2f, FontSize.LARGE.scale, 0.0001f)
     }
 
     @Test
-    fun `icon sizes expose expected labels and values`() {
-        assertEquals("Klein", IconSize.SMALL.label)
+    fun `FontSize of clamps to range`() {
+        assertEquals(FontSize.MIN, FontSize.of(0.1f).scale, 0.0001f)
+        assertEquals(FontSize.MAX, FontSize.of(5f).scale, 0.0001f)
+        assertEquals(1.15f, FontSize.of(1.15f).scale, 0.0001f)
+    }
+
+    @Test
+    fun `IconSize presets expose expected sizes`() {
         assertEquals(40.dp, IconSize.SMALL.size)
-
-        assertEquals("Standard", IconSize.STANDARD.label)
         assertEquals(48.dp, IconSize.STANDARD.size)
-
-        assertEquals("Groß", IconSize.LARGE.label)
         assertEquals(56.dp, IconSize.LARGE.size)
     }
 
     @Test
-    fun `FontSize values count is 3`() {
-        assertEquals(3, FontSize.entries.size)
+    fun `IconSize scale is derived relative to 48dp`() {
+        assertEquals(1.0f, IconSize.STANDARD.scale, 0.0001f)
+        assertEquals(0.5f, IconSize(24.dp).scale, 0.0001f)
     }
 
     @Test
-    fun `IconSize values count is 3`() {
-        assertEquals(3, IconSize.entries.size)
+    fun `IconSize of clamps to range`() {
+        assertEquals(IconSize.MIN, IconSize.of(1.dp).size)
+        assertEquals(IconSize.MAX, IconSize.of(200.dp).size)
+        assertEquals(50.dp, IconSize.of(50.dp).size)
     }
 
     @Test
-    fun `FontSize valueOf works for all entries`() {
-        FontSize.entries.forEach { fs ->
-            assertEquals(fs, FontSize.valueOf(fs.name))
-        }
+    fun `FavoriteSpacing of clamps to range`() {
+        assertEquals(FavoriteSpacing.MIN, FavoriteSpacing.of((-5).dp).spacing)
+        assertEquals(FavoriteSpacing.MAX, FavoriteSpacing.of(100.dp).spacing)
+        assertEquals(16.dp, FavoriteSpacing.of(16.dp).spacing)
     }
 
     @Test
-    fun `IconSize valueOf works for all entries`() {
-        IconSize.entries.forEach { ic ->
-            assertEquals(ic, IconSize.valueOf(ic.name))
-        }
-    }
-
-    @Test
-    fun `FontSize scales are ordered ascending`() {
-        assertTrue(FontSize.SMALL.scale < FontSize.STANDARD.scale)
-        assertTrue(FontSize.STANDARD.scale < FontSize.LARGE.scale)
+    fun `FontWeightLevel of clamps and labels by range`() {
+        assertEquals(FontWeightLevel.MIN, FontWeightLevel.of(0).weightValue)
+        assertEquals(FontWeightLevel.MAX, FontWeightLevel.of(2000).weightValue)
+        assertEquals("Normal", FontWeightLevel.of(400).label)
+        assertEquals("Bold", FontWeightLevel.of(700).label)
+        assertEquals("Black", FontWeightLevel.of(900).label)
     }
 
     // ---- AppInfo Tests ----

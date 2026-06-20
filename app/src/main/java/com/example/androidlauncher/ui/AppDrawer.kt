@@ -74,6 +74,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -606,31 +607,11 @@ fun AppDrawer(
                                 }
                             }
 
-                            val folderTitleSpacing = when (iconSize) {
-                                IconSize.SMALL -> 5.dp
-                                IconSize.STANDARD -> 8.dp
-                                IconSize.LARGE -> 12.dp
-                            }
-                            val folderGridTopPadding = when (iconSize) {
-                                IconSize.SMALL -> 3.dp
-                                IconSize.STANDARD -> 5.dp
-                                IconSize.LARGE -> 8.dp
-                            }
-                            val folderItemTopPadding = when (iconSize) {
-                                IconSize.SMALL -> 2.dp
-                                IconSize.STANDARD -> 3.dp
-                                IconSize.LARGE -> 4.dp
-                            }
-                            val folderContentHeight = when (iconSize) {
-                                IconSize.SMALL -> 292.dp
-                                IconSize.STANDARD -> 316.dp
-                                IconSize.LARGE -> 340.dp
-                            }
-                            val folderPagerIndicatorTopPadding = when (iconSize) {
-                                IconSize.SMALL -> 8.dp
-                                IconSize.STANDARD -> 12.dp
-                                IconSize.LARGE -> 16.dp
-                            }
+                            val folderTitleSpacing = iconSize.lerpDp(5.dp, 12.dp)
+                            val folderGridTopPadding = iconSize.lerpDp(3.dp, 8.dp)
+                            val folderItemTopPadding = iconSize.lerpDp(2.dp, 4.dp)
+                            val folderContentHeight = iconSize.lerpDp(292.dp, 340.dp)
+                            val folderPagerIndicatorTopPadding = iconSize.lerpDp(8.dp, 16.dp)
 
                             Spacer(modifier = Modifier.height(folderTitleSpacing))
 
@@ -934,11 +915,7 @@ fun AppItem(
     val animationsEnabled = com.example.androidlauncher.ui.theme.LocalAppCloseAnimationEnabled.current
     val bounceScale by animateFloatAsState(targetValue = if (!animationsEnabled) 1f else if (bouncePackage == app.packageName) 1.2f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "DrawerReturnBounce")
     val itemWidth = when {
-        isInFolder -> when (iconSize) {
-            IconSize.SMALL -> 68.dp
-            IconSize.STANDARD -> 74.dp
-            IconSize.LARGE -> 82.dp
-        }
+        isInFolder -> iconSize.lerpDp(68.dp, 82.dp)
         adaptiveColumns == 5 -> 64.dp
         else -> 80.dp
     }
@@ -995,7 +972,7 @@ internal fun calculateFolderOverlayLayoutSpec(
         expandedScreen -> 480
         compactWidth -> 420
         else -> 440
-    } + if (iconSize == IconSize.LARGE) 12 else 0
+    } + iconSize.lerpInt(0, 12).coerceAtLeast(0)
 
     val horizontalPaddingDp = when {
         compactScreen -> 16
@@ -1010,11 +987,7 @@ internal fun calculateFolderOverlayLayoutSpec(
         else -> 12
     }
 
-    val baseGridSpacingDp = when (iconSize) {
-        IconSize.SMALL -> 12
-        IconSize.STANDARD -> 14
-        IconSize.LARGE -> 16
-    }
+    val baseGridSpacingDp = iconSize.lerpInt(12, 16)
     val gridSpacingDp = if (compactWidth) (baseGridSpacingDp - 2).coerceAtLeast(10) else baseGridSpacingDp
     val gridHorizontalPaddingDp = when {
         compactWidth -> 4
@@ -1024,20 +997,12 @@ internal fun calculateFolderOverlayLayoutSpec(
     val gridTopPaddingDp = when {
         compactScreen -> 4
         else -> 8
-    } + if (iconSize == IconSize.LARGE) 2 else 0
-    val gridItemTopPaddingDp = when (iconSize) {
-        IconSize.SMALL -> 4
-        IconSize.STANDARD -> 6
-        IconSize.LARGE -> 8
-    }
+    } + iconSize.lerpInt(0, 2).coerceAtLeast(0)
+    val gridItemTopPaddingDp = iconSize.lerpInt(4, 8)
     val indicatorTopPaddingDp = if (compactScreen) 12 else 14
     val pageSpacingDp = if (compactWidth) 10 else 12
 
-    val gridHeightMinDp = when (iconSize) {
-        IconSize.SMALL -> 220
-        IconSize.STANDARD -> 238
-        IconSize.LARGE -> 268
-    }
+    val gridHeightMinDp = iconSize.lerpInt(220, 268)
     val gridHeightMaxDp = when {
         expandedScreen -> 390
         compactHeight -> 312
@@ -1045,11 +1010,7 @@ internal fun calculateFolderOverlayLayoutSpec(
     }
     val gridHeightTargetDp = (
         screenHeightDp * if (compactScreen) 0.38f else if (expandedScreen) 0.40f else 0.39f
-    ).roundToInt() + when (iconSize) {
-        IconSize.SMALL -> -8
-        IconSize.STANDARD -> 0
-        IconSize.LARGE -> 14
-    }
+    ).roundToInt() + iconSize.lerpInt(-8, 14)
 
     return FolderOverlayLayoutSpec(
         widthFraction = widthFraction,
@@ -1068,3 +1029,17 @@ internal fun calculateFolderOverlayLayoutSpec(
         pageSpacingDp = pageSpacingDp
     )
 }
+
+/**
+ * Lineare Interpolation eines Layoutwerts anhand der (jetzt stufenlosen) Icon-Größe.
+ * Referenzpunkte: 40dp (klein) und 56dp (groß) – Werte außerhalb werden extrapoliert.
+ */
+private fun IconSize.layoutFraction(): Float = (size - 40.dp) / (56.dp - 40.dp)
+
+/** Interpoliert einen Dp-Layoutwert; das Ergebnis ist nie negativ. */
+private fun IconSize.lerpDp(atSmall: Dp, atLarge: Dp): Dp =
+    (atSmall + (atLarge - atSmall) * layoutFraction()).coerceAtLeast(0.dp)
+
+/** Interpoliert einen ganzzahligen Dp-Layoutwert (kann negativ sein, z. B. für Offsets). */
+private fun IconSize.lerpInt(atSmall: Int, atLarge: Int): Int =
+    (atSmall + (atLarge - atSmall) * layoutFraction()).roundToInt()

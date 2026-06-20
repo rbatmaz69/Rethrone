@@ -1292,13 +1292,13 @@ class MainActivity : ComponentActivity() {
                     ) {
                         SizeConfigMenu(
                             currentFontSize = currentFontSize,
-                            onFontSizeSelected = { scope.launch { themeManager.setFontSize(it) } },
+                            onFontSizeSelected = { scope.launch { themeManager.setFontSize(it.scale) } },
                             currentFontWeight = currentFontWeight,
-                            onFontWeightSelected = { scope.launch { themeManager.setFontWeight(it) } },
+                            onFontWeightSelected = { scope.launch { themeManager.setFontWeight(it.weightValue) } },
                             currentIconSize = currentIconSize,
-                            onIconSizeSelected = { scope.launch { themeManager.setIconSize(it) } },
+                            onIconSizeSelected = { scope.launch { themeManager.setIconSize(it.size) } },
                             currentFavoriteSpacing = currentFavoriteSpacing,
-                            onFavoriteSpacingSelected = { scope.launch { themeManager.setFavoriteSpacing(it) } },
+                            onFavoriteSpacingSelected = { scope.launch { themeManager.setFavoriteSpacing(it.spacing) } },
                             currentAppFont = currentAppFont,
                             onOpenFontSelection = { isFontSelectionOpen = true },
                             customWallpaperUri = customWallpaperUri,

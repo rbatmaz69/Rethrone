@@ -12,18 +12,12 @@ import com.example.androidlauncher.data.FontWeightLevel
  * This allows dynamic switching of the application's font and its weight.
  */
 fun getTypography(fontFamily: FontFamily, baseWeight: FontWeightLevel = FontWeightLevel.NORMAL): Typography {
-    // Determine weights based on the selected base weight level
-    val (regularWeight, mediumWeight) = when (baseWeight) {
-        FontWeightLevel.LIGHT -> Pair(FontWeight.Light, FontWeight.Normal)
-        FontWeightLevel.NORMAL -> Pair(FontWeight.Normal, FontWeight.Medium)
-        FontWeightLevel.BOLD -> Pair(FontWeight.Medium, FontWeight.Bold)
-    }
+    // Stufenlose Ableitung aus dem numerischen Basis-Stärkewert (100–900).
+    val base = baseWeight.weightValue
+    val regularWeight = FontWeight(base)
+    val mediumWeight = FontWeight((base + 100).coerceAtMost(900))
     // Material-3-Expressive betont „Emphasis": Display/Headline kräftiger als der Body.
-    val emphasizedWeight = when (baseWeight) {
-        FontWeightLevel.LIGHT -> FontWeight.Medium
-        FontWeightLevel.NORMAL -> FontWeight.SemiBold
-        FontWeightLevel.BOLD -> FontWeight.Bold
-    }
+    val emphasizedWeight = FontWeight((base + 150).coerceAtMost(900))
 
     return Typography(
         // ── Display (große, ausdrucksstarke Titel, z. B. Uhr) ──
