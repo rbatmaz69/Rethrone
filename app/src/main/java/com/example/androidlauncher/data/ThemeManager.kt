@@ -136,12 +136,12 @@ class ThemeManager(private val context: Context) {
     val homeTextColor: Flow<Color> = context.dataStore.data
         .map { Color(it[HOME_TEXT_COLOR_KEY] ?: 0xFF513A14.toInt()) }
 
-    // CUSTOM-Theme: frei wählbare Flächenfarben (Default: dunkel, kontraststark zu Weiß).
+    // CUSTOM-Theme: frei wählbare Flächenfarben (Default: helles Warmweiß).
     val customBackgroundColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[CUSTOM_BG_COLOR_KEY] ?: 0xFF12141A.toInt()) }
+        .map { Color(it[CUSTOM_BG_COLOR_KEY] ?: 0xFFF4EEE2.toInt()) }
 
     val customMenuColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[CUSTOM_MENU_COLOR_KEY] ?: 0xFF20242E.toInt()) }
+        .map { Color(it[CUSTOM_MENU_COLOR_KEY] ?: 0xFFFFFFFF.toInt()) }
 
     // Ausgeblendete Apps (Paketnamen). Werden überall aus der Anzeige gefiltert.
     val hiddenApps: Flow<Set<String>> = context.dataStore.data

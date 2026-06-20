@@ -31,6 +31,7 @@ import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontWeight
+import com.example.androidlauncher.ui.theme.seedRevision
 
 
 /**
@@ -341,10 +342,10 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
         baseModifier
     }
 
-    val previewBrush = remember(theme, isDarkTextEnabled) {
+    val previewBrush = remember(theme, isDarkTextEnabled, theme.seedRevision()) {
         theme.menuBrush(isDarkTextEnabled, alpha = if (isDarkTextEnabled) 0.98f else 0.94f)
     }
-    val themeBorderColor = remember(theme, isDarkTextEnabled) {
+    val themeBorderColor = remember(theme, isDarkTextEnabled, theme.seedRevision()) {
         theme.borderColor(isDarkTextEnabled)
     }
 

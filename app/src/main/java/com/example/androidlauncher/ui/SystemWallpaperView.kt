@@ -17,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
@@ -30,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -119,14 +119,11 @@ fun SystemWallpaperView(
                 contentScale = ContentScale.Crop
             )
 
+            // Gradient-Fallback: aufgelöste Theme-Hintergrundfarbe (CUSTOM/DYNAMIC reaktiv via cust()/dyn()).
             else -> Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(colorTheme.primary, colorTheme.secondary)
-                        )
-                    )
+                    .background(colorTheme.backgroundBrush(LocalDarkTextEnabled.current))
             )
         }
 

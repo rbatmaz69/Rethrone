@@ -125,6 +125,7 @@ import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.openDefaultLauncherSettings
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.seedRevision
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -1793,7 +1794,7 @@ private fun MenuOverlay(
     // Verlaufs-Hintergrund identisch zum „Farben"-Menü (ColorConfigMenu.backgroundBrush).
     val overlayTheme = LocalColorTheme.current
     val overlayDarkText = LocalDarkTextEnabled.current
-    val overlayBackgroundBrush = remember(overlayTheme, overlayDarkText) {
+    val overlayBackgroundBrush = remember(overlayTheme, overlayDarkText, overlayTheme.seedRevision()) {
         overlayTheme.backgroundBrush(overlayDarkText, alpha = 0.95f)
     }
 

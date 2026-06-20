@@ -68,6 +68,7 @@ import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.seedRevision
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import kotlin.math.abs
@@ -102,7 +103,7 @@ fun NiagaraAppDrawer(
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     val haptic = LocalHapticFeedback.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val drawerBackgroundBrush = remember(colorTheme, isDarkTextEnabled) {
+    val drawerBackgroundBrush = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.88f)
     }
 

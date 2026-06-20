@@ -65,6 +65,7 @@ import com.example.androidlauncher.data.SearchHistoryEntry
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.seedRevision
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlin.math.min
@@ -121,10 +122,10 @@ fun HybridSearch(
     val mainTextColor = remember(colorTheme, isDarkTextEnabled) {
         colorTheme.searchTextColor(isDarkTextEnabled)
     }
-    val searchSurfaceBrush = remember(colorTheme, isDarkTextEnabled) {
+    val searchSurfaceBrush = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.searchBrush(isDarkTextEnabled, alpha = if (isDarkTextEnabled) 0.97f else 0.94f)
     }
-    val themeBorderColor = remember(colorTheme, isDarkTextEnabled) {
+    val themeBorderColor = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.borderColor(isDarkTextEnabled)
     }
 

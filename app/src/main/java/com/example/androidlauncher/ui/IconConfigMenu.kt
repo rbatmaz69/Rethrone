@@ -46,6 +46,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.seedRevision
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -269,7 +270,7 @@ private fun IconActionDialog(
     val fontWeight = LocalFontWeight.current
     val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
     val secondaryTextColor = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
-    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
+    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.menuSurfaceColor(isDarkTextEnabled)
     }
     val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp, bottomStart = 26.dp, bottomEnd = 26.dp)

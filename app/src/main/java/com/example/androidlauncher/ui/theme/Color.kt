@@ -765,11 +765,11 @@ enum class ColorTheme(
     // dargestellt (kein Anchor-Re-Toning) – der Nutzer wählt Kontrast über die Textfarbe.
     CUSTOM(
         "Eigene Farbe",
-        Color(0xFF20242E),
-        Color(0xFF20242E),
+        Color(0xFFFFFFFF),
+        Color(0xFFFFFFFF),
         Color.White,
-        Color(0xFF12141A),
-        highlight = Color(0xFF3A4150)
+        Color(0xFFF4EEE2),
+        highlight = Color(0xFFE8E2D6)
     );
 
     val lightBackground: Color
@@ -942,9 +942,20 @@ enum class ColorTheme(
         /** Fallback-Seed für DYNAMIC, wenn keine Wallpaper-Farben vorliegen (Tests/Boot). */
         val FallbackDynamicPrimary = Color(0xFF6D5DBE)
         /** Fallback-Flächenfarben für CUSTOM (Tests/Boot, bis der Holder befüllt ist). */
-        val FallbackCustomBackground = Color(0xFF12141A)
-        val FallbackCustomMenu = Color(0xFF20242E)
+        val FallbackCustomBackground = Color(0xFFF4EEE2)
+        val FallbackCustomMenu = Color(0xFFFFFFFF)
     }
+}
+
+/**
+ * Snapshot-Identität der Laufzeit-Seed-Farben (CUSTOM/DYNAMIC). Als zusätzlicher
+ * remember-Key verwenden, damit gecachte Brushes/Farben bei Seed-Änderung neu berechnet
+ * werden – sonst aktualisiert „Eigene Farbe" erst nach einem Theme-Wechsel.
+ */
+fun ColorTheme.seedRevision(): Any? = when (this) {
+    ColorTheme.CUSTOM  -> CustomColorHolder.background to CustomColorHolder.menu
+    ColorTheme.DYNAMIC -> DynamicColorHolder.seed
+    else -> null
 }
 
 private fun gradientBrush(colors: List<Color>): Brush = Brush.linearGradient(

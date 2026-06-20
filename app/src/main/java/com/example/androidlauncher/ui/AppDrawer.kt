@@ -90,6 +90,7 @@ import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.seedRevision
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.composables.icons.lucide.*
@@ -132,13 +133,13 @@ fun AppDrawer(
     val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val drawerBackgroundBrush = remember(colorTheme, isDarkTextEnabled) {
+    val drawerBackgroundBrush = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.backgroundBrush(isDarkTextEnabled, alpha = 0.88f)
     }
-    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
+    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.menuSurfaceColor(isDarkTextEnabled)
     }
-    val overlayScrimColor = remember(colorTheme, isDarkTextEnabled) {
+    val overlayScrimColor = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.overlayScrimColor(isDarkTextEnabled)
     }
 

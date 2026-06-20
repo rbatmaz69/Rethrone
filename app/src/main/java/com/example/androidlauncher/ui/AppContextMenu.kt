@@ -27,6 +27,7 @@ import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.seedRevision
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import com.composables.icons.lucide.Lucide
@@ -58,10 +59,10 @@ fun AppContextMenu(
     val designStyle = LocalDesignStyle.current
     val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
-    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled) {
+    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.menuSurfaceColor(isDarkTextEnabled)
     }
-    val favoriteHighlightColor = remember(colorTheme, isDarkTextEnabled) {
+    val favoriteHighlightColor = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
         colorTheme.highlightColor(isDarkTextEnabled)
     }
 
