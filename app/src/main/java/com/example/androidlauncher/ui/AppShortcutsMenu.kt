@@ -4,9 +4,6 @@ import android.content.pm.ShortcutInfo
 import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -36,8 +33,6 @@ import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
-import com.example.androidlauncher.data.DesignStyle
-import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -74,7 +69,6 @@ fun AppShortcutsMenu(
 
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val designStyle = LocalDesignStyle.current
     val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
@@ -181,12 +175,7 @@ fun AppShortcutsMenu(
                 val currentOffsetY = startOffsetY + (relativeY - startOffsetY) * progress
                 val scale = 0.05f + (0.95f * progress)
 
-                val menuModifier = when (designStyle) {
-                    DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(24.dp))
-                    DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(24.dp))
-                    DesignStyle.MINIMAL -> Modifier
-                    else -> Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
-                }
+                val menuShape = RoundedCornerShape(24.dp)
 
                 Surface(
                     modifier = Modifier
@@ -198,10 +187,10 @@ fun AppShortcutsMenu(
                             this.alpha = progress.coerceIn(0f, 1f)
                             this.transformOrigin = TransformOrigin.Center
                         }
-                        .clickable(enabled = false) {}
-                        .then(menuModifier),
+                        .clickable(enabled = false) {},
+                    // Nur die Theme-Hintergrundfarbe – der Design-Stil wirkt sich bewusst NICHT aus.
                     color = surfaceAccent.copy(alpha = 0.98f),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = menuShape,
                     shadowElevation = 20.dp
                 ) {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {

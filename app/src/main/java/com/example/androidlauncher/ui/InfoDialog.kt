@@ -2,20 +2,27 @@ package com.example.androidlauncher.ui
 
 import android.content.Intent
 import androidx.core.net.toUri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -93,6 +100,12 @@ fun InfoDialog(
                     secondaryTextColor = secondaryTextColor
                 )
 
+                // Features (aufklappbar)
+                FeaturesSection(
+                    mainTextColor = mainTextColor,
+                    secondaryTextColor = secondaryTextColor
+                )
+
                 // Developer Info
                 InfoSection(
                     title = stringResource(R.string.developer_label),
@@ -140,6 +153,87 @@ fun InfoDialog(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+}
+
+private data class AppFeature(val title: String, val description: String)
+
+private val APP_FEATURES: List<AppFeature> = listOf(
+    AppFeature("Favoritenleiste", "Schnellzugriff auf deine wichtigsten Apps – mit optionalen Animationen und Apptiteln."),
+    AppFeature("App-Drawer", "Alphabetische Liste aller Apps im Niagara-Stil mit schnellem A–Z-Scrubber."),
+    AppFeature("Hybride Suche", "Findet Apps, Kontakte und Aktionen schnell über eine zentrale Suche."),
+    AppFeature("Ordner", "Apps in anpassbaren Ordnern gruppieren und übersichtlich organisieren."),
+    AppFeature("App-Shortcuts", "Direkter Zugriff auf App-Verknüpfungen per langem Druck."),
+    AppFeature("Gesten", "Wischgesten frei mit Aktionen belegen für eine schnelle Bedienung."),
+    AppFeature("Icon-Anpassung", "Eigene Lucide-Icons wählen oder automatische, neutrale Fallback-Icons nutzen."),
+    AppFeature("Designs & Farben", "Farbthemen, Akzentfarben und Schriftgewicht individuell einstellen."),
+    AppFeature("Größen", "Icon- und Textgrößen flexibel an den eigenen Geschmack anpassen."),
+    AppFeature("Animationen", "Bewegungseffekte nach Wunsch ein- oder ausschalten."),
+    AppFeature("Wallpaper-Pipette", "Akzentfarbe direkt aus dem Hintergrundbild übernehmen."),
+    AppFeature("Versteckte Apps", "Einzelne Apps aus der Übersicht ausblenden."),
+    AppFeature("Apps deinstallieren", "Apps bequem direkt aus dem Launcher entfernen.")
+)
+
+@Composable
+fun FeaturesSection(
+    mainTextColor: Color,
+    secondaryTextColor: Color
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "featuresArrow")
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Funktionen",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = mainTextColor
+            )
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowDown,
+                contentDescription = null,
+                tint = mainTextColor,
+                modifier = Modifier.rotate(arrowRotation)
+            )
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                APP_FEATURES.forEach { feature ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = feature.title,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = mainTextColor
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = feature.description,
+                            fontSize = 13.sp,
+                            color = secondaryTextColor,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = secondaryTextColor.copy(alpha = 0.2f), thickness = 0.5.dp)
     }
 }
 
