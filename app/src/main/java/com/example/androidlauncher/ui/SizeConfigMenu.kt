@@ -9,6 +9,10 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +29,7 @@ import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.rememberAppHaptics
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -55,6 +60,7 @@ fun SizeConfigMenu(
     val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val secondaryTextColor = if (isDarkTextEnabled) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
+    val haptics = rememberAppHaptics()
 
     // Hintergrund (Wallpaper + Theme-Verlauf) stellt das gemeinsame MenuOverlay bereit.
     Box(modifier = Modifier.fillMaxSize()) {
@@ -137,10 +143,21 @@ fun SizeConfigMenu(
             // Slider Bereich – stufenlos/feinstufig wie der Animationsgeschwindigkeits-Slider.
             val sliderColors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
 
+            // Lokale Merker des zuletzt „getickten" Werts – verhindert Doppel-Ticks
+            // durch die asynchrone DataStore-Aktualisierung der current*-Werte.
+            var lastFontSize by remember { mutableStateOf(currentFontSize) }
+            var lastFontWeight by remember { mutableStateOf(currentFontWeight) }
+            var lastIconSize by remember { mutableStateOf(currentIconSize) }
+            var lastSpacing by remember { mutableStateOf(currentFavoriteSpacing) }
+
             Text("Schriftgröße · ${(currentFontSize.scale * 100).roundToInt()}%", color = secondaryTextColor, fontSize = 12.sp)
             Slider(
                 value = currentFontSize.scale,
-                onValueChange = { onFontSizeSelected(FontSize.of(it)) },
+                onValueChange = {
+                    val next = FontSize.of(it)
+                    if (next != lastFontSize) { haptics.select(); lastFontSize = next }
+                    onFontSizeSelected(next)
+                },
                 valueRange = FontSize.MIN..FontSize.MAX,
                 steps = 99, // 0,60–1,60 in 1%-Schritten
                 colors = sliderColors
@@ -151,7 +168,11 @@ fun SizeConfigMenu(
             Text("Schriftstärke · ${currentFontWeight.weightValue} · ${currentFontWeight.label}", color = secondaryTextColor, fontSize = 12.sp)
             Slider(
                 value = currentFontWeight.weightValue.toFloat(),
-                onValueChange = { onFontWeightSelected(FontWeightLevel.of(it.roundToInt())) },
+                onValueChange = {
+                    val next = FontWeightLevel.of(it.roundToInt())
+                    if (next != lastFontWeight) { haptics.select(); lastFontWeight = next }
+                    onFontWeightSelected(next)
+                },
                 valueRange = FontWeightLevel.MIN.toFloat()..FontWeightLevel.MAX.toFloat(),
                 steps = 31, // 100–900 in 25er-Schritten
                 colors = sliderColors
@@ -162,7 +183,11 @@ fun SizeConfigMenu(
             Text("Icon-Größe · ${currentIconSize.size.value.roundToInt()}dp", color = secondaryTextColor, fontSize = 12.sp)
             Slider(
                 value = currentIconSize.size.value,
-                onValueChange = { onIconSizeSelected(IconSize.of(it.dp)) },
+                onValueChange = {
+                    val next = IconSize.of(it.dp)
+                    if (next != lastIconSize) { haptics.select(); lastIconSize = next }
+                    onIconSizeSelected(next)
+                },
                 valueRange = IconSize.MIN.value..IconSize.MAX.value,
                 steps = 43, // 28–72 dp in 1-dp-Schritten
                 colors = sliderColors
@@ -173,7 +198,11 @@ fun SizeConfigMenu(
             Text("Icon-Abstand · ${currentFavoriteSpacing.spacing.value.roundToInt()}dp", color = secondaryTextColor, fontSize = 12.sp)
             Slider(
                 value = currentFavoriteSpacing.spacing.value,
-                onValueChange = { onFavoriteSpacingSelected(FavoriteSpacing.of(it.dp)) },
+                onValueChange = {
+                    val next = FavoriteSpacing.of(it.dp)
+                    if (next != lastSpacing) { haptics.select(); lastSpacing = next }
+                    onFavoriteSpacingSelected(next)
+                },
                 valueRange = FavoriteSpacing.MIN.value..FavoriteSpacing.MAX.value,
                 steps = 47, // 0–48 dp in 1-dp-Schritten
                 colors = sliderColors

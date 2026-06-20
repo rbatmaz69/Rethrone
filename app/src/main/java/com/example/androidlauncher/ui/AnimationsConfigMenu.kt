@@ -12,6 +12,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +32,8 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import com.example.androidlauncher.ui.theme.LocalFontWeight
+import com.example.androidlauncher.ui.theme.rememberAppHaptics
+import kotlin.math.roundToInt
 
 /**
  * Untermenü zum gezielten Ein-/Ausschalten einzelner Animationsarten.
@@ -59,6 +64,9 @@ fun AnimationsConfigMenu(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val fontWeight = LocalFontWeight.current
     val listState = rememberLazyListState()
+    val haptics = rememberAppHaptics()
+    // Merker der zuletzt „getickten" Tempo-Stufe (0,1er-Schritte).
+    var lastSpeedStep by remember { mutableStateOf((animationSpeed * 10).roundToInt()) }
 
     Column(
         modifier = Modifier
@@ -121,7 +129,11 @@ fun AnimationsConfigMenu(
                     )
                     Slider(
                         value = animationSpeed,
-                        onValueChange = onAnimationSpeedChanged,
+                        onValueChange = {
+                            val step = (it * 10).roundToInt()
+                            if (sliderEnabled && step != lastSpeedStep) { haptics.select(); lastSpeedStep = step }
+                            onAnimationSpeedChanged(it)
+                        },
                         valueRange = 0.5f..2f,
                         // 0,5×–2× in 0,1-Schritten → 15 Stufen, 14 Zwischenpunkte.
                         steps = 14,
