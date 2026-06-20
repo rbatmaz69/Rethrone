@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">Rethrone</string>
+    <!-- App-Sperre -->
+    <string name="app_lock_unlock_title">App entsperren</string>
+    <string name="app_lock_unlock_subtitle">Authentifiziere dich, um die App zu öffnen</string>
     <string name="show_app_titles">App-Titel anzeigen</string>
     <string name="favorites_title">Favoriten</string>
     <string name="favorites_count">%1$d von %2$d ausgewählt</string>

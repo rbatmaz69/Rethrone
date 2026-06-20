@@ -1,13 +1,23 @@
 package com.example.androidlauncher
 
 import android.accessibilityservice.AccessibilityService
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
+import com.example.androidlauncher.data.AppLockManager
+import com.example.androidlauncher.data.ThemeManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 private const val TAG = "A11yReturn"
 
@@ -17,6 +27,29 @@ private const val TAG = "A11yReturn"
  * ab Android 9 (API 28) die empfohlene Methode ohne Device-Admin-Rechte ist.
  */
 class LauncherAccessibilityService : AccessibilityService() {
+
+    // In-Memory-Cache der gesperrten Pakete, gefüllt aus dem DataStore-Flow.
+    @Volatile
+    private var lockedAppsCache: Set<String> = emptySet()
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    // Beim Sperren des Geräts alle Entsperr-Sitzungen verwerfen.
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                AppLockManager.lockAll()
+            }
+        }
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        val themeManager = ThemeManager(applicationContext)
+        serviceScope.launch {
+            themeManager.lockedApps.collectLatest { lockedAppsCache = it }
+        }
+        registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
@@ -28,10 +61,37 @@ class LauncherAccessibilityService : AccessibilityService() {
         val packageName = event.packageName?.toString()?.takeIf { it.isNotBlank() } ?: return
         Log.d(TAG, "event type=${event.eventType} package=$packageName")
         updateForegroundTracking(packageName)
+        enforceAppLock(packageName)
+    }
+
+    /**
+     * Prüft beim Vordergrundwechsel, ob das Paket gesperrt und noch nicht in der aktuellen
+     * Sitzung entsperrt ist – falls ja, wird die [AppLockActivity] über die App gelegt.
+     */
+    private fun enforceAppLock(packageName: String) {
+        if (isTransientSystemPackage(packageName)) return
+        val isOwnApp = packageName == applicationContext.packageName
+        val alreadyUnlocked = AppLockManager.isUnlocked(packageName)
+        // Nur das aktuelle Vordergrund-Paket bleibt entsperrt; verlassene Apps werden neu gesperrt.
+        AppLockManager.retainOnly(packageName)
+        if (!isOwnApp && packageName in lockedAppsCache && !alreadyUnlocked) {
+            val intent = Intent(this, AppLockActivity::class.java).apply {
+                putExtra(AppLockActivity.EXTRA_PACKAGE, packageName)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            }
+            runCatching { startActivity(intent) }
+                .onFailure { Log.w(TAG, "AppLockActivity konnte nicht gestartet werden", it) }
+        }
     }
 
     override fun onInterrupt() {
         // Nicht benötigt
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        runCatching { unregisterReceiver(screenOffReceiver) }
+        serviceScope.cancel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

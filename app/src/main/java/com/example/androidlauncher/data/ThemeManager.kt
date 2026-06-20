@@ -43,6 +43,14 @@ class ThemeManager(private val context: Context) {
         private val CUSTOM_MENU_COLOR_KEY = intPreferencesKey("custom_menu_color")
         // Komma-separierte Paketnamen der ausgeblendeten Apps.
         private val HIDDEN_APPS_KEY = stringPreferencesKey("hidden_apps")
+        // App-Sperre: Komma-separierte Paketnamen der gesperrten Apps (verschlüsselt).
+        private val LOCKED_APPS_KEY = stringPreferencesKey("locked_apps")
+        // Typ des Sperr-Geheimnisses: "pin", "pattern" oder "none".
+        private val LOCK_TYPE_KEY = stringPreferencesKey("lock_type")
+        // Gesalzener Hash des PIN/Musters (Format salt:hash, verschlüsselt). Nie das Geheimnis selbst.
+        private val LOCK_SECRET_KEY = stringPreferencesKey("lock_secret")
+        // Ob zusätzlich per Biometrie/Geräte-Credential entsperrt werden darf.
+        private val LOCK_BIOMETRIC_KEY = booleanPreferencesKey("lock_biometric_enabled")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
         private val DESIGN_STYLE_KEY = stringPreferencesKey("design_style")
@@ -150,6 +158,24 @@ class ThemeManager(private val context: Context) {
             val raw = CryptoManager.decryptOrLegacy(prefs[HIDDEN_APPS_KEY])
             if (raw.isEmpty()) emptySet() else raw.split(",").filter { it.isNotEmpty() }.toSet()
         }
+
+    // Gesperrte Apps (Paketnamen). Vor dem Öffnen muss authentifiziert werden.
+    val lockedApps: Flow<Set<String>> = context.dataStore.data
+        .map { prefs ->
+            val raw = CryptoManager.decryptOrLegacy(prefs[LOCKED_APPS_KEY])
+            if (raw.isEmpty()) emptySet() else raw.split(",").filter { it.isNotEmpty() }.toSet()
+        }
+
+    // Art des hinterlegten Sperr-Geheimnisses ("pin", "pattern", "none").
+    val lockType: Flow<String> = context.dataStore.data
+        .map { it[LOCK_TYPE_KEY] ?: "none" }
+
+    // Roh-Token des gespeicherten Geheimnisses (salt:hash, entschlüsselt). Leer = kein Code gesetzt.
+    val lockSecret: Flow<String> = context.dataStore.data
+        .map { CryptoManager.decryptOrLegacy(it[LOCK_SECRET_KEY]) }
+
+    val isLockBiometricEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[LOCK_BIOMETRIC_KEY] ?: false }
 
     val showFavoriteLabels: Flow<Boolean> = context.dataStore.data
         .map { it[SHOW_FAVORITE_LABELS_KEY] ?: false }
@@ -355,6 +381,22 @@ class ThemeManager(private val context: Context) {
     suspend fun setCustomBackgroundColor(color: Color) { context.dataStore.edit { it[CUSTOM_BG_COLOR_KEY] = color.toArgb() } }
     suspend fun setCustomMenuColor(color: Color) { context.dataStore.edit { it[CUSTOM_MENU_COLOR_KEY] = color.toArgb() } }
     suspend fun setHiddenApps(packages: Set<String>) { context.dataStore.edit { it[HIDDEN_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) } }
+    suspend fun setLockedApps(packages: Set<String>) { context.dataStore.edit { it[LOCKED_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) } }
+    /** Speichert Typ ("pin"/"pattern") und gesalzenen Hash-Token des Geheimnisses. */
+    suspend fun setLockSecret(type: String, secretToken: String) {
+        context.dataStore.edit {
+            it[LOCK_TYPE_KEY] = type
+            it[LOCK_SECRET_KEY] = CryptoManager.encrypt(secretToken)
+        }
+    }
+    /** Entfernt den hinterlegten Code (Typ zurück auf "none"). */
+    suspend fun clearLockSecret() {
+        context.dataStore.edit {
+            it[LOCK_TYPE_KEY] = "none"
+            it.remove(LOCK_SECRET_KEY)
+        }
+    }
+    suspend fun setLockBiometricEnabled(enabled: Boolean) { context.dataStore.edit { it[LOCK_BIOMETRIC_KEY] = enabled } }
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
     suspend fun setDesignStyle(style: DesignStyle) {

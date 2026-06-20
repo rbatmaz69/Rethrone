@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.*
@@ -75,6 +76,7 @@ fun EditConfigMenu(
     onOpenIconConfig: () -> Unit,
     onOpenUninstallApps: () -> Unit,
     onOpenHiddenApps: () -> Unit,
+    onOpenAppLock: () -> Unit,
     onOpenDefaultLauncher: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onResetWallpaper: () -> Unit,
@@ -352,6 +354,19 @@ fun EditConfigMenu(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     testTag = "hidden_apps_item"
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Icons.Rounded.Lock,
+                    label = "App-Sperre",
+                    onClick = onOpenAppLock,
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "app_lock_item"
                 )
             }
 

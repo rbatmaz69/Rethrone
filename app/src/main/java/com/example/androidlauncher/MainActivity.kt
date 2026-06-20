@@ -114,6 +114,7 @@ import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.InfoDialog
 import com.example.androidlauncher.ui.UninstallAppsMenu
 import com.example.androidlauncher.ui.HiddenAppsMenu
+import com.example.androidlauncher.ui.AppLockMenu
 import com.example.androidlauncher.ui.LaunchAnimationOverlay
 import com.example.androidlauncher.ui.NiagaraAppDrawer
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
@@ -217,6 +218,9 @@ class MainActivity : ComponentActivity() {
             }
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
             val hiddenApps by themeManager.hiddenApps.collectAsState(initial = emptySet())
+            val lockedApps by themeManager.lockedApps.collectAsState(initial = emptySet())
+            val lockType by themeManager.lockType.collectAsState(initial = "none")
+            val lockBiometricEnabled by themeManager.isLockBiometricEnabled.collectAsState(initial = false)
             val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
             val favoritesBorderStyle by themeManager.favoritesBorderStyle.collectAsState(initial = FavoritesBorderStyle.NONE)
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
@@ -518,6 +522,7 @@ class MainActivity : ComponentActivity() {
                 var isIconConfigOpen by remember { mutableStateOf(false) }
                 var isUninstallAppsOpen by remember { mutableStateOf(false) }
                 var isHiddenAppsOpen by remember { mutableStateOf(false) }
+                var isAppLockOpen by remember { mutableStateOf(false) }
                 var isWallpaperConfigOpen by remember { mutableStateOf(false) }
                 var isInfoOpen by remember { mutableStateOf(false) }
                 var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
@@ -969,6 +974,7 @@ class MainActivity : ComponentActivity() {
                         isIconConfigOpen = false
                         isUninstallAppsOpen = false
                         isHiddenAppsOpen = false
+                        isAppLockOpen = false
                         isWallpaperConfigOpen = false
                         isInfoOpen = false
                         isHomeEditMode = false
@@ -979,12 +985,12 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(
                     isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isAnimationsConfigOpen, isGesturesConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
                     isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
-                    isIconConfigOpen, isUninstallAppsOpen, isHiddenAppsOpen, isWallpaperConfigOpen, isInfoOpen,
+                    isIconConfigOpen, isUninstallAppsOpen, isHiddenAppsOpen, isAppLockOpen, isWallpaperConfigOpen, isInfoOpen,
                     selectedFolderForConfig, isSearchOpen, isHomeEditMode
                 ) {
                     val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
                         isColorConfigOpen || isAnimationsConfigOpen || isGesturesConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
-                        isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isWallpaperConfigOpen ||
+                        isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isAppLockOpen || isWallpaperConfigOpen ||
                         isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
@@ -992,7 +998,7 @@ class MainActivity : ComponentActivity() {
                 BackHandler(
                     enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isAnimationsConfigOpen || isGesturesConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
                         isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
-                        isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isWallpaperConfigOpen || isInfoOpen ||
+                        isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isAppLockOpen || isWallpaperConfigOpen || isInfoOpen ||
                         selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
                 ) {
                     when {
@@ -1003,6 +1009,7 @@ class MainActivity : ComponentActivity() {
                         isWallpaperConfigOpen -> isWallpaperConfigOpen = false
                         isUninstallAppsOpen -> isUninstallAppsOpen = false
                         isHiddenAppsOpen -> isHiddenAppsOpen = false
+                        isAppLockOpen -> isAppLockOpen = false
                         isIconConfigOpen -> isIconConfigOpen = false
                         isDrawerOpen -> isDrawerOpen = false
                         isFavoritesConfigOpen -> isFavoritesConfigOpen = false
@@ -1330,6 +1337,7 @@ class MainActivity : ComponentActivity() {
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onOpenUninstallApps = { isUninstallAppsOpen = true },
                             onOpenHiddenApps = { isHiddenAppsOpen = true },
+                            onOpenAppLock = { isAppLockOpen = true },
                             onOpenDefaultLauncher = { requestDefaultLauncher() },
                             onChangeWallpaper = {
                                 isEditConfigOpen = false
@@ -1552,6 +1560,33 @@ class MainActivity : ComponentActivity() {
                                 scope.launch { themeManager.setHiddenApps(newHidden) }
                             },
                             onClose = { isHiddenAppsOpen = false }
+                        )
+                    }
+
+                    MenuOverlay(
+                        visible = isAppLockOpen,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { isAppLockOpen = false }
+                    ) {
+                        AppLockMenu(
+                            apps = allApps,
+                            lockedPackages = lockedApps,
+                            lockType = lockType,
+                            biometricEnabled = lockBiometricEnabled,
+                            onToggleLocked = { pkg ->
+                                val newLocked = if (pkg in lockedApps) lockedApps - pkg else lockedApps + pkg
+                                scope.launch { themeManager.setLockedApps(newLocked) }
+                            },
+                            onSetSecret = { type, token ->
+                                scope.launch { themeManager.setLockSecret(type, token) }
+                            },
+                            onClearSecret = {
+                                scope.launch { themeManager.clearLockSecret() }
+                            },
+                            onToggleBiometric = { enabled ->
+                                scope.launch { themeManager.setLockBiometricEnabled(enabled) }
+                            },
+                            onClose = { isAppLockOpen = false }
                         )
                     }
 

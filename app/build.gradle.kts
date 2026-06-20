@@ -173,6 +173,9 @@ dependencies {
     // Lucide Icons
     implementation(libs.lucide.icons)
 
+    // Biometrie (Fingerabdruck/Gesicht + Geräte-Credential-Fallback) für die App-Sperre
+    implementation(libs.androidx.biometric)
+
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

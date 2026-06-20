@@ -15,6 +15,7 @@ kotlinxCoroutines = "1.7.3"
 datastore = "1.1.1"
 kover = "0.9.8"
 ucrop = "2.2.8"
+biometric = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,6 +40,7 @@ mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 ucrop = { group = "com.github.yalantis", name = "ucrop", version.ref = "ucrop" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 
 [plugins]
 androidApp = { id = "com.android.application", version.ref = "agp" }
