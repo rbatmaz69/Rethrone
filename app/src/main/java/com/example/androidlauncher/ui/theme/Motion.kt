@@ -44,6 +44,18 @@ object RethroneSprings {
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMedium * stiffnessScale
     )
+
+    /**
+     * Vollflächige Container-Übergänge (Drawer, große Sheets): knackig-räumlich,
+     * aber nur minimaler Overshoot. Eine stark federnde Bewegung würde am
+     * Container-Rand kurz eine Wallpaper-Lücke zeigen – daher höher gedämpft
+     * (≈0.85) als [spatial], aber lebendiger als [effects].
+     * [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> container(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = 0.85f,
+        stiffness = Spring.StiffnessMedium * stiffnessScale
+    )
 }
 
 /**

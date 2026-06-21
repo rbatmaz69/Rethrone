@@ -59,7 +59,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -116,10 +115,6 @@ fun FavoritesConfigMenu(
     val filteredApps = remember(apps, searchQuery) { LauncherLogic.filterApps(apps, searchQuery) }
     val focusRequester = remember { FocusRequester() }
     val favoritesListState = rememberLazyListState()
-    val swipeToCloseConnection = rememberTopBoundarySwipeToCloseConnection(
-        listState = favoritesListState,
-        onClose = onClose
-    )
 
     Column(
         modifier = Modifier
@@ -239,8 +234,7 @@ fun FavoritesConfigMenu(
         LazyColumn(
             state = favoritesListState,
             modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(swipeToCloseConnection),
+                .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {

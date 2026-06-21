@@ -34,6 +34,7 @@ import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -71,6 +72,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -1041,8 +1043,19 @@ class MainActivity : ComponentActivity() {
                     )
 
                     val animationsEnabled = LocalAnimationsEnabled.current
-                    val slideTweenDuration = if (animationsEnabled) (300 / animationSpeed).roundToInt() else 0
-                    val fadeTweenDuration = if (animationsEnabled) (200 / animationSpeed).roundToInt() else 0
+                    // Material-3-Expressive: federbasierter Container-Übergang statt hartem
+                    // Cubic-Tween. `container` ist knackig-räumlich mit minimalem Overshoot,
+                    // damit am unteren Drawer-Rand keine Wallpaper-Lücke aufblitzt.
+                    val drawerSlideSpec = if (animationsEnabled) {
+                        RethroneSprings.container<IntOffset>(animationSpeed)
+                    } else {
+                        snap<IntOffset>()
+                    }
+                    val drawerFadeSpec = if (animationsEnabled) {
+                        RethroneSprings.effects<Float>(animationSpeed)
+                    } else {
+                        snap<Float>()
+                    }
 
                     AnimatedContent(
                         modifier = Modifier.graphicsLayer {
@@ -1057,15 +1070,15 @@ class MainActivity : ComponentActivity() {
                                 (
                                     slideInVertically(
                                         initialOffsetY = { it },
-                                        animationSpec = tween(slideTweenDuration, easing = EaseOutCubic)
-                                    ) + fadeIn(animationSpec = tween(fadeTweenDuration))
-                                ).togetherWith(fadeOut(animationSpec = tween(fadeTweenDuration)))
+                                        animationSpec = drawerSlideSpec
+                                    ) + fadeIn(animationSpec = drawerFadeSpec)
+                                ).togetherWith(fadeOut(animationSpec = drawerFadeSpec))
                             } else {
-                                fadeIn(animationSpec = tween(fadeTweenDuration)).togetherWith(
+                                fadeIn(animationSpec = drawerFadeSpec).togetherWith(
                                     slideOutVertically(
                                         targetOffsetY = { it },
-                                        animationSpec = tween(slideTweenDuration, easing = EaseInCubic)
-                                    ) + fadeOut(animationSpec = tween(fadeTweenDuration))
+                                        animationSpec = drawerSlideSpec
+                                    ) + fadeOut(animationSpec = drawerFadeSpec)
                                 )
                             }
                         },

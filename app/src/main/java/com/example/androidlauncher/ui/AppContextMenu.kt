@@ -26,8 +26,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.R
 import androidx.compose.ui.zIndex
+import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.RethroneSprings
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.seedRevision
 import com.example.androidlauncher.data.DesignStyle
@@ -91,9 +93,12 @@ fun AppContextMenu(
 
     val transition = updateTransition(targetState = isVisible && targetBounds != null, label = "MenuTransition")
 
+    // Material-3-Expressive: federnder „Pop" statt linearem Tween. Alpha wird beim
+    // Konsumieren via coerceIn geklemmt, ein leichter Scale-Overshoot ist gewollt.
+    val menuSpeed = LocalAnimationSpeed.current
     val progress by transition.animateFloat(
         transitionSpec = {
-            tween(durationMillis = 350, easing = FastOutSlowInEasing)
+            RethroneSprings.spatial(menuSpeed)
         },
         label = "Progress"
     ) { if (it) 1f else 0f }

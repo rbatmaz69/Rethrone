@@ -27,7 +27,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -100,11 +99,6 @@ fun FolderConfigMenu(
 
     val focusRequester = remember { FocusRequester() }
     val folderListState = rememberLazyListState()
-    val swipeToCloseConnection = rememberTopBoundarySwipeToCloseConnection(
-        listState = folderListState,
-        enabled = !showDeleteConfirm,
-        onClose = onClose
-    )
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
         // Header
@@ -166,8 +160,7 @@ fun FolderConfigMenu(
         LazyColumn(
             state = folderListState,
             modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(swipeToCloseConnection),
+                .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {

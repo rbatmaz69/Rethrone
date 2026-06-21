@@ -397,47 +397,21 @@ fun AppDrawer(
             val adaptiveColumns = 4
 
             val gridState = rememberLazyGridState()
-            var swipeDragY by remember { mutableStateOf(0f) }
-            val swipeCloseThresholdPx = with(density) { 64.dp.toPx() }
-            val swipeToCloseConnection = remember(gridState, swipeCloseThresholdPx, onClose) {
-                object : NestedScrollConnection {
-                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                        val atTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
-                        if (source == NestedScrollSource.UserInput && atTop && available.y > 0f) {
-                            swipeDragY += available.y
-                            if (swipeDragY >= swipeCloseThresholdPx) {
-                                swipeDragY = 0f
-                                onClose()
-                            }
-                            return Offset(0f, available.y)
-                        }
-                        if (!atTop || available.y < 0f) swipeDragY = 0f
-                        return Offset.Zero
-                    }
-
-                    override suspend fun onPreFling(available: Velocity): Velocity {
-                        val atTop = gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
-                        if (atTop && available.y > 1500f) {
-                            swipeDragY = 0f
-                            onClose()
-                            return available
-                        }
-                        return Velocity.Zero
-                    }
-
-                    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                        swipeDragY = 0f
-                        return Velocity.Zero
-                    }
-                }
-            }
+            // Material-3-Expressive: elastisches Rubber-Band-Feedback beim Ziehen
+            // am oberen Rand, federt zurück wenn die Close-Schwelle nicht erreicht wird.
+            val swipeToClose = rememberSwipeToCloseRubberBand(
+                isAtTop = { gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0 },
+                isAtBottom = { !gridState.canScrollForward },
+                onClose = onClose
+            )
 
             CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(adaptiveColumns),
                     modifier = Modifier
                         .fillMaxSize()
-                        .nestedScroll(swipeToCloseConnection),
+                        .graphicsLayer { translationY = swipeToClose.offsetY }
+                        .nestedScroll(swipeToClose.connection),
                     state = gridState,
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalArrangement = Arrangement.spacedBy(32.dp),
@@ -445,14 +419,16 @@ fun AppDrawer(
                 ) {
                     if (searchQuery.isBlank()) {
                         itemsIndexed(items = folders, key = { _, folder -> folder.id }, contentType = { _, _ -> "folder" }) { _, folder ->
-                            FolderItem(
-                                folder = folder,
-                                onClick = { pos ->
-                                    folderPosition = pos
-                                    activeFolderId = folder.id
-                            },
-                            onOpenFolderConfig = onOpenFolderConfig
-                            )
+                            Box(modifier = Modifier.animateItem()) {
+                                FolderItem(
+                                    folder = folder,
+                                    onClick = { pos ->
+                                        folderPosition = pos
+                                        activeFolderId = folder.id
+                                    },
+                                    onOpenFolderConfig = onOpenFolderConfig
+                                )
+                            }
                         }
                     }
 

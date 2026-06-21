@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,10 +47,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,8 +89,13 @@ import com.example.androidlauncher.NotificationService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconFallbackType
 import com.example.androidlauncher.data.IconManager
+import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalIconColor
 import com.example.androidlauncher.ui.theme.LocalIconSize
+import com.example.androidlauncher.ui.theme.RethroneSprings
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.roundToInt
 
 fun Context.findActivity(): Activity? {
@@ -117,106 +125,111 @@ fun Modifier.bounceClick(interactionSource: MutableInteractionSource, enabled: B
     this.scale(scale)
 }
 
-@Composable
-fun rememberBottomBoundarySwipeToCloseConnection(
-    listState: LazyListState,
-    enabled: Boolean = true,
-    onClose: () -> Unit
-): NestedScrollConnection {
-    val density = LocalDensity.current
-    val swipeCloseThresholdPx = with(density) { 64.dp.toPx() }
-    var swipeDragDistance by remember(listState, enabled) { mutableStateOf(0f) }
-
-    return remember(listState, enabled, swipeCloseThresholdPx, onClose) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (!enabled) {
-                    swipeDragDistance = 0f
-                    return Offset.Zero
-                }
-
-                val atBottom = !listState.canScrollForward
-                if (source == NestedScrollSource.UserInput && atBottom && available.y < 0f) {
-                    swipeDragDistance += -available.y
-                    if (swipeDragDistance >= swipeCloseThresholdPx) {
-                        swipeDragDistance = 0f
-                        onClose()
-                    }
-                    return Offset(0f, available.y)
-                }
-
-                if (!atBottom || available.y > 0f) {
-                    swipeDragDistance = 0f
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                if (!enabled) {
-                    swipeDragDistance = 0f
-                    return Velocity.Zero
-                }
-
-                val atBottom = !listState.canScrollForward
-                if (atBottom && available.y < -1500f) {
-                    swipeDragDistance = 0f
-                    onClose()
-                    return available
-                }
-                return Velocity.Zero
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                swipeDragDistance = 0f
-                return Velocity.Zero
-            }
-        }
-    }
+/**
+ * Ergebnis von [rememberSwipeToCloseRubberBand]: die [NestedScrollConnection]
+ * plus der aktuelle, elastisch gedämpfte Versatz [offsetY] (positiv = oberer Rand,
+ * negativ = unterer Rand).
+ */
+class SwipeToCloseState(
+    val connection: NestedScrollConnection,
+    private val offset: State<Float>
+) {
+    /** Aktueller Versatz in Pixel. Per `graphicsLayer { translationY = state.offsetY }` anwenden. */
+    val offsetY: Float get() = offset.value
 }
 
+/**
+ * Elastisches Rubber-Band-Feedback an beiden Listenrändern im
+ * Material-3-Expressive-Stil. Am **oberen** Rand folgt der Inhalt dem Ziehen mit
+ * abnehmender Wirkung und löst [onClose] aus, sobald [closeThreshold] erreicht
+ * (oder mit Schwung geflungen) wird. Am **unteren** Rand gibt der Inhalt beim
+ * Weiterziehen über das Listenende elastisch nach und federt anschließend via
+ * [RethroneSprings] sanft zurück – ohne Close.
+ *
+ * @param isAtTop liefert, ob die Liste/das Grid ganz oben steht.
+ * @param isAtBottom liefert, ob das Listenende erreicht ist (kein Weiterscrollen).
+ */
 @Composable
-fun rememberTopBoundarySwipeToCloseConnection(
-    listState: LazyListState,
-    enabled: Boolean = true,
+fun rememberSwipeToCloseRubberBand(
+    closeThreshold: Dp = 64.dp,
+    maxDrag: Dp = 96.dp,
+    isAtTop: () -> Boolean,
+    isAtBottom: () -> Boolean = { false },
     onClose: () -> Unit
-): NestedScrollConnection {
+): SwipeToCloseState {
     val density = LocalDensity.current
-    val swipeCloseThresholdPx = with(density) { 64.dp.toPx() }
-    var swipeDragDistance by remember(listState, enabled) { mutableStateOf(0f) }
+    val thresholdPx = with(density) { closeThreshold.toPx() }
+    val maxDragPx = with(density) { maxDrag.toPx() }
+    val speed = LocalAnimationSpeed.current
+    val scope = rememberCoroutineScope()
 
-    return remember(listState, enabled, swipeCloseThresholdPx, onClose) {
+    val rawDrag = remember { mutableFloatStateOf(0f) }
+    val settle = remember { Animatable(0f) }
+    val settling = remember { mutableStateOf(false) }
+
+    // Abnehmende Wirkung: nähert sich vorzeichenrichtig asymptotisch maxDragPx an.
+    fun elastic(raw: Float): Float {
+        val sign = if (raw < 0f) -1f else 1f
+        val x = abs(raw)
+        return sign * maxDragPx * (1f - exp(-x / maxDragPx))
+    }
+
+    val offset = remember {
+        derivedStateOf {
+            if (settling.value) settle.value else elastic(rawDrag.floatValue)
+        }
+    }
+
+    // Vorzeichenrichtig zurückfedern (für oberen wie unteren Rand).
+    fun springBack() {
+        if (rawDrag.floatValue == 0f) return
+        val from = elastic(rawDrag.floatValue)
+        rawDrag.floatValue = 0f
+        settling.value = true
+        scope.launch {
+            settle.snapTo(from)
+            settle.animateTo(0f, RethroneSprings.spatial(speed))
+            settling.value = false
+        }
+    }
+
+    val connection = remember(thresholdPx, onClose) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (!enabled) {
-                    swipeDragDistance = 0f
-                    return Offset.Zero
-                }
-
-                val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                if (source == NestedScrollSource.UserInput && atTop && available.y > 0f) {
-                    swipeDragDistance += available.y
-                    if (swipeDragDistance >= swipeCloseThresholdPx) {
-                        swipeDragDistance = 0f
-                        onClose()
+                if (source == NestedScrollSource.UserInput) {
+                    // Oberer Rand: Ziehen nach unten → Rubber-Band + ggf. Close.
+                    if (isAtTop() && available.y > 0f) {
+                        settling.value = false
+                        rawDrag.floatValue += available.y
+                        if (rawDrag.floatValue >= thresholdPx) {
+                            rawDrag.floatValue = 0f
+                            onClose()
+                        }
+                        return Offset(0f, available.y)
                     }
-                    return Offset(0f, available.y)
+                    // Gegenrichtung aus einem aktiven Versatz heraus → zurückfedern.
+                    if (rawDrag.floatValue > 0f && available.y < 0f) springBack()
+                    else if (rawDrag.floatValue < 0f && available.y > 0f) springBack()
                 }
+                return Offset.Zero
+            }
 
-                if (!atTop || available.y < 0f) {
-                    swipeDragDistance = 0f
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                // Unterer Rand: vom Listenende übrig gebliebenes Ziehen nach oben
+                // → elastisches Nachgeben.
+                if (source == NestedScrollSource.UserInput && available.y < 0f && isAtBottom()) {
+                    settling.value = false
+                    rawDrag.floatValue += available.y
+                    return Offset(0f, available.y)
                 }
                 return Offset.Zero
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                if (!enabled) {
-                    swipeDragDistance = 0f
-                    return Velocity.Zero
-                }
-
-                val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                if (atTop && available.y > 1500f) {
-                    swipeDragDistance = 0f
+                if (isAtTop() && available.y > 1500f) {
+                    rawDrag.floatValue = 0f
+                    settling.value = false
+                    settle.snapTo(0f)
                     onClose()
                     return available
                 }
@@ -224,11 +237,13 @@ fun rememberTopBoundarySwipeToCloseConnection(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                swipeDragDistance = 0f
+                springBack()
                 return Velocity.Zero
             }
         }
     }
+
+    return remember(connection, offset) { SwipeToCloseState(connection, offset) }
 }
 
 @Composable

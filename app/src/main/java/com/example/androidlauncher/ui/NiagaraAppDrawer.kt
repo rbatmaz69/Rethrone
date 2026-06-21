@@ -158,40 +158,13 @@ fun NiagaraAppDrawer(
     }
 
     val listState = rememberLazyListState()
-    var swipeDragY by remember { mutableStateOf(0f) }
-    val swipeCloseThresholdPx = with(density) { 64.dp.toPx() }
-    val swipeToCloseConnection = remember(listState, swipeCloseThresholdPx, onClose) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                if (source == NestedScrollSource.UserInput && atTop && available.y > 0f) {
-                    swipeDragY += available.y
-                    if (swipeDragY >= swipeCloseThresholdPx) {
-                        swipeDragY = 0f
-                        onClose()
-                    }
-                    return Offset(0f, available.y)
-                }
-                if (!atTop || available.y < 0f) swipeDragY = 0f
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                if (atTop && available.y > 1500f) {
-                    swipeDragY = 0f
-                    onClose()
-                    return available
-                }
-                return Velocity.Zero
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                swipeDragY = 0f
-                return Velocity.Zero
-            }
-        }
-    }
+    // Material-3-Expressive: elastisches Rubber-Band-Feedback beim Ziehen am
+    // oberen Rand, federt zurück wenn die Close-Schwelle nicht erreicht wird.
+    val swipeToClose = rememberSwipeToCloseRubberBand(
+        isAtTop = { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 },
+        isAtBottom = { !listState.canScrollForward },
+        onClose = onClose
+    )
 
     Box(modifier = Modifier.fillMaxSize().testTag("niagara_app_drawer")) {
         Box(
@@ -263,7 +236,8 @@ fun NiagaraAppDrawer(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
-                            .nestedScroll(swipeToCloseConnection),
+                            .graphicsLayer { translationY = swipeToClose.offsetY }
+                            .nestedScroll(swipeToClose.connection),
                         state = listState,
                         contentPadding = PaddingValues(end = if (isSearching) 0.dp else 24.dp, bottom = 32.dp)
                     ) {
@@ -271,6 +245,7 @@ fun NiagaraAppDrawer(
                             items(items = visibleApps, key = { it.packageName }, contentType = { "app" }) { app ->
                                 NiagaraAppRow(
                                     app = app,
+                                    modifier = Modifier.animateItem(),
                                     customIcons = customIcons,
                                     bouncePackage = returnIconPackage,
                                     mainTextColor = mainTextColor,
@@ -294,6 +269,7 @@ fun NiagaraAppDrawer(
                                 items(items = groupApps, key = { it.packageName }, contentType = { "app" }) { app ->
                                     NiagaraAppRow(
                                         app = app,
+                                        modifier = Modifier.animateItem(),
                                         customIcons = customIcons,
                                         bouncePackage = returnIconPackage,
                                         mainTextColor = mainTextColor,
@@ -460,7 +436,8 @@ private fun NiagaraAppRow(
     bouncePackage: String?,
     mainTextColor: Color,
     onLaunch: (Rect?) -> Unit,
-    onLongPress: (Rect?) -> Unit
+    onLongPress: (Rect?) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val fontSize = LocalFontSize.current
     val fontWeight = LocalFontWeight.current
@@ -475,7 +452,7 @@ private fun NiagaraAppRow(
     )
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .onGloballyPositioned { rowBounds = it.boundsInRoot() }
             .bounceClick(intSrc)

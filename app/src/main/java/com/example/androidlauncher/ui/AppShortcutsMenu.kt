@@ -30,8 +30,10 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.RethroneSprings
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -91,8 +93,10 @@ fun AppShortcutsMenu(
     }
 
     val transition = updateTransition(targetState = isVisible && targetBounds != null, label = "ShortcutMenuTransition")
+    // Material-3-Expressive: federnder „Pop" statt linearem Tween (Alpha geklemmt).
+    val menuSpeed = LocalAnimationSpeed.current
     val progress by transition.animateFloat(
-        transitionSpec = { tween(durationMillis = 350, easing = FastOutSlowInEasing) },
+        transitionSpec = { RethroneSprings.spatial(menuSpeed) },
         label = "Progress"
     ) { if (it) 1f else 0f }
 
