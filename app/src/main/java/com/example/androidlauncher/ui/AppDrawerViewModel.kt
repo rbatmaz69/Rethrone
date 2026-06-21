@@ -22,10 +22,11 @@ import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class AppDrawerViewModel(application: Application) : AndroidViewModel(application) {
-
-    // IconManager im ViewModel halten (Application context)
-    private val iconManager = IconManager(application)
+@dagger.hilt.android.lifecycle.HiltViewModel
+class AppDrawerViewModel @javax.inject.Inject constructor(
+    application: Application,
+    private val iconManager: IconManager,
+) : AndroidViewModel(application) {
 
     // expose custom icons as StateFlow
     val customIcons: StateFlow<Map<String, String>> =

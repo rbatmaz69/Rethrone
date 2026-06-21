@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.kotlinCompose) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.kover) apply false
+    alias(libs.plugins.hilt) apply false
+    alias(libs.plugins.ksp) apply false
 }
 
 // Detekt wird im :app-Modul konfiguriert (app/build.gradle.kts), da dort der Quellcode liegt –

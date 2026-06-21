@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.detekt)
     alias(libs.plugins.kover)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 // Signing-Credentials niemals im Repo: gelesen aus Umgebungsvariablen (CI) mit Vorrang,
@@ -169,14 +171,17 @@ kover {
                 classes("com.example.androidlauncher.ui.HybridSearchKt\$*")
                 classes("com.example.androidlauncher.ui.InfoDialogKt")
                 classes("com.example.androidlauncher.ui.InfoDialogKt\$*")
-                classes("com.example.androidlauncher.data.FavoritesManager")
-                classes("com.example.androidlauncher.data.FavoritesManager\$*")
-                classes("com.example.androidlauncher.data.FavoritesManagerKt")
-                classes("com.example.androidlauncher.data.AppRepository")
-                classes("com.example.androidlauncher.data.AppRepository\$*")
-                classes("com.example.androidlauncher.data.IconManager")
-                classes("com.example.androidlauncher.data.IconManager\$*")
-                classes("com.example.androidlauncher.data.IconManagerKt")
+                // Hinweis: data.AppRepository, data.IconManager und data.FavoritesManager sind
+                // bewusst NICHT mehr ausgeschlossen – fuer sie existieren Unit-Tests
+                // (AppRepositoryTest, IconManagerTest, FavoritesManagerTest), die jetzt ehrlich
+                // in die Coverage einfliessen.
+                // DI-Boilerplate (Hilt): nicht sinnvoll unit-testbar, analog zu MainActivity.
+                classes("com.example.androidlauncher.RethroneApplication")
+                classes("com.example.androidlauncher.di.*")
+                classes("*_Factory")
+                classes("*_MembersInjector")
+                classes("*_HiltModules*")
+                classes("*Hilt_*")
             }
         }
         // Coverage-Gate gegen Regression: faellt der Anteil getesteter Zeilen unter die
@@ -185,7 +190,7 @@ kover {
         verify {
             rule("Mindest-Zeilenabdeckung") {
                 bound {
-                    minValue = 18
+                    minValue = 20
                     coverageUnits = CoverageUnit.LINE
                 }
             }
@@ -217,6 +222,11 @@ dependencies {
 
     // Biometrie (Fingerabdruck/Gesicht + Geräte-Credential-Fallback) für die App-Sperre
     implementation(libs.androidx.biometric)
+
+    // Dependency Injection (Hilt) – Manager/Repositories werden als Singletons bereitgestellt.
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
 
     testImplementation(libs.junit)

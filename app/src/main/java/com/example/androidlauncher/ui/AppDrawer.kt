@@ -151,7 +151,7 @@ fun AppDrawer(
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
 
-    val appDrawerVm: AppDrawerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val appDrawerVm: AppDrawerViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     val customIcons by appDrawerVm.customIcons.collectAsState()
     val searchQuery by appDrawerVm.searchQuery.collectAsState()
     var searchExpanded by remember { mutableStateOf(searchQuery.isNotBlank()) }

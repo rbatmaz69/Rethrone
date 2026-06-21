@@ -147,12 +147,35 @@ import kotlin.math.roundToInt
 /**
  * Haupt-Activity des Launchers.
  */
+@dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val SEARCH_RETURN_TARGET = "__search_return_target__"
         private const val RETURN_TAG = "ReturnFlow"
     }
+
+    // Von Hilt bereitgestellte Datenschicht-Singletons (siehe di/DataModule).
+    @javax.inject.Inject
+    lateinit var themeManager: ThemeManager
+
+    @javax.inject.Inject
+    lateinit var folderManager: FolderManager
+
+    @javax.inject.Inject
+    lateinit var iconManager: IconManager
+
+    @javax.inject.Inject
+    lateinit var favoritesManager: FavoritesManager
+
+    @javax.inject.Inject
+    lateinit var appRepository: AppRepository
+
+    @javax.inject.Inject
+    lateinit var searchSuggestionsManager: SearchSuggestionsManager
+
+    @javax.inject.Inject
+    lateinit var shakeManager: LauncherShakeManager
 
     private lateinit var backCallback: OnBackPressedCallback
     private var lastDefaultLauncherPackage: String? = null
@@ -192,14 +215,15 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val scope = rememberCoroutineScope()
 
-            val themeManager = remember { ThemeManager(context) }
-            val folderManager = remember { FolderManager(context) }
-            val iconManager = remember { IconManager(context) }
-            val favoritesManager = remember { FavoritesManager(context) }
-            val appRepository = remember { AppRepository(context) }
-            val searchSuggestionsManager = remember { SearchSuggestionsManager(context) }
+            // Datenschicht kommt als Hilt-Singletons aus den injizierten Feldern (siehe oben).
+            val themeManager = this@MainActivity.themeManager
+            val folderManager = this@MainActivity.folderManager
+            val iconManager = this@MainActivity.iconManager
+            val favoritesManager = this@MainActivity.favoritesManager
+            val appRepository = this@MainActivity.appRepository
+            val searchSuggestionsManager = this@MainActivity.searchSuggestionsManager
             val launcherDeviceActions = remember { LauncherDeviceActions(context) }
-            val shakeManager = remember { LauncherShakeManager(context) }
+            val shakeManager = this@MainActivity.shakeManager
 
             LaunchedEffect(Unit) {
                 favoritesManager.migrateFromSharedPreferences(context)
