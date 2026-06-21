@@ -73,6 +73,7 @@ import com.example.androidlauncher.R
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Sun
+import com.example.androidlauncher.FavoritesEntranceTracker
 import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
@@ -1187,13 +1188,18 @@ private fun FavoriteItem(
     )
 
     // Material-3-Expressive: gestaffelter Eingang der Favoriten (federndes Aufpoppen),
-    // einmalig beim Erscheinen. Respektiert die Favoriten-Animationseinstellung.
-    val appear = remember(app.packageName) { Animatable(if (favoritesAnimationEnabled) 0f else 1f) }
+    // einmalig pro Prozess-Lebenszeit beim ersten Erscheinen. Läuft NICHT erneut beim
+    // Zurückkommen aus dem App-Drawer (HomeScreen wird dann neu komponiert).
+    // Respektiert die Favoriten-Animationseinstellung.
+    val playEntrance = favoritesAnimationEnabled && !isPreview &&
+        !FavoritesEntranceTracker.hasAppeared(app.packageName)
+    val appear = remember(app.packageName) { Animatable(if (playEntrance) 0f else 1f) }
     LaunchedEffect(app.packageName, favoritesAnimationEnabled) {
-        if (favoritesAnimationEnabled) {
+        if (playEntrance) {
             appear.snapTo(0f)
             delay((index.coerceAtMost(8) * 40).toLong())
             appear.animateTo(1f, RethroneSprings.spatial())
+            FavoritesEntranceTracker.markAppeared(app.packageName)
         } else {
             appear.snapTo(1f)
         }
