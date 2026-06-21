@@ -9,6 +9,12 @@ private const val ENTRY_PREFIX = "origin_"
 private const val LAST_LAUNCHED_PACKAGE_KEY = "last_launched_package"
 private const val TAG = "ReturnStore"
 
+/**
+ * Persistenter Schlüssel-Wert-Speicher (SharedPreferences) für Rückkehr-Animationen:
+ * merkt sich pro gestartetem Paket die Ursprungs-Bounds und Quelle, damit beim Zurückkehren
+ * aus einer App das Schließen-Overlay an die richtige Stelle animieren kann. Serialisiert
+ * [ReturnAnimation] als String. Hält zusätzlich das zuletzt gestartete Paket fest.
+ */
 object ReturnOriginStore {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 

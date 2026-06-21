@@ -50,6 +50,9 @@ jobs:
       - name: Run Tests with Coverage
         run: ./gradlew koverXmlReportDebug koverLogDebug
 
+      - name: Verify Coverage Threshold
+        run: ./gradlew koverVerifyDebug
+
       - name: Add Coverage to Summary
         id: coverage
         run: |

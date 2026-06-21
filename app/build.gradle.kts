@@ -1,3 +1,5 @@
+import io.gitlab.arturbosch.detekt.Detekt
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
@@ -96,6 +98,28 @@ kotlin {
     }
 }
 
+detekt {
+    toolVersion = libs.versions.detekt.get()
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    // Alt-Verstoesse des Bestandscodes sind eingefroren; nur NEUER Code laesst den Build
+    // fehlschlagen. Baseline neu erzeugen via `./gradlew detektBaseline`.
+    baseline = file("$rootDir/config/detekt/baseline.xml")
+    buildUponDefaultConfig = true
+    allRules = false
+    // Im CI nicht automatisch korrigieren (kein Datei-Rewrite). Lokal: `./gradlew detekt --auto-correct`.
+    autoCorrect = false
+}
+
+tasks.withType<Detekt>().configureEach {
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        txt.required.set(false)
+        sarif.required.set(false)
+        md.required.set(true)
+    }
+}
+
 kover {
     reports {
         filters {
@@ -155,6 +179,17 @@ kover {
                 classes("com.example.androidlauncher.data.IconManagerKt")
             }
         }
+        // Coverage-Gate gegen Regression: faellt der Anteil getesteter Zeilen unter die
+        // Schwelle, schlaegt `koverVerifyDebug` (und damit der CI-Schritt) fehl. Bewusst
+        // knapp unter dem aktuellen Ist-Wert angesetzt – beim Ausbau der Tests anhebbar.
+        verify {
+            rule("Mindest-Zeilenabdeckung") {
+                bound {
+                    minValue = 18
+                    coverageUnits = CoverageUnit.LINE
+                }
+            }
+        }
     }
 }
 
@@ -187,7 +222,11 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
     testImplementation("org.json:json:20231013")
+
+    // Formatting-Ruleset (ktlint-Wrapper) fuer Detekt – siehe config/detekt/detekt.yml.
+    detektPlugins(libs.detekt.formatting)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

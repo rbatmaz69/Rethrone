@@ -226,10 +226,20 @@ adb shell am start -n com.example.androidlauncher/.MainActivity
 ./gradlew koverXmlReportDebug koverLogDebug
 ```
 
+### ✅ Verify the coverage gate
+```bash
+./gradlew koverVerifyDebug
+```
+
 ### 🔍 Run the linter
 ```bash
-./gradlew detekt
+./gradlew detekt              # check (CI gate)
+./gradlew detekt --auto-correct   # auto-format locally
 ```
+
+### 🏛 Architecture
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the layering, state-management conventions,
+and a guide for adding features the intended way.
 
 ---
 
