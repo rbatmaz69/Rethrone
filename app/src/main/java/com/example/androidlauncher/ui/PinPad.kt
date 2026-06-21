@@ -1,6 +1,7 @@
 package com.example.androidlauncher.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -63,15 +64,13 @@ fun PinPad(
         ) {
             val dots = value.length.coerceAtMost(maxLength)
             repeat(dots) {
+                // Solide Füllung in einer kontrastsicheren Farbe statt designSurface, damit die
+                // Punkte in jedem Design-Stil und auch bei einfarbigen Custom-Themes sichtbar sind.
                 Box(
                     modifier = Modifier
                         .size(12.dp)
                         .clip(CircleShape)
-                        .designSurface(
-                            designStyle, CircleShape, isDarkTextEnabled, accentColor,
-                            fillAlpha = 0.9f, glassStartAlpha = 0.9f, glassEndAlpha = 0.9f,
-                            borderWidth = 1.dp, borderStartAlpha = 0.25f, borderEndAlpha = 0.1f
-                        )
+                        .background(accentColor, CircleShape)
                 )
             }
         }

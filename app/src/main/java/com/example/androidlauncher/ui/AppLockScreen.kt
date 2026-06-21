@@ -184,7 +184,7 @@ fun AppLockScreen(
                 onValueChange = { pin = it },
                 maxLength = 12,
                 textColor = textColor,
-                accentColor = accentColor,
+                accentColor = colorTheme.readableAccentOnBackground(isDarkText),
                 designStyle = designStyle,
                 surfaceAccent = surfaceAccent,
                 isDarkTextEnabled = isDarkText

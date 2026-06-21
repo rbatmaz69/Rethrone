@@ -844,6 +844,20 @@ enum class ColorTheme(
         }
     }
 
+    /**
+     * Akzentfarbe, solange sie auf dem App-Hintergrund ausreichend kontrastiert;
+     * sonst Rückfall auf die kontrastreiche Haupttextfarbe. Schützt v. a. CUSTOM,
+     * wo Akzent ≈ Hintergrund sein kann (z. B. einfarbiges Baby-Blau), wodurch die
+     * PIN-Punkte sonst unsichtbar würden.
+     */
+    fun readableAccentOnBackground(darkTextEnabled: Boolean): Color {
+        val background = backgroundColor(darkTextEnabled)
+        val accent = accentColor(darkTextEnabled)
+        val fallback = if (darkTextEnabled) DarkTextColor else Color.White
+        return if (contrastRatio(accent, background) >= MinimumReadableContrast) accent
+        else fallback
+    }
+
     // Wärmeres, universelles Rendering: heller Anker zieht stärker zu Warmweiß.
     private val lightSurfaceAnchor: Color
         get() = listOf(
