@@ -71,6 +71,10 @@ class LauncherAccessibilityService : AccessibilityService() {
     private fun enforceAppLock(packageName: String) {
         val isTransient = isTransientSystemPackage(packageName)
         if (isTransient) return
+        // Eigener Launcher/Sperr-Overlay darf die Entsperr-Sitzung nicht zurücksetzen,
+        // sonst löscht ein verspätetes Event den gerade gesetzten Entsperr-Status und der
+        // Sperrbildschirm erscheint nach korrekter PIN erneut (Race Condition).
+        if (packageName == applicationContext.packageName) return
         val alreadyUnlocked = AppLockManager.isUnlocked(packageName)
         // Nur das aktuelle Vordergrund-Paket bleibt entsperrt; verlassene Apps werden neu gesperrt.
         AppLockManager.retainOnly(packageName)

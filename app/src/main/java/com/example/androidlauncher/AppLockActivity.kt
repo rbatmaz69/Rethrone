@@ -41,6 +41,13 @@ class AppLockActivity : FragmentActivity() {
             return
         }
 
+        // Falls das Paket in dieser Sitzung bereits entsperrt ist, nicht erneut nach PIN
+        // fragen (Absicherung gegen verbleibende Relaunch-Fälle).
+        if (AppLockManager.isUnlocked(targetPackage)) {
+            finish()
+            return
+        }
+
         // Zurück-Geste verlässt die geschützte App zum Startbildschirm (App bleibt gesperrt).
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
