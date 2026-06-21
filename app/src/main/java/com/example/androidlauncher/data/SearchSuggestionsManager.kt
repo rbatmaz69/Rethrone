@@ -23,6 +23,14 @@ data class AppUsageStats(
     val lastLaunchedAt: Long
 )
 
+/**
+ * Persistiert Web-Suchverlauf und App-Nutzungsstatistiken (DataStore) und liefert daraus
+ * Vorschläge für die hybride Suche. Der primäre Konstruktor nimmt den DataStore direkt,
+ * damit die Klasse in Tests mit einem In-Memory-Store betrieben werden kann; in der App
+ * wird über den [Context]-Konstruktor der gerätegebundene Store verwendet.
+ *
+ * Die abgelegten Daten sind nutzersensibel und werden verschlüsselt gespeichert.
+ */
 class SearchSuggestionsManager(
     private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
 ) {

@@ -1,0 +1,86 @@
+# Detekt-Konfiguration fuer Rethrone.
+#
+# Diese Datei ueberschreibt nur gezielt einzelne Regeln; alle uebrigen Regeln stammen
+# aus der Detekt-Default-Config (build.gradle.kts: buildUponDefaultConfig = true).
+#
+# Leitlinie: Compose-typisches Rauschen (dp/sp-Literale, PascalCase-@Composable-Funktionen,
+# lange Layout-Funktionen) wird abgeschaltet bzw. fuer @Composable ausgenommen. Echte
+# Wartbarkeits-Smells (verschluckte Exceptions, zu generische Catches) bleiben aktiv.
+# Bestehende Alt-Verstoesse sind in config/detekt/baseline.xml eingefroren – NEUER Code
+# muss die Regeln erfuellen.
+
+formatting:
+  # detekt-formatting (ktlint-Wrapper).
+  active: true
+  android: true
+  autoCorrect: true
+  MaximumLineLength:
+    # Redundant zu style.MaxLineLength (gleiche Schwelle) – dort zentral gepflegt.
+    active: false
+  NoWildcardImports:
+    # Bestehender Code nutzt bewusst Wildcard-Importe in einigen UI-Dateien.
+    active: false
+
+complexity:
+  CyclomaticComplexMethod:
+    # Compose-Layout-Funktionen verzweigen stark ueber UI-Zustaende – das ist kein Smell.
+    ignoreAnnotated: ['Composable']
+    threshold: 20
+  LongMethod:
+    threshold: 80
+    ignoreAnnotated: ['Composable', 'Preview', 'Test']
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 8
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    thresholdInFiles: 20
+    thresholdInClasses: 20
+    thresholdInObjects: 20
+    ignoreAnnotated: ['Composable']
+  ComplexCondition:
+    threshold: 5
+  NestedBlockDepth:
+    threshold: 5
+  LargeClass:
+    threshold: 800
+
+naming:
+  FunctionNaming:
+    # @Composable-Funktionen sind per Konvention PascalCase.
+    ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    active: false
+
+style:
+  MagicNumber:
+    # In einer Compose-/Theme-lastigen Codebasis sind Zahlen-Literale (dp, sp, Farb-Kanaele,
+    # Animationsdauern) allgegenwaertig und tragen keine versteckte Bedeutung. Regel aus.
+    active: false
+  MaxLineLength:
+    maxLineLength: 140
+  WildcardImport:
+    active: false
+  ReturnCount:
+    max: 5
+  UnusedPrivateMember:
+    active: true
+
+exceptions:
+  SwallowedException:
+    active: true
+  TooGenericExceptionCaught:
+    # System-API-Aufrufe (Flashlight, DND, Kamera) fangen bewusst breit ab und behandeln
+    # den Fehlerfall als getypten Result – siehe LauncherDeviceActions.
+    active: false
+  PrintStackTrace:
+    active: true
+
+comments:
+  active: true
+  UndocumentedPublicClass:
+    # Bewusst aus: KDoc wird in Phase 4 gezielt fuer Kernklassen ergaenzt, nicht erzwungen
+    # fuer jede UI-Hilfsklasse.
+    active: false
+  UndocumentedPublicFunction:
+    active: false

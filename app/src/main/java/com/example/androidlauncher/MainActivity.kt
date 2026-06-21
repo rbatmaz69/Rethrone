@@ -98,6 +98,8 @@ import com.example.androidlauncher.data.IconQualityEvaluator
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.GestureAction
+import com.example.androidlauncher.gesture.GestureActionEffects
+import com.example.androidlauncher.gesture.GestureActionHandler
 import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
@@ -324,6 +326,41 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Geräte-/System-Gesten führt der testbare GestureActionHandler aus; UI-Rückmeldungen
+            // (Toast/Permission/Settings) reicht er über die Effects-Bridge an die Activity zurück.
+            val gestureActionHandler = remember(launcherDeviceActions, context) {
+                GestureActionHandler(
+                    deviceActions = launcherDeviceActions,
+                    isAccessibilityEnabled = {
+                        LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
+                    },
+                    requestLockScreen = { LauncherAccessibilityService.requestLockScreen(context) },
+                )
+            }
+            val gestureEffects = object : GestureActionEffects {
+                override fun showMessage(messageRes: Int, longDuration: Boolean) {
+                    Toast.makeText(
+                        context,
+                        context.getString(messageRes),
+                        if (longDuration) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                override fun requestCameraPermission() {
+                    pendingPermissionShakeAction = GestureAction.FLASHLIGHT
+                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                }
+
+                override fun openAccessibilitySettings() {
+                    runCatching {
+                        startActivity(
+                            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                }
+            }
+
             // Rollen-Dialog (ROLE_HOME) zuverlässig über die ActivityResult-API; der Status
             // ("An"/"Aus") aktualisiert sich ohnehin beim nächsten ON_RESUME.
             val defaultLauncherRoleLauncher = rememberLauncherForActivityResult(
@@ -349,86 +386,11 @@ class MainActivity : ComponentActivity() {
                 openDefaultLauncherSettings(context)
             }
 
-            // Geräte-/System-Aktionen einer Geste. Launcher-interne Aktionen
-            // (App-Drawer/Suche/Benachrichtigungen) werden im inneren
-            // dispatchGestureAction behandelt, da sie UI-State setzen.
+            // Geräte-/System-Aktionen einer Geste werden an den testbaren GestureActionHandler
+            // delegiert. Launcher-interne Aktionen (App-Drawer/Suche/Benachrichtigungen) setzen
+            // UI-State und werden weiterhin im inneren dispatchGestureAction behandelt.
             fun runGestureAction(action: GestureAction, appPackage: String?) {
-                when (action) {
-                    GestureAction.NONE,
-                    GestureAction.APP_DRAWER,
-                    GestureAction.SEARCH,
-                    GestureAction.NOTIFICATIONS -> Unit
-                    GestureAction.FLASHLIGHT -> {
-                        when (launcherDeviceActions.toggleFlashlight()) {
-                            is FlashlightToggleResult.Success -> {
-                                launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
-                            }
-                            FlashlightToggleResult.Unsupported -> {
-                                Toast.makeText(context, context.getString(R.string.flashlight_unsupported), Toast.LENGTH_SHORT).show()
-                            }
-                            FlashlightToggleResult.MissingPermission -> {
-                                pendingPermissionShakeAction = GestureAction.FLASHLIGHT
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                            FlashlightToggleResult.Error -> {
-                                Toast.makeText(context, context.getString(R.string.flashlight_error), Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                    GestureAction.CAMERA -> {
-                        val didOpenCamera = launcherDeviceActions.openCamera(this@MainActivity)
-                        if (didOpenCamera) {
-                            launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
-                        } else {
-                            Toast.makeText(context, context.getString(R.string.camera_app_not_found), Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                    GestureAction.OPEN_APP -> {
-                        val targetPackage = appPackage
-                        if (targetPackage.isNullOrBlank()) {
-                            Toast.makeText(context, context.getString(R.string.shake_no_app_selected), Toast.LENGTH_SHORT).show()
-                        } else if (launcherDeviceActions.openApp(this@MainActivity, targetPackage)) {
-                            launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
-                        } else {
-                            Toast.makeText(context, context.getString(R.string.shake_app_not_found), Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                    GestureAction.LOCK_SCREEN -> {
-                        if (LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) {
-                            LauncherAccessibilityService.requestLockScreen(context)
-                            launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
-                        } else {
-                            Toast.makeText(context, context.getString(R.string.shake_lock_needs_accessibility), Toast.LENGTH_LONG).show()
-                            runCatching {
-                                startActivity(
-                                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                )
-                            }
-                        }
-                    }
-                    GestureAction.TOGGLE_DND -> {
-                        when (launcherDeviceActions.toggleDoNotDisturb()) {
-                            is DndToggleResult.Success -> {
-                                launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
-                            }
-                            DndToggleResult.MissingPermission -> {
-                                Toast.makeText(context, context.getString(R.string.shake_dnd_needs_permission), Toast.LENGTH_LONG).show()
-                                launcherDeviceActions.openDndPolicySettings(this@MainActivity)
-                            }
-                            DndToggleResult.Unsupported -> {
-                                Toast.makeText(context, context.getString(R.string.shake_dnd_unsupported), Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                    GestureAction.OPEN_SETTINGS -> {
-                        if (launcherDeviceActions.openSystemSettings(this@MainActivity)) {
-                            launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
-                        } else {
-                            Toast.makeText(context, context.getString(R.string.shake_settings_not_found), Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
+                gestureActionHandler.handle(action, appPackage, this@MainActivity, gestureEffects)
             }
 
             AndroidLauncherTheme(
@@ -716,17 +678,13 @@ class MainActivity : ComponentActivity() {
                         appRepository.cleanupLegacyCache()
                         appRepository.invalidateCacheOnAppUpdate()
                         val basicList = appRepository.getInstalledApps()
-                        val currentIcons = allApps.associate { it.packageName to it.iconBitmap }
-                        val currentFallbacks = allApps.associate { it.packageName to it.autoIconFallback }
-                        val mergedList = basicList.map {
-                            val resolvedRule = autoIconRules[it.packageName]
-                                ?: IconQualityEvaluator.resolveDefaultRule(it.packageName)
-                            it.copy(
-                                iconBitmap = currentIcons[it.packageName],
-                                autoIconFallback = autoIconFallbacks[it.packageName] ?: currentFallbacks[it.packageName],
-                                autoIconRule = resolvedRule
-                            )
-                        }
+                        // Geladene Icons/Fallbacks bewahren + Regeln anwenden – reine, testbare Transformation.
+                        val mergedList = LauncherLogic.mergeInstalledApps(
+                            basicApps = basicList,
+                            existingApps = allApps,
+                            storedFallbacks = autoIconFallbacks,
+                            autoIconRules = autoIconRules,
+                        )
                         if (allApps.size != mergedList.size || allApps.map { it.packageName } != mergedList.map { it.packageName }) {
                             allApps.clear()
                             allApps.addAll(mergedList)

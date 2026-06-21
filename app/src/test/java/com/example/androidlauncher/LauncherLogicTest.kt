@@ -2,6 +2,10 @@ package com.example.androidlauncher
 
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppUsageStats
+import com.example.androidlauncher.data.AutoIconFallback
+import com.example.androidlauncher.data.AutoIconFallbackType
+import com.example.androidlauncher.data.AutoIconRule
+import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.SearchHistoryEntry
 import org.junit.Assert.*
@@ -558,5 +562,74 @@ class LauncherLogicTest {
 
         assertEquals(1, rankedHistory.size)
         assertEquals("weather berlin", rankedHistory.first().query)
+    }
+
+    // --- mergeInstalledApps ---
+
+    @Test
+    fun `mergeInstalledApps follows the basic list order and contents`() {
+        val basic = listOf(
+            AppInfo("Camera", "com.android.camera", null),
+            AppInfo("Browser", "com.android.browser", null),
+        )
+        val result = LauncherLogic.mergeInstalledApps(
+            basicApps = basic,
+            existingApps = emptyList(),
+            storedFallbacks = emptyMap(),
+            autoIconRules = emptyMap(),
+        )
+        assertEquals(listOf("com.android.camera", "com.android.browser"), result.map { it.packageName })
+    }
+
+    @Test
+    fun `mergeInstalledApps drops apps that are no longer installed`() {
+        val basic = listOf(AppInfo("Camera", "com.android.camera", null))
+        val existing = listOf(
+            AppInfo("Camera", "com.android.camera", null),
+            AppInfo("Removed", "com.android.removed", null),
+        )
+        val result = LauncherLogic.mergeInstalledApps(basic, existing, emptyMap(), emptyMap())
+        assertEquals(listOf("com.android.camera"), result.map { it.packageName })
+    }
+
+    @Test
+    fun `mergeInstalledApps keeps the existing auto fallback when none is stored`() {
+        val existingFallback = AutoIconFallback(type = AutoIconFallbackType.NEUTRAL)
+        val basic = listOf(AppInfo("Camera", "com.android.camera", null))
+        val existing = listOf(
+            AppInfo("Camera", "com.android.camera", null, autoIconFallback = existingFallback),
+        )
+        val result = LauncherLogic.mergeInstalledApps(basic, existing, emptyMap(), emptyMap())
+        assertEquals(existingFallback, result.single().autoIconFallback)
+    }
+
+    @Test
+    fun `mergeInstalledApps prefers the stored fallback over the existing one`() {
+        val existingFallback = AutoIconFallback(type = AutoIconFallbackType.NEUTRAL)
+        val storedFallback = AutoIconFallback(type = AutoIconFallbackType.ORIGINAL)
+        val basic = listOf(AppInfo("Camera", "com.android.camera", null))
+        val existing = listOf(
+            AppInfo("Camera", "com.android.camera", null, autoIconFallback = existingFallback),
+        )
+        val result = LauncherLogic.mergeInstalledApps(
+            basicApps = basic,
+            existingApps = existing,
+            storedFallbacks = mapOf("com.android.camera" to storedFallback),
+            autoIconRules = emptyMap(),
+        )
+        assertEquals(storedFallback, result.single().autoIconFallback)
+    }
+
+    @Test
+    fun `mergeInstalledApps applies the provided auto icon rule`() {
+        val rule = AutoIconRule(mode = AutoIconRuleMode.FORCE_FALLBACK)
+        val basic = listOf(AppInfo("Camera", "com.android.camera", null))
+        val result = LauncherLogic.mergeInstalledApps(
+            basicApps = basic,
+            existingApps = emptyList(),
+            storedFallbacks = emptyMap(),
+            autoIconRules = mapOf("com.android.camera" to rule),
+        )
+        assertEquals(rule, result.single().autoIconRule)
     }
 }

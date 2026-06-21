@@ -12,6 +12,12 @@ import android.util.Log
 
 private const val TAG = "UsageReturn"
 
+/**
+ * Ermittelt über die Usage-Stats-API, welche App zuletzt im Vordergrund war. Wird genutzt,
+ * um beim Zurückkehren zum Launcher zu entscheiden, ob (und für welche App) die
+ * Rückkehr-Animation abgespielt werden soll. Kapselt zudem die Prüfung und Anforderung der
+ * dafür nötigen Nutzungszugriffs-Berechtigung.
+ */
 object ForegroundAppResolver {
     private const val EVENT_LOOKBACK_MS = 15_000L
     private const val STATS_LOOKBACK_MS = 6 * 60 * 60 * 1000L
