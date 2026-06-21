@@ -854,8 +854,11 @@ enum class ColorTheme(
         val background = backgroundColor(darkTextEnabled)
         val accent = accentColor(darkTextEnabled)
         val fallback = if (darkTextEnabled) DarkTextColor else Color.White
-        return if (contrastRatio(accent, background) >= MinimumReadableContrast) accent
-        else fallback
+        return if (contrastRatio(accent, background) >= MinimumReadableContrast) {
+            accent
+        } else {
+            fallback
+        }
     }
 
     // Wärmeres, universelles Rendering: heller Anker zieht stärker zu Warmweiß.

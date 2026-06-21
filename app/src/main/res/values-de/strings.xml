@@ -18,7 +18,6 @@
     <string name="app_version">Version %1$s (Build %2$d)</string>
     <string name="developer_label">Entwickler</string>
     <string name="developer_name">Refik Bilal Batmaz &amp; Vinisan Kunasegaran</string>
-    <string name="github_repo">GitHub Repository</string>
     <string name="license_label">Lizenz</string>
     <string name="license_text">Custom Non-Commercial License\n\nNutzung frei für private Zwecke. Kommerzielle Nutzung und Weiterverkauf untersagt.</string>
     <string name="libraries_label">Open Source Libraries</string>
@@ -348,6 +347,12 @@
     <string name="feature_hidden_desc">Einzelne Apps aus der Übersicht ausblenden.</string>
     <string name="feature_uninstall_title">Apps deinstallieren</string>
     <string name="feature_uninstall_desc">Apps bequem direkt aus dem Launcher entfernen.</string>
+    <string name="feature_lock_title">App-Sperre</string>
+    <string name="feature_lock_desc">Schütze ausgewählte Apps mit einem Code, bevor sie sich öffnen.</string>
+    <string name="feature_widgets_title">Widgets</string>
+    <string name="feature_widgets_desc">Uhr, Kalender und Wetter direkt auf dem Startbildschirm.</string>
+    <string name="feature_doubletap_title">Doppeltipp-Geste</string>
+    <string name="feature_doubletap_desc">Tippe zweimal auf den Startbildschirm, um deine gewählte Aktion auszulösen.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Überspringen</string>

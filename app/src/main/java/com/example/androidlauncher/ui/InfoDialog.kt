@@ -1,16 +1,17 @@
 package com.example.androidlauncher.ui
 
-import android.content.Intent
-import androidx.core.net.toUri
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -26,14 +27,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.annotation.StringRes
+import com.composables.icons.lucide.ArrowUp
+import com.composables.icons.lucide.Ban
+import com.composables.icons.lucide.Clock
+import com.composables.icons.lucide.Folder
+import com.composables.icons.lucide.Hand
+import com.composables.icons.lucide.Image
+import com.composables.icons.lucide.LayoutGrid
+import com.composables.icons.lucide.Lock
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Maximize2
+import com.composables.icons.lucide.Palette
+import com.composables.icons.lucide.Pencil
+import com.composables.icons.lucide.Search
+import com.composables.icons.lucide.Smartphone
+import com.composables.icons.lucide.Sparkles
+import com.composables.icons.lucide.Star
+import com.composables.icons.lucide.Trash2
 import com.example.androidlauncher.R
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -50,7 +69,7 @@ fun InfoDialog(
     val fontWeight = LocalFontWeight.current
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val secondaryTextColor = if (isDarkTextEnabled) Color(0xFF2B2B2B) else Color.White.copy(alpha = 0.72f)
-    val linkColor = remember(colorTheme, isDarkTextEnabled) {
+    val accentColor = remember(colorTheme, isDarkTextEnabled) {
         colorTheme.accentColor(isDarkTextEnabled)
     }
     val scrollState = rememberScrollState()
@@ -109,7 +128,8 @@ fun InfoDialog(
                 // Features (aufklappbar)
                 FeaturesSection(
                     mainTextColor = mainTextColor,
-                    secondaryTextColor = secondaryTextColor
+                    secondaryTextColor = secondaryTextColor,
+                    accentColor = accentColor
                 )
 
                 // Developer Info
@@ -118,19 +138,7 @@ fun InfoDialog(
                     content = stringResource(R.string.developer_name),
                     mainTextColor = mainTextColor,
                     secondaryTextColor = secondaryTextColor
-                ) {
-                    Text(
-                        text = stringResource(R.string.github_repo),
-                        color = linkColor,
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .clickable {
-                                val intent = Intent(Intent.ACTION_VIEW, "https://github.com/rbatmaz69?tab=repositories".toUri())
-                                context.startActivity(intent)
-                            }
-                            .padding(top = 4.dp)
-                    )
-                }
+                )
 
                 // License
                 InfoSection(
@@ -162,28 +170,36 @@ fun InfoDialog(
     }
 }
 
-private data class AppFeature(@StringRes val titleRes: Int, @StringRes val descRes: Int)
+private data class AppFeature(
+    @StringRes val titleRes: Int,
+    @StringRes val descRes: Int,
+    val icon: ImageVector
+)
 
 private val APP_FEATURES: List<AppFeature> = listOf(
-    AppFeature(R.string.feature_favorites_title, R.string.feature_favorites_desc),
-    AppFeature(R.string.feature_drawer_title, R.string.feature_drawer_desc),
-    AppFeature(R.string.feature_search_title, R.string.feature_search_desc),
-    AppFeature(R.string.feature_folders_title, R.string.feature_folders_desc),
-    AppFeature(R.string.feature_shortcuts_title, R.string.feature_shortcuts_desc),
-    AppFeature(R.string.feature_gestures_title, R.string.feature_gestures_desc),
-    AppFeature(R.string.feature_icons_title, R.string.feature_icons_desc),
-    AppFeature(R.string.feature_themes_title, R.string.feature_themes_desc),
-    AppFeature(R.string.feature_sizes_title, R.string.feature_sizes_desc),
-    AppFeature(R.string.feature_animations_title, R.string.feature_animations_desc),
-    AppFeature(R.string.feature_eyedropper_title, R.string.feature_eyedropper_desc),
-    AppFeature(R.string.feature_hidden_title, R.string.feature_hidden_desc),
-    AppFeature(R.string.feature_uninstall_title, R.string.feature_uninstall_desc)
+    AppFeature(R.string.feature_favorites_title, R.string.feature_favorites_desc, Lucide.Star),
+    AppFeature(R.string.feature_drawer_title, R.string.feature_drawer_desc, Lucide.LayoutGrid),
+    AppFeature(R.string.feature_search_title, R.string.feature_search_desc, Lucide.Search),
+    AppFeature(R.string.feature_folders_title, R.string.feature_folders_desc, Lucide.Folder),
+    AppFeature(R.string.feature_shortcuts_title, R.string.feature_shortcuts_desc, Lucide.Hand),
+    AppFeature(R.string.feature_gestures_title, R.string.feature_gestures_desc, Lucide.ArrowUp),
+    AppFeature(R.string.feature_icons_title, R.string.feature_icons_desc, Lucide.Pencil),
+    AppFeature(R.string.feature_themes_title, R.string.feature_themes_desc, Lucide.Palette),
+    AppFeature(R.string.feature_sizes_title, R.string.feature_sizes_desc, Lucide.Maximize2),
+    AppFeature(R.string.feature_animations_title, R.string.feature_animations_desc, Lucide.Sparkles),
+    AppFeature(R.string.feature_eyedropper_title, R.string.feature_eyedropper_desc, Lucide.Image),
+    AppFeature(R.string.feature_lock_title, R.string.feature_lock_desc, Lucide.Lock),
+    AppFeature(R.string.feature_widgets_title, R.string.feature_widgets_desc, Lucide.Clock),
+    AppFeature(R.string.feature_doubletap_title, R.string.feature_doubletap_desc, Lucide.Smartphone),
+    AppFeature(R.string.feature_hidden_title, R.string.feature_hidden_desc, Lucide.Ban),
+    AppFeature(R.string.feature_uninstall_title, R.string.feature_uninstall_desc, Lucide.Trash2)
 )
 
 @Composable
 fun FeaturesSection(
     mainTextColor: Color,
-    secondaryTextColor: Color
+    secondaryTextColor: Color,
+    accentColor: Color
 ) {
     var expanded by remember { mutableStateOf(false) }
     val arrowRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "featuresArrow")
@@ -223,21 +239,12 @@ fun FeaturesSection(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 APP_FEATURES.forEach { feature ->
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = stringResource(feature.titleRes),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = mainTextColor
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(feature.descRes),
-                            fontSize = 13.sp,
-                            color = secondaryTextColor,
-                            lineHeight = 18.sp
-                        )
-                    }
+                    FeatureRow(
+                        feature = feature,
+                        mainTextColor = mainTextColor,
+                        secondaryTextColor = secondaryTextColor,
+                        accentColor = accentColor
+                    )
                 }
             }
         }
@@ -248,12 +255,56 @@ fun FeaturesSection(
 }
 
 @Composable
+private fun FeatureRow(
+    feature: AppFeature,
+    mainTextColor: Color,
+    secondaryTextColor: Color,
+    accentColor: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icon im getönten Kreis (Material-3-Expressive): Akzent-Tint, dezenter Hintergrund.
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(accentColor.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = feature.icon,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(feature.titleRes),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = mainTextColor
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = stringResource(feature.descRes),
+                fontSize = 13.sp,
+                color = secondaryTextColor,
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+@Composable
 fun InfoSection(
     title: String,
     content: String,
     mainTextColor: Color,
-    secondaryTextColor: Color,
-    extraContent: @Composable (() -> Unit)? = null
+    secondaryTextColor: Color
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -269,7 +320,6 @@ fun InfoSection(
             color = secondaryTextColor,
             lineHeight = 20.sp
         )
-        extraContent?.invoke()
 
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider(color = secondaryTextColor.copy(alpha = 0.2f), thickness = 0.5.dp)

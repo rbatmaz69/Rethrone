@@ -18,7 +18,6 @@
     <string name="app_version">Version %1$s (Build %2$d)</string>
     <string name="developer_label">Developer</string>
     <string name="developer_name">Refik Bilal Batmaz &amp; Vinisan Kunasegaran</string>
-    <string name="github_repo">GitHub repository</string>
     <string name="license_label">License</string>
     <string name="license_text">Custom Non-Commercial License\n\nFree for private use. Commercial use and resale are prohibited.</string>
     <string name="libraries_label">Open source libraries</string>
@@ -348,6 +347,12 @@
     <string name="feature_hidden_desc">Hide individual apps from the overview.</string>
     <string name="feature_uninstall_title">Uninstall apps</string>
     <string name="feature_uninstall_desc">Conveniently remove apps directly from the launcher.</string>
+    <string name="feature_lock_title">App lock</string>
+    <string name="feature_lock_desc">Protect selected apps with a code before they open.</string>
+    <string name="feature_widgets_title">Widgets</string>
+    <string name="feature_widgets_desc">Clock, calendar and weather right on your home screen.</string>
+    <string name="feature_doubletap_title">Double-tap gesture</string>
+    <string name="feature_doubletap_desc">Double-tap the home screen to trigger your chosen action.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Skip</string>

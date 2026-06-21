@@ -18,7 +18,6 @@
     <string name="app_version">Versión %1$s (Build %2$d)</string>
     <string name="developer_label">Desarrollador</string>
     <string name="developer_name">Refik Bilal Batmaz &amp; Vinisan Kunasegaran</string>
-    <string name="github_repo">Repositorio de GitHub</string>
     <string name="license_label">Licencia</string>
     <string name="license_text">Custom Non-Commercial License\n\nUso libre para fines privados. Uso comercial y reventa prohibidos.</string>
     <string name="libraries_label">Bibliotecas de código abierto</string>
@@ -348,6 +347,12 @@
     <string name="feature_hidden_desc">Oculta apps concretas de la vista general.</string>
     <string name="feature_uninstall_title">Desinstalar apps</string>
     <string name="feature_uninstall_desc">Elimina apps cómodamente directamente desde el lanzador.</string>
+    <string name="feature_lock_title">Bloqueo de apps</string>
+    <string name="feature_lock_desc">Protege apps seleccionadas con un código antes de abrirlas.</string>
+    <string name="feature_widgets_title">Widgets</string>
+    <string name="feature_widgets_desc">Reloj, calendario y clima directamente en la pantalla de inicio.</string>
+    <string name="feature_doubletap_title">Gesto de doble toque</string>
+    <string name="feature_doubletap_desc">Toca dos veces la pantalla de inicio para activar la acción elegida.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Omitir</string>

@@ -18,7 +18,6 @@
     <string name="app_version">Versione %1$s (Build %2$d)</string>
     <string name="developer_label">Sviluppatore</string>
     <string name="developer_name">Refik Bilal Batmaz &amp; Vinisan Kunasegaran</string>
-    <string name="github_repo">Repository GitHub</string>
     <string name="license_label">Licenza</string>
     <string name="license_text">Custom Non-Commercial License\n\nUso libero per scopi privati. Uso commerciale e rivendita vietati.</string>
     <string name="libraries_label">Librerie open source</string>
@@ -348,6 +347,12 @@
     <string name="feature_hidden_desc">Nascondi singole app dalla panoramica.</string>
     <string name="feature_uninstall_title">Disinstalla app</string>
     <string name="feature_uninstall_desc">Rimuovi comodamente le app direttamente dal launcher.</string>
+    <string name="feature_lock_title">Blocco app</string>
+    <string name="feature_lock_desc">Proteggi le app selezionate con un codice prima di aprirle.</string>
+    <string name="feature_widgets_title">Widget</string>
+    <string name="feature_widgets_desc">Orologio, calendario e meteo direttamente nella schermata principale.</string>
+    <string name="feature_doubletap_title">Gesto doppio tocco</string>
+    <string name="feature_doubletap_desc">Tocca due volte la schermata principale per attivare l\'azione scelta.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Salta</string>
