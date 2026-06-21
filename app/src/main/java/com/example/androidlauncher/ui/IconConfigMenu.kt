@@ -3,6 +3,7 @@ package com.example.androidlauncher.ui
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -45,9 +46,13 @@ import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
+import com.example.androidlauncher.ui.theme.RethroneSprings
+import com.example.androidlauncher.ui.theme.rememberMenuEnter
+import com.example.androidlauncher.ui.theme.rememberMenuExit
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import com.example.androidlauncher.ui.theme.seedRevision
 import kotlinx.coroutines.delay
@@ -320,14 +325,9 @@ private fun IconActionDialog(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding(),
-                enter = slideInVertically(
-                    initialOffsetY = { fullHeight -> fullHeight / 3 },
-                    animationSpec = tween(260)
-                ) + fadeIn(animationSpec = tween(220)),
-                exit = slideOutVertically(
-                    targetOffsetY = { fullHeight -> fullHeight / 4 },
-                    animationSpec = tween(180)
-                ) + fadeOut(animationSpec = tween(160))
+                // Material-3-Expressive: federnder Sheet-Eingang statt hartem Tween.
+                enter = rememberMenuEnter(animationsEnabled = LocalAnimationsEnabled.current),
+                exit = rememberMenuExit(animationsEnabled = LocalAnimationsEnabled.current)
             ) {
                 Surface(
                     modifier = Modifier
@@ -581,13 +581,19 @@ private fun IconActionButton(
         else -> mainTextColor
     }
     val shape = RoundedCornerShape(22.dp)
-    val containerModifier = if (isSelected) {
-        Modifier
-            .background(accentColor.copy(alpha = if (isDarkTextEnabled) 0.10f else 0.16f), shape)
-            .border(BorderStroke(1.dp, accentColor.copy(alpha = 0.38f)), shape)
-    } else {
-        Modifier.designSurface(designStyle, shape, isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f)
-    }
+    // Material-3-Expressive: weicher Auswahl-Übergang – Glass-Fläche blendet aus,
+    // Akzent-Hintergrund + Border blenden ein.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val sel by animateFloatAsState(
+        if (isSelected) 1f else 0f,
+        if (animationsEnabled) RethroneSprings.effects<Float>() else snap<Float>(),
+        label = "iconRuleSel"
+    )
+    val selectedBgAlpha = (if (isDarkTextEnabled) 0.10f else 0.16f) * sel
+    val containerModifier = Modifier
+        .designSurface(designStyle, shape, isDarkTextEnabled, surfaceAccent, fillAlpha = 0.05f * (1f - sel))
+        .background(accentColor.copy(alpha = selectedBgAlpha), shape)
+        .border(BorderStroke(1.dp, accentColor.copy(alpha = 0.38f * sel)), shape)
 
     Row(
         modifier = Modifier
@@ -604,7 +610,7 @@ private fun IconActionButton(
             modifier = Modifier
                 .size(34.dp)
                 .clip(CircleShape)
-                .background(accentColor.copy(alpha = if (isSelected || isPrimary || isDestructive) 0.14f else 0.08f)),
+                .background(accentColor.copy(alpha = if (isPrimary || isDestructive) 0.14f else 0.08f + 0.06f * sel)),
             contentAlignment = Alignment.Center
         ) {
             Icon(

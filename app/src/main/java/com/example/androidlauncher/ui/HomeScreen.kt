@@ -464,6 +464,19 @@ fun HomeScreen(
         HomeEditTarget.FAVORITES -> "home_edit_target_favorites"
     }
 
+    // Material-3-Expressive: dezentes „Jiggle" der bewegbaren Home-Elemente im Edit-Modus,
+    // damit klar wird, dass sie verschoben werden können (iOS-artig, aber zurückhaltend).
+    val editWiggle = rememberInfiniteTransition(label = "homeEditWiggle")
+    val editWiggleAngle by editWiggle.animateFloat(
+        initialValue = -1.1f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(170, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "homeEditWiggleAngle"
+    )
+
     // Offset + Neutralbounds gelten in beiden Modi (gespeichertes Layout wird auch normal angezeigt).
     fun Modifier.targetLayout(target: HomeEditTarget): Modifier = this
         .zIndex(if (!isEditMode) 0f else editZIndex(target))
@@ -482,6 +495,18 @@ fun HomeScreen(
         val isSelected = selectedEditTarget == target
         val showFrame = selectedEditTarget == null || isSelected
         return this
+            .graphicsLayer {
+                if (animationsEnabled) {
+                    // Ausgewähltes (= bewegtes) Element hebt sich an; die übrigen
+                    // bewegbaren „wackeln" dezent, abwechselnd in Gegenrichtung.
+                    if (isSelected) {
+                        scaleX = 1.04f
+                        scaleY = 1.04f
+                    } else if (showFrame) {
+                        rotationZ = editWiggleAngle * if (target.ordinal % 2 == 0) 1f else -1f
+                    }
+                }
+            }
             .then(
                 if (showFrame) {
                     Modifier.border(
@@ -818,6 +843,7 @@ fun HomeScreen(
                             favorites.forEachIndexed { index, app ->
                                 FavoriteItem(
                                     app = app,
+                                    index = index,
                                     showLabels = showLabels,
                                     fontSize = fontSize.scale,
                                     mainTextColor = mainTextColor,
@@ -1125,6 +1151,7 @@ private fun FavoriteItem(
     fontSize: Float,
     mainTextColor: Color,
     returnIconPackage: String?,
+    index: Int = 0,
     isHovered: Boolean = false,
     onBoundsChanged: (Rect) -> Unit = {},
     onAppLaunchForReturn: (String, Rect?) -> Unit,
@@ -1159,6 +1186,19 @@ private fun FavoriteItem(
         label = "SwipeOffset"
     )
 
+    // Material-3-Expressive: gestaffelter Eingang der Favoriten (federndes Aufpoppen),
+    // einmalig beim Erscheinen. Respektiert die Favoriten-Animationseinstellung.
+    val appear = remember(app.packageName) { Animatable(if (favoritesAnimationEnabled) 0f else 1f) }
+    LaunchedEffect(app.packageName, favoritesAnimationEnabled) {
+        if (favoritesAnimationEnabled) {
+            appear.snapTo(0f)
+            delay((index.coerceAtMost(8) * 40).toLong())
+            appear.animateTo(1f, RethroneSprings.spatial())
+        } else {
+            appear.snapTo(1f)
+        }
+    }
+
     Surface(
         color = Color.Transparent,
         shape = RoundedCornerShape(16.dp),
@@ -1170,8 +1210,11 @@ private fun FavoriteItem(
             }
             .graphicsLayer {
                 translationX = animatedOffset
-                scaleX = hoverScale
-                scaleY = hoverScale
+                // Eingang (0.9 → 1.0) mit Hover-Scale kombiniert.
+                val entranceScale = 0.9f + 0.1f * appear.value
+                scaleX = hoverScale * entranceScale
+                scaleY = hoverScale * entranceScale
+                alpha = appear.value
                 // Linksbündig vergrößern, damit das Icon nicht zur Seite wandert.
                 transformOrigin = TransformOrigin(0f, 0.5f)
             }
@@ -1281,24 +1324,12 @@ fun ClockText(
         label = "ClockReturnBounce"
     )
 
-    Text(
-        text = timeFormat.format(time),
-        fontSize = 72.sp * fontSize.scale,
-        fontWeight = appFontWeight.weight,
-        letterSpacing = (-2).sp,
-        lineHeight = 72.sp * fontSize.scale,
-        // Entfernt das zusätzliche Font-Padding (enger Rahmen), behält aber die gewählte
-        // App-Schriftart bei, indem auf den aktuellen LocalTextStyle gemergt wird.
-        style = LocalTextStyle.current.merge(
-            TextStyle(
-                platformStyle = PlatformTextStyle(includeFontPadding = false),
-                lineHeightStyle = LineHeightStyle(
-                    alignment = LineHeightStyle.Alignment.Center,
-                    trim = LineHeightStyle.Trim.Both
-                )
-            )
-        ),
-        color = mainTextColor,
+    // Material-3-Expressive: Minutenwechsel per kurzem Crossfade statt hartem Swap.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    Crossfade(
+        targetState = timeFormat.format(time),
+        animationSpec = tween(if (animationsEnabled) 220 else 0),
+        label = "clockCrossfade",
         modifier = Modifier
             .onGloballyPositioned { clockBounds.value = it.boundsInRoot() }
             .graphicsLayer { scaleX = bounceScaleTime; scaleY = bounceScaleTime }
@@ -1314,7 +1345,27 @@ fun ClockText(
                     Modifier
                 }
             )
-    )
+    ) { timeStr ->
+        Text(
+            text = timeStr,
+            fontSize = 72.sp * fontSize.scale,
+            fontWeight = appFontWeight.weight,
+            letterSpacing = (-2).sp,
+            lineHeight = 72.sp * fontSize.scale,
+            // Entfernt das zusätzliche Font-Padding (enger Rahmen), behält aber die gewählte
+            // App-Schriftart bei, indem auf den aktuellen LocalTextStyle gemergt wird.
+            style = LocalTextStyle.current.merge(
+                TextStyle(
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Center,
+                        trim = LineHeightStyle.Trim.Both
+                    )
+                )
+            ),
+            color = mainTextColor
+        )
+    }
 }
 
 /**
@@ -1343,21 +1394,12 @@ fun DateText(
         label = "CalendarReturnBounce"
     )
 
-    Text(
-        text = dateFormat.format(time),
-        fontSize = 18.sp * fontSize.scale,
-        fontWeight = appFontWeight.weight,
-        lineHeight = 18.sp * fontSize.scale,
-        style = LocalTextStyle.current.merge(
-            TextStyle(
-                platformStyle = PlatformTextStyle(includeFontPadding = false),
-                lineHeightStyle = LineHeightStyle(
-                    alignment = LineHeightStyle.Alignment.Center,
-                    trim = LineHeightStyle.Trim.Both
-                )
-            )
-        ),
-        color = mainTextColor.copy(alpha = 0.7f),
+    // Material-3-Expressive: Datumswechsel (zur Mitternacht) per Crossfade.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    Crossfade(
+        targetState = dateFormat.format(time),
+        animationSpec = tween(if (animationsEnabled) 300 else 0),
+        label = "dateCrossfade",
         modifier = Modifier
             .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
             .graphicsLayer { scaleX = bounceScaleDate; scaleY = bounceScaleDate }
@@ -1374,7 +1416,24 @@ fun DateText(
                 }
             )
             .padding(horizontal = 4.dp, vertical = 2.dp)
-    )
+    ) { dateStr ->
+        Text(
+            text = dateStr,
+            fontSize = 18.sp * fontSize.scale,
+            fontWeight = appFontWeight.weight,
+            lineHeight = 18.sp * fontSize.scale,
+            style = LocalTextStyle.current.merge(
+                TextStyle(
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Center,
+                        trim = LineHeightStyle.Trim.Both
+                    )
+                )
+            ),
+            color = mainTextColor.copy(alpha = 0.7f)
+        )
+    }
 }
 
 /**
@@ -1429,23 +1488,29 @@ fun WeatherRow(isPreview: Boolean = false) {
         temperatureText = "${data.temperatureC}°"
     }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    // Material-3-Expressive: Wetterwert wechselt per Crossfade statt hartem Swap.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    Crossfade(
+        targetState = icon to temperatureText,
+        animationSpec = tween(if (animationsEnabled) 300 else 0),
+        label = "weatherCrossfade",
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = mainTextColor.copy(alpha = 0.7f),
-            modifier = Modifier.size(18.dp * fontSize.scale)
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = temperatureText,
-            fontSize = 18.sp * fontSize.scale,
-            fontWeight = appFontWeight.weight,
-            color = mainTextColor.copy(alpha = 0.7f)
-        )
+    ) { (stateIcon, stateTemp) ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = stateIcon,
+                contentDescription = null,
+                tint = mainTextColor.copy(alpha = 0.7f),
+                modifier = Modifier.size(18.dp * fontSize.scale)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = stateTemp,
+                fontSize = 18.sp * fontSize.scale,
+                fontWeight = appFontWeight.weight,
+                color = mainTextColor.copy(alpha = 0.7f)
+            )
+        }
     }
 }
 

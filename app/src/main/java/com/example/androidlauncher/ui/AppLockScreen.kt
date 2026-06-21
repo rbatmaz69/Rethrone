@@ -4,6 +4,8 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,9 +49,11 @@ import com.example.androidlauncher.R
 import androidx.compose.foundation.Image
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.RethroneSprings
 
 /**
  * Vollbild-Sperroberfläche, die vor dem Öffnen einer geschützten App erscheint.
@@ -81,6 +86,9 @@ fun AppLockScreen(
     val context = LocalContext.current
     var pin by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
+    // Jeder Fehlversuch erhöht die Nonce, damit der Shake auch bei mehrfach falscher
+    // Eingabe erneut ausgelöst wird (showError bleibt sonst dauerhaft true).
+    var errorNonce by remember { mutableStateOf(0) }
 
     fun attempt(input: String) {
         if (onVerify(input)) {
@@ -88,6 +96,7 @@ fun AppLockScreen(
         } else {
             showError = true
             pin = ""
+            errorNonce++
             vibrateError(context)
         }
     }
@@ -97,13 +106,38 @@ fun AppLockScreen(
         if (biometricEnabled) onBiometric()
     }
 
+    // Material-3-Expressive: sanfter Screen-Eingang + Fehler-Shake.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val shake = remember { Animatable(0f) }
+    val appear = remember { Animatable(if (animationsEnabled) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (animationsEnabled) appear.animateTo(1f, RethroneSprings.container())
+    }
+    LaunchedEffect(errorNonce) {
+        if (errorNonce > 0 && animationsEnabled) {
+            val dx = 16f
+            repeat(3) {
+                shake.animateTo(dx, tween(45))
+                shake.animateTo(-dx, tween(45))
+            }
+            shake.animateTo(0f, tween(45))
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(backgroundColor)) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 24.dp),
+            .padding(horizontal = 24.dp, vertical = 24.dp)
+            .graphicsLayer {
+                translationX = shake.value
+                alpha = appear.value
+                val s = 0.96f + 0.04f * appear.value
+                scaleX = s
+                scaleY = s
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -187,6 +221,7 @@ fun AppLockScreen(
                 Text(stringResource(R.string.use_biometric), color = textColor.copy(alpha = 0.8f), fontSize = 14.sp)
             }
         }
+    }
     }
 }
 

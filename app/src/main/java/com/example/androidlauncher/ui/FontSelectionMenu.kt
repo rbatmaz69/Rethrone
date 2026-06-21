@@ -2,6 +2,8 @@ package com.example.androidlauncher.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -27,9 +29,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppFont
+import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.RethroneSprings
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import kotlinx.coroutines.delay
 
@@ -131,14 +135,17 @@ fun FontSelectionMenu(
                             slideInVertically(initialOffsetY = { 15 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
                     exit = fadeOut(animationSpec = tween(200))
                 ) {
-                    val itemModifier = if (isSelected) {
-                        Modifier.designSurface(
-                            designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
-                            fillAlpha = 0.15f, glassStartAlpha = 0.25f, glassEndAlpha = 0.1f
-                        )
-                    } else {
-                        Modifier
-                    }
+                    // Material-3-Expressive: weicher Auswahl-Übergang statt hartem Umspringen.
+                    val animationsEnabled = LocalAnimationsEnabled.current
+                    val sel by animateFloatAsState(
+                        if (isSelected) 1f else 0f,
+                        if (animationsEnabled) RethroneSprings.effects<Float>() else snap<Float>(),
+                        label = "fontSel"
+                    )
+                    val itemModifier = Modifier.designSurface(
+                        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                        fillAlpha = 0.15f * sel, glassStartAlpha = 0.25f * sel, glassEndAlpha = 0.1f * sel
+                    )
 
                     Box(
                         modifier = Modifier
@@ -160,7 +167,11 @@ fun FontSelectionMenu(
                                 fontFamily = font.fontFamily,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
-                            if (isSelected) {
+                            AnimatedVisibility(
+                                visible = isSelected,
+                                enter = if (animationsEnabled) scaleIn(RethroneSprings.spatial(), initialScale = 0.6f) + fadeIn() else EnterTransition.None,
+                                exit = if (animationsEnabled) scaleOut(RethroneSprings.effects(), targetScale = 0.6f) + fadeOut() else ExitTransition.None
+                            ) {
                                 RadioButton(
                                     selected = true,
                                     onClick = null,

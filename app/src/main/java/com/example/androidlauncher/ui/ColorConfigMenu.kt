@@ -31,8 +31,13 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
+import com.example.androidlauncher.ui.theme.RethroneSprings
 import com.example.androidlauncher.ui.theme.seedRevision
 
 
@@ -333,16 +338,19 @@ fun ThemeSelectionMenu(
 @Composable
 fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color, designStyle: DesignStyle, isDarkTextEnabled: Boolean, onClick: () -> Unit) {
     val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
-    val baseModifier = Modifier.designSurface(
-        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled,
-        accent = theme.menuSurfaceColor(isDarkTextEnabled),
-        fillAlpha = if (isSelected) 0.15f else 0.05f
-    )
-    val itemModifier = if (isSelected) {
-        baseModifier.border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = 0.5f)), RoundedCornerShape(20.dp))
-    } else {
-        baseModifier
-    }
+    // Material-3-Expressive: weicher Auswahl-Übergang statt hartem Umspringen.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val alphaSpec = if (animationsEnabled) RethroneSprings.effects<Float>() else snap<Float>()
+    val fillAlpha by animateFloatAsState(if (isSelected) 0.15f else 0.05f, alphaSpec, label = "themeFill")
+    val borderAlpha by animateFloatAsState(if (isSelected) 0.5f else 0f, alphaSpec, label = "themeBorder")
+    val itemShape = RoundedCornerShape(20.dp)
+    val itemModifier = Modifier
+        .designSurface(
+            designStyle, itemShape, isDarkTextEnabled,
+            accent = theme.menuSurfaceColor(isDarkTextEnabled),
+            fillAlpha = fillAlpha
+        )
+        .border(BorderStroke(1.5.dp, mainTextColor.copy(alpha = borderAlpha)), itemShape)
 
     val previewBrush = remember(theme, isDarkTextEnabled, theme.seedRevision()) {
         theme.menuBrush(isDarkTextEnabled, alpha = if (isDarkTextEnabled) 0.98f else 0.94f)
@@ -401,7 +409,11 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
                 )
             }
 
-            if (isSelected) {
+            AnimatedVisibility(
+                visible = isSelected,
+                enter = if (animationsEnabled) scaleIn(RethroneSprings.spatial(), initialScale = 0.6f) + fadeIn() else EnterTransition.None,
+                exit = if (animationsEnabled) scaleOut(RethroneSprings.effects(), targetScale = 0.6f) + fadeOut() else ExitTransition.None
+            ) {
                 Icon(Icons.Rounded.Check, contentDescription = null, tint = mainTextColor)
             }
         }

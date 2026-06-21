@@ -1,5 +1,7 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,9 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
+import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
+import com.example.androidlauncher.ui.theme.RethroneSprings
 
 /**
  * 3×3-Muster-Sperre. Der Nutzer verbindet per Wischgeste die Knoten; beim Loslassen wird
@@ -31,6 +36,16 @@ fun PatternLockView(
     val selected = remember { mutableStateListOf<Int>() }
     var currentDrag by remember { mutableStateOf<Offset?>(null) }
     var canvasWidth by remember { mutableStateOf(0f) }
+
+    // Material-3-Expressive: Knoten wachsen weich an, statt hart umzuspringen.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val nodeActivation = (0 until 9).map { index ->
+        animateFloatAsState(
+            targetValue = if (index in selected) 1f else 0f,
+            animationSpec = if (animationsEnabled) RethroneSprings.spatial<Float>() else snap<Float>(),
+            label = "patternNode$index"
+        )
+    }
 
     fun nodeCenter(index: Int, size: Float): Offset {
         val col = index % 3
@@ -93,22 +108,22 @@ fun PatternLockView(
             )
         }
 
-        // Knoten
+        // Knoten – Radius/Farbe/Aura folgen der weichen Aktivierung.
         for (index in 0 until 9) {
             val center = nodeCenter(index, side)
-            val isSel = index in selected
-            drawCircle(
-                color = if (isSel) lineColor else nodeColor.copy(alpha = 0.4f),
-                radius = if (isSel) side / 22f else side / 28f,
-                center = center
-            )
-            if (isSel) {
+            val act = nodeActivation[index].value
+            if (act > 0.001f) {
                 drawCircle(
-                    color = lineColor.copy(alpha = 0.2f),
-                    radius = side / 12f,
+                    color = lineColor.copy(alpha = 0.2f * act),
+                    radius = (side / 28f) + (side / 12f - side / 28f) * act,
                     center = center
                 )
             }
+            drawCircle(
+                color = lerp(nodeColor.copy(alpha = 0.4f), lineColor, act),
+                radius = (side / 28f) + (side / 22f - side / 28f) * act,
+                center = center
+            )
         }
     }
 }

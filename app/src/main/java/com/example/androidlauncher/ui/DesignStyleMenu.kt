@@ -14,10 +14,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -26,8 +28,13 @@ import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import com.example.androidlauncher.ui.theme.ColorTheme
+import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
+import com.example.androidlauncher.ui.theme.RethroneSprings
 
 /**
  * Untermenü zur Auswahl des [DesignStyle]. Zeigt für jeden Stil eine Live-Vorschau-Kachel
@@ -102,13 +109,25 @@ private fun DesignStyleTile(
     val accent = selectedTheme.menuSurfaceColor(isDarkTextEnabled)
     val previewBrush = selectedTheme.menuBrush(isDarkTextEnabled, alpha = 0.96f)
     val outerShape = RoundedCornerShape(24.dp)
+    // Material-3-Expressive: weicher Auswahl-Übergang statt hartem Umspringen.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val bgAlpha by animateFloatAsState(
+        if (isSelected) 0.12f else 0.05f,
+        if (animationsEnabled) RethroneSprings.effects<Float>() else snap<Float>(),
+        label = "designTileBg"
+    )
+    val checkProgress by animateFloatAsState(
+        if (isSelected) 1f else 0f,
+        if (animationsEnabled) RethroneSprings.spatial<Float>() else snap<Float>(),
+        label = "designTileCheck"
+    )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(outerShape)
             .clickable { haptics.select(); onClick() }
-            .background(mainTextColor.copy(alpha = if (isSelected) 0.12f else 0.05f), outerShape)
+            .background(mainTextColor.copy(alpha = bgAlpha), outerShape)
             .testTag("design_tile_${style.name}")
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -128,12 +147,18 @@ private fun DesignStyleTile(
                     .designSurface(style, RoundedCornerShape(16.dp), isDarkTextEnabled, accent),
                 contentAlignment = Alignment.Center
             ) {
-                if (isSelected) {
+                if (checkProgress > 0.001f) {
                     Icon(
                         Icons.Rounded.Check,
                         contentDescription = null,
                         tint = mainTextColor,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer {
+                                alpha = checkProgress
+                                scaleX = 0.6f + 0.4f * checkProgress
+                                scaleY = 0.6f + 0.4f * checkProgress
+                            }
                     )
                 }
             }
