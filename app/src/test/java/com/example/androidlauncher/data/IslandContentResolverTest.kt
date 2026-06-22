@@ -10,7 +10,7 @@ import org.junit.Test
  */
 class IslandContentResolverTest {
 
-    private val timer = IslandContent.Timer(label = "Eier", remainingMs = 90_000)
+    private val timer = IslandContent.Timer(label = "Eier", displayMs = 90_000)
     private val battery = IslandContent.Battery(level = 80, charging = true)
     private val notification = IslandContent.Notification("com.app", "Titel", "Text")
     private val media = IslandContent.Media("Song", "Artist", isPlaying = true)

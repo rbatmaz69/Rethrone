@@ -10,9 +10,14 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Chronometer
+import android.widget.FrameLayout
 import com.example.androidlauncher.data.NotificationAction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,16 +39,19 @@ data class NotificationInfo(
 )
 
 /**
- * Laufender Timer der Uhr-App.
- *
- * @param endTimeMs Zielzeit (Systemuhr) für die Live-Restzeit, oder `null` wenn nicht
- *        aus der Notification ermittelbar (dann zeigt die Insel nur das Label „Timer").
+ * Laufender Timer/Stoppuhr der Uhr-App. Zeit-Bezug via [resolveTimerAnchor] (reflection-frei).
  */
 data class TimerInfo(
     val pkg: String,
     val label: String,
-    val endTimeMs: Long?,
-    val contentIntent: android.app.PendingIntent? = null
+    /** Bezugszeit: bei Countdown das Zielende, bei Stoppuhr die Startzeit; `null` = keine Zeit. */
+    val anchorMs: Long?,
+    /** `true` ⇒ hochzählende Stoppuhr (verstrichene Zeit), `false` ⇒ Countdown. */
+    val countUp: Boolean = false,
+    /** `true` ⇒ Aktivität ist pausiert; der Manager hält dann den zuletzt gezeigten Wert. */
+    val paused: Boolean = false,
+    val contentIntent: android.app.PendingIntent? = null,
+    val actions: List<NotificationAction> = emptyList()
 )
 
 /**
@@ -213,6 +221,7 @@ class NotificationService : NotificationListenerService() {
             val now = System.currentTimeMillis()
             val details = mutableListOf<NotificationInfo>()
             var timer: TimerInfo? = null
+            var timerSbn: StatusBarNotification? = null
             val packages = mutableSetOf<String>()
 
             for (sbn in notifications.filterNotNull()) {
@@ -221,7 +230,10 @@ class NotificationService : NotificationListenerService() {
                 if (BuildConfig.DEBUG) logNotification(sbn, now)
                 when (sbn.kind(now)) {
                     NotificationKind.MEDIA -> Unit // separat über MediaSession
-                    NotificationKind.TIMER -> if (timer == null) timer = sbn.toTimerInfo()
+                    NotificationKind.TIMER -> if (timer == null) {
+                        timer = sbn.toTimerInfo()
+                        timerSbn = sbn
+                    }
                     NotificationKind.NORMAL -> sbn.toInfo()?.let {
                         details.add(it)
                         packages.add(it.pkg)
@@ -231,7 +243,19 @@ class NotificationService : NotificationListenerService() {
 
             _activeNotificationPackages.value = packages
             _activeNotificationDetails.value = details
+            // Provisorisch (Standard-Felder); dann auf dem Main-Thread mit der echten
+            // Chronometer-Zeit aus den RemoteViews verfeinern (View-Erzeugung benötigt Main).
             _activeTimer.value = timer
+            val provisional = timer
+            val sbn = timerSbn
+            if (provisional != null && sbn != null) {
+                mainHandler.post {
+                    val refined = refineTimerWithChronometer(sbn, provisional)
+                    if (refined != _activeTimer.value && _activeTimer.value === provisional) {
+                        _activeTimer.value = refined
+                    }
+                }
+            }
         } catch (e: Exception) {
             // In some cases (e.g. during binding) activeNotifications might not be available yet
         }
@@ -310,32 +334,114 @@ class NotificationService : NotificationListenerService() {
     }
 
     /**
-     * Baut [TimerInfo] aus einer Timer-Benachrichtigung. Live-Restzeit nur, wenn ein
-     * Countdown-Chronometer mit zukünftigem `when` vorliegt (manche Uhr-Apps). Bei der
-     * Google-/AOSP-Uhr steckt die Restzeit nur in der Custom-RemoteViews und ist ohne
-     * (bewusst ausgeschlossene) Reflection nicht lesbar ⇒ `endTimeMs = null` → Label „Timer".
+     * Baut [TimerInfo] aus einer Timer-/Stoppuhr-Benachrichtigung. Die Bezugszeit kommt
+     * **reflection-frei** aus Standard-Feldern via [resolveTimerAnchor]: Countdown-Chronometer,
+     * Count-up-Chronometer/Stoppuhr (`when` = Start) oder Regex über Title/Text/SubText. Ist
+     * nichts ableitbar (z. B. reine Custom-RemoteViews ohne Zeit), bleibt `anchorMs = null`.
      */
     private fun StatusBarNotification.toTimerInfo(): TimerInfo? {
         val n = notification ?: return null
         val extras = n.extras
         val now = System.currentTimeMillis()
-        val isCountDown = extras?.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) == true &&
-            extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN)
-        val endTime = if (isCountDown && n.`when` in (now + 1) until (now + MAX_TIMER_HORIZON_MS)) {
-            n.`when`
-        } else {
-            null
-        }
-        // Label nach Aktivitätsart: Stoppuhr vs. Timer (Restzeit/Elapsed nicht aus Custom-Views lesbar).
+        val showChrono = extras?.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) == true
+        val isCountDown = showChrono && extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN)
+        val stopwatch = isStopwatchChannel(n.channelId)
+        // Kandidaten-Text für den Regex-Fallback (Title/Text/SubText der Uhr-App).
+        val candidateText = listOfNotNull(
+            extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
+            extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
+            extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+        ).joinToString(" ").ifBlank { null }
+        // Reflection-freie Zeit-Verankerung aus Standard-Feldern.
+        val anchor = resolveTimerAnchor(
+            showChronometer = showChrono,
+            isCountDownChronometer = isCountDown,
+            isStopwatchChannel = stopwatch,
+            isTimerChannel = isClockActivityChannel(n.channelId),
+            whenMs = n.`when`,
+            nowMs = now,
+            horizonMs = MAX_TIMER_HORIZON_MS,
+            candidateText = candidateText
+        )
+        // Label bleibt als reine Aktivitätsart erhalten (für Switcher-Chip/Accessibility),
+        // wird in der Pille aber nicht mehr als Text gezeigt.
         val label = when {
-            isStopwatchChannel(n.channelId) -> "Stoppuhr"
+            stopwatch -> "Stoppuhr"
             else -> extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
         }
+        val actions = n.actions?.mapNotNull { action ->
+            val actionTitle = action?.title?.toString()
+            val actionIntent = action?.actionIntent
+            if (actionTitle.isNullOrBlank() || actionIntent == null) {
+                null
+            } else {
+                NotificationAction(actionTitle, actionIntent)
+            }
+        }.orEmpty()
+        // Pausiert (laut Aktions-Titeln)? Anchor bleibt erhalten – das Einfrieren übernimmt
+        // der Manager, der den zuletzt gezeigten Wert hält.
+        val paused = timerIsRunning(actions.map { it.title }) == false
         return TimerInfo(
             pkg = packageName ?: return null,
             label = label,
-            endTimeMs = endTime,
-            contentIntent = n.contentIntent
+            anchorMs = anchor.anchorMs,
+            countUp = anchor.countUp,
+            paused = paused,
+            contentIntent = n.contentIntent,
+            actions = actions
         )
+    }
+
+    /** Aus einer Chronometer-View gelesene Zeit (Wanduhr-Bezug). */
+    private data class ChronoTime(val anchorWallMs: Long, val countUp: Boolean)
+
+    /**
+     * Verfeinert eine provisorische [TimerInfo] mit der **echten** Zeit aus der Chronometer-View
+     * der Notification-`RemoteViews` (reflection-frei via `RemoteViews.apply` + `Chronometer`).
+     * Pausierte Aktivitäten (laut Aktions-Titeln) werden eingefroren statt weiterzuticken.
+     * **Muss auf dem Main-Thread laufen** (View-Erzeugung). Bei Fehlern/ohne Treffer bleibt die
+     * provisorische Info unverändert.
+     */
+    private fun refineTimerWithChronometer(sbn: StatusBarNotification, base: TimerInfo): TimerInfo {
+        val chrono = extractChronometerTime(sbn) ?: return base
+        // Anchor bleibt erhalten (auch wenn pausiert); das Einfrieren übernimmt der Manager.
+        return base.copy(anchorMs = chrono.anchorWallMs, countUp = chrono.countUp)
+    }
+
+    /**
+     * Inflated die `RemoteViews` der Notification und liest die erste [Chronometer]-View aus
+     * (`base` liegt in der `elapsedRealtime`-Domäne). Gibt die in Wanduhr-Zeit umgerechnete
+     * Bezugszeit zurück, oder `null`, wenn keine Chronometer-View existiert bzw. das Inflaten
+     * fehlschlägt.
+     */
+    private fun extractChronometerTime(sbn: StatusBarNotification): ChronoTime? {
+        val n = sbn.notification ?: return null
+        val rv = n.bigContentView ?: n.contentView ?: n.headsUpContentView ?: return null
+        val root: View = try {
+            rv.apply(this, FrameLayout(this))
+        } catch (e: Exception) {
+            return null
+        }
+        val chrono = root.findChronometer() ?: return null
+        val nowEr = SystemClock.elapsedRealtime()
+        val wall = System.currentTimeMillis()
+        return if (chrono.isCountDown) {
+            val remaining = (chrono.base - nowEr).coerceAtLeast(0)
+            ChronoTime(anchorWallMs = wall + remaining, countUp = false)
+        } else {
+            val elapsed = (nowEr - chrono.base).coerceAtLeast(0)
+            ChronoTime(anchorWallMs = wall - elapsed, countUp = true)
+        }
+    }
+
+    /** Rekursive Suche nach der ersten [Chronometer]-View im (inflateten) View-Baum. */
+    private fun View.findChronometer(): Chronometer? {
+        if (this is Chronometer) return this
+        if (this is ViewGroup) {
+            for (i in 0 until childCount) {
+                getChildAt(i).findChronometer()?.let { return it }
+            }
+        }
+        return null
     }
 }

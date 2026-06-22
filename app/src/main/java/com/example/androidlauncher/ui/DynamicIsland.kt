@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,7 +53,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -76,6 +80,9 @@ private val TimerAmber = Color(0xFFFF9F0A)
 
 /** Schrittweite (dp) pro Tipp auf die Höhen-Buttons im Layout-Editor. */
 private const val EDIT_NUDGE_DP = 2f
+
+/** Einheitliche Höhe der kompakten Pille (Medien-Look) – unabhängig vom Inhalt. */
+private val IslandPillHeight = 30.dp
 
 /**
  * Kompakte Dynamic-Island-Pille an der Front-Kamera. Erscheint **nur**, wenn gerade etwas
@@ -264,7 +271,9 @@ private fun IslandPill(
     }
 
     Row(
-        modifier = rowModifier.padding(horizontal = 9.dp, vertical = 5.dp),
+        modifier = rowModifier
+            .height(IslandPillHeight)
+            .padding(horizontal = 9.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (editMode) {
@@ -277,24 +286,24 @@ private fun IslandPill(
 
         val c = content ?: return@Row
 
-        // Führender Hinweis (links der Kamera).
+        // Führender, gut lesbarer Inhalt (links der Kamera) – nie ins Punch-Hole.
         when (c) {
             is IslandContent.Notification -> AppIcon(c.pkg, loadIcon)
-            is IslandContent.Timer -> Dot(TimerAmber)
-            is IslandContent.Battery -> Dot(if (c.charging) ChargingGreen else IslandSubText)
+            // Kein Wort: Live-Zeit wenn ableitbar, sonst nur das App-Icon der Uhr.
+            is IslandContent.Timer ->
+                if (c.displayMs != null) ShortLabel(formatRemaining(c.displayMs)) else AppIcon(c.pkg, loadIcon)
+            is IslandContent.Battery -> ShortLabel("${c.level}%")
             is IslandContent.Media -> MediaArt(c.art)
         }
 
         // Lücke, die das Kamera-Loch frei lässt (knapp gehalten für eine schmale Pille).
         Spacer(Modifier.width(gap))
 
-        // Kurzer Hinweis rechts der Kamera.
+        // Kleiner Statuspunkt rechts der Kamera (darf nahe/unter dem Kameraloch liegen).
         when (c) {
             is IslandContent.Notification -> Dot(AccentBlue)
-            is IslandContent.Timer -> ShortLabel(
-                c.remainingMs?.let { formatRemaining(it) } ?: c.label.ifBlank { "Timer" }
-            )
-            is IslandContent.Battery -> ShortLabel("${c.level}%")
+            is IslandContent.Timer -> Dot(TimerAmber)
+            is IslandContent.Battery -> Dot(if (c.charging) ChargingGreen else IslandSubText)
             is IslandContent.Media -> Dot(if (c.isPlaying) ChargingGreen else IslandSubText)
         }
     }
@@ -307,7 +316,19 @@ private fun ShortLabel(text: String) {
         color = IslandText,
         fontSize = 14.sp,
         fontWeight = FontWeight.SemiBold,
-        maxLines = 1
+        maxLines = 1,
+        // Schrift exakt vertikal mittig in der Pille: Font-Padding entfernen und die Zeile
+        // symmetrisch auf Schriftgröße trimmen/zentrieren (sonst sitzt der Text leicht tief).
+        lineHeight = 14.sp,
+        style = LocalTextStyle.current.merge(
+            TextStyle(
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.Both
+                )
+            )
+        )
     )
 }
 

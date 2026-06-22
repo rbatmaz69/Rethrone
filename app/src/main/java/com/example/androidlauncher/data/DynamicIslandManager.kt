@@ -56,15 +56,35 @@ class DynamicIslandManager(
         }
     }
 
-    /** Laufender Countdown der Uhr-App; Restzeit wird jede Sekunde neu berechnet. */
+    /** Zuletzt angezeigte Timer-/Stoppuhr-Zeit – wird im Pausenzustand statisch gehalten. */
+    private var lastTimerDisplayMs: Long? = null
+
+    /** Laufender Countdown/Stoppuhr der Uhr-App; Zeit wird jede Sekunde neu berechnet. */
     private val timerFlow: Flow<IslandContent.Timer?> =
         combine(NotificationService.activeTimer, secondTick) { timer, _ ->
-            timer?.let {
+            if (timer == null) {
+                lastTimerDisplayMs = null
+                null
+            } else {
+                val now = System.currentTimeMillis()
+                val live = timer.anchorMs?.let { anchor ->
+                    if (timer.countUp) (now - anchor).coerceAtLeast(0) else timerRemainingMs(anchor, now)
+                }
+                val display = if (timer.paused) {
+                    // Pausiert: einmal den aktuellen Wert schnappen, danach konstant halten.
+                    if (lastTimerDisplayMs == null) lastTimerDisplayMs = live
+                    lastTimerDisplayMs
+                } else {
+                    if (live != null) lastTimerDisplayMs = live
+                    live
+                }
                 IslandContent.Timer(
-                    label = it.label,
-                    remainingMs = it.endTimeMs?.let { end -> timerRemainingMs(end, System.currentTimeMillis()) },
-                    pkg = it.pkg,
-                    contentIntent = it.contentIntent
+                    label = timer.label,
+                    displayMs = display,
+                    countUp = timer.countUp,
+                    pkg = timer.pkg,
+                    contentIntent = timer.contentIntent,
+                    actions = timer.actions
                 )
             }
         }

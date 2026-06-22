@@ -1218,16 +1218,18 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         islandExpanded?.let { expandedContent ->
-                            // Medien-Karte muss live sein (Play/Pause-Icon aktualisiert sich): bei
-                            // Media den aktuellen Zustand nehmen, sonst die eingefrorene Kopie.
+                            // Medien-/Timer-Karte muss live sein (Play/Pause-Icon & Restzeit
+                            // aktualisieren sich): den aktuellen Zustand nehmen, sonst die
+                            // eingefrorene Kopie.
                             val liveMedia = islandState.all
                                 .firstOrNull { it is IslandContent.Media } as? IslandContent.Media
-                            val cardContent =
-                                if (expandedContent is IslandContent.Media) {
-                                    liveMedia ?: expandedContent
-                                } else {
-                                    expandedContent
-                                }
+                            val liveTimer = islandState.all
+                                .firstOrNull { it is IslandContent.Timer } as? IslandContent.Timer
+                            val cardContent = when (expandedContent) {
+                                is IslandContent.Media -> liveMedia ?: expandedContent
+                                is IslandContent.Timer -> liveTimer ?: expandedContent
+                                else -> expandedContent
+                            }
                             Box(modifier = Modifier.fillMaxSize().zIndex(7000f)) {
                                 IslandExpandedCard(
                                     content = cardContent,
@@ -1240,14 +1242,17 @@ class MainActivity : ComponentActivity() {
                                         sendPendingIntent(action.intent)
                                         dynamicIslandManager.dismissExpanded()
                                     },
+                                    // Timer steuern (Pause/Play/…): Karte bewusst offen lassen,
+                                    // damit man direkt weiter steuern kann.
+                                    onTimerControl = { action -> sendPendingIntent(action.intent) },
                                     onOpen = { content ->
                                         val intent = when (content) {
                                             is IslandContent.Notification -> content.contentIntent
                                             is IslandContent.Timer -> content.contentIntent
                                             else -> null
                                         }
-                                        // Bei Medien Karte offen lassen (nur Buttons/Scrim agieren).
-                                        if (content !is IslandContent.Media) {
+                                        // Bei Medien & Timer Karte offen lassen (nur Buttons/Scrim agieren).
+                                        if (content !is IslandContent.Media && content !is IslandContent.Timer) {
                                             sendPendingIntent(intent)
                                             dynamicIslandManager.dismissExpanded()
                                         }

@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.data.IslandContent
 import com.example.androidlauncher.data.NotificationAction
+import com.example.androidlauncher.isPauseActionTitle
+import com.example.androidlauncher.isResumeActionTitle
 
 /**
  * Große, aufgeklappte Insel-Karte. Erscheint über dem restlichen UI (eigener `zIndex` in
@@ -59,6 +61,7 @@ fun IslandExpandedCard(
     onDismiss: () -> Unit,
     allContents: List<IslandContent> = emptyList(),
     onSwitch: (IslandContent) -> Unit = {},
+    onTimerControl: (NotificationAction) -> Unit = {},
     onMediaPlayPause: () -> Unit = {},
     onMediaNext: () -> Unit = {},
     onMediaPrev: () -> Unit = {}
@@ -96,10 +99,7 @@ fun IslandExpandedCard(
             when (content) {
                 is IslandContent.Notification -> NotificationCard(content, onAction)
                 is IslandContent.Media -> MediaCard(content, onMediaPlayPause, onMediaNext, onMediaPrev)
-                is IslandContent.Timer -> SimpleCard(
-                    content.remainingMs?.let { formatRemaining(it) } ?: content.label.ifBlank { "Timer" },
-                    if (content.remainingMs != null) content.label else ""
-                )
+                is IslandContent.Timer -> TimerCard(content, onTimerControl)
                 is IslandContent.Battery -> SimpleCard(
                     if (content.charging) "Wird geladen" else "Netzteil getrennt",
                     "${content.level}%"
@@ -210,7 +210,7 @@ private fun ActivitySwitcher(
 
 private fun activityChipLabel(content: IslandContent): String = when (content) {
     is IslandContent.Media -> "Medien"
-    is IslandContent.Timer -> content.label.ifBlank { "Timer" }
+    is IslandContent.Timer -> content.displayMs?.let { formatRemaining(it) } ?: "Uhr"
     is IslandContent.Notification -> content.title.ifBlank { "Mitteilung" }
     is IslandContent.Battery -> "Akku"
 }
@@ -284,6 +284,51 @@ private fun TransportButton(icon: androidx.compose.ui.graphics.vector.ImageVecto
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = null, tint = IslandText, modifier = Modifier.size(32.dp))
+    }
+}
+
+/**
+ * Timer-/Stoppuhr-Karte: große Live-Zeit plus Steuerung über die App-eigenen
+ * Notification-Aktionen. Die Pause/Resume-Aktion wird als prominenter Play/Pause-Button
+ * dargestellt, übrige Aktionen (+1:00, Zurücksetzen, …) als Chips. Klicks feuern den
+ * jeweiligen PendingIntent via [onControl] – die Karte bleibt offen.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TimerCard(content: IslandContent.Timer, onControl: (NotificationAction) -> Unit) {
+    Text(
+        text = content.displayMs?.let { formatRemaining(it) } ?: "--:--",
+        color = IslandText,
+        fontSize = 40.sp,
+        fontWeight = FontWeight.Bold
+    )
+    val toggle = content.actions.firstOrNull {
+        isPauseActionTitle(it.title) || isResumeActionTitle(it.title)
+    }
+    val others = content.actions.filter { it !== toggle }
+    if (toggle != null) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TransportButton(
+                if (isResumeActionTitle(toggle.title)) Icons.Rounded.PlayArrow else Icons.Rounded.Pause
+            ) { onControl(toggle) }
+        }
+    }
+    if (others.isNotEmpty()) {
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            others.forEach { action -> ActionChip(action.title) { onControl(action) } }
+        }
     }
 }
 

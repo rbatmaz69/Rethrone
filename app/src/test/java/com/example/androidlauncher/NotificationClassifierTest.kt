@@ -152,4 +152,91 @@ class NotificationClassifierTest {
         assertEquals(0L, timerRemainingMs(whenMs = now - 5_000, nowMs = now))
         assertEquals(5_000L, timerRemainingMs(whenMs = now + 5_000, nowMs = now))
     }
+
+    @Test
+    fun `parseClockTimeMs reads m ss and h mm ss`() {
+        assertEquals(12 * 60_000L + 34_000L, parseClockTimeMs("12:34"))
+        assertEquals(3_600_000L + 2 * 60_000L + 3_000L, parseClockTimeMs("1:02:03"))
+        assertEquals(59_000L, parseClockTimeMs("Timer • 0:59 verbleibend"))
+    }
+
+    @Test
+    fun `parseClockTimeMs rejects non-time text`() {
+        assertEquals(null, parseClockTimeMs("Timer läuft"))
+        assertEquals(null, parseClockTimeMs(""))
+        assertEquals(null, parseClockTimeMs(null))
+        // Keine Teil-Treffer aus längeren Ziffernfolgen (z. B. Datums-/ID-artige Strings).
+        assertEquals(null, parseClockTimeMs("12345"))
+    }
+
+    private val horizon = 48L * 60 * 60 * 1000
+
+    @Test
+    fun `anchor for countdown chronometer is the future end`() {
+        val a = resolveTimerAnchor(
+            showChronometer = true, isCountDownChronometer = true,
+            isStopwatchChannel = false, isTimerChannel = true,
+            whenMs = now + 60_000, nowMs = now, horizonMs = horizon, candidateText = null
+        )
+        assertEquals(TimerAnchor(now + 60_000, countUp = false), a)
+    }
+
+    @Test
+    fun `anchor for count-up chronometer is the past start`() {
+        val a = resolveTimerAnchor(
+            showChronometer = true, isCountDownChronometer = false,
+            isStopwatchChannel = false, isTimerChannel = false,
+            whenMs = now - 30_000, nowMs = now, horizonMs = horizon, candidateText = null
+        )
+        assertEquals(TimerAnchor(now - 30_000, countUp = true), a)
+    }
+
+    @Test
+    fun `anchor for stopwatch channel without extras uses when as start`() {
+        val a = resolveTimerAnchor(
+            showChronometer = false, isCountDownChronometer = false,
+            isStopwatchChannel = true, isTimerChannel = false,
+            whenMs = now - 90_000, nowMs = now, horizonMs = horizon, candidateText = null
+        )
+        assertEquals(TimerAnchor(now - 90_000, countUp = true), a)
+    }
+
+    @Test
+    fun `anchor for timer channel falls back to parsed text end`() {
+        val a = resolveTimerAnchor(
+            showChronometer = false, isCountDownChronometer = false,
+            isStopwatchChannel = false, isTimerChannel = true,
+            whenMs = now, nowMs = now, horizonMs = horizon, candidateText = "0:59"
+        )
+        assertEquals(TimerAnchor(now + 59_000, countUp = false), a)
+    }
+
+    @Test
+    fun `anchor is null when nothing is parseable`() {
+        val a = resolveTimerAnchor(
+            showChronometer = false, isCountDownChronometer = false,
+            isStopwatchChannel = false, isTimerChannel = true,
+            whenMs = now, nowMs = now, horizonMs = horizon, candidateText = "Timer läuft"
+        )
+        assertEquals(TimerAnchor(null, countUp = false), a)
+    }
+
+    @Test
+    fun `pause and resume action titles are detected`() {
+        assertEquals(true, isPauseActionTitle("Pause"))
+        assertEquals(true, isPauseActionTitle("Pausieren"))
+        assertEquals(false, isPauseActionTitle("Fortsetzen"))
+        assertEquals(true, isResumeActionTitle("Resume"))
+        assertEquals(true, isResumeActionTitle("Fortsetzen"))
+        assertEquals(true, isResumeActionTitle("Weiter"))
+        assertEquals(false, isResumeActionTitle("Zurücksetzen"))
+    }
+
+    @Test
+    fun `timerIsRunning prefers pause then resume then unknown`() {
+        assertEquals(true, timerIsRunning(listOf("Pausieren", "+ 1:00")))
+        assertEquals(false, timerIsRunning(listOf("Fortsetzen", "Zurücksetzen")))
+        assertEquals(null, timerIsRunning(listOf("Zurücksetzen", "Runde")))
+        assertEquals(null, timerIsRunning(emptyList()))
+    }
 }

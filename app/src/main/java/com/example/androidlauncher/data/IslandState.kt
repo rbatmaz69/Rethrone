@@ -31,14 +31,19 @@ sealed interface IslandContent {
 
     /**
      * Laufender Timer/Stoppuhr der Uhr-App. Persistent solange aktiv.
-     * @param remainingMs Live-Restzeit, oder `null` wenn nicht aus der Notification lesbar
-     *        (dann zeigt die Insel nur das Label „Timer"/„Stoppuhr").
+     * @param displayMs fertige Anzeigezeit (Rest- bzw. verstrichene Zeit), jede Sekunde neu
+     *        berechnet; `null`, wenn keine Zeit ableitbar ist (dann zeigt die Pille kein Wort,
+     *        sondern nur App-Icon + Punkt).
+     * @param countUp `true` ⇒ hochzählende Stoppuhr, `false` ⇒ Countdown-Timer.
+     * @param actions App-eigene Notification-Aktionen (Pause/Resume/…) zum Steuern in der Karte.
      */
     data class Timer(
         val label: String,
-        val remainingMs: Long?,
+        val displayMs: Long?,
+        val countUp: Boolean = false,
         val pkg: String = "",
-        val contentIntent: PendingIntent? = null
+        val contentIntent: PendingIntent? = null,
+        val actions: List<NotificationAction> = emptyList()
     ) : IslandContent
 
     /** Frisch eingetroffene Benachrichtigung. Transient (klingt nach kurzer Zeit aus). */
