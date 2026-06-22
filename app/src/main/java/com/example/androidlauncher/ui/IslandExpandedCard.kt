@@ -1,5 +1,11 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,6 +47,9 @@ import com.example.androidlauncher.data.IslandContent
 import com.example.androidlauncher.data.NotificationAction
 import com.example.androidlauncher.isPauseActionTitle
 import com.example.androidlauncher.isResumeActionTitle
+import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
+import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
+import com.example.androidlauncher.ui.theme.RethroneSprings
 
 /**
  * Große, aufgeklappte Insel-Karte. Erscheint über dem restlichen UI (eigener `zIndex` in
@@ -96,14 +105,46 @@ fun IslandExpandedCard(
             if (allContents.size > 1) {
                 ActivitySwitcher(allContents, content, onSwitch)
             }
-            when (content) {
-                is IslandContent.Notification -> NotificationCard(content, onAction)
-                is IslandContent.Media -> MediaCard(content, onMediaPlayPause, onMediaNext, onMediaPrev)
-                is IslandContent.Timer -> TimerCard(content, onTimerControl)
-                is IslandContent.Battery -> SimpleCard(
-                    if (content.charging) "Wird geladen" else "Netzteil getrennt",
-                    "${content.level}%"
-                )
+            val animationsEnabled = LocalAnimationsEnabled.current
+            val speed = LocalAnimationSpeed.current
+            // Aktivitäts-Wechsel (Tabs) gleitet richtungsabhängig (Reihenfolge in allContents).
+            // Key = Klasse: Timer-/Media-Live-Updates aktualisieren in-place, ohne Transition.
+            AnimatedContent(
+                targetState = content,
+                contentKey = { it::class },
+                transitionSpec = {
+                    if (!animationsEnabled) {
+                        fadeIn() togetherWith fadeOut()
+                    } else {
+                        val fromIdx = allContents.indexOfFirst { it::class == initialState::class }
+                        val toIdx = allContents.indexOfFirst { it::class == targetState::class }
+                        val dir = if (fromIdx >= 0 && toIdx >= 0) toIdx.compareTo(fromIdx) else 0
+                        if (dir == 0) {
+                            fadeIn(RethroneSprings.effects(speed)) togetherWith
+                                fadeOut(RethroneSprings.effects(speed))
+                        } else {
+                            (slideInHorizontally(RethroneSprings.spatial(speed)) { w -> dir * w } +
+                                fadeIn(RethroneSprings.effects(speed))) togetherWith
+                                (slideOutHorizontally(RethroneSprings.effects(speed)) { w -> -dir * w } +
+                                    fadeOut(RethroneSprings.effects(speed)))
+                        }
+                    }
+                },
+                label = "islandCardContent"
+            ) { c ->
+                // Column: die Karten emittieren mehrere vertikale Geschwister (Titel/Text/Buttons);
+                // ohne eigenen Column-Container würden sie im AnimatedContent-Box überlappen.
+                Column {
+                    when (c) {
+                        is IslandContent.Notification -> NotificationCard(c, onAction)
+                        is IslandContent.Media -> MediaCard(c, onMediaPlayPause, onMediaNext, onMediaPrev)
+                        is IslandContent.Timer -> TimerCard(c, onTimerControl)
+                        is IslandContent.Battery -> SimpleCard(
+                            if (c.charging) "Wird geladen" else "Netzteil getrennt",
+                            "${c.level}%"
+                        )
+                    }
+                }
             }
         }
     }

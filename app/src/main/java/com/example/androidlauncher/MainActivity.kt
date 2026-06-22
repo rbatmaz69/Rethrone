@@ -38,6 +38,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInHorizontally
@@ -71,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -1217,20 +1220,50 @@ class MainActivity : ComponentActivity() {
                                     .zIndex(7000f)
                             )
                         }
-                        islandExpanded?.let { expandedContent ->
-                            // Medien-/Timer-Karte muss live sein (Play/Pause-Icon & Restzeit
-                            // aktualisieren sich): den aktuellen Zustand nehmen, sonst die
-                            // eingefrorene Kopie.
-                            val liveMedia = islandState.all
-                                .firstOrNull { it is IslandContent.Media } as? IslandContent.Media
-                            val liveTimer = islandState.all
-                                .firstOrNull { it is IslandContent.Timer } as? IslandContent.Timer
-                            val cardContent = when (expandedContent) {
-                                is IslandContent.Media -> liveMedia ?: expandedContent
-                                is IslandContent.Timer -> liveTimer ?: expandedContent
-                                else -> expandedContent
+                        // Aufgeklappte Karte: federnd aus dem Kamerabereich (oben-mitte) wachsen
+                        // bzw. dahin zurückschrumpfen. lastExpanded puffert den Inhalt, damit die
+                        // Schließen-Animation nach dem Dismiss noch etwas anzuzeigen hat.
+                        var lastExpanded by remember { mutableStateOf<IslandContent?>(null) }
+                        LaunchedEffect(islandExpanded) {
+                            if (islandExpanded != null) lastExpanded = islandExpanded
+                        }
+                        val islandAnimEnabled = LocalAnimationsEnabled.current
+                        AnimatedVisibility(
+                            visible = islandExpanded != null,
+                            modifier = Modifier.fillMaxSize().zIndex(7000f),
+                            enter = if (islandAnimEnabled) {
+                                scaleIn(
+                                    RethroneSprings.container(animationSpeed),
+                                    initialScale = 0.85f,
+                                    transformOrigin = TransformOrigin(0.5f, 0f)
+                                ) + fadeIn(RethroneSprings.effects(animationSpeed))
+                            } else {
+                                fadeIn()
+                            },
+                            exit = if (islandAnimEnabled) {
+                                scaleOut(
+                                    RethroneSprings.effects(animationSpeed),
+                                    targetScale = 0.85f,
+                                    transformOrigin = TransformOrigin(0.5f, 0f)
+                                ) + fadeOut(RethroneSprings.effects(animationSpeed))
+                            } else {
+                                fadeOut()
                             }
-                            Box(modifier = Modifier.fillMaxSize().zIndex(7000f)) {
+                        ) {
+                            val expandedContent = islandExpanded ?: lastExpanded
+                            if (expandedContent != null) {
+                                // Medien-/Timer-Karte muss live sein (Play/Pause-Icon & Restzeit
+                                // aktualisieren sich): den aktuellen Zustand nehmen, sonst die
+                                // eingefrorene Kopie.
+                                val liveMedia = islandState.all
+                                    .firstOrNull { it is IslandContent.Media } as? IslandContent.Media
+                                val liveTimer = islandState.all
+                                    .firstOrNull { it is IslandContent.Timer } as? IslandContent.Timer
+                                val cardContent = when (expandedContent) {
+                                    is IslandContent.Media -> liveMedia ?: expandedContent
+                                    is IslandContent.Timer -> liveTimer ?: expandedContent
+                                    else -> expandedContent
+                                }
                                 IslandExpandedCard(
                                     content = cardContent,
                                     allContents = islandState.all,

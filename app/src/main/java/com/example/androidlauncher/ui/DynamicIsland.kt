@@ -2,17 +2,23 @@ package com.example.androidlauncher.ui
 
 import android.graphics.Bitmap
 import android.os.Build
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -168,11 +175,22 @@ fun DynamicIsland(
             )
         } else {
             val swipeThresholdPx = with(density) { 40.dp.toPx() }
+            // Richtung des letzten Aktivitäts-Wechsels (+1 = nächste, -1 = vorherige, 0 = Crossfade-
+            // Fallback bei reinem Inhaltswechsel ohne Swipe). Steuert das Richtungs-Slide unten.
+            var swipeDir by remember { mutableStateOf(0) }
+            // Press-Feedback: kurzes Einsinken der Pille beim Drücken (taktiles „Drauf drücken").
+            val interactionSource = remember { MutableInteractionSource() }
+            val pressed by interactionSource.collectIsPressedAsState()
+            val pressScale by animateFloatAsState(
+                targetValue = if (pressed && animationsEnabled) 0.94f else 1f,
+                animationSpec = RethroneSprings.spatial(speed),
+                label = "islandPress"
+            )
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = interactionSource,
                         indication = null,
                         onClick = { (content ?: lastContent)?.let(onTap) }
                     )
@@ -183,8 +201,10 @@ fun DynamicIsland(
                             onDragStart = { total = 0f },
                             onDragEnd = {
                                 if (total <= -swipeThresholdPx) {
+                                    swipeDir = 1
                                     onSwipeNext()
                                 } else if (total >= swipeThresholdPx) {
+                                    swipeDir = -1
                                     onSwipePrevious()
                                 }
                             }
@@ -194,12 +214,36 @@ fun DynamicIsland(
                 // Cluster: Haupt-Pille + App-Kreise der anderen aktiven Aktivitäten daneben.
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.onGloballyPositioned {
-                        clusterWidthPx = it.size.width
-                        clusterHeightPx = it.size.height
-                    }
+                    modifier = Modifier
+                        .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
+                        .onGloballyPositioned {
+                            clusterWidthPx = it.size.width
+                            clusterHeightPx = it.size.height
+                        }
                 ) {
-                    IslandPill(content ?: lastContent, cutoutWidth, loadIcon, editMode = false)
+                    // Inhaltswechsel (Swipe/Priorität) gleitet richtungsabhängig herein/heraus.
+                    // Key = activityId: Timer-/Media-Sekundenticks lösen KEINE Transition aus.
+                    AnimatedContent(
+                        targetState = content ?: lastContent,
+                        contentKey = { it?.let(::activityId) },
+                        transitionSpec = {
+                            if (!animationsEnabled) {
+                                fadeIn() togetherWith fadeOut()
+                            } else if (swipeDir == 0) {
+                                fadeIn(RethroneSprings.effects(speed)) togetherWith
+                                    fadeOut(RethroneSprings.effects(speed))
+                            } else {
+                                val dir = swipeDir
+                                (slideInHorizontally(RethroneSprings.spatial(speed)) { w -> dir * w } +
+                                    fadeIn(RethroneSprings.effects(speed))) togetherWith
+                                    (slideOutHorizontally(RethroneSprings.effects(speed)) { w -> -dir * w } +
+                                        fadeOut(RethroneSprings.effects(speed)))
+                            }
+                        },
+                        label = "islandPill"
+                    ) { c ->
+                        IslandPill(c, cutoutWidth, loadIcon, editMode = false)
+                    }
                     others.forEach { other ->
                         Spacer(Modifier.width(6.dp))
                         AppCircle(other, loadIcon)
