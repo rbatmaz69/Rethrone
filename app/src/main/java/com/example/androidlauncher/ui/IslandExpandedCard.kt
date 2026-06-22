@@ -9,6 +9,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,7 +81,6 @@ fun IslandExpandedCard(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -86,6 +88,7 @@ fun IslandExpandedCard(
             ),
         contentAlignment = Alignment.TopCenter
     ) {
+        val swipeThresholdPx = with(LocalDensity.current) { 40.dp.toPx() }
         Column(
             modifier = Modifier
                 .statusBarsPadding()
@@ -100,6 +103,27 @@ fun IslandExpandedCard(
                     indication = null,
                     onClick = { onOpen(content) }
                 )
+                // Horizontaler Swipe wechselt – wie an der Pille – zwischen den Aktivitäten.
+                .pointerInput(allContents, content) {
+                    if (allContents.size > 1) {
+                        var total = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { total = 0f },
+                            onDragEnd = {
+                                val cur = allContents.indexOfFirst { it::class == content::class }
+                                if (cur >= 0) {
+                                    val size = allContents.size
+                                    val next = when {
+                                        total <= -swipeThresholdPx -> (cur + 1) % size
+                                        total >= swipeThresholdPx -> (cur - 1 + size) % size
+                                        else -> cur
+                                    }
+                                    if (next != cur) onSwitch(allContents[next])
+                                }
+                            }
+                        ) { _, drag -> total += drag }
+                    }
+                }
                 .padding(20.dp)
         ) {
             if (allContents.size > 1) {

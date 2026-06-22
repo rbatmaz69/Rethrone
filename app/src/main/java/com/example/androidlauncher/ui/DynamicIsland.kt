@@ -4,14 +4,14 @@ import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,13 +50,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.data.IslandContent
@@ -76,6 +78,7 @@ import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.RethroneSprings
 import java.util.concurrent.TimeUnit
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 internal val IslandSurface = Color(0xFF0B0B0C)
@@ -109,24 +112,35 @@ fun DynamicIsland(
     onSwipePrevious: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // „Main" = vom Manager gewählte Aktivität; die übrigen aktiven werden als App-Kreise daneben
-    // gezeigt. Gewechselt wird per Swipe (keine Auto-Rotation mehr).
+    // „Main" = vom Manager gewählte Aktivität. Alle aktiven werden als Einheiten gezeigt: die
+    // gewählte als breite Pille (umschließt die Kamera), die übrigen als kleine App-Kreise.
+    // Beim Wechsel tauschen sie Form & Platz (Rollen-Tausch-Morph).
     val content = state.content
-    val others = state.all.filter { content == null || activityId(it) != activityId(content) }
-    // Letzten Inhalt merken, damit die Ausblende-Animation noch etwas anzuzeigen hat.
+    // Letzten Zustand merken, damit die Ausblende-Animation noch etwas anzuzeigen hat.
     var lastContent by remember { mutableStateOf<IslandContent?>(null) }
-    LaunchedEffect(content) { if (content != null) lastContent = content }
+    var lastAll by remember { mutableStateOf<List<IslandContent>>(emptyList()) }
+    LaunchedEffect(content, state.all) {
+        if (content != null) lastContent = content
+        if (state.all.isNotEmpty()) lastAll = state.all
+    }
+    val shownContent = content ?: lastContent
+    val shownAll = if (state.all.isNotEmpty()) state.all else lastAll
 
     val animationsEnabled = LocalAnimationsEnabled.current
     val speed = LocalAnimationSpeed.current
     val cutout = rememberCutoutInfo()
     val density = LocalDensity.current
     val cutoutWidth = cutout?.let { with(density) { it.widthPx.toDp() } } ?: 0.dp
+    // Start-/Zielgröße der „Notch wächst"-Animation ≈ Kamera-Cutout (Fallback: kleine Größe).
+    val notchWidthPx = cutout?.widthPx ?: with(density) { 28.dp.roundToPx() }
+    val notchHeightPx = cutout?.heightPx ?: with(density) { IslandPillHeight.roundToPx() }
     // Statusleisten-Höhe für den Fallback ohne Cutout (notchlose Geräte / Tablets).
     val statusBarTopPx = WindowInsets.statusBars.getTop(density)
-    // Gemessene Cluster-Größe (Pille + Kreise), um ihn auf der Kamera zu zentrieren / auf dem Schirm zu halten.
+    // Gemessene Cluster-Größe + Mitte der aktiven Pille (für Kamera-Zentrierung beim Switch).
     var clusterWidthPx by remember { mutableStateOf(0) }
     var clusterHeightPx by remember { mutableStateOf(0) }
+    var rowCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var activePillCenterPx by remember { mutableStateOf(-1f) }
 
     AnimatedVisibility(
         // Im Edit-Modus immer sichtbar (Platzhalter zum Ziehen), sonst nur bei aktivem Inhalt.
@@ -135,28 +149,42 @@ fun DynamicIsland(
             // Vertikal IMMER im Statusleisten-Band zentrieren (geräteadaptiv auf Kamerahöhe).
             val targetCenterY = statusBarTopPx / 2f + verticalOffsetDp.dp.toPx()
             val y = (targetCenterY - clusterHeightPx / 2f).coerceAtLeast(0f).roundToInt()
-            // Horizontal: bei Cutout mittig auf die Kamera (auf dem Schirm geclampt), sonst mittig.
+            // Horizontal: Mitte der AKTIVEN Pille unter die Kamera legen, Cluster auf dem Schirm
+            // geclampt. Beim Switch wandert die Pille im Cluster → der Cluster gleitet so, dass
+            // die neu gewählte App unter die Kamera rückt (Rollen-Tausch).
             val x = if (cutout != null) {
-                val half = clusterWidthPx / 2f
                 val margin = 6.dp.toPx()
+                val half = clusterWidthPx / 2f
                 val lo = half + margin
                 val hi = cutout.screenWidth - half - margin
-                val centerX = if (lo <= hi) cutout.centerX.coerceIn(lo, hi) else cutout.screenWidth / 2f
-                (centerX - cutout.screenWidth / 2f).roundToInt()
+                val clusterCenterScreen = if (activePillCenterPx >= 0f && clusterWidthPx > 0) {
+                    cutout.centerX - (activePillCenterPx - clusterWidthPx / 2f)
+                } else {
+                    cutout.centerX
+                }
+                val clamped = if (lo <= hi) clusterCenterScreen.coerceIn(lo, hi) else cutout.screenWidth / 2f
+                (clamped - cutout.screenWidth / 2f).roundToInt()
             } else {
                 0
             }
             IntOffset(x, y)
         },
+        // „Wächst aus der Notch": von Kamera-Größe (oben-mittig) auf volle Größe expandieren.
         enter = if (animationsEnabled) {
-            scaleIn(RethroneSprings.spatial(speed), transformOrigin = TransformOrigin(0.5f, 0.5f)) +
-                fadeIn(RethroneSprings.effects(speed))
+            expandIn(
+                RethroneSprings.container(speed),
+                expandFrom = Alignment.TopCenter,
+                initialSize = { full -> IntSize(min(notchWidthPx, full.width), min(notchHeightPx, full.height)) }
+            ) + fadeIn(RethroneSprings.effects(speed))
         } else {
             fadeIn()
         },
         exit = if (animationsEnabled) {
-            scaleOut(RethroneSprings.effects(speed), transformOrigin = TransformOrigin(0.5f, 0.5f)) +
-                fadeOut(RethroneSprings.effects(speed))
+            shrinkOut(
+                RethroneSprings.container(speed),
+                shrinkTowards = Alignment.TopCenter,
+                targetSize = { full -> IntSize(min(notchWidthPx, full.width), min(notchHeightPx, full.height)) }
+            ) + fadeOut(RethroneSprings.effects(speed))
         } else {
             fadeOut()
         }
@@ -164,7 +192,7 @@ fun DynamicIsland(
         if (editMode) {
             // Vorschau ohne Tap/Swipe (Höhe via separate Steuerleiste).
             IslandPill(
-                content ?: lastContent,
+                shownContent,
                 cutoutWidth,
                 loadIcon,
                 editMode = true,
@@ -175,9 +203,6 @@ fun DynamicIsland(
             )
         } else {
             val swipeThresholdPx = with(density) { 40.dp.toPx() }
-            // Richtung des letzten Aktivitäts-Wechsels (+1 = nächste, -1 = vorherige, 0 = Crossfade-
-            // Fallback bei reinem Inhaltswechsel ohne Swipe). Steuert das Richtungs-Slide unten.
-            var swipeDir by remember { mutableStateOf(0) }
             // Press-Feedback: kurzes Einsinken der Pille beim Drücken (taktiles „Drauf drücken").
             val interactionSource = remember { MutableInteractionSource() }
             val pressed by interactionSource.collectIsPressedAsState()
@@ -192,7 +217,7 @@ fun DynamicIsland(
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
-                        onClick = { (content ?: lastContent)?.let(onTap) }
+                        onClick = { shownContent?.let(onTap) }
                     )
                     // Horizontaler Swipe (im Bereich knapp unter der Statusleiste) wechselt die Aktivität.
                     .pointerInput(Unit) {
@@ -201,52 +226,77 @@ fun DynamicIsland(
                             onDragStart = { total = 0f },
                             onDragEnd = {
                                 if (total <= -swipeThresholdPx) {
-                                    swipeDir = 1
                                     onSwipeNext()
                                 } else if (total >= swipeThresholdPx) {
-                                    swipeDir = -1
                                     onSwipePrevious()
                                 }
                             }
                         ) { _, drag -> total += drag }
                     }
             ) {
-                // Cluster: Haupt-Pille + App-Kreise der anderen aktiven Aktivitäten daneben.
+                // Feste Positions-Slots: aktive Pille IMMER links (unter der Kamera), die übrigen
+                // App-Kreise IMMER rechts. Beim Switch wechselt nur der INHALT (richtungsneutraler
+                // Scale+Fade-Crossfade) – nichts springt die Seite, das zweite Logo bleibt rechts.
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
                         .onGloballyPositioned {
+                            rowCoords = it
                             clusterWidthPx = it.size.width
                             clusterHeightPx = it.size.height
                         }
                 ) {
-                    // Inhaltswechsel (Swipe/Priorität) gleitet richtungsabhängig herein/heraus.
-                    // Key = activityId: Timer-/Media-Sekundenticks lösen KEINE Transition aus.
-                    AnimatedContent(
-                        targetState = content ?: lastContent,
-                        contentKey = { it?.let(::activityId) },
-                        transitionSpec = {
-                            if (!animationsEnabled) {
-                                fadeIn() togetherWith fadeOut()
-                            } else if (swipeDir == 0) {
-                                fadeIn(RethroneSprings.effects(speed)) togetherWith
-                                    fadeOut(RethroneSprings.effects(speed))
-                            } else {
-                                val dir = swipeDir
-                                (slideInHorizontally(RethroneSprings.spatial(speed)) { w -> dir * w } +
-                                    fadeIn(RethroneSprings.effects(speed))) togetherWith
-                                    (slideOutHorizontally(RethroneSprings.effects(speed)) { w -> -dir * w } +
-                                        fadeOut(RethroneSprings.effects(speed)))
+                    // Slot 0: aktive Pille. Mitte messen → Kamera-Zentrierung (bleibt unter der Kamera).
+                    Box(
+                        modifier = Modifier.onGloballyPositioned { u ->
+                            rowCoords?.let { r ->
+                                if (r.isAttached && u.isAttached) {
+                                    activePillCenterPx =
+                                        r.localPositionOf(u, Offset.Zero).x + u.size.width / 2f
+                                }
                             }
-                        },
-                        label = "islandPill"
-                    ) { c ->
-                        IslandPill(c, cutoutWidth, loadIcon, editMode = false)
+                        }
+                    ) {
+                        AnimatedContent(
+                            targetState = shownContent,
+                            contentKey = { it?.let(::activityId) },
+                            transitionSpec = {
+                                if (animationsEnabled) {
+                                    (scaleIn(RethroneSprings.spatial(speed), initialScale = 0.85f) +
+                                        fadeIn(RethroneSprings.effects(speed))) togetherWith
+                                        (scaleOut(RethroneSprings.effects(speed), targetScale = 0.85f) +
+                                            fadeOut(RethroneSprings.effects(speed)))
+                                } else {
+                                    fadeIn() togetherWith fadeOut()
+                                }
+                            },
+                            label = "islandActivePill"
+                        ) { c ->
+                            IslandPill(c, cutoutWidth, loadIcon, editMode = false)
+                        }
                     }
-                    others.forEach { other ->
+                    // Slots rechts: übrige Aktivitäten als Kreise (stabile Reihenfolge), Inhalt per Crossfade.
+                    val others = shownAll.filter {
+                        shownContent == null || activityId(it) != activityId(shownContent)
+                    }
+                    others.forEachIndexed { index, other ->
                         Spacer(Modifier.width(6.dp))
-                        AppCircle(other, loadIcon)
+                        AnimatedContent(
+                            targetState = other,
+                            contentKey = { activityId(it) },
+                            transitionSpec = {
+                                if (animationsEnabled) {
+                                    fadeIn(RethroneSprings.effects(speed)) togetherWith
+                                        fadeOut(RethroneSprings.effects(speed))
+                                } else {
+                                    fadeIn() togetherWith fadeOut()
+                                }
+                            },
+                            label = "islandCircle$index"
+                        ) { o ->
+                            AppCircle(o, loadIcon)
+                        }
                     }
                 }
                 // Unsichtbare Tipp-/Swipe-Erweiterung UNTER der Statusleiste, damit Gesten ankommen.
@@ -260,7 +310,7 @@ fun DynamicIsland(
     }
 }
 
-/** Kleiner runder App-Icon-Indikator der anderen aktiven Aktivität (Swipe-Ziel). */
+/** Kleiner runder App-Icon-Indikator der anderen aktiven Aktivität (Swipe-Ziel, immer rechts). */
 @Composable
 private fun AppCircle(content: IslandContent, loadIcon: suspend (String) -> ImageBitmap?) {
     val pkg = iconPackage(content)
@@ -456,11 +506,12 @@ private fun NudgeButton(icon: ImageVector, onClick: () -> Unit) {
     }
 }
 
-/** Mittelpunkt + Breite des Display-Cutouts (Kamera) in Pixeln plus Bildschirmbreite. */
+/** Mittelpunkt + Größe des Display-Cutouts (Kamera) in Pixeln plus Bildschirmbreite. */
 private data class CutoutInfo(
     val centerX: Float,
     val centerY: Float,
     val widthPx: Int,
+    val heightPx: Int,
     val screenWidth: Int
 )
 
@@ -490,7 +541,13 @@ private fun rememberCutoutInfo(): CutoutInfo? {
             else -> cutout.boundingRects.firstOrNull()
         }
         if (rect != null && !rect.isEmpty && view.width > 0) {
-            CutoutInfo(rect.centerX().toFloat(), rect.centerY().toFloat(), rect.width(), view.width)
+            CutoutInfo(
+                rect.centerX().toFloat(),
+                rect.centerY().toFloat(),
+                rect.width(),
+                rect.height(),
+                view.width
+            )
         } else {
             null
         }
