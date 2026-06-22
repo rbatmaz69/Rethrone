@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.ui.AppDrawer
@@ -13,15 +14,23 @@ import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class LauncherComposableUiTest {
 
-    @get:Rule
+    // Hilt-Rule vor der Compose-Rule: macht den DI-Graphen verfuegbar, bevor die
+    // @AndroidEntryPoint-Host-Activity startet (AppDrawer nutzt hiltViewModel()).
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val composeRule = createAndroidComposeRule<DebugComposeHostActivity>()
 
     @Test
@@ -116,15 +125,29 @@ class LauncherComposableUiTest {
                     onOpenHomeLayoutEdit = {},
                     onResetHomeLayout = { wasHomeLayoutReset = true },
                     onOpenIconConfig = {},
+                    onOpenUninstallApps = {},
+                    onOpenHiddenApps = {},
+                    onOpenAppLock = {},
+                    onOpenDefaultLauncher = {},
                     onChangeWallpaper = {},
                     onResetWallpaper = {},
                     onOpenWallpaperAdjust = {},
                     isCustomHomeLayoutSet = true,
                     isCustomWallpaperSet = false,
-                    isShakeGesturesEnabled = false,
-                    onShakeGesturesToggled = {},
+                    onOpenGesturesConfig = {},
                     isSmartSuggestionsEnabled = false,
                     onSmartSuggestionsToggled = {},
+                    isAnimationsEnabled = true,
+                    onAnimationsToggled = {},
+                    onOpenAnimationsConfig = {},
+                    isWeatherWidgetEnabled = false,
+                    onWeatherWidgetToggled = {},
+                    isClockWidgetEnabled = true,
+                    onClockWidgetToggled = {},
+                    isCalendarWidgetEnabled = false,
+                    onCalendarWidgetToggled = {},
+                    appAccessMode = AppAccessMode.HOME_LIST,
+                    onAppAccessModeChange = {},
                     onClearSearchHistory = {},
                     isHapticFeedbackEnabled = true,
                     onHapticFeedbackToggled = {},
@@ -145,15 +168,29 @@ class LauncherComposableUiTest {
                     onOpenHomeLayoutEdit = {},
                     onResetHomeLayout = {},
                     onOpenIconConfig = {},
+                    onOpenUninstallApps = {},
+                    onOpenHiddenApps = {},
+                    onOpenAppLock = {},
+                    onOpenDefaultLauncher = {},
                     onChangeWallpaper = {},
                     onResetWallpaper = {},
                     onOpenWallpaperAdjust = {},
                     isCustomHomeLayoutSet = false,
                     isCustomWallpaperSet = false,
-                    isShakeGesturesEnabled = false,
-                    onShakeGesturesToggled = {},
+                    onOpenGesturesConfig = {},
                     isSmartSuggestionsEnabled = false,
                     onSmartSuggestionsToggled = {},
+                    isAnimationsEnabled = true,
+                    onAnimationsToggled = {},
+                    onOpenAnimationsConfig = {},
+                    isWeatherWidgetEnabled = false,
+                    onWeatherWidgetToggled = {},
+                    isClockWidgetEnabled = true,
+                    onClockWidgetToggled = {},
+                    isCalendarWidgetEnabled = false,
+                    onCalendarWidgetToggled = {},
+                    appAccessMode = AppAccessMode.HOME_LIST,
+                    onAppAccessModeChange = {},
                     onClearSearchHistory = {},
                     isHapticFeedbackEnabled = true,
                     onHapticFeedbackToggled = {},

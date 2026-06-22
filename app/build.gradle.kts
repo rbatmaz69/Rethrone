@@ -38,7 +38,9 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Eigener Runner liefert HiltTestApplication, damit @AndroidEntryPoint-Activities in
+        // Instrumented-Tests starten koennen (siehe androidTest/HiltTestRunner.kt).
+        testInstrumentationRunner = "com.example.androidlauncher.HiltTestRunner"
     }
 
     androidResources {
@@ -242,6 +244,10 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    // Hilt-Test-Infrastruktur: @HiltAndroidTest + HiltTestApplication (Instrumented-Tests starten
+    // @AndroidEntryPoint-Activities und nutzen hiltViewModel()).
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
