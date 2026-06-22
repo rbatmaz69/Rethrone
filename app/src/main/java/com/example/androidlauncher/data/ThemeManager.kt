@@ -93,6 +93,8 @@ class ThemeManager(private val context: Context) {
         private val CLOCK_WIDGET_KEY = booleanPreferencesKey("clock_widget_enabled")
         // Kalender-/Datum-Widget (Standard: an).
         private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
+        private val DYNAMIC_ISLAND_KEY = booleanPreferencesKey("dynamic_island_enabled")
+        private val DYNAMIC_ISLAND_OFFSET_KEY = floatPreferencesKey("dynamic_island_offset")
         // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
 
@@ -326,6 +328,18 @@ class ThemeManager(private val context: Context) {
      */
     val isCalendarWidgetEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[CALENDAR_WIDGET_KEY] ?: true }
+
+    /**
+     * Observable flow für die Dynamic Island (Pille am oberen Rand). Default: an.
+     */
+    val isDynamicIslandEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[DYNAMIC_ISLAND_KEY] ?: true }
+
+    /**
+     * Manueller vertikaler Feinversatz der Dynamic Island in dp (−16..16). Default: 0.
+     */
+    val dynamicIslandOffset: Flow<Float> = context.dataStore.data
+        .map { it[DYNAMIC_ISLAND_OFFSET_KEY] ?: 0f }
 
     /**
      * Observable flow for shake gesture toggle.
@@ -640,6 +654,24 @@ class ThemeManager(private val context: Context) {
     suspend fun setCalendarWidgetEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[CALENDAR_WIDGET_KEY] = enabled
+        }
+    }
+
+    /**
+     * Schaltet die Dynamic Island ein/aus.
+     */
+    suspend fun setDynamicIslandEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[DYNAMIC_ISLAND_KEY] = enabled
+        }
+    }
+
+    /**
+     * Setzt den vertikalen Feinversatz der Dynamic Island (auf −16..16 dp begrenzt).
+     */
+    suspend fun setDynamicIslandOffset(offsetDp: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[DYNAMIC_ISLAND_OFFSET_KEY] = offsetDp.coerceIn(-12f, 40f)
         }
     }
 }

@@ -568,6 +568,22 @@ fun launchAppNoTransition(context: Context, intent: Intent) {
     }
 }
 
+/**
+ * Sendet einen [android.app.PendingIntent] (z. B. eine Benachrichtigungs-Aktion oder den
+ * contentIntent zum Öffnen der App). Abgebrochene Intents werden still ignoriert.
+ *
+ * @return true, wenn das Senden ausgelöst wurde.
+ */
+fun sendPendingIntent(pendingIntent: android.app.PendingIntent?): Boolean {
+    if (pendingIntent == null) return false
+    return try {
+        pendingIntent.send()
+        true
+    } catch (_: android.app.PendingIntent.CanceledException) {
+        false
+    }
+}
+
 @Composable
 fun ReturnAnimationOverlay(
     bounds: Rect?, 

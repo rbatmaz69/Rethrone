@@ -97,6 +97,8 @@ fun EditConfigMenu(
     onClockWidgetToggled: (Boolean) -> Unit,
     isCalendarWidgetEnabled: Boolean,
     onCalendarWidgetToggled: (Boolean) -> Unit,
+    isDynamicIslandEnabled: Boolean,
+    onDynamicIslandToggled: (Boolean) -> Unit,
     appAccessMode: AppAccessMode,
     onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
@@ -233,6 +235,21 @@ fun EditConfigMenu(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "weather_widget_switch"
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.Bell,
+                    label = stringResource(R.string.dynamic_island),
+                    description = stringResource(R.string.dynamic_island_desc),
+                    checked = isDynamicIslandEnabled,
+                    onCheckedChange = { onDynamicIslandToggled(it) },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "dynamic_island_switch"
                 )
             }
 

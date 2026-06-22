@@ -50,6 +50,8 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,7 +66,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -90,6 +94,7 @@ import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.HomeLayout
+import com.example.androidlauncher.data.IslandContent
 import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
@@ -103,6 +108,10 @@ import com.example.androidlauncher.gesture.GestureActionHandler
 import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
+import com.example.androidlauncher.ui.DynamicIsland
+import com.example.androidlauncher.ui.IslandEditControls
+import com.example.androidlauncher.ui.IslandExpandedCard
+import com.example.androidlauncher.ui.sendPendingIntent
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
 import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
@@ -153,6 +162,10 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
         private const val SEARCH_RETURN_TARGET = "__search_return_target__"
         private const val RETURN_TAG = "ReturnFlow"
+
+        // Begrenzter vertikaler Verschiebebereich der Dynamic Island (dp) im Layout-Edit-Modus.
+        private const val DYNAMIC_ISLAND_MIN_OFFSET_DP = -12f
+        private const val DYNAMIC_ISLAND_MAX_OFFSET_DP = 40f
     }
 
     // Von Hilt bereitgestellte Datenschicht-Singletons (siehe di/DataModule).
@@ -176,6 +189,9 @@ class MainActivity : ComponentActivity() {
 
     @javax.inject.Inject
     lateinit var shakeManager: LauncherShakeManager
+
+    @javax.inject.Inject
+    lateinit var dynamicIslandManager: com.example.androidlauncher.data.DynamicIslandManager
 
     private lateinit var backCallback: OnBackPressedCallback
     private var lastDefaultLauncherPackage: String? = null
@@ -273,6 +289,8 @@ class MainActivity : ComponentActivity() {
             val isWeatherWidgetEnabled by themeManager.isWeatherWidgetEnabled.collectAsState(initial = true)
             val isClockWidgetEnabled by themeManager.isClockWidgetEnabled.collectAsState(initial = true)
             val isCalendarWidgetEnabled by themeManager.isCalendarWidgetEnabled.collectAsState(initial = true)
+            val isDynamicIslandEnabled by themeManager.isDynamicIslandEnabled.collectAsState(initial = true)
+            val dynamicIslandOffset by themeManager.dynamicIslandOffset.collectAsState(initial = 0f)
             val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
             // Erststart-Onboarding: Default true vermeidet Aufblitzen für Bestandsnutzer,
             // bis der echte Wert aus DataStore geladen ist.
@@ -1166,6 +1184,83 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // Dynamic Island: ereignisgesteuerte Pille an der Kamera. Nur auf dem
+                    // Home-Screen (nicht im Drawer) und wenn per Einstellung aktiviert.
+                    // Im Leerlauf zeichnet die Composable selbst nichts – außer im Layout-Edit-Modus,
+                    // wo eine ziehbare Platzhalter-Pille zum vertikalen Feinjustieren erscheint.
+                    if (isDynamicIslandEnabled && !isDrawerOpen) {
+                        val islandState by dynamicIslandManager.state.collectAsState()
+                        val islandExpanded by dynamicIslandManager.expandedContent.collectAsState()
+                        DynamicIsland(
+                            state = islandState,
+                            onTap = { content -> dynamicIslandManager.expand(content) },
+                            loadIcon = { pkg -> appRepository.loadIcon(pkg) },
+                            verticalOffsetDp = dynamicIslandOffset,
+                            editMode = isHomeEditMode,
+                            onSwipeNext = { dynamicIslandManager.selectNext() },
+                            onSwipePrevious = { dynamicIslandManager.selectPrevious() },
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                        // Höhen-Steuerung im Layout-Editor: unter der Statusleiste, damit die
+                        // Taps ankommen (in der Statusleiste würde das System sie abfangen).
+                        if (isHomeEditMode) {
+                            IslandEditControls(
+                                onNudge = { deltaDp ->
+                                    val next = (dynamicIslandOffset + deltaDp)
+                                        .coerceIn(DYNAMIC_ISLAND_MIN_OFFSET_DP, DYNAMIC_ISLAND_MAX_OFFSET_DP)
+                                    scope.launch { themeManager.setDynamicIslandOffset(next) }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .statusBarsPadding()
+                                    .padding(top = 8.dp)
+                                    .zIndex(7000f)
+                            )
+                        }
+                        islandExpanded?.let { expandedContent ->
+                            // Medien-Karte muss live sein (Play/Pause-Icon aktualisiert sich): bei
+                            // Media den aktuellen Zustand nehmen, sonst die eingefrorene Kopie.
+                            val liveMedia = islandState.all
+                                .firstOrNull { it is IslandContent.Media } as? IslandContent.Media
+                            val cardContent =
+                                if (expandedContent is IslandContent.Media) {
+                                    liveMedia ?: expandedContent
+                                } else {
+                                    expandedContent
+                                }
+                            Box(modifier = Modifier.fillMaxSize().zIndex(7000f)) {
+                                IslandExpandedCard(
+                                    content = cardContent,
+                                    allContents = islandState.all,
+                                    onSwitch = { c ->
+                                        dynamicIslandManager.selectActivity(c)
+                                        dynamicIslandManager.expand(c)
+                                    },
+                                    onAction = { action ->
+                                        sendPendingIntent(action.intent)
+                                        dynamicIslandManager.dismissExpanded()
+                                    },
+                                    onOpen = { content ->
+                                        val intent = when (content) {
+                                            is IslandContent.Notification -> content.contentIntent
+                                            is IslandContent.Timer -> content.contentIntent
+                                            else -> null
+                                        }
+                                        // Bei Medien Karte offen lassen (nur Buttons/Scrim agieren).
+                                        if (content !is IslandContent.Media) {
+                                            sendPendingIntent(intent)
+                                            dynamicIslandManager.dismissExpanded()
+                                        }
+                                    },
+                                    onDismiss = { dynamicIslandManager.dismissExpanded() },
+                                    onMediaPlayPause = { dynamicIslandManager.mediaPlayPause() },
+                                    onMediaNext = { dynamicIslandManager.mediaNext() },
+                                    onMediaPrev = { dynamicIslandManager.mediaPrevious() }
+                                )
+                            }
+                        }
+                    }
+
                     MenuOverlay(
                         visible = isFavoritesConfigOpen,
                         customWallpaperUri = customWallpaperUri,
@@ -1382,6 +1477,10 @@ class MainActivity : ComponentActivity() {
                             isCalendarWidgetEnabled = isCalendarWidgetEnabled,
                             onCalendarWidgetToggled = { enabled ->
                                 scope.launch { themeManager.setCalendarWidgetEnabled(enabled) }
+                            },
+                            isDynamicIslandEnabled = isDynamicIslandEnabled,
+                            onDynamicIslandToggled = { enabled ->
+                                scope.launch { themeManager.setDynamicIslandEnabled(enabled) }
                             },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->

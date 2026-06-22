@@ -3,6 +3,7 @@ package com.example.androidlauncher.di
 import android.content.Context
 import com.example.androidlauncher.LauncherShakeManager
 import com.example.androidlauncher.data.AppRepository
+import com.example.androidlauncher.data.DynamicIslandManager
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.IconManager
@@ -61,4 +62,9 @@ object DataModule {
     @Singleton
     fun provideLauncherShakeManager(@ApplicationContext context: Context): LauncherShakeManager =
         LauncherShakeManager(context)
+
+    @Provides
+    @Singleton
+    fun provideDynamicIslandManager(@ApplicationContext context: Context): DynamicIslandManager =
+        DynamicIslandManager(context)
 }
