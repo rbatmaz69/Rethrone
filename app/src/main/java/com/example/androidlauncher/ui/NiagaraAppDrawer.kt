@@ -113,7 +113,7 @@ fun NiagaraAppDrawer(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
-    val appDrawerVm: AppDrawerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val appDrawerVm: AppDrawerViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     val customIcons by appDrawerVm.customIcons.collectAsState()
     val searchQuery by appDrawerVm.searchQuery.collectAsState()
     val visibleApps by appDrawerVm.visibleApps.collectAsState()

@@ -632,4 +632,173 @@ class LauncherLogicTest {
         )
         assertEquals(rule, result.single().autoIconRule)
     }
+
+    @Test
+    fun `normalizeInstalledApps sorts case-insensitively by label`() {
+        val raw = listOf(
+            AppInfo("zebra", "com.z"),
+            AppInfo("Apple", "com.a"),
+            AppInfo("banana", "com.b"),
+        )
+        val result = LauncherLogic.normalizeInstalledApps(raw, ownPackage = "com.me", isOwnDefaultLauncher = false)
+        assertEquals(listOf("com.a", "com.b", "com.z"), result.map { it.packageName })
+    }
+
+    @Test
+    fun `normalizeInstalledApps deduplicates by package keeping first occurrence`() {
+        val raw = listOf(
+            AppInfo("App A", "com.app.a"),
+            AppInfo("App A Alias", "com.app.a"),
+            AppInfo("App B", "com.app.b"),
+        )
+        val result = LauncherLogic.normalizeInstalledApps(raw, ownPackage = "com.me", isOwnDefaultLauncher = false)
+        assertEquals(2, result.size)
+        assertEquals("App A", result.first { it.packageName == "com.app.a" }.label)
+    }
+
+    @Test
+    fun `normalizeInstalledApps hides own package only when it is the default launcher`() {
+        val raw = listOf(
+            AppInfo("Rethrone", "com.me"),
+            AppInfo("Other", "com.other"),
+        )
+        val whenDefault = LauncherLogic.normalizeInstalledApps(
+            raw,
+            ownPackage = "com.me",
+            isOwnDefaultLauncher = true,
+        )
+        assertEquals(listOf("com.other"), whenDefault.map { it.packageName })
+
+        val whenNotDefault = LauncherLogic.normalizeInstalledApps(
+            raw,
+            ownPackage = "com.me",
+            isOwnDefaultLauncher = false,
+        )
+        assertEquals(setOf("com.me", "com.other"), whenNotDefault.map { it.packageName }.toSet())
+    }
+
+    @Test
+    fun `evaluateDefaultLauncherWarning does not warn when Rethrone is the launcher`() {
+        val decision = LauncherLogic.evaluateDefaultLauncherWarning(
+            resolvedPackage = "com.me",
+            ownPackage = "com.me",
+            warningAlreadyShown = true,
+            lastPackage = "com.other",
+        )
+        assertFalse(decision.showWarning)
+        assertFalse(decision.warningShown)
+        assertEquals("com.me", decision.lastPackage)
+    }
+
+    @Test
+    fun `evaluateDefaultLauncherWarning warns first time a foreign launcher is default`() {
+        val decision = LauncherLogic.evaluateDefaultLauncherWarning(
+            resolvedPackage = "com.other",
+            ownPackage = "com.me",
+            warningAlreadyShown = false,
+            lastPackage = null,
+        )
+        assertTrue(decision.showWarning)
+        assertTrue(decision.warningShown)
+        assertEquals("com.other", decision.lastPackage)
+    }
+
+    @Test
+    fun `evaluateDefaultLauncherWarning does not repeat warning for the same foreign launcher`() {
+        val decision = LauncherLogic.evaluateDefaultLauncherWarning(
+            resolvedPackage = "com.other",
+            ownPackage = "com.me",
+            warningAlreadyShown = true,
+            lastPackage = "com.other",
+        )
+        assertFalse(decision.showWarning)
+        assertTrue(decision.warningShown)
+    }
+
+    @Test
+    fun `evaluateDefaultLauncherWarning warns again when the foreign launcher changes`() {
+        val decision = LauncherLogic.evaluateDefaultLauncherWarning(
+            resolvedPackage = "com.new",
+            ownPackage = "com.me",
+            warningAlreadyShown = true,
+            lastPackage = "com.other",
+        )
+        assertTrue(decision.showWarning)
+        assertEquals("com.new", decision.lastPackage)
+    }
+
+    @Test
+    fun `firstLaunchablePackage returns the first candidate in priority order`() {
+        val installed = setOf("com.google.android.deskclock", "com.android.clock")
+        val result = LauncherLogic.firstLaunchablePackage(LauncherLogic.KNOWN_CLOCK_PACKAGES) {
+            it in installed
+        }
+        assertEquals("com.google.android.deskclock", result)
+    }
+
+    @Test
+    fun `firstLaunchablePackage returns null when no candidate is launchable`() {
+        val result = LauncherLogic.firstLaunchablePackage(LauncherLogic.KNOWN_CLOCK_PACKAGES) { false }
+        assertNull(result)
+    }
+
+    @Test
+    fun `firstLaunchablePackage treats predicate exceptions as not launchable`() {
+        val result = LauncherLogic.firstLaunchablePackage(listOf("a", "b")) { pkg ->
+            if (pkg == "a") error("boom") else true
+        }
+        assertEquals("b", result)
+    }
+
+    // Test-Encoder: macht Encoding sichtbar, ohne android.net.Uri zu brauchen.
+    private val testEncoder: (String) -> String = { it.replace(" ", "+") }
+
+    @Test
+    fun `resolveSearchUrl returns null for blank input`() {
+        assertNull(LauncherLogic.resolveSearchUrl("   ", testEncoder))
+    }
+
+    @Test
+    fun `resolveSearchUrl keeps an explicit http url as-is`() {
+        assertEquals(
+            "http://example.com/path",
+            LauncherLogic.resolveSearchUrl("http://example.com/path", testEncoder),
+        )
+    }
+
+    @Test
+    fun `resolveSearchUrl prepends https for a bare domain`() {
+        assertEquals(
+            "https://example.com",
+            LauncherLogic.resolveSearchUrl("example.com", testEncoder),
+        )
+    }
+
+    @Test
+    fun `resolveSearchUrl builds a google search for a plain term`() {
+        assertEquals(
+            "https://www.google.com/search?q=hello+world",
+            LauncherLogic.resolveSearchUrl("hello world", testEncoder),
+        )
+    }
+
+    @Test
+    fun `highlightRange finds a case-insensitive match`() {
+        assertEquals(6 to 11, LauncherLogic.highlightRange("Hello World", "world"))
+    }
+
+    @Test
+    fun `highlightRange returns null when there is no match`() {
+        assertNull(LauncherLogic.highlightRange("Hello", "xyz"))
+    }
+
+    @Test
+    fun `highlightRange returns null for a blank query`() {
+        assertNull(LauncherLogic.highlightRange("Hello", "   "))
+    }
+
+    @Test
+    fun `highlightRange matches at the start`() {
+        assertEquals(0 to 3, LauncherLogic.highlightRange("Settings", "set"))
+    }
 }

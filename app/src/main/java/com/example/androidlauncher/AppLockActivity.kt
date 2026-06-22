@@ -27,7 +27,11 @@ import androidx.compose.ui.graphics.asImageBitmap
  * Authentifizierung (PIN/Muster/Biometrie) verlangt. Wird vom [LauncherAccessibilityService]
  * gestartet, sobald ein gesperrtes Paket in den Vordergrund kommt.
  */
+@dagger.hilt.android.AndroidEntryPoint
 class AppLockActivity : FragmentActivity() {
+
+    @javax.inject.Inject
+    lateinit var themeManager: ThemeManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,7 +59,7 @@ class AppLockActivity : FragmentActivity() {
             }
         })
 
-        val themeManager = ThemeManager(applicationContext)
+        // themeManager wird von Hilt injiziert (siehe Feld oben).
         val pm = packageManager
         val appLabel = runCatching {
             pm.getApplicationLabel(pm.getApplicationInfo(targetPackage, 0)).toString()

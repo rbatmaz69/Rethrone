@@ -17,6 +17,9 @@ kover = "0.9.8"
 ucrop = "2.2.8"
 biometric = "1.1.0"
 turbine = "1.1.0"
+hilt = "2.57.1"
+ksp = "2.2.10-2.0.2"
+hiltNavigationCompose = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +47,10 @@ detekt-formatting = { group = "io.gitlab.arturbosch.detekt", name = "detekt-form
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 ucrop = { group = "com.github.yalantis", name = "ucrop", version.ref = "ucrop" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
 [plugins]
 androidApp = { id = "com.android.application", version.ref = "agp" }
@@ -51,3 +58,5 @@ kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

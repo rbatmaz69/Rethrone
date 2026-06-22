@@ -514,13 +514,11 @@ private fun createCompactLaunchBounds(
 
 private fun buildWebSearchIntent(context: android.content.Context, query: String): Intent? {
     val trimmedQuery = query.trim()
-    if (trimmedQuery.isEmpty()) return null
-
-    val finalUrl = if (trimmedQuery.startsWith("http") || trimmedQuery.contains(".")) {
-        if (!trimmedQuery.startsWith("http")) "https://$trimmedQuery" else trimmedQuery
-    } else {
-        "https://www.google.com/search?q=${Uri.encode(trimmedQuery)}"
-    }
+    // URL-vs-Suche-Entscheidung liegt framework-frei in LauncherLogic (unit-getestet);
+    // der Uri.encode-Encoder wird hier injiziert.
+    val finalUrl = com.example.androidlauncher.LauncherLogic.resolveSearchUrl(query) {
+        Uri.encode(it)
+    } ?: return null
 
     val browserIntent = Intent(Intent.ACTION_VIEW, finalUrl.toUri()).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -809,15 +807,9 @@ private fun buildHighlightedText(
     append(text)
     addStyle(SpanStyle(fontWeight = baseWeight), 0, text.length)
 
-    val trimmedQuery = query.trim()
-    if (trimmedQuery.isEmpty()) return@buildAnnotatedString
+    // Treffer-Range-Berechnung liegt framework-frei in LauncherLogic (unit-getestet).
+    val (start, end) = com.example.androidlauncher.LauncherLogic.highlightRange(text, query)
+        ?: return@buildAnnotatedString
 
-    val matchStart = text.indexOf(trimmedQuery, ignoreCase = true)
-    if (matchStart < 0) return@buildAnnotatedString
-
-    addStyle(
-        SpanStyle(fontWeight = highlightWeight),
-        start = matchStart,
-        end = (matchStart + trimmedQuery.length).coerceAtMost(text.length)
-    )
+    addStyle(SpanStyle(fontWeight = highlightWeight), start = start, end = end)
 }

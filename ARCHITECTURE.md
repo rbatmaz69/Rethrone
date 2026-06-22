@@ -48,8 +48,10 @@ com.example.androidlauncher
 
 **Datenschicht (`data/`).** Repositories und Manager kapseln Persistenz (DataStore /
 SharedPreferences) und Plattform-APIs. Zustand wird reaktiv als `Flow`/`StateFlow`
-herausgegeben. Diese Klassen werden aktuell **manuell** instanziiert (kein DI-Framework) –
-in der Regel einmalig in `MainActivity` via `remember { Manager(context) }`.
+herausgegeben. Diese Klassen werden per **Hilt** als prozessweite Singletons bereitgestellt
+(`di/DataModule`) und in Activities/ViewModels injiziert. Die Manager besitzen weiterhin einen
+`constructor(context)` **und** einen DataStore-Konstruktor – Letzterer dient Unit-Tests, die
+einen Fake-DataStore einspeisen.
 
 **Geschäftslogik (`LauncherLogic`, `gesture/`).** Reine, framework-freie Logik gehört nach
 `LauncherLogic` (ein zustandsloses `object`) oder in eine eigene Klasse mit injizierten
@@ -90,10 +92,14 @@ sondern an `LauncherLogic`/einen Handler/ein ViewModel delegiert.
   gemockt (z. B. `LauncherDeviceActions`, `PackageManager`) oder hinter Callbacks abstrahiert
   (z. B. `GestureActionEffects`).
 - **Instrumentierte Tests** (`app/src/androidTest`, Compose-UI-Test/Espresso) decken
-  ausgewählte UI-Flows ab.
+  ausgewählte UI-Flows ab und laufen in CI im **Emulator-Job** (`connectedDebugAndroidTest`,
+  vorerst `continue-on-error`).
 - **Coverage** misst Kover; ein Gate (`koverVerifyDebug`) verhindert Regression unter die
-  konfigurierte Mindest-Zeilenabdeckung. UI-/Theme-Boilerplate ist aus der Messung
-  ausgenommen (siehe `app/build.gradle.kts`).
+  konfigurierte Mindest-Zeilenabdeckung. UI-/Theme-/DI-Boilerplate ist aus der Messung
+  ausgenommen (siehe `app/build.gradle.kts`). Ergänzend prüft ein **Diff-Coverage-Gate**
+  (`.github/scripts/diff_coverage.py`, nur in PRs), dass *geänderte* Zeilen getestet sind.
+- **Test-Reports** erscheinen als PR-Annotationen (dorny/test-reporter) und werden als
+  CI-Artefakt hochgeladen.
 - **Statische Analyse** via Detekt inkl. ktlint-Formatierung (`config/detekt/detekt.yml`).
   Bestehende Alt-Verstöße sind in `config/detekt/baseline.xml` eingefroren – **neuer Code
   muss die Regeln erfüllen.** Lokal autoformatieren: `./gradlew detekt --auto-correct`.
@@ -111,10 +117,16 @@ sondern an `LauncherLogic`/einen Handler/ein ViewModel delegiert.
 
 ## Bekannte Schulden / nächste Schritte
 
-- `MainActivity` (~1900 Zeilen) weiter entflechten: Logik schrittweise in ViewModels/Handler
-  ziehen.
-- Kein DI-Framework: Manager werden manuell instanziiert. Hilt/Koin wäre der nächste Schritt
-  für bessere Testbarkeit und klare Lebenszyklen.
+- `MainActivity` (~1900 Zeilen) weiter entflechten: Logik schrittweise in `LauncherLogic`/Handler
+  ziehen. Begonnen – z. B. ist die Default-Launcher-Warn-Entscheidung jetzt als reine,
+  unit-getestete `LauncherLogic.evaluateDefaultLauncherWarning` ausgelagert (nur der Toast bleibt
+  in der Activity). Mit Hilt steht die Verdrahtung für ViewModel-Auslagerungen bereit.
+- ~~Kein DI-Framework~~ **Erledigt:** Hilt ist eingeführt (`di/DataModule`, `@HiltViewModel`,
+  `@AndroidEntryPoint`). Datenschicht-Singletons werden injiziert statt `remember { Manager(context) }`.
+- Plattform-nahe Aufbereitungslogik nach `LauncherLogic` ziehen, damit sie ohne Mocking testbar ist
+  (Vorbild: `AppRepository.getInstalledApps` delegiert Dedup/Filter/Sort an
+  `LauncherLogic.normalizeInstalledApps`). Verbleibende Framework-Bindung (`PackageManager`,
+  Datei-Cache) kann bei Bedarf zusätzlich hinter ein Interface gelegt werden.
 - Keine `domain/`-Use-Case-Schicht; reine Logik liegt aktuell in `LauncherLogic`.
 - Große `*ConfigMenu.kt`/`HomeScreen.kt`-Composables könnten in kleinere Komponenten zerlegt
   werden.

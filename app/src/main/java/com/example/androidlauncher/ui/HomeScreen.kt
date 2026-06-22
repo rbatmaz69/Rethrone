@@ -220,43 +220,11 @@ fun HomeScreen(
     var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
     var shortcutMenuBounds by remember { mutableStateOf<Rect?>(null) }
 
-    fun translateRect(rect: Rect, x: Float, y: Float): Rect {
-        return Rect(
-            left = rect.left + x,
-            top = rect.top + y,
-            right = rect.right + x,
-            bottom = rect.bottom + y
-        )
-    }
+    // translateRect/expandRect/intersects liegen jetzt framework-frei in HomeGeometry.kt
+    // (unit-getestet); die Aufrufe loesen auf die Top-Level-Funktionen auf.
 
-    fun expandRect(rect: Rect, padding: Float): Rect {
-        return Rect(
-            left = rect.left - padding,
-            top = rect.top - padding,
-            right = rect.right + padding,
-            bottom = rect.bottom + padding
-        )
-    }
-
-    fun intersects(first: Rect, second: Rect): Boolean {
-        return first.left < second.right &&
-            first.right > second.left &&
-            first.top < second.bottom &&
-            first.bottom > second.top
-    }
-
-    fun rectContains(rect: Rect, point: Offset): Boolean {
-        return point.x >= rect.left &&
-            point.x <= rect.right &&
-            point.y >= rect.top &&
-            point.y <= rect.bottom
-    }
-
-    fun intersectionArea(first: Rect, second: Rect): Float {
-        val width = minOf(first.right, second.right) - maxOf(first.left, second.left)
-        val height = minOf(first.bottom, second.bottom) - maxOf(first.top, second.top)
-        return if (width > 0f && height > 0f) width * height else 0f
-    }
+    // rectContains(...) und intersectionArea(...) liegen jetzt framework-frei in HomeGeometry.kt
+    // (unit-getestet); die Aufrufe unten loesen auf die Top-Level-Funktionen auf.
 
     // Sammel-Padding je Element: Favoriten behalten ihren Rahmenabstand, Text-Elemente
     // (Uhr/Datum/Wetter) liegen im Neutralzustand bündig gestapelt → kein Inter-Padding.
@@ -274,28 +242,22 @@ fun HomeScreen(
 
     fun clampOffset(target: HomeEditTarget, x: Float, y: Float): Offset {
         val bounds = neutralBounds[target] ?: return Offset(x, y)
-        if (rootSize.width <= 0 || rootSize.height <= 0) return Offset(x, y)
-
-        val minX = -bounds.left
-        val maxX = rootSize.width.toFloat() - bounds.right
         val topLimit = if (target == HomeEditTarget.CLOCK) clockTopLimitPx else 0f
-        val minY = -bounds.top + topLimit
-        val maxY = (rootSize.height.toFloat() - bounds.bottom - navigationBarHeightPx).coerceAtLeast(minY)
-
-        return Offset(x.coerceIn(minX, maxX), y.coerceIn(minY, maxY))
-    }
-
-    fun getNavigationBarForbiddenZone(): Rect {
-        if (rootSize.width <= 0 || rootSize.height <= 0) {
-            return Rect(0f, 0f, 0f, 0f)
-        }
-        return Rect(
-            left = 0f,
-            top = rootSize.height.toFloat() - navigationBarHeightPx,
-            right = rootSize.width.toFloat(),
-            bottom = rootSize.height.toFloat()
+        // Reine Clamping-Mathematik liegt in HomeGeometry.kt (unit-getestet); die
+        // target->bounds/topLimit-Aufloesung bleibt hier (haengt am neutralBounds-State).
+        return clampOffsetToBounds(
+            bounds = bounds,
+            rootWidth = rootSize.width,
+            rootHeight = rootSize.height,
+            topLimit = topLimit,
+            navigationBarHeightPx = navigationBarHeightPx,
+            x = x,
+            y = y,
         )
     }
+
+    fun getNavigationBarForbiddenZone(): Rect =
+        navigationBarForbiddenZone(rootSize.width, rootSize.height, navigationBarHeightPx)
 
     val bottomControlsForbiddenZones by remember(
         searchButtonBounds,
@@ -1527,29 +1489,10 @@ private fun launchClockApp(
     onPackageFound: (String) -> Unit
 ) {
     val pm = context.packageManager
-    var foundPkg: String? = null
-    val clockPackages = listOf(
-        "cn.nubia.deskclock.preset",
-        "cn.nubia.deskclock",
-        "cn.nubia.clock",
-        "com.android.deskclock",
-        "com.google.android.deskclock",
-        "com.sec.android.app.clockpackage",
-        "com.huawei.android.clock",
-        "com.miui.clock",
-        "com.zte.deskclock",
-        "com.android.clock"
-    )
-
-    for (pkg in clockPackages) {
-        try {
-            if (pm.getLaunchIntentForPackage(pkg) != null) {
-                foundPkg = pkg
-                break
-            }
-        } catch (_: Exception) {
-        }
-    }
+    // Bekannte Uhr-Pakete + Auswahl liegen framework-frei in LauncherLogic (unit-getestet).
+    var foundPkg: String? = com.example.androidlauncher.LauncherLogic.firstLaunchablePackage(
+        com.example.androidlauncher.LauncherLogic.KNOWN_CLOCK_PACKAGES
+    ) { pkg -> pm.getLaunchIntentForPackage(pkg) != null }
 
     if (foundPkg == null) {
         try {

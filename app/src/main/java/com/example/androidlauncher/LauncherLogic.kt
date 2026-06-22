@@ -366,4 +366,120 @@ object LauncherLogic {
             )
         }
     }
+
+    /**
+     * Dedupliziert, filtert und sortiert die rohen Launcher-Eintraege zur finalen App-Liste.
+     *
+     * Reine Datentransformation ohne Framework-Bezug – damit ohne PackageManager-Mocking
+     * unit-testbar. [com.example.androidlauncher.data.AppRepository.getInstalledApps] uebernimmt
+     * nur noch die plattformnahe Abfrage und delegiert die Aufbereitung hierher.
+     *
+     * @param ownPackage Paketname von Rethrone selbst.
+     * @param isOwnDefaultLauncher true, wenn Rethrone aktueller Standard-Launcher ist – dann wird
+     *   der eigene Eintrag ausgeblendet (sonst bleibt Rethrone startbar in der Liste).
+     */
+    fun normalizeInstalledApps(
+        rawApps: List<AppInfo>,
+        ownPackage: String,
+        isOwnDefaultLauncher: Boolean,
+    ): List<AppInfo> =
+        rawApps
+            .distinctBy { it.packageName }
+            .filterNot { isOwnDefaultLauncher && it.packageName == ownPackage }
+            .sortedBy { it.label.lowercase() }
+
+    /** Ergebnis von [evaluateDefaultLauncherWarning]: ob gewarnt wird + der neue Zustand. */
+    data class DefaultLauncherWarningDecision(
+        val showWarning: Boolean,
+        val warningShown: Boolean,
+        val lastPackage: String?,
+    )
+
+    /**
+     * Entscheidet, ob die "Rethrone ist nicht Standard-Launcher"-Warnung gezeigt werden soll, und
+     * berechnet den Folgezustand. Reine Logik – der eigentliche Toast bleibt in der Activity.
+     *
+     * Regeln: Ist Rethrone selbst der aufgeloeste Home-Launcher, wird nicht gewarnt und der
+     * Warn-Merker zurueckgesetzt. Andernfalls wird gewarnt, solange nicht bereits fuer genau
+     * dieses Paket gewarnt wurde (verhindert wiederholte Toasts beim selben Fremd-Launcher).
+     */
+    fun evaluateDefaultLauncherWarning(
+        resolvedPackage: String,
+        ownPackage: String,
+        warningAlreadyShown: Boolean,
+        lastPackage: String?,
+    ): DefaultLauncherWarningDecision {
+        if (resolvedPackage == ownPackage) {
+            return DefaultLauncherWarningDecision(
+                showWarning = false,
+                warningShown = false,
+                lastPackage = resolvedPackage,
+            )
+        }
+        val show = !warningAlreadyShown || lastPackage != resolvedPackage
+        return DefaultLauncherWarningDecision(
+            showWarning = show,
+            warningShown = if (show) true else warningAlreadyShown,
+            lastPackage = resolvedPackage,
+        )
+    }
+
+    /**
+     * Bekannte Uhr-App-Pakete in Prioritaetsreihenfolge (vendor-spezifische Varianten zuerst,
+     * dann generische AOSP-/Google-Pakete). Wird beim Tap auf die Uhr durchprobiert.
+     */
+    val KNOWN_CLOCK_PACKAGES: List<String> = listOf(
+        "cn.nubia.deskclock.preset",
+        "cn.nubia.deskclock",
+        "cn.nubia.clock",
+        "com.android.deskclock",
+        "com.google.android.deskclock",
+        "com.sec.android.app.clockpackage",
+        "com.huawei.android.clock",
+        "com.miui.clock",
+        "com.zte.deskclock",
+        "com.android.clock",
+    )
+
+    /**
+     * Liefert das erste Paket aus [candidates], fuer das [isLaunchable] true ergibt, sonst null.
+     * Exceptions je Kandidat werden als "nicht startbar" gewertet (defensiv gegenueber
+     * PackageManager-Fehlern). Framework-frei und damit unit-testbar.
+     */
+    fun firstLaunchablePackage(
+        candidates: List<String>,
+        isLaunchable: (String) -> Boolean,
+    ): String? = candidates.firstOrNull { runCatching { isLaunchable(it) }.getOrDefault(false) }
+
+    /**
+     * Loest eine Sucheingabe in eine Ziel-URL auf: Sieht die Eingabe wie eine Adresse aus
+     * (beginnt mit "http" oder enthaelt einen Punkt), wird sie direkt geoeffnet (ggf. mit
+     * vorangestelltem "https://"); andernfalls wird eine Google-Suche gebaut. Liefert null bei
+     * leerer Eingabe.
+     *
+     * Der URL-Encoder wird injiziert ([encodeQuery]), damit die Logik framework-frei (ohne
+     * `android.net.Uri`) unit-testbar bleibt.
+     */
+    fun resolveSearchUrl(query: String, encodeQuery: (String) -> String): String? {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return null
+        return if (trimmed.startsWith("http") || trimmed.contains(".")) {
+            if (!trimmed.startsWith("http")) "https://$trimmed" else trimmed
+        } else {
+            "https://www.google.com/search?q=${encodeQuery(trimmed)}"
+        }
+    }
+
+    /**
+     * Position des ersten case-insensitiven Treffers von [query] in [text] als Paar
+     * (Start, End-exklusiv) zur Hervorhebung in Suchvorschlaegen; null bei leerer Eingabe oder
+     * wenn kein Treffer existiert. Das End ist auf die Textlaenge begrenzt.
+     */
+    fun highlightRange(text: String, query: String): Pair<Int, Int>? {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return null
+        val start = text.indexOf(trimmed, ignoreCase = true)
+        if (start < 0) return null
+        return start to (start + trimmed.length).coerceAtMost(text.length)
+    }
 }
