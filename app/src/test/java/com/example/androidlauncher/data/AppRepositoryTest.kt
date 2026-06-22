@@ -25,6 +25,8 @@ class AppRepositoryTest {
         every { context.filesDir } returns dummyFile
 
         every { context.packageManager } returns packageManager
+        // Eigener Paketname wird nun (eager) an LauncherLogic.normalizeInstalledApps gereicht.
+        every { context.packageName } returns "com.rethrone.launcher"
 
         val intentB = mockk<Intent>()
         every { packageManager.getLaunchIntentForPackage("com.app.b") } returns intentB

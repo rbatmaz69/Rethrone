@@ -190,7 +190,7 @@ kover {
         verify {
             rule("Mindest-Zeilenabdeckung") {
                 bound {
-                    minValue = 20
+                    minValue = 21
                     coverageUnits = CoverageUnit.LINE
                 }
             }

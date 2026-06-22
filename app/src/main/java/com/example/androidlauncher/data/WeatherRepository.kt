@@ -39,6 +39,12 @@ data class WeatherData(
 )
 
 /**
+ * Wetter-Grundkategorie, abgeleitet aus dem WMO-Code (Open-Meteo). Entkoppelt die rein
+ * datengetriebene Code-Klassifikation (unit-testbar) von der konkreten Icon-Wahl.
+ */
+enum class WeatherCondition { CLEAR, PARTLY_CLOUDY, CLOUDY, FOG, DRIZZLE, RAIN, SNOW, THUNDERSTORM }
+
+/**
  * Lädt das aktuelle Wetter über Open-Meteo (kostenlos, ohne API-Key) und ermittelt
  * den groben Gerätestandort über den [LocationManager] (ohne Google Play Services).
  *
@@ -163,10 +169,8 @@ class WeatherRepository(private val context: Context) {
             if (connection.responseCode != HttpURLConnection.HTTP_OK) return@withContext null
 
             val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val current = JSONObject(body).optJSONObject("current") ?: return@withContext null
-            val temp = current.getDouble("temperature_2m").roundToInt()
-            val code = current.getInt("weather_code")
-            WeatherData(temperatureC = temp, weatherCode = code).also { updateCache(it) }
+            // Parsing liegt framework-frei in parseCurrentWeather (unit-getestet).
+            parseCurrentWeather(body)?.also { updateCache(it) }
         } catch (e: Exception) {
             null
         } finally {
@@ -194,18 +198,50 @@ class WeatherRepository(private val context: Context) {
         }
 
         /**
+         * Klassifiziert einen WMO-Wettercode (Open-Meteo) in eine [WeatherCondition].
+         * Reine Logik – ohne Framework unit-testbar.
+         */
+        fun weatherConditionFor(code: Int): WeatherCondition = when (code) {
+            0 -> WeatherCondition.CLEAR
+            1, 2 -> WeatherCondition.PARTLY_CLOUDY
+            3 -> WeatherCondition.CLOUDY
+            45, 48 -> WeatherCondition.FOG
+            in 51..57 -> WeatherCondition.DRIZZLE
+            in 61..67, in 80..82 -> WeatherCondition.RAIN
+            in 71..77, 85, 86 -> WeatherCondition.SNOW
+            in 95..99 -> WeatherCondition.THUNDERSTORM
+            else -> WeatherCondition.CLOUDY
+        }
+
+        /**
          * Bildet einen WMO-Wettercode (Open-Meteo) auf ein passendes Lucide-Icon ab.
          */
-        fun iconFor(code: Int): ImageVector = when (code) {
-            0 -> Lucide.Sun
-            1, 2 -> Lucide.CloudSun
-            3 -> Lucide.Cloud
-            45, 48 -> Lucide.CloudFog
-            in 51..57 -> Lucide.CloudDrizzle
-            in 61..67, in 80..82 -> Lucide.CloudRain
-            in 71..77, 85, 86 -> Lucide.CloudSnow
-            in 95..99 -> Lucide.CloudLightning
-            else -> Lucide.Cloud
+        fun iconFor(code: Int): ImageVector = when (weatherConditionFor(code)) {
+            WeatherCondition.CLEAR -> Lucide.Sun
+            WeatherCondition.PARTLY_CLOUDY -> Lucide.CloudSun
+            WeatherCondition.CLOUDY -> Lucide.Cloud
+            WeatherCondition.FOG -> Lucide.CloudFog
+            WeatherCondition.DRIZZLE -> Lucide.CloudDrizzle
+            WeatherCondition.RAIN -> Lucide.CloudRain
+            WeatherCondition.SNOW -> Lucide.CloudSnow
+            WeatherCondition.THUNDERSTORM -> Lucide.CloudLightning
+        }
+
+        /**
+         * Parst die Open-Meteo-Antwort (ein `current`-Objekt mit `temperature_2m` und
+         * `weather_code`) zu [WeatherData]. Liefert null bei fehlendem `current`-Objekt oder
+         * ungueltigem JSON. Reine Logik – ohne Netzwerk unit-testbar.
+         */
+        fun parseCurrentWeather(body: String): WeatherData? {
+            return try {
+                val current = JSONObject(body).optJSONObject("current") ?: return null
+                WeatherData(
+                    temperatureC = current.getDouble("temperature_2m").roundToInt(),
+                    weatherCode = current.getInt("weather_code"),
+                )
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 }

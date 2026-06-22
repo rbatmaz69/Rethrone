@@ -79,8 +79,7 @@ class AppRepository(private val context: Context) {
         // Rethrone selbst nur ausblenden, wenn es der aktive Standard-Launcher ist.
         // (Ist Rethrone nicht Standard, bleibt es startbar in der Liste.)
         // Zum Deinstallieren wird die eigene App separat im UninstallAppsMenu eingeblendet.
-        val isOwnDefaultLauncher = isDefaultLauncher()
-        pm.queryIntentActivities(intent, 0)
+        val rawApps = pm.queryIntentActivities(intent, 0)
             .map { resolveInfo ->
                 val packageName = resolveInfo.activityInfo.packageName
                 AppInfo(
@@ -89,9 +88,13 @@ class AppRepository(private val context: Context) {
                     launchIntent = pm.getLaunchIntentForPackage(packageName)
                 )
             }
-            .distinctBy { it.packageName }
-            .filterNot { isOwnDefaultLauncher && it.packageName == context.packageName }
-            .sortedBy { it.label.lowercase() }
+        // Aufbereitung (dedup/filter/sort) liegt framework-frei in LauncherLogic und ist dort
+        // ohne PackageManager-Mocking getestet.
+        com.example.androidlauncher.LauncherLogic.normalizeInstalledApps(
+            rawApps = rawApps,
+            ownPackage = context.packageName,
+            isOwnDefaultLauncher = isDefaultLauncher(),
+        )
     }
 
     /**

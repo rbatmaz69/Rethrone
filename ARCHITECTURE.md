@@ -117,12 +117,16 @@ sondern an `LauncherLogic`/einen Handler/ein ViewModel delegiert.
 
 ## Bekannte Schulden / nächste Schritte
 
-- `MainActivity` (~1900 Zeilen) weiter entflechten: Logik schrittweise in ViewModels/Handler
-  ziehen. Mit Hilt steht die Verdrahtung dafür nun bereit (Konstruktor-Injection in ViewModels).
+- `MainActivity` (~1900 Zeilen) weiter entflechten: Logik schrittweise in `LauncherLogic`/Handler
+  ziehen. Begonnen – z. B. ist die Default-Launcher-Warn-Entscheidung jetzt als reine,
+  unit-getestete `LauncherLogic.evaluateDefaultLauncherWarning` ausgelagert (nur der Toast bleibt
+  in der Activity). Mit Hilt steht die Verdrahtung für ViewModel-Auslagerungen bereit.
 - ~~Kein DI-Framework~~ **Erledigt:** Hilt ist eingeführt (`di/DataModule`, `@HiltViewModel`,
   `@AndroidEntryPoint`). Datenschicht-Singletons werden injiziert statt `remember { Manager(context) }`.
-- Plattform-nahe Klassen (z. B. `AppRepository` → `PackageManager`) hinter Interfaces/Seams
-  legen, um sie ohne Emulator unit-testbar zu machen (Vorbild: `LauncherDeviceActions`).
+- Plattform-nahe Aufbereitungslogik nach `LauncherLogic` ziehen, damit sie ohne Mocking testbar ist
+  (Vorbild: `AppRepository.getInstalledApps` delegiert Dedup/Filter/Sort an
+  `LauncherLogic.normalizeInstalledApps`). Verbleibende Framework-Bindung (`PackageManager`,
+  Datei-Cache) kann bei Bedarf zusätzlich hinter ein Interface gelegt werden.
 - Keine `domain/`-Use-Case-Schicht; reine Logik liegt aktuell in `LauncherLogic`.
 - Große `*ConfigMenu.kt`/`HomeScreen.kt`-Composables könnten in kleinere Komponenten zerlegt
   werden.

@@ -1756,18 +1756,18 @@ class MainActivity : ComponentActivity() {
 
     private fun validateDefaultLauncher() {
         val resolvedPackage = resolveDefaultHomePackage() ?: return
-        if (resolvedPackage == packageName) {
-            defaultLauncherWarningShown = false
-            lastDefaultLauncherPackage = resolvedPackage
-            return
-        }
-
-        if (!defaultLauncherWarningShown || lastDefaultLauncherPackage != resolvedPackage) {
+        // Reine Entscheidung in LauncherLogic (unit-getestet); hier nur der Toast-Seiteneffekt.
+        val decision = LauncherLogic.evaluateDefaultLauncherWarning(
+            resolvedPackage = resolvedPackage,
+            ownPackage = packageName,
+            warningAlreadyShown = defaultLauncherWarningShown,
+            lastPackage = lastDefaultLauncherPackage,
+        )
+        if (decision.showWarning) {
             Toast.makeText(this, getString(R.string.default_launcher_warning), Toast.LENGTH_LONG).show()
-            defaultLauncherWarningShown = true
         }
-
-        lastDefaultLauncherPackage = resolvedPackage
+        defaultLauncherWarningShown = decision.warningShown
+        lastDefaultLauncherPackage = decision.lastPackage
     }
 
     private fun logHomeIntent(intent: Intent?) {
