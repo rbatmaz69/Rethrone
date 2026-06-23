@@ -4,12 +4,13 @@ import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
@@ -265,28 +266,49 @@ fun DynamicIsland(
                             targetState = shownContent,
                             contentKey = { it?.let(::activityId) },
                             transitionSpec = {
+                                // Reiner Crossfade (kein Scale-Pop) + EIN koordinierter Größen-Morph:
+                                // Breite/Höhe gleiten ohne Nachschwingen in einem Zug mit der
+                                // Überblendung. clip=false verhindert das Anschneiden des
+                                // einblendenden Inhalts während des Morphs.
+                                val sizeSpec = SizeTransform(clip = false) { _, _ ->
+                                    if (animationsEnabled) RethroneSprings.morph(speed) else snap()
+                                }
                                 if (animationsEnabled) {
-                                    (scaleIn(RethroneSprings.spatial(speed), initialScale = 0.85f) +
-                                        fadeIn(RethroneSprings.effects(speed))) togetherWith
-                                        (scaleOut(RethroneSprings.effects(speed), targetScale = 0.85f) +
-                                            fadeOut(RethroneSprings.effects(speed)))
+                                    ContentTransform(
+                                        targetContentEnter = fadeIn(RethroneSprings.effects(speed)),
+                                        initialContentExit = fadeOut(RethroneSprings.effects(speed)),
+                                        sizeTransform = sizeSpec
+                                    )
                                 } else {
-                                    fadeIn() togetherWith fadeOut()
+                                    ContentTransform(
+                                        targetContentEnter = fadeIn(),
+                                        initialContentExit = fadeOut(),
+                                        sizeTransform = sizeSpec
+                                    )
                                 }
                             },
                             label = "islandActivePill"
                         ) { c ->
+                            // Anker nur von der EINGEHENDEN Pille treiben: während des Übergangs
+                            // sind alte + neue gleichzeitig komponiert; würden beide melden, spränge
+                            // cameraAnchorPx zwischen den Slot-Mitten → horizontales Zittern.
+                            val isTarget = c != null && shownContent != null &&
+                                activityId(c) == activityId(shownContent)
                             IslandPill(
                                 c, cutoutWidth, loadIcon, editMode = false,
                                 balanced = others.isEmpty(),
-                                onCameraSlotPositioned = { slot ->
-                                    rowCoords?.let { r ->
-                                        if (r.isAttached && slot.isAttached) {
-                                            cameraAnchorPx = r.localPositionOf(
-                                                slot, Offset(slot.size.width / 2f, 0f)
-                                            ).x
+                                onCameraSlotPositioned = if (isTarget) {
+                                    { slot ->
+                                        rowCoords?.let { r ->
+                                            if (r.isAttached && slot.isAttached) {
+                                                cameraAnchorPx = r.localPositionOf(
+                                                    slot, Offset(slot.size.width / 2f, 0f)
+                                                ).x
+                                            }
                                         }
                                     }
+                                } else {
+                                    {}
                                 }
                             )
                         }
@@ -523,16 +545,30 @@ private fun TimerLabel(text: String) {
 
 @Composable
 private fun MediaArt(art: Bitmap?) {
-    if (art != null) {
-        Image(
-            bitmap = art.asImageBitmap(),
-            contentDescription = null,
-            modifier = Modifier
-                .size(20.dp)
-                .clip(RoundedCornerShape(5.dp))
-        )
-    } else {
-        Dot(AccentBlue)
+    // Cover-Slot konstant 20.dp halten: Beim Track-Wechsel kommt das neue Album-Bitmap
+    // asynchron (kurzzeitig null) nach. Fiele der Slot dann auf einen 8.dp-Dot zurück, schrumpfte
+    // und wüchse die Pille und spränge horizontal (Re-Center) → Flackern. Letztes Cover puffern
+    // und immer eine 20.dp-Box (Bild oder dezenter Platzhalter) zeichnen.
+    var lastArt by remember { mutableStateOf<Bitmap?>(null) }
+    if (art != null) lastArt = art
+    val shown = art ?: lastArt
+    val bmp = remember(shown) { shown?.asImageBitmap() }
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(IslandSurface),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bmp != null) {
+            Image(
+                bitmap = bmp,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+        } else {
+            Dot(AccentBlue)
+        }
     }
 }
 

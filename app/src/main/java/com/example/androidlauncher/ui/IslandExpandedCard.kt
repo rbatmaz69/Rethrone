@@ -1,11 +1,13 @@
 package com.example.androidlauncher.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -146,20 +148,32 @@ fun IslandExpandedCard(
                 targetState = content,
                 contentKey = { it::class },
                 transitionSpec = {
+                    // Kartenhöhe (Media vs. Timer vs. Notification) ohne Nachschwingen morphen,
+                    // damit sie während des horizontalen Slides smooth wächst/schrumpft statt zu
+                    // springen. clip=false verhindert das Anschneiden des einblendenden Inhalts.
+                    val sizeSpec = SizeTransform(clip = false) { _, _ ->
+                        if (animationsEnabled) RethroneSprings.morph(speed) else snap()
+                    }
                     if (!animationsEnabled) {
-                        fadeIn() togetherWith fadeOut()
+                        ContentTransform(fadeIn(), fadeOut(), sizeTransform = sizeSpec)
                     } else {
                         val fromIdx = tabs.indexOfFirst { it::class == initialState::class }
                         val toIdx = tabs.indexOfFirst { it::class == targetState::class }
                         val dir = if (fromIdx >= 0 && toIdx >= 0) toIdx.compareTo(fromIdx) else 0
                         if (dir == 0) {
-                            fadeIn(RethroneSprings.effects(speed)) togetherWith
-                                fadeOut(RethroneSprings.effects(speed))
+                            ContentTransform(
+                                targetContentEnter = fadeIn(RethroneSprings.effects(speed)),
+                                initialContentExit = fadeOut(RethroneSprings.effects(speed)),
+                                sizeTransform = sizeSpec
+                            )
                         } else {
-                            (slideInHorizontally(RethroneSprings.spatial(speed)) { w -> dir * w } +
-                                fadeIn(RethroneSprings.effects(speed))) togetherWith
-                                (slideOutHorizontally(RethroneSprings.effects(speed)) { w -> -dir * w } +
-                                    fadeOut(RethroneSprings.effects(speed)))
+                            ContentTransform(
+                                targetContentEnter = slideInHorizontally(RethroneSprings.spatial(speed)) { w -> dir * w } +
+                                    fadeIn(RethroneSprings.effects(speed)),
+                                initialContentExit = slideOutHorizontally(RethroneSprings.effects(speed)) { w -> -dir * w } +
+                                    fadeOut(RethroneSprings.effects(speed)),
+                                sizeTransform = sizeSpec
+                            )
                         }
                     }
                 },

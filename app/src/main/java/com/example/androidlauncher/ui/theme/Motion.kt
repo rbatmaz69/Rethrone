@@ -56,6 +56,18 @@ object RethroneSprings {
         dampingRatio = 0.85f,
         stiffness = Spring.StiffnessMedium * stiffnessScale
     )
+
+    /**
+     * Größen-Morph (Breite/Höhe eines `AnimatedContent`-Containers): weich und **ohne**
+     * Nachschwingen, damit ein wachsender/schrumpfender Container (z. B. die Dynamic-Island-
+     * Pille beim Inhalts-Wechsel) sauber in einem Zug morpht, statt am Rand zu wippen. Bewusst
+     * etwas weicher (MediumLow) als [effects], damit der Größen-Verlauf zur Überblendung passt.
+     * [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> morph(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow * stiffnessScale
+    )
 }
 
 /**
