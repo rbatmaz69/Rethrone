@@ -45,9 +45,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -129,6 +129,10 @@ fun DynamicIsland(
     val shownContent = content ?: lastContent
     val shownAll = if (state.all.isNotEmpty()) state.all else lastAll
 
+    // Geteilter Icon-Cache über die ganze Insel: überlebt App-Wechsel (Swipe), sodass ein erneut
+    // erscheinender Kreis/Icon sein Bitmap ohne `null`-Frame zeigt (kein Dot→Icon-Flash beim Swap).
+    val iconCache = remember { androidx.compose.runtime.mutableStateMapOf<String, ImageBitmap?>() }
+
     val animationsEnabled = LocalAnimationsEnabled.current
     val speed = LocalAnimationSpeed.current
     val cutout = rememberCutoutInfo()
@@ -148,6 +152,22 @@ fun DynamicIsland(
     // (breiter Text links, kleiner Punkt rechts) → die Mitte läge im Text und die Kamera über
     // den letzten Sekundenziffern.
     var cameraAnchorPx by remember { mutableStateOf(-1f) }
+    // Im Offset KONSUMIERTER Anker: gleitet beim Swipe im selben Tempo wie der Breiten-Morph
+    // (clusterWidthPx) von alt→neu. Würde der rohe `cameraAnchorPx` direkt benutzt, schnappte er
+    // sofort auf den Zielwert (die eingehende Pille ist durch `clip = false` ab Frame 1 in
+    // Zielgröße ausgelegt), während die Breite noch morpht → das Kamera-Loch driftet über den
+    // Inhalt = „flackernd". Erste gültige Messung (und bei deaktivierten Animationen) hart setzen,
+    // damit beim Erscheinen kein Sweep vom Sentinel −1 entsteht.
+    val animatedAnchor = remember { androidx.compose.animation.core.Animatable(-1f) }
+    LaunchedEffect(cameraAnchorPx, animationsEnabled, speed) {
+        val target = cameraAnchorPx
+        if (target < 0f) return@LaunchedEffect
+        if (animatedAnchor.value < 0f || !animationsEnabled) {
+            animatedAnchor.snapTo(target)
+        } else {
+            animatedAnchor.animateTo(target, RethroneSprings.morph(speed))
+        }
+    }
 
     AnimatedVisibility(
         // Im Edit-Modus immer sichtbar (Platzhalter zum Ziehen), sonst nur bei aktivem Inhalt.
@@ -164,8 +184,9 @@ fun DynamicIsland(
                 val half = clusterWidthPx / 2f
                 val lo = half + margin
                 val hi = cutout.screenWidth - half - margin
-                val clusterCenterScreen = if (cameraAnchorPx >= 0f && clusterWidthPx > 0) {
-                    cutout.centerX - (cameraAnchorPx - clusterWidthPx / 2f)
+                val anchor = animatedAnchor.value
+                val clusterCenterScreen = if (anchor >= 0f && clusterWidthPx > 0) {
+                    cutout.centerX - (anchor - clusterWidthPx / 2f)
                 } else {
                     cutout.centerX
                 }
@@ -202,6 +223,7 @@ fun DynamicIsland(
                 shownContent,
                 cutoutWidth,
                 loadIcon,
+                iconCache,
                 editMode = true,
                 modifier = Modifier.onGloballyPositioned {
                     clusterWidthPx = it.size.width
@@ -295,7 +317,7 @@ fun DynamicIsland(
                             val isTarget = c != null && shownContent != null &&
                                 activityId(c) == activityId(shownContent)
                             IslandPill(
-                                c, cutoutWidth, loadIcon, editMode = false,
+                                c, cutoutWidth, loadIcon, iconCache, editMode = false,
                                 balanced = others.isEmpty(),
                                 onCameraSlotPositioned = if (isTarget) {
                                     { slot ->
@@ -329,7 +351,7 @@ fun DynamicIsland(
                             },
                             label = "islandCircle$index"
                         ) { o ->
-                            AppCircle(o, loadIcon)
+                            AppCircle(o, loadIcon, iconCache)
                         }
                     }
                 }
@@ -344,17 +366,36 @@ fun DynamicIsland(
     }
 }
 
+/**
+ * Lädt ein App-Icon über den geteilten, Swap-überlebenden [cache]. Liefert sofort das gecachte
+ * Bitmap (kein `null`-Frame), wenn das Paket schon einmal geladen wurde → kein Dot→Icon-Flash beim
+ * Wechsel. Erst beim allerersten Anfordern eines Pakets wird einmalig nachgeladen.
+ */
+@Composable
+private fun rememberIslandIcon(
+    pkg: String?,
+    loadIcon: suspend (String) -> ImageBitmap?,
+    cache: SnapshotStateMap<String, ImageBitmap?>
+): ImageBitmap? {
+    if (pkg == null) return null
+    LaunchedEffect(pkg) {
+        if (!cache.containsKey(pkg)) cache[pkg] = loadIcon(pkg)
+    }
+    return cache[pkg]
+}
+
 /** Kleiner runder App-Icon-Indikator der anderen aktiven Aktivität (Swipe-Ziel, immer rechts). */
 @Composable
-private fun AppCircle(content: IslandContent, loadIcon: suspend (String) -> ImageBitmap?) {
-    val pkg = iconPackage(content)
-    val icon by produceState<ImageBitmap?>(initialValue = null, pkg) {
-        value = pkg?.let { loadIcon(it) }
-    }
-    val img = icon
+private fun AppCircle(
+    content: IslandContent,
+    loadIcon: suspend (String) -> ImageBitmap?,
+    cache: SnapshotStateMap<String, ImageBitmap?>
+) {
+    val img = rememberIslandIcon(iconPackage(content), loadIcon, cache)
     Box(
         modifier = Modifier
-            .size(26.dp)
+            // Gleiche Höhe wie die Pille, damit der Kreis nicht kleiner als die Pille wirkt.
+            .size(IslandPillHeight)
             .clip(CircleShape)
             .background(IslandSurface),
         contentAlignment = Alignment.Center
@@ -364,7 +405,7 @@ private fun AppCircle(content: IslandContent, loadIcon: suspend (String) -> Imag
                 bitmap = img,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(20.dp)
+                    .size(22.dp)
                     .clip(CircleShape)
             )
         } else {
@@ -383,6 +424,7 @@ private fun IslandPill(
     content: IslandContent?,
     cutoutWidth: Dp,
     loadIcon: suspend (String) -> ImageBitmap?,
+    iconCache: SnapshotStateMap<String, ImageBitmap?>,
     editMode: Boolean,
     modifier: Modifier = Modifier,
     balanced: Boolean = true,
@@ -429,10 +471,10 @@ private fun IslandPill(
             // Führender, gut lesbarer Inhalt (links der Kamera) – nie ins Punch-Hole.
             leading = {
                 when (c) {
-                    is IslandContent.Notification -> AppIcon(c.pkg, loadIcon)
+                    is IslandContent.Notification -> AppIcon(c.pkg, loadIcon, iconCache)
                     // Kein Wort: Live-Zeit wenn ableitbar, sonst nur das App-Icon der Uhr.
                     is IslandContent.Timer ->
-                        if (c.displayMs != null) TimerLabel(formatRemaining(c.displayMs)) else AppIcon(c.pkg, loadIcon)
+                        if (c.displayMs != null) TimerLabel(formatRemaining(c.displayMs)) else AppIcon(c.pkg, loadIcon, iconCache)
                     is IslandContent.Battery -> ShortLabel("${c.level}%")
                     is IslandContent.Media -> MediaArt(c.art)
                 }
@@ -573,9 +615,12 @@ private fun MediaArt(art: Bitmap?) {
 }
 
 @Composable
-private fun AppIcon(pkg: String, loadIcon: suspend (String) -> ImageBitmap?) {
-    val icon by produceState<ImageBitmap?>(initialValue = null, pkg) { value = loadIcon(pkg) }
-    val img = icon
+private fun AppIcon(
+    pkg: String,
+    loadIcon: suspend (String) -> ImageBitmap?,
+    cache: SnapshotStateMap<String, ImageBitmap?>
+) {
+    val img = rememberIslandIcon(pkg, loadIcon, cache)
     if (img != null) {
         Image(
             bitmap = img,
