@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -57,6 +58,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -140,7 +142,11 @@ fun DynamicIsland(
     var clusterWidthPx by remember { mutableStateOf(0) }
     var clusterHeightPx by remember { mutableStateOf(0) }
     var rowCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    var activePillCenterPx by remember { mutableStateOf(-1f) }
+    // Mitte des Kamera-Slots (= die Lücke in der aktiven Pille), die unter die Kamera gelegt wird.
+    // Bewusst NICHT die geometrische Pillen-Mitte: bei langem Timer ist die Pille asymmetrisch
+    // (breiter Text links, kleiner Punkt rechts) → die Mitte läge im Text und die Kamera über
+    // den letzten Sekundenziffern.
+    var cameraAnchorPx by remember { mutableStateOf(-1f) }
 
     AnimatedVisibility(
         // Im Edit-Modus immer sichtbar (Platzhalter zum Ziehen), sonst nur bei aktivem Inhalt.
@@ -157,8 +163,8 @@ fun DynamicIsland(
                 val half = clusterWidthPx / 2f
                 val lo = half + margin
                 val hi = cutout.screenWidth - half - margin
-                val clusterCenterScreen = if (activePillCenterPx >= 0f && clusterWidthPx > 0) {
-                    cutout.centerX - (activePillCenterPx - clusterWidthPx / 2f)
+                val clusterCenterScreen = if (cameraAnchorPx >= 0f && clusterWidthPx > 0) {
+                    cutout.centerX - (cameraAnchorPx - clusterWidthPx / 2f)
                 } else {
                     cutout.centerX
                 }
@@ -247,17 +253,14 @@ fun DynamicIsland(
                             clusterHeightPx = it.size.height
                         }
                 ) {
-                    // Slot 0: aktive Pille. Mitte messen → Kamera-Zentrierung (bleibt unter der Kamera).
-                    Box(
-                        modifier = Modifier.onGloballyPositioned { u ->
-                            rowCoords?.let { r ->
-                                if (r.isAttached && u.isAttached) {
-                                    activePillCenterPx =
-                                        r.localPositionOf(u, Offset.Zero).x + u.size.width / 2f
-                                }
-                            }
-                        }
-                    ) {
+                    // Übrige Aktivitäten (Kreise rechts). Vorab berechnet, damit die Pille weiß,
+                    // ob sie symmetrisch (allein) oder kompakt (mit Kreisen) layouten soll.
+                    val others = shownAll.filter {
+                        shownContent == null || activityId(it) != activityId(shownContent)
+                    }
+                    // Slot 0: aktive Pille. Die Pille meldet die Mitte ihres Kamera-Slots (Lücke),
+                    // die unter die Kamera gelegt wird – so bleibt das Loch frei vom Text.
+                    Box {
                         AnimatedContent(
                             targetState = shownContent,
                             contentKey = { it?.let(::activityId) },
@@ -273,13 +276,22 @@ fun DynamicIsland(
                             },
                             label = "islandActivePill"
                         ) { c ->
-                            IslandPill(c, cutoutWidth, loadIcon, editMode = false)
+                            IslandPill(
+                                c, cutoutWidth, loadIcon, editMode = false,
+                                balanced = others.isEmpty(),
+                                onCameraSlotPositioned = { slot ->
+                                    rowCoords?.let { r ->
+                                        if (r.isAttached && slot.isAttached) {
+                                            cameraAnchorPx = r.localPositionOf(
+                                                slot, Offset(slot.size.width / 2f, 0f)
+                                            ).x
+                                        }
+                                    }
+                                }
+                            )
                         }
                     }
                     // Slots rechts: übrige Aktivitäten als Kreise (stabile Reihenfolge), Inhalt per Crossfade.
-                    val others = shownAll.filter {
-                        shownContent == null || activityId(it) != activityId(shownContent)
-                    }
                     others.forEachIndexed { index, other ->
                         Spacer(Modifier.width(6.dp))
                         AnimatedContent(
@@ -350,11 +362,15 @@ private fun IslandPill(
     cutoutWidth: Dp,
     loadIcon: suspend (String) -> ImageBitmap?,
     editMode: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    balanced: Boolean = true,
+    onCameraSlotPositioned: (LayoutCoordinates) -> Unit = {}
 ) {
     if (content == null && !editMode) return
     val shape = RoundedCornerShape(28.dp)
-    val gap = if (cutoutWidth > 0.dp) cutoutWidth + 8.dp else 10.dp
+    // Lücke = Kamera-Slot. Knapp über der Notch-Breite gehalten (kleiner Sicherheitsabstand),
+    // damit die Pille kompakt bleibt und Inhalt nah – aber frei – an der Notch sitzt.
+    val gap = if (cutoutWidth > 0.dp) cutoutWidth + 4.dp else 8.dp
 
     // Tap wird vom umschließenden Container (mit Erweiterung unter die Statusleiste) gehandhabt.
     var rowModifier = modifier
@@ -364,58 +380,123 @@ private fun IslandPill(
         rowModifier = rowModifier.border(1.dp, IslandText.copy(alpha = 0.45f), shape)
     }
 
-    Row(
-        modifier = rowModifier
-            .height(IslandPillHeight)
-            .padding(horizontal = 9.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (editMode) {
-            // Reine Vorschau-Pille an der echten Position (umschließt die Kamera).
-            Dot(AccentBlue)
-            Spacer(Modifier.width(gap))
-            Dot(AccentBlue)
-            return@Row
+    val styleModifier = rowModifier
+        .height(IslandPillHeight)
+        .padding(horizontal = 10.dp, vertical = 5.dp)
+
+    if (editMode) {
+        // Reine Vorschau-Pille an der echten Position (umschließt die Kamera).
+        Box(modifier = styleModifier, contentAlignment = Alignment.Center) {
+            CameraBalancedRow(
+                gap = gap,
+                balanced = balanced,
+                onCameraSlotPositioned = onCameraSlotPositioned,
+                leading = { Dot(AccentBlue) },
+                trailing = { Dot(AccentBlue) }
+            )
         }
+        return
+    }
 
-        val c = content ?: return@Row
+    val c = content ?: return
+    Box(modifier = styleModifier, contentAlignment = Alignment.Center) {
+        CameraBalancedRow(
+            gap = gap,
+            balanced = balanced,
+            onCameraSlotPositioned = onCameraSlotPositioned,
+            // Führender, gut lesbarer Inhalt (links der Kamera) – nie ins Punch-Hole.
+            leading = {
+                when (c) {
+                    is IslandContent.Notification -> AppIcon(c.pkg, loadIcon)
+                    // Kein Wort: Live-Zeit wenn ableitbar, sonst nur das App-Icon der Uhr.
+                    is IslandContent.Timer ->
+                        if (c.displayMs != null) TimerLabel(formatRemaining(c.displayMs)) else AppIcon(c.pkg, loadIcon)
+                    is IslandContent.Battery -> ShortLabel("${c.level}%")
+                    is IslandContent.Media -> MediaArt(c.art)
+                }
+            },
+            // Kleiner Statuspunkt rechts der Kamera.
+            trailing = {
+                when (c) {
+                    is IslandContent.Notification -> Dot(AccentBlue)
+                    is IslandContent.Timer -> Dot(if (c.paused) TimerAmber else ChargingGreen)
+                    is IslandContent.Battery -> Dot(if (c.charging) ChargingGreen else IslandSubText)
+                    is IslandContent.Media -> Dot(if (c.isPlaying) ChargingGreen else IslandSubText)
+                }
+            }
+        )
+    }
+}
 
-        // Führender, gut lesbarer Inhalt (links der Kamera) – nie ins Punch-Hole.
-        when (c) {
-            is IslandContent.Notification -> AppIcon(c.pkg, loadIcon)
-            // Kein Wort: Live-Zeit wenn ableitbar, sonst nur das App-Icon der Uhr.
-            is IslandContent.Timer ->
-                if (c.displayMs != null) ShortLabel(formatRemaining(c.displayMs)) else AppIcon(c.pkg, loadIcon)
-            is IslandContent.Battery -> ShortLabel("${c.level}%")
-            is IslandContent.Media -> MediaArt(c.art)
+/**
+ * Layoutet die Pille um den Kamera-Slot. Der Inhalt sitzt jeweils **direkt an der Lücke**
+ * (führend rechtsbündig, folgend linksbündig), sodass Timer und Punkt die Notch eng umschließen.
+ *
+ * @param balanced `true` ⇒ beide Seiten gleich breit (= max. der Inhalte) → das Kamera-Loch sitzt
+ *   **mittig** in der Pille (Ausgleich/Leerraum wandert an die Außenränder). Sinnvoll, wenn die
+ *   Pille allein steht. `false` ⇒ **kompakt** (Breite = Inhalt + Lücke + Inhalt), kein Leerraum →
+ *   nachfolgende App-Kreise sitzen dicht an der Notch (statt ans Status-Icon-Band gedrückt zu
+ *   werden). In beiden Fällen hugt der Inhalt die Notch und die Slot-Mitte bleibt der Kamera-Anker.
+ *
+ * Die Mitte des Slots wird via [onCameraSlotPositioned] gemeldet (Zentrierung unter der Kamera).
+ */
+@Composable
+private fun CameraBalancedRow(
+    gap: Dp,
+    balanced: Boolean,
+    onCameraSlotPositioned: (LayoutCoordinates) -> Unit,
+    leading: @Composable () -> Unit,
+    trailing: @Composable () -> Unit
+) {
+    Layout(
+        content = {
+            Box(contentAlignment = Alignment.Center) { leading() }
+            Spacer(
+                Modifier
+                    .width(gap)
+                    .onGloballyPositioned(onCameraSlotPositioned)
+            )
+            Box(contentAlignment = Alignment.Center) { trailing() }
         }
-
-        // Lücke, die das Kamera-Loch frei lässt (knapp gehalten für eine schmale Pille).
-        Spacer(Modifier.width(gap))
-
-        // Kleiner Statuspunkt rechts der Kamera (darf nahe/unter dem Kameraloch liegen).
-        when (c) {
-            is IslandContent.Notification -> Dot(AccentBlue)
-            is IslandContent.Timer -> Dot(TimerAmber)
-            is IslandContent.Battery -> Dot(if (c.charging) ChargingGreen else IslandSubText)
-            is IslandContent.Media -> Dot(if (c.isPlaying) ChargingGreen else IslandSubText)
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val lead = measurables[0].measure(loose)
+        val cam = measurables[1].measure(loose)
+        val trail = measurables[2].measure(loose)
+        val side = maxOf(lead.width, trail.width)
+        val leftSide = if (balanced) side else lead.width
+        val rightSide = if (balanced) side else trail.width
+        val width = leftSide + cam.width + rightSide
+        val height = maxOf(lead.height, cam.height, trail.height)
+        layout(width, height) {
+            // Führend rechtsbündig (rechte Kante an der Lücke = an der Notch).
+            lead.place(leftSide - lead.width, (height - lead.height) / 2)
+            cam.place(leftSide, (height - cam.height) / 2)
+            // Folgend: balanced ⇒ an den äußeren Pillen-Rand (spiegelt den Timer links →
+            // Notch mittig zwischen beiden); kompakt ⇒ dicht an die Notch.
+            val trailX = if (balanced) leftSide + cam.width + rightSide - trail.width
+            else leftSide + cam.width
+            trail.place(trailX, (height - trail.height) / 2)
         }
     }
 }
 
 @Composable
-private fun ShortLabel(text: String) {
+private fun ShortLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         color = IslandText,
         fontSize = 14.sp,
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
+        modifier = modifier,
         // Schrift exakt vertikal mittig in der Pille: Font-Padding entfernen und die Zeile
         // symmetrisch auf Schriftgröße trimmen/zentrieren (sonst sitzt der Text leicht tief).
         lineHeight = 14.sp,
         style = LocalTextStyle.current.merge(
             TextStyle(
+                // Tabular Figures: gleich breite Ziffern → Timer/Prozent „atmen" nicht je Sekunde.
+                fontFeatureSettings = "tnum",
                 platformStyle = PlatformTextStyle(includeFontPadding = false),
                 lineHeightStyle = LineHeightStyle(
                     alignment = LineHeightStyle.Alignment.Center,
@@ -424,6 +505,20 @@ private fun ShortLabel(text: String) {
             )
         )
     )
+}
+
+/**
+ * Timer-Zeit mit **fester** Breite: ein unsichtbarer Platzhalter (max. Breite des Formats)
+ * reserviert die Breite → die Pille wackelt nicht je Sekunde. Die echte Zeit liegt **linksbündig**
+ * darüber, sodass ihr linker Rand konstant ist (gleicher Außen-Abstand wie der Punkt rechts).
+ */
+@Composable
+private fun TimerLabel(text: String) {
+    val placeholder = if (text.count { it == ':' } == 2) "00:00:00" else "00:00"
+    Box(contentAlignment = Alignment.CenterStart) {
+        ShortLabel(placeholder, Modifier.alpha(0f))
+        ShortLabel(text)
+    }
 }
 
 @Composable

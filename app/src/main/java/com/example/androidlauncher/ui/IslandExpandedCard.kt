@@ -34,13 +34,17 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,6 +93,11 @@ fun IslandExpandedCard(
         contentAlignment = Alignment.TopCenter
     ) {
         val swipeThresholdPx = with(LocalDensity.current) { 40.dp.toPx() }
+        // Tabs in stabiler, klassenbasierter Reihenfolge: `allContents` (= Prioritäts-
+        // Reihenfolge) springt sonst beim Track-Wechsel, weil `isPlaying` durch Buffering
+        // kurz `false` wird und spielende/pausierte Medien die Position tauschen → die
+        // Tab-Chips würden „teleportieren".
+        val tabs = remember(allContents) { allContents.sortedBy { islandTabRank(it) } }
         Column(
             modifier = Modifier
                 .statusBarsPadding()
@@ -104,21 +113,21 @@ fun IslandExpandedCard(
                     onClick = { onOpen(content) }
                 )
                 // Horizontaler Swipe wechselt – wie an der Pille – zwischen den Aktivitäten.
-                .pointerInput(allContents, content) {
-                    if (allContents.size > 1) {
+                .pointerInput(tabs, content) {
+                    if (tabs.size > 1) {
                         var total = 0f
                         detectHorizontalDragGestures(
                             onDragStart = { total = 0f },
                             onDragEnd = {
-                                val cur = allContents.indexOfFirst { it::class == content::class }
+                                val cur = tabs.indexOfFirst { it::class == content::class }
                                 if (cur >= 0) {
-                                    val size = allContents.size
+                                    val size = tabs.size
                                     val next = when {
                                         total <= -swipeThresholdPx -> (cur + 1) % size
                                         total >= swipeThresholdPx -> (cur - 1 + size) % size
                                         else -> cur
                                     }
-                                    if (next != cur) onSwitch(allContents[next])
+                                    if (next != cur) onSwitch(tabs[next])
                                 }
                             }
                         ) { _, drag -> total += drag }
@@ -126,8 +135,8 @@ fun IslandExpandedCard(
                 }
                 .padding(20.dp)
         ) {
-            if (allContents.size > 1) {
-                ActivitySwitcher(allContents, content, onSwitch)
+            if (tabs.size > 1) {
+                ActivitySwitcher(tabs, content, onSwitch)
             }
             val animationsEnabled = LocalAnimationsEnabled.current
             val speed = LocalAnimationSpeed.current
@@ -140,8 +149,8 @@ fun IslandExpandedCard(
                     if (!animationsEnabled) {
                         fadeIn() togetherWith fadeOut()
                     } else {
-                        val fromIdx = allContents.indexOfFirst { it::class == initialState::class }
-                        val toIdx = allContents.indexOfFirst { it::class == targetState::class }
+                        val fromIdx = tabs.indexOfFirst { it::class == initialState::class }
+                        val toIdx = tabs.indexOfFirst { it::class == targetState::class }
                         val dir = if (fromIdx >= 0 && toIdx >= 0) toIdx.compareTo(fromIdx) else 0
                         if (dir == 0) {
                             fadeIn(RethroneSprings.effects(speed)) togetherWith
@@ -273,6 +282,18 @@ private fun ActivitySwitcher(
     }
 }
 
+/**
+ * Feste, klassenbasierte Reihenfolge der Tab-Chips im Switcher. Bewusst unabhängig von der
+ * Prioritäts-Reihenfolge in `allContents` (die sich bei transienten Zustandswechseln – z. B.
+ * Buffering beim Track-Skip – umsortiert), damit die Tabs nicht ihre Plätze tauschen.
+ */
+private fun islandTabRank(content: IslandContent): Int = when (content) {
+    is IslandContent.Media -> 0
+    is IslandContent.Timer -> 1
+    is IslandContent.Notification -> 2
+    is IslandContent.Battery -> 3
+}
+
 private fun activityChipLabel(content: IslandContent): String = when (content) {
     is IslandContent.Media -> "Medien"
     is IslandContent.Timer -> content.displayMs?.let { formatRemaining(it) } ?: "Uhr"
@@ -288,16 +309,31 @@ private fun MediaCard(
     onPrev: () -> Unit
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        content.art?.let { art ->
-            Image(
-                bitmap = art.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(10.dp))
-            )
-            Spacer(Modifier.width(14.dp))
+        // Cover-Slot konstant halten: Beim Track-Wechsel kommt das neue Album-Bitmap
+        // asynchron (kurzzeitig null) nach. Würde das Bild bedingt gerendert, schrumpft
+        // und wächst die Karte – die Größen-Animation des umschließenden AnimatedContent
+        // staucht/clippt dann den Inhalt für ein paar Frames. Letztes Cover puffern und
+        // immer eine 56.dp-Box (Bild oder Platzhalter) zeichnen.
+        var lastArt by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+        if (content.art != null) lastArt = content.art
+        val art = content.art ?: lastArt
+        val bmp = remember(art) { art?.asImageBitmap() }
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = 0.12f))
+        ) {
+            if (bmp != null) {
+                Image(
+                    bitmap = bmp,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
+        Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = content.title.ifBlank { "Wiedergabe" },

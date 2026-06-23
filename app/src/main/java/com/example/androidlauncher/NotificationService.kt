@@ -202,10 +202,18 @@ class NotificationService : NotificationListenerService() {
         }
         val art = md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
             ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+        // Buffering/Skip als „spielend" werten: beim Track-Wechsel durchläuft der Player
+        // kurz diese Zustände. Würden sie als Pause gelten, flackerte `isPlaying` und die
+        // Insel-Reihenfolge (spielend vs. pausiert) würde springen.
+        val playbackState = active.playbackState?.state
+        val isPlaying = playbackState == PlaybackState.STATE_PLAYING ||
+            playbackState == PlaybackState.STATE_BUFFERING ||
+            playbackState == PlaybackState.STATE_SKIPPING_TO_NEXT ||
+            playbackState == PlaybackState.STATE_SKIPPING_TO_PREVIOUS
         _activeMedia.value = MediaInfo(
             title = title,
             artist = artist,
-            isPlaying = active.playbackState?.state == PlaybackState.STATE_PLAYING,
+            isPlaying = isPlaying,
             art = art,
             packageName = active.packageName ?: ""
         )
@@ -243,12 +251,21 @@ class NotificationService : NotificationListenerService() {
 
             _activeNotificationPackages.value = packages
             _activeNotificationDetails.value = details
-            // Provisorisch (Standard-Felder); dann auf dem Main-Thread mit der echten
-            // Chronometer-Zeit aus den RemoteViews verfeinern (View-Erzeugung benötigt Main).
-            _activeTimer.value = timer
+            // Die echte Chronometer-Zeit braucht den Main-Thread (View-Erzeugung). Die
+            // Listener-Callbacks laufen ohnehin auf Main → dann inline verfeinern und nur EINE
+            // Emission setzen. Sonst (defensiv) provisorisch setzen und auf Main nachreichen.
+            // Wichtig: keine Doppel-Emission (provisorisch → verfeinert), sonst springt die Zeit
+            // einen Frame lang = Flackern (v. a. beim Timer-Pause/Start).
             val provisional = timer
             val sbn = timerSbn
-            if (provisional != null && sbn != null) {
+            val onMain = Looper.myLooper() == Looper.getMainLooper()
+            val resolved = if (provisional != null && sbn != null && onMain) {
+                refineTimerWithChronometer(sbn, provisional)
+            } else {
+                provisional
+            }
+            _activeTimer.value = resolved
+            if (!onMain && provisional != null && sbn != null) {
                 mainHandler.post {
                     val refined = refineTimerWithChronometer(sbn, provisional)
                     if (refined != _activeTimer.value && _activeTimer.value === provisional) {

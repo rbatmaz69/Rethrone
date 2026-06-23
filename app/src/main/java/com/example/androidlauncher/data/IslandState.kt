@@ -43,7 +43,9 @@ sealed interface IslandContent {
         val countUp: Boolean = false,
         val pkg: String = "",
         val contentIntent: PendingIntent? = null,
-        val actions: List<NotificationAction> = emptyList()
+        val actions: List<NotificationAction> = emptyList(),
+        /** `true` ⇒ Timer pausiert/gestoppt (steuert u. a. die Farbe des Pillen-Punkts). */
+        val paused: Boolean = false
     ) : IslandContent
 
     /** Frisch eingetroffene Benachrichtigung. Transient (klingt nach kurzer Zeit aus). */

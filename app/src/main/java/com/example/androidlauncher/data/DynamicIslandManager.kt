@@ -84,7 +84,8 @@ class DynamicIslandManager(
                     countUp = timer.countUp,
                     pkg = timer.pkg,
                     contentIntent = timer.contentIntent,
-                    actions = timer.actions
+                    actions = timer.actions,
+                    paused = timer.paused
                 )
             }
         }
