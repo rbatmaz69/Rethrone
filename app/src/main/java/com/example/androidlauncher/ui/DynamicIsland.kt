@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
@@ -74,6 +75,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -101,7 +103,6 @@ import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.RethroneSprings
 import java.util.concurrent.TimeUnit
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 internal val IslandSurface = Color(0xFF0B0B0C)
@@ -163,9 +164,6 @@ fun DynamicIsland(
     val cutout = rememberCutoutInfo()
     val density = LocalDensity.current
     val cutoutWidth = cutout?.let { with(density) { it.widthPx.toDp() } } ?: 0.dp
-    // Start-/Zielgröße der „Notch wächst"-Animation ≈ Kamera-Cutout (Fallback: kleine Größe).
-    val notchWidthPx = cutout?.widthPx ?: with(density) { 28.dp.roundToPx() }
-    val notchHeightPx = cutout?.heightPx ?: with(density) { IslandPillHeight.roundToPx() }
     // Statusleisten-Höhe für den Fallback ohne Cutout (notchlose Geräte / Tablets).
     val statusBarTopPx = WindowInsets.statusBars.getTop(density)
     // Gemessene Cluster-Größe + Mitte der aktiven Pille (für Kamera-Zentrierung beim Switch).
@@ -222,21 +220,27 @@ fun DynamicIsland(
             }
             IntOffset(x, y)
         },
-        // „Wächst aus der Notch": von Kamera-Größe (oben-mittig) auf volle Größe expandieren.
+        // „Aus der Notch heraus": die OPAKE Pille wächst physisch aus Breite 0 nach links UND rechts
+        // aus der Kamera-Mitte heraus (kein Fade – das überdeckte sonst die Bewegung = „statisch").
+        // Höhe bleibt konstant (full.height), nur die Breite animiert; `island` gibt den ausladenden,
+        // nachfedernden Schwung. Start aus 0 → langer, gut sichtbarer Sweep.
         enter = if (animationsEnabled) {
             expandIn(
-                RethroneSprings.container(speed),
+                RethroneSprings.island(speed),
                 expandFrom = Alignment.TopCenter,
-                initialSize = { full -> IntSize(min(notchWidthPx, full.width), min(notchHeightPx, full.height)) }
-            ) + fadeIn(RethroneSprings.effects(speed))
+                initialSize = { full -> IntSize(0, full.height) }
+            )
         } else {
             fadeIn()
         },
+        // Schließen umgekehrt: Breite kollabiert zur Notch-Mitte. Bewusst OHNE Bounce (`morph`), da ein
+        // überschwingender Spring beim Schrumpfen auf 0 am Ende zurückfedern/flackern würde; kurzes
+        // Fade weicht das Verschwinden ab.
         exit = if (animationsEnabled) {
             shrinkOut(
-                RethroneSprings.container(speed),
+                RethroneSprings.morph(speed),
                 shrinkTowards = Alignment.TopCenter,
-                targetSize = { full -> IntSize(min(notchWidthPx, full.width), min(notchHeightPx, full.height)) }
+                targetSize = { full -> IntSize(0, full.height) }
             ) + fadeOut(RethroneSprings.effects(speed))
         } else {
             fadeOut()
@@ -268,9 +272,28 @@ fun DynamicIsland(
                 animationSpec = RethroneSprings.spatial(speed),
                 label = "islandPress"
             )
+            // „Jelly": vertikaler Mitfeder-Fortschritt aus der Enter/Exit-Transition der ganzen Insel.
+            // 0→1 beim Erscheinen (mit dezentem Overshoot durch `island`), 1→0 beim Schließen (ohne
+            // Bounce, `morph`). Triggert NUR beim Auf-/Abtauchen – nicht beim Inhalts-/App-Wechsel
+            // (dann bleibt AnimatedVisibility = Visible → appear = 1).
+            val appear by transition.animateFloat(
+                transitionSpec = {
+                    if (!animationsEnabled) snap()
+                    else if (targetState == EnterExitState.Visible) RethroneSprings.island(speed)
+                    else RethroneSprings.morph(speed)
+                },
+                label = "islandJelly"
+            ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
+                    // Dezentes Squash→Stretch→Settle von der Kameralinie aus; rein zeichnerisch, kein
+                    // Layout-Einfluss → Kamera-Zentrierung/Anker (onGloballyPositioned) bleibt stabil.
+                    // Die Breite macht weiterhin der Clip (expandIn) – hier nur die zweite Achse.
+                    .graphicsLayer {
+                        scaleY = 0.8f + 0.2f * appear
+                        transformOrigin = TransformOrigin(0.5f, 0f)
+                    }
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,

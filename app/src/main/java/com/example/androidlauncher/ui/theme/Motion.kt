@@ -68,6 +68,17 @@ object RethroneSprings {
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow * stiffnessScale
     )
+
+    /**
+     * Insel-Öffnung: physischer, ausladender „Aus-der-Notch"-Schwung mit deutlichem, verspieltem
+     * Überschwingen/Nachfedern. Bewusst weicher (mehr Bounce) und langsamer als [container]/[morph] –
+     * die kleine, schwebende Pille darf am Rand kurz überschwingen (kein Vollbild-Container → keine
+     * Wallpaper-Lücke). [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> island(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = 0.45f,
+        stiffness = Spring.StiffnessMediumLow * 0.7f * stiffnessScale
+    )
 }
 
 /**
