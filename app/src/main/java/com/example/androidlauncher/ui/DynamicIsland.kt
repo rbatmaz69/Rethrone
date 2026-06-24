@@ -5,8 +5,11 @@ import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
@@ -15,11 +18,14 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -52,7 +58,11 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -357,23 +367,60 @@ fun DynamicIsland(
                             )
                         }
                     }
-                    // Slots rechts: übrige Aktivitäten als Kreise (stabile Reihenfolge), Inhalt per Crossfade.
-                    others.forEachIndexed { index, other ->
-                        Spacer(Modifier.width(6.dp))
-                        AnimatedContent(
-                            targetState = other,
-                            contentKey = { activityId(it) },
-                            transitionSpec = {
-                                if (animationsEnabled) {
-                                    fadeIn(RethroneSprings.effects(speed)) togetherWith
+                    // Slots rechts: übrige Aktivitäten als Kreise. GEHALTENE, animierte Slot-Liste,
+                    // damit ein dazukommender Kreis weich rechts einwächst (statt hart zu poppen) und
+                    // ein verschwindender weich ausblendet. Das Ein-/Ausblenden passiert auf
+                    // LAYOUT-Ebene (expand/shrinkHorizontally) → die Row-Breite morpht sanft, was die
+                    // (rohe) clusterWidthPx und damit das Re-Centern kohärent mitführt.
+                    val circleOrder = remember { mutableStateListOf<String>() }
+                    val circleContent = remember { mutableStateMapOf<String, IslandContent>() }
+                    val circleVisible = remember { mutableStateMapOf<String, MutableTransitionState<Boolean>>() }
+                    val currentIds = others.map(::activityId)
+                    SideEffect {
+                        others.forEach { o ->
+                            val id = activityId(o)
+                            circleContent[id] = o
+                            if (id !in circleOrder) circleOrder.add(id)
+                            circleVisible.getOrPut(id) { MutableTransitionState(false) }.targetState = true
+                        }
+                        circleVisible.forEach { (id, st) -> if (id !in currentIds) st.targetState = false }
+                    }
+                    circleOrder.toList().forEach { id ->
+                        val st = circleVisible[id] ?: return@forEach
+                        val content = circleContent[id]
+                        key(id) {
+                            AnimatedVisibility(
+                                visibleState = st,
+                                enter = if (animationsEnabled) {
+                                    expandHorizontally(RethroneSprings.morph(speed), Alignment.Start) +
+                                        scaleIn(RethroneSprings.morph(speed), initialScale = 0.6f) +
+                                        fadeIn(RethroneSprings.effects(speed))
+                                } else {
+                                    EnterTransition.None
+                                },
+                                exit = if (animationsEnabled) {
+                                    shrinkHorizontally(RethroneSprings.effects(speed), Alignment.Start) +
+                                        scaleOut(RethroneSprings.effects(speed), targetScale = 0.6f) +
                                         fadeOut(RethroneSprings.effects(speed))
                                 } else {
-                                    fadeIn() togetherWith fadeOut()
+                                    ExitTransition.None
                                 }
-                            },
-                            label = "islandCircle$index"
-                        ) { o ->
-                            AppCircle(o, loadIcon, iconCache, islandColor, islandSubContent)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Spacer(Modifier.width(6.dp))
+                                    if (content != null) {
+                                        AppCircle(content, loadIcon, iconCache, islandColor, islandSubContent)
+                                    }
+                                }
+                            }
+                            // Vollständig ausgeblendete Slots aufräumen (nach Abschluss der Exit-Anim).
+                            if (!st.targetState && st.isIdle && !st.currentState) {
+                                LaunchedEffect(id) {
+                                    circleOrder.remove(id)
+                                    circleVisible.remove(id)
+                                    circleContent.remove(id)
+                                }
+                            }
                         }
                     }
                 }
