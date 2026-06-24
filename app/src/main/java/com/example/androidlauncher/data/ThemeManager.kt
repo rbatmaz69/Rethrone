@@ -97,6 +97,10 @@ class ThemeManager(private val context: Context) {
         private val DYNAMIC_ISLAND_OFFSET_KEY = floatPreferencesKey("dynamic_island_offset")
         // ARGB-Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
         private val DYNAMIC_ISLAND_COLOR_KEY = intPreferencesKey("dynamic_island_color")
+        // Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
+        private val EDGE_LIGHTING_KEY = booleanPreferencesKey("edge_lighting_enabled")
+        // ARGB-Farbe des Edge Lightings. Default: Akzent-Blau.
+        private val EDGE_LIGHTING_COLOR_KEY = intPreferencesKey("edge_lighting_color")
         // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
 
@@ -348,6 +352,18 @@ class ThemeManager(private val context: Context) {
      */
     val dynamicIslandColor: Flow<Color> = context.dataStore.data
         .map { Color(it[DYNAMIC_ISLAND_COLOR_KEY] ?: 0xFF0B0B0C.toInt()) }
+
+    /**
+     * Observable flow für das Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
+     */
+    val isEdgeLightingEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[EDGE_LIGHTING_KEY] ?: false }
+
+    /**
+     * Frei wählbare Farbe des Edge Lightings. Default: Akzent-Blau.
+     */
+    val edgeLightingColor: Flow<Color> = context.dataStore.data
+        .map { Color(it[EDGE_LIGHTING_COLOR_KEY] ?: 0xFF0A84FF.toInt()) }
 
     /**
      * Observable flow for shake gesture toggle.
@@ -689,6 +705,24 @@ class ThemeManager(private val context: Context) {
     suspend fun setDynamicIslandColor(color: Color) {
         context.dataStore.edit { preferences ->
             preferences[DYNAMIC_ISLAND_COLOR_KEY] = color.toArgb()
+        }
+    }
+
+    /**
+     * Schaltet das Edge Lighting (leuchtender Rand bei Benachrichtigungen) ein/aus.
+     */
+    suspend fun setEdgeLightingEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_KEY] = enabled
+        }
+    }
+
+    /**
+     * Setzt die frei wählbare Farbe des Edge Lightings.
+     */
+    suspend fun setEdgeLightingColor(color: Color) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_COLOR_KEY] = color.toArgb()
         }
     }
 }

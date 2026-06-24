@@ -13,9 +13,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
@@ -24,6 +27,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
 
 /**
  * Führt die Live-Quellen der Dynamic Island (Timer, Benachrichtigungen, Laden; Medien folgt
@@ -43,6 +47,29 @@ class DynamicIslandManager(
     /** Eingefrorener Inhalt der aufgeklappten Karte (oder `null`, wenn nicht aufgeklappt). */
     private val _expandedContent = MutableStateFlow<IslandContent?>(null)
     val expandedContent: StateFlow<IslandContent?> = _expandedContent.asStateFlow()
+
+    /**
+     * Einmal-Puls bei einer **neu eingetroffenen** Benachrichtigung (Wert = `postTimeMs`). Treibt
+     * z. B. das Edge Lighting. Feuert nur bei echter Neu-Benachrichtigung (streng steigende
+     * `postTimeMs`); beim App-Start zählen nur Notifications, die **nach** der Erzeugung kommen.
+     */
+    private val _notificationPulse = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    val notificationPulse: SharedFlow<Long> = _notificationPulse.asSharedFlow()
+
+    init {
+        scope.launch {
+            // Basis = Erzeugungszeit, damit bereits aktive (alte) Benachrichtigungen nicht pulsen.
+            var lastMax = System.currentTimeMillis()
+            NotificationService.activeNotificationDetails
+                .map { list -> list.maxByOrNull { it.postTimeMs }?.postTimeMs }
+                .collect { max ->
+                    if (max != null && max > lastMax) {
+                        lastMax = max
+                        _notificationPulse.tryEmit(max)
+                    }
+                }
+        }
+    }
 
     /** Wie lange Lade-/Benachrichtigungs-Pillen sichtbar bleiben, bevor sie ausklingen. */
     private val batteryVisibleMs = 5_000L

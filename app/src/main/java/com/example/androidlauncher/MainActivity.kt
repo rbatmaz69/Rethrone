@@ -112,6 +112,7 @@ import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.DynamicIsland
+import com.example.androidlauncher.ui.EdgeLighting
 import com.example.androidlauncher.ui.IslandEditControls
 import com.example.androidlauncher.ui.IslandExpandedCard
 import com.example.androidlauncher.ui.sendNotificationReply
@@ -296,6 +297,13 @@ class MainActivity : ComponentActivity() {
             val isDynamicIslandEnabled by themeManager.isDynamicIslandEnabled.collectAsState(initial = true)
             val dynamicIslandOffset by themeManager.dynamicIslandOffset.collectAsState(initial = 0f)
             val dynamicIslandColor by themeManager.dynamicIslandColor.collectAsState(initial = Color(0xFF0B0B0C))
+            val isEdgeLightingEnabled by themeManager.isEdgeLightingEnabled.collectAsState(initial = false)
+            val edgeLightingColor by themeManager.edgeLightingColor.collectAsState(initial = Color(0xFF0A84FF))
+            // Edge-Lighting-Puls: jede neue Benachrichtigung erhöht den Zähler → eine Lauf-Runde.
+            var edgePulseId by remember { mutableStateOf(0) }
+            LaunchedEffect(Unit) {
+                dynamicIslandManager.notificationPulse.collect { edgePulseId++ }
+            }
             val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
             // Erststart-Onboarding: Default true vermeidet Aufblitzen für Bestandsnutzer,
             // bis der echte Wert aus DataStore geladen ist.
@@ -1189,6 +1197,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // Edge Lighting: leuchtender Rand-Lauf bei neuen Benachrichtigungen (Samsung-Stil).
+                    // Eigenständig (unabhängig von Island-Toggle & Drawer); zeichnet nur während einer
+                    // Runde und fängt keine Touches ab.
+                    if (isEdgeLightingEnabled) {
+                        EdgeLighting(
+                            modifier = Modifier.fillMaxSize().zIndex(6500f),
+                            color = edgeLightingColor,
+                            pulseId = edgePulseId
+                        )
+                    }
+
                     // Dynamic Island: ereignisgesteuerte Pille an der Kamera. Nur auf dem
                     // Home-Screen (nicht im Drawer) und wenn per Einstellung aktiviert.
                     // Im Leerlauf zeichnet die Composable selbst nichts – außer im Layout-Edit-Modus,
@@ -1390,6 +1409,8 @@ class MainActivity : ComponentActivity() {
                             onCustomMenuChange = { scope.launch { themeManager.setCustomMenuColor(it) } },
                             dynamicIslandColor = dynamicIslandColor,
                             onDynamicIslandColorChange = { scope.launch { themeManager.setDynamicIslandColor(it) } },
+                            edgeLightingColor = edgeLightingColor,
+                            onEdgeLightingColorChange = { scope.launch { themeManager.setEdgeLightingColor(it) } },
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isColorConfigOpen = false }
                         )
@@ -1530,9 +1551,9 @@ class MainActivity : ComponentActivity() {
                             onDynamicIslandToggled = { enabled ->
                                 scope.launch { themeManager.setDynamicIslandEnabled(enabled) }
                             },
-                            dynamicIslandColor = dynamicIslandColor,
-                            onDynamicIslandColorChange = { c ->
-                                scope.launch { themeManager.setDynamicIslandColor(c) }
+                            isEdgeLightingEnabled = isEdgeLightingEnabled,
+                            onEdgeLightingToggled = { enabled ->
+                                scope.launch { themeManager.setEdgeLightingEnabled(enabled) }
                             },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->

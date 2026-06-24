@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Bell
+import com.composables.icons.lucide.Sparkles
 import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Shield
@@ -99,8 +100,8 @@ fun EditConfigMenu(
     onCalendarWidgetToggled: (Boolean) -> Unit,
     isDynamicIslandEnabled: Boolean,
     onDynamicIslandToggled: (Boolean) -> Unit,
-    dynamicIslandColor: Color,
-    onDynamicIslandColorChange: (Color) -> Unit,
+    isEdgeLightingEnabled: Boolean,
+    onEdgeLightingToggled: (Boolean) -> Unit,
     appAccessMode: AppAccessMode,
     onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
@@ -115,7 +116,6 @@ fun EditConfigMenu(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val menuListState = rememberLazyListState()
 
-    var showIslandColorPicker by remember { mutableStateOf(false) }
     var isDefaultLauncherSet by remember { mutableStateOf(isDefaultLauncher(context)) }
     var isNotificationEnabled by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
     var isAccessibilityEnabled by remember { mutableStateOf(LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) }
@@ -256,15 +256,19 @@ fun EditConfigMenu(
                 )
             }
 
-            if (isDynamicIslandEnabled) {
-                item {
-                    ColorPickerRow(
-                        label = stringResource(R.string.dynamic_island_color),
-                        color = dynamicIslandColor,
-                        mainTextColor = mainTextColor,
-                        onClick = { showIslandColorPicker = true }
-                    )
-                }
+            item {
+                EditToggleItem(
+                    icon = Lucide.Sparkles,
+                    label = stringResource(R.string.edge_lighting),
+                    description = stringResource(R.string.edge_lighting_desc),
+                    checked = isEdgeLightingEnabled,
+                    onCheckedChange = { onEdgeLightingToggled(it) },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "edge_lighting_switch"
+                )
             }
 
             item {
@@ -538,16 +542,6 @@ fun EditConfigMenu(
         }
     }
 
-    if (showIslandColorPicker) {
-        ColorPickerDialog(
-            title = stringResource(R.string.dynamic_island_color),
-            color = dynamicIslandColor,
-            onColorChange = onDynamicIslandColorChange,
-            backgroundColor = surfaceAccent,
-            mainTextColor = mainTextColor,
-            onDismiss = { showIslandColorPicker = false }
-        )
-    }
 }
 
 @Composable
