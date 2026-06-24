@@ -122,6 +122,13 @@
     <string name="edge_lighting">Edge Lighting</string>
     <string name="edge_lighting_desc">Die Bildschirmränder leuchten bei neuen Benachrichtigungen auf</string>
     <string name="edge_lighting_color">Edge-Lighting-Farbe</string>
+    <string name="edge_lighting_style">Effekt-Stil</string>
+    <string name="edge_style_sweep">Umlaufend</string>
+    <string name="edge_style_from_camera">Von der Kamera</string>
+    <string name="edge_style_glow">Glow-Puls</string>
+    <string name="edge_speed_label">Geschwindigkeit: %1$s×</string>
+    <string name="edge_laps_label">Durchläufe: %1$d×</string>
+    <string name="edge_thickness_label">Stärke: %1$s×</string>
     <string name="app_access_label">App-Zugriff</string>
     <string name="edit_home_layout">Startbildschirm-Layout anpassen</string>
     <string name="edit_app_icons">App-Icons anpassen</string>

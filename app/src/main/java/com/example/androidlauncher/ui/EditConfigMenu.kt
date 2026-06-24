@@ -101,7 +101,7 @@ fun EditConfigMenu(
     isDynamicIslandEnabled: Boolean,
     onDynamicIslandToggled: (Boolean) -> Unit,
     isEdgeLightingEnabled: Boolean,
-    onEdgeLightingToggled: (Boolean) -> Unit,
+    onOpenEdgeLightingConfig: () -> Unit,
     appAccessMode: AppAccessMode,
     onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
@@ -257,17 +257,16 @@ fun EditConfigMenu(
             }
 
             item {
-                EditToggleItem(
+                EditMenuItem(
                     icon = Lucide.Sparkles,
                     label = stringResource(R.string.edge_lighting),
-                    description = stringResource(R.string.edge_lighting_desc),
-                    checked = isEdgeLightingEnabled,
-                    onCheckedChange = { onEdgeLightingToggled(it) },
+                    onClick = onOpenEdgeLightingConfig,
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "edge_lighting_switch"
+                    statusLabel = if (isEdgeLightingEnabled) null else stringResource(R.string.status_off),
+                    testTag = "edge_lighting_menu_item"
                 )
             }
 

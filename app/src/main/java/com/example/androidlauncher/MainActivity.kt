@@ -88,6 +88,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppAccessMode
+import com.example.androidlauncher.data.EdgeLightingStyle
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.AutoIconRule
@@ -113,6 +114,7 @@ import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.DynamicIsland
 import com.example.androidlauncher.ui.EdgeLighting
+import com.example.androidlauncher.ui.EdgeLightingConfigMenu
 import com.example.androidlauncher.ui.IslandEditControls
 import com.example.androidlauncher.ui.IslandExpandedCard
 import com.example.androidlauncher.ui.sendNotificationReply
@@ -299,6 +301,10 @@ class MainActivity : ComponentActivity() {
             val dynamicIslandColor by themeManager.dynamicIslandColor.collectAsState(initial = Color(0xFF0B0B0C))
             val isEdgeLightingEnabled by themeManager.isEdgeLightingEnabled.collectAsState(initial = false)
             val edgeLightingColor by themeManager.edgeLightingColor.collectAsState(initial = Color(0xFF0A84FF))
+            val edgeLightingSpeed by themeManager.edgeLightingSpeed.collectAsState(initial = 1f)
+            val edgeLightingLaps by themeManager.edgeLightingLaps.collectAsState(initial = 1)
+            val edgeLightingThickness by themeManager.edgeLightingThickness.collectAsState(initial = 1f)
+            val edgeLightingStyle by themeManager.edgeLightingStyle.collectAsState(initial = EdgeLightingStyle.SWEEP)
             // Edge-Lighting-Puls: jede neue Benachrichtigung erhöht den Zähler → eine Lauf-Runde.
             var edgePulseId by remember { mutableStateOf(0) }
             LaunchedEffect(Unit) {
@@ -536,6 +542,7 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isAnimationsConfigOpen by remember { mutableStateOf(false) }
+                var isEdgeLightingConfigOpen by remember { mutableStateOf(false) }
                 var isGesturesConfigOpen by remember { mutableStateOf(false) }
                 var isDesignMenuOpen by remember { mutableStateOf(false) }
                 var isThemeMenuOpen by remember { mutableStateOf(false) }
@@ -1035,6 +1042,7 @@ class MainActivity : ComponentActivity() {
                         isThemeMenuOpen -> isThemeMenuOpen = false
                         isDesignMenuOpen -> isDesignMenuOpen = false
                         isAnimationsConfigOpen -> isAnimationsConfigOpen = false
+                        isEdgeLightingConfigOpen -> isEdgeLightingConfigOpen = false
                         isGesturesConfigOpen -> isGesturesConfigOpen = false
                         isColorConfigOpen -> isColorConfigOpen = false
                         isSizeConfigOpen -> isSizeConfigOpen = false
@@ -1204,7 +1212,11 @@ class MainActivity : ComponentActivity() {
                         EdgeLighting(
                             modifier = Modifier.fillMaxSize().zIndex(6500f),
                             color = edgeLightingColor,
-                            pulseId = edgePulseId
+                            pulseId = edgePulseId,
+                            style = edgeLightingStyle,
+                            lapDurationMs = (1400f / edgeLightingSpeed).roundToInt(),
+                            laps = edgeLightingLaps,
+                            thickness = edgeLightingThickness
                         )
                     }
 
@@ -1552,9 +1564,7 @@ class MainActivity : ComponentActivity() {
                                 scope.launch { themeManager.setDynamicIslandEnabled(enabled) }
                             },
                             isEdgeLightingEnabled = isEdgeLightingEnabled,
-                            onEdgeLightingToggled = { enabled ->
-                                scope.launch { themeManager.setEdgeLightingEnabled(enabled) }
-                            },
+                            onOpenEdgeLightingConfig = { isEdgeLightingConfigOpen = true },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->
                                 scope.launch { themeManager.setAppAccessMode(mode) }
@@ -1607,6 +1617,26 @@ class MainActivity : ComponentActivity() {
                             animationSpeed = animationSpeed,
                             onAnimationSpeedChanged = { scope.launch { themeManager.setAnimationSpeed(it) } },
                             onClose = { isAnimationsConfigOpen = false }
+                        )
+                    }
+
+                    MenuOverlay(
+                        visible = isEdgeLightingConfigOpen,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { isEdgeLightingConfigOpen = false }
+                    ) {
+                        EdgeLightingConfigMenu(
+                            isEnabled = isEdgeLightingEnabled,
+                            onEnabledChange = { scope.launch { themeManager.setEdgeLightingEnabled(it) } },
+                            style = edgeLightingStyle,
+                            onStyleChange = { scope.launch { themeManager.setEdgeLightingStyle(it) } },
+                            speed = edgeLightingSpeed,
+                            onSpeedChange = { scope.launch { themeManager.setEdgeLightingSpeed(it) } },
+                            laps = edgeLightingLaps,
+                            onLapsChange = { scope.launch { themeManager.setEdgeLightingLaps(it) } },
+                            thickness = edgeLightingThickness,
+                            onThicknessChange = { scope.launch { themeManager.setEdgeLightingThickness(it) } },
+                            onClose = { isEdgeLightingConfigOpen = false }
                         )
                     }
 

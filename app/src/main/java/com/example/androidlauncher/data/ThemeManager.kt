@@ -101,6 +101,14 @@ class ThemeManager(private val context: Context) {
         private val EDGE_LIGHTING_KEY = booleanPreferencesKey("edge_lighting_enabled")
         // ARGB-Farbe des Edge Lightings. Default: Akzent-Blau.
         private val EDGE_LIGHTING_COLOR_KEY = intPreferencesKey("edge_lighting_color")
+        // Edge-Lighting-Tempo (höher = schneller). Default: 1.0.
+        private val EDGE_LIGHTING_SPEED_KEY = floatPreferencesKey("edge_lighting_speed")
+        // Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1.
+        private val EDGE_LIGHTING_LAPS_KEY = intPreferencesKey("edge_lighting_laps")
+        // Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0.
+        private val EDGE_LIGHTING_THICKNESS_KEY = floatPreferencesKey("edge_lighting_thickness")
+        // Edge-Lighting-Stil (EdgeLightingStyle-Name). Default: SWEEP.
+        private val EDGE_LIGHTING_STYLE_KEY = stringPreferencesKey("edge_lighting_style")
         // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
 
@@ -364,6 +372,26 @@ class ThemeManager(private val context: Context) {
      */
     val edgeLightingColor: Flow<Color> = context.dataStore.data
         .map { Color(it[EDGE_LIGHTING_COLOR_KEY] ?: 0xFF0A84FF.toInt()) }
+
+    /** Edge-Lighting-Tempo (höher = schneller). Default: 1.0. */
+    val edgeLightingSpeed: Flow<Float> = context.dataStore.data
+        .map { (it[EDGE_LIGHTING_SPEED_KEY] ?: 1f).coerceIn(0.5f, 2f) }
+
+    /** Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1. */
+    val edgeLightingLaps: Flow<Int> = context.dataStore.data
+        .map { (it[EDGE_LIGHTING_LAPS_KEY] ?: 1).coerceIn(1, 5) }
+
+    /** Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0. */
+    val edgeLightingThickness: Flow<Float> = context.dataStore.data
+        .map { (it[EDGE_LIGHTING_THICKNESS_KEY] ?: 1f).coerceIn(0.5f, 2f) }
+
+    /** Edge-Lighting-Stil. Default: SWEEP. */
+    val edgeLightingStyle: Flow<EdgeLightingStyle> = context.dataStore.data
+        .map { prefs ->
+            prefs[EDGE_LIGHTING_STYLE_KEY]?.let {
+                runCatching { EdgeLightingStyle.valueOf(it) }.getOrNull()
+            } ?: EdgeLightingStyle.SWEEP
+        }
 
     /**
      * Observable flow for shake gesture toggle.
@@ -723,6 +751,34 @@ class ThemeManager(private val context: Context) {
     suspend fun setEdgeLightingColor(color: Color) {
         context.dataStore.edit { preferences ->
             preferences[EDGE_LIGHTING_COLOR_KEY] = color.toArgb()
+        }
+    }
+
+    /** Setzt das Edge-Lighting-Tempo (0.5..2.0; höher = schneller). */
+    suspend fun setEdgeLightingSpeed(speed: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_SPEED_KEY] = speed.coerceIn(0.5f, 2f)
+        }
+    }
+
+    /** Setzt die Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). */
+    suspend fun setEdgeLightingLaps(laps: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_LAPS_KEY] = laps.coerceIn(1, 5)
+        }
+    }
+
+    /** Setzt die Edge-Lighting-Stärke (0.5..2.0; skaliert Strich-/Glow-Breite). */
+    suspend fun setEdgeLightingThickness(thickness: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_THICKNESS_KEY] = thickness.coerceIn(0.5f, 2f)
+        }
+    }
+
+    /** Setzt den Edge-Lighting-Stil. */
+    suspend fun setEdgeLightingStyle(style: EdgeLightingStyle) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_STYLE_KEY] = style.name
         }
     }
 }
