@@ -262,7 +262,7 @@ private fun NotificationCard(
         Text(
             text = content.title,
             color = colors.text,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
@@ -285,9 +285,9 @@ private fun NotificationCard(
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(top = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             content.actions.forEach { action ->
                 val selected = replyingTo === action
@@ -392,8 +392,8 @@ private fun ActionChip(
     Text(
         text = label,
         color = if (selected) colors.surface else colors.text,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier
@@ -404,7 +404,7 @@ private fun ActionChip(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 16.dp, vertical = 9.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     )
 }
 
@@ -428,8 +428,8 @@ private fun ActivitySwitcher(
             Text(
                 text = activityChipLabel(item),
                 color = if (selected) colors.surface else colors.text,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
@@ -614,9 +614,9 @@ private fun TimerCard(
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(top = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             others.forEach { action -> ActionChip(action.title, colors) { onControl(action) } }
         }
@@ -628,7 +628,7 @@ private fun SimpleCard(primary: String, secondary: String, colors: IslandCardCol
     Text(
         primary,
         color = colors.text,
-        style = MaterialTheme.typography.titleLarge,
+        style = MaterialTheme.typography.titleMedium,
         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
     )
     if (secondary.isNotBlank()) {
