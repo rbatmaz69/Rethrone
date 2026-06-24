@@ -584,6 +584,32 @@ fun sendPendingIntent(pendingIntent: android.app.PendingIntent?): Boolean {
     }
 }
 
+/**
+ * Beantwortet eine Reply-Aktion (RemoteInput, z. B. WhatsApp „Antworten"). Füllt die
+ * RemoteInput-Ergebnisse mit [replyText] in einen Intent und feuert den zugehörigen
+ * PendingIntent **mit Kontext** – ein bares `send()` würde nur einen leeren Reply liefern.
+ *
+ * @return true, wenn das Senden ausgelöst wurde.
+ */
+fun sendNotificationReply(
+    context: android.content.Context,
+    action: com.example.androidlauncher.data.NotificationAction,
+    replyText: CharSequence
+): Boolean {
+    if (action.remoteInputs.isEmpty()) return sendPendingIntent(action.intent)
+    val fillIn = android.content.Intent()
+    val results = android.os.Bundle().apply {
+        action.remoteInputs.forEach { putCharSequence(it.resultKey, replyText) }
+    }
+    android.app.RemoteInput.addResultsToIntent(action.remoteInputs.toTypedArray(), fillIn, results)
+    return try {
+        action.intent.send(context, 0, fillIn)
+        true
+    } catch (_: android.app.PendingIntent.CanceledException) {
+        false
+    }
+}
+
 @Composable
 fun ReturnAnimationOverlay(
     bounds: Rect?, 

@@ -114,6 +114,7 @@ import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.DynamicIsland
 import com.example.androidlauncher.ui.IslandEditControls
 import com.example.androidlauncher.ui.IslandExpandedCard
+import com.example.androidlauncher.ui.sendNotificationReply
 import com.example.androidlauncher.ui.sendPendingIntent
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
 import com.example.androidlauncher.ui.HybridSearch
@@ -294,6 +295,7 @@ class MainActivity : ComponentActivity() {
             val isCalendarWidgetEnabled by themeManager.isCalendarWidgetEnabled.collectAsState(initial = true)
             val isDynamicIslandEnabled by themeManager.isDynamicIslandEnabled.collectAsState(initial = true)
             val dynamicIslandOffset by themeManager.dynamicIslandOffset.collectAsState(initial = 0f)
+            val dynamicIslandColor by themeManager.dynamicIslandColor.collectAsState(initial = Color(0xFF0B0B0C))
             val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
             // Erststart-Onboarding: Default true vermeidet Aufblitzen für Bestandsnutzer,
             // bis der echte Wert aus DataStore geladen ist.
@@ -1199,6 +1201,7 @@ class MainActivity : ComponentActivity() {
                             onTap = { content -> dynamicIslandManager.expand(content) },
                             loadIcon = { pkg -> appRepository.loadIcon(pkg) },
                             verticalOffsetDp = dynamicIslandOffset,
+                            islandColor = dynamicIslandColor,
                             editMode = isHomeEditMode,
                             onSwipeNext = { dynamicIslandManager.selectNext() },
                             onSwipePrevious = { dynamicIslandManager.selectPrevious() },
@@ -1275,6 +1278,10 @@ class MainActivity : ComponentActivity() {
                                         sendPendingIntent(action.intent)
                                         dynamicIslandManager.dismissExpanded()
                                     },
+                                    onReply = { action, text ->
+                                        sendNotificationReply(context, action, text)
+                                        dynamicIslandManager.dismissExpanded()
+                                    },
                                     // Timer steuern (Pause/Play/…): Karte bewusst offen lassen,
                                     // damit man direkt weiter steuern kann.
                                     onTimerControl = { action -> sendPendingIntent(action.intent) },
@@ -1293,7 +1300,8 @@ class MainActivity : ComponentActivity() {
                                     onDismiss = { dynamicIslandManager.dismissExpanded() },
                                     onMediaPlayPause = { dynamicIslandManager.mediaPlayPause() },
                                     onMediaNext = { dynamicIslandManager.mediaNext() },
-                                    onMediaPrev = { dynamicIslandManager.mediaPrevious() }
+                                    onMediaPrev = { dynamicIslandManager.mediaPrevious() },
+                                    islandColor = dynamicIslandColor
                                 )
                             }
                         }
@@ -1380,6 +1388,8 @@ class MainActivity : ComponentActivity() {
                             onCustomBackgroundChange = { scope.launch { themeManager.setCustomBackgroundColor(it) } },
                             customMenuColor = customMenuColor,
                             onCustomMenuChange = { scope.launch { themeManager.setCustomMenuColor(it) } },
+                            dynamicIslandColor = dynamicIslandColor,
+                            onDynamicIslandColorChange = { scope.launch { themeManager.setDynamicIslandColor(it) } },
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isColorConfigOpen = false }
                         )
@@ -1519,6 +1529,10 @@ class MainActivity : ComponentActivity() {
                             isDynamicIslandEnabled = isDynamicIslandEnabled,
                             onDynamicIslandToggled = { enabled ->
                                 scope.launch { themeManager.setDynamicIslandEnabled(enabled) }
+                            },
+                            dynamicIslandColor = dynamicIslandColor,
+                            onDynamicIslandColorChange = { c ->
+                                scope.launch { themeManager.setDynamicIslandColor(c) }
                             },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->

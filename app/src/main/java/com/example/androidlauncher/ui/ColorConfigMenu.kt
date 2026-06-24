@@ -59,6 +59,8 @@ fun ColorConfigMenu(
     onCustomBackgroundChange: (Color) -> Unit,
     customMenuColor: Color,
     onCustomMenuChange: (Color) -> Unit,
+    dynamicIslandColor: Color,
+    onDynamicIslandColorChange: (Color) -> Unit,
     customWallpaperUri: String? = null,
     onClose: () -> Unit
 ) {
@@ -105,6 +107,13 @@ fun ColorConfigMenu(
                 color = iconColor,
                 mainTextColor = mainTextColor,
                 onClick = { activePicker = "icon" }
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            ColorPickerRow(
+                label = stringResource(R.string.dynamic_island_color),
+                color = dynamicIslandColor,
+                mainTextColor = mainTextColor,
+                onClick = { activePicker = "island" }
             )
 
             // Nur bei „Eigene Farbe": zwei wählbare Flächenfarben.
@@ -189,6 +198,7 @@ fun ColorConfigMenu(
             val (pickerTitle, pickerColor, pickerOnChange) = when (activePicker) {
                 "text" -> Triple(stringResource(R.string.color_label_home_text), homeTextColor, onHomeTextColorChange)
                 "icon" -> Triple(stringResource(R.string.color_label_icon), iconColor, onIconColorChange)
+                "island" -> Triple(stringResource(R.string.dynamic_island_color), dynamicIslandColor, onDynamicIslandColorChange)
                 "bg" -> Triple(stringResource(R.string.color_label_background), customBackgroundColor, onCustomBackgroundChange)
                 else -> Triple(stringResource(R.string.color_label_menu), customMenuColor, onCustomMenuChange)
             }

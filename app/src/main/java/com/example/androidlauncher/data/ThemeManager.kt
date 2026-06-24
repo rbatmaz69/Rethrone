@@ -95,6 +95,8 @@ class ThemeManager(private val context: Context) {
         private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
         private val DYNAMIC_ISLAND_KEY = booleanPreferencesKey("dynamic_island_enabled")
         private val DYNAMIC_ISLAND_OFFSET_KEY = floatPreferencesKey("dynamic_island_offset")
+        // ARGB-Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
+        private val DYNAMIC_ISLAND_COLOR_KEY = intPreferencesKey("dynamic_island_color")
         // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
 
@@ -340,6 +342,12 @@ class ThemeManager(private val context: Context) {
      */
     val dynamicIslandOffset: Flow<Float> = context.dataStore.data
         .map { it[DYNAMIC_ISLAND_OFFSET_KEY] ?: 0f }
+
+    /**
+     * Frei wählbare Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
+     */
+    val dynamicIslandColor: Flow<Color> = context.dataStore.data
+        .map { Color(it[DYNAMIC_ISLAND_COLOR_KEY] ?: 0xFF0B0B0C.toInt()) }
 
     /**
      * Observable flow for shake gesture toggle.
@@ -672,6 +680,15 @@ class ThemeManager(private val context: Context) {
     suspend fun setDynamicIslandOffset(offsetDp: Float) {
         context.dataStore.edit { preferences ->
             preferences[DYNAMIC_ISLAND_OFFSET_KEY] = offsetDp.coerceIn(-12f, 40f)
+        }
+    }
+
+    /**
+     * Setzt die frei wählbare Farbe der Dynamic Island (Pille + Karte).
+     */
+    suspend fun setDynamicIslandColor(color: Color) {
+        context.dataStore.edit { preferences ->
+            preferences[DYNAMIC_ISLAND_COLOR_KEY] = color.toArgb()
         }
     }
 }

@@ -9,8 +9,17 @@ import android.graphics.Bitmap
  */
 data class NotificationAction(
     val title: String,
-    val intent: PendingIntent
-)
+    val intent: PendingIntent,
+    /**
+     * RemoteInputs der Aktion (z. B. WhatsApp „Antworten"). Nicht leer ⇒ Reply-Aktion: der
+     * [intent] darf **nicht** bar gefeuert werden, sondern braucht einen mit RemoteInput-Ergebnissen
+     * gefüllten Intent (siehe `sendNotificationReply`).
+     */
+    val remoteInputs: List<android.app.RemoteInput> = emptyList()
+) {
+    /** `true` ⇒ Aktion erwartet eine Texteingabe (Reply); zeigt in der Karte ein Inline-Feld. */
+    val isReply: Boolean get() = remoteInputs.isNotEmpty()
+}
 
 /**
  * Inhalt, den die Dynamic Island gerade darstellt. Genau eine Variante ist aktiv;

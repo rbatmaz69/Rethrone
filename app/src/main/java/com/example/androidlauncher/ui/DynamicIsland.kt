@@ -6,8 +6,15 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,12 +27,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -74,6 +83,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.data.IslandContent
+import androidx.compose.ui.graphics.luminance
 import com.example.androidlauncher.data.IslandState
 import com.example.androidlauncher.data.activityId
 import com.example.androidlauncher.data.iconPackage
@@ -110,11 +120,16 @@ fun DynamicIsland(
     onTap: (IslandContent) -> Unit,
     loadIcon: suspend (String) -> ImageBitmap?,
     verticalOffsetDp: Float = 0f,
+    islandColor: Color = IslandSurface,
     editMode: Boolean = false,
     onSwipeNext: () -> Unit = {},
     onSwipePrevious: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    // Kontrast-Inhaltsfarbe: dunkler Text auf heller Insel, sonst weiß – damit auch frei gewählte
+    // helle Farben lesbar bleiben. Subtext etwas gedämpft.
+    val islandContent = if (islandColor.luminance() > 0.5f) Color(0xFF0B0B0C) else Color.White
+    val islandSubContent = islandContent.copy(alpha = 0.7f)
     // „Main" = vom Manager gewählte Aktivität. Alle aktiven werden als Einheiten gezeigt: die
     // gewählte als breite Pille (umschließt die Kamera), die übrigen als kleine App-Kreise.
     // Beim Wechsel tauschen sie Form & Platz (Rollen-Tausch-Morph).
@@ -224,6 +239,9 @@ fun DynamicIsland(
                 cutoutWidth,
                 loadIcon,
                 iconCache,
+                islandColor = islandColor,
+                contentColor = islandContent,
+                subContentColor = islandSubContent,
                 editMode = true,
                 modifier = Modifier.onGloballyPositioned {
                     clusterWidthPx = it.size.width
@@ -317,7 +335,11 @@ fun DynamicIsland(
                             val isTarget = c != null && shownContent != null &&
                                 activityId(c) == activityId(shownContent)
                             IslandPill(
-                                c, cutoutWidth, loadIcon, iconCache, editMode = false,
+                                c, cutoutWidth, loadIcon, iconCache,
+                                islandColor = islandColor,
+                                contentColor = islandContent,
+                                subContentColor = islandSubContent,
+                                editMode = false,
                                 balanced = others.isEmpty(),
                                 onCameraSlotPositioned = if (isTarget) {
                                     { slot ->
@@ -351,7 +373,7 @@ fun DynamicIsland(
                             },
                             label = "islandCircle$index"
                         ) { o ->
-                            AppCircle(o, loadIcon, iconCache)
+                            AppCircle(o, loadIcon, iconCache, islandColor, islandSubContent)
                         }
                     }
                 }
@@ -389,7 +411,9 @@ private fun rememberIslandIcon(
 private fun AppCircle(
     content: IslandContent,
     loadIcon: suspend (String) -> ImageBitmap?,
-    cache: SnapshotStateMap<String, ImageBitmap?>
+    cache: SnapshotStateMap<String, ImageBitmap?>,
+    islandColor: Color,
+    fallbackColor: Color
 ) {
     val img = rememberIslandIcon(iconPackage(content), loadIcon, cache)
     Box(
@@ -397,7 +421,7 @@ private fun AppCircle(
             // Gleiche Höhe wie die Pille, damit der Kreis nicht kleiner als die Pille wirkt.
             .size(IslandPillHeight)
             .clip(CircleShape)
-            .background(IslandSurface),
+            .background(islandColor),
         contentAlignment = Alignment.Center
     ) {
         if (img != null) {
@@ -409,7 +433,7 @@ private fun AppCircle(
                     .clip(CircleShape)
             )
         } else {
-            Dot(IslandSubText)
+            Dot(fallbackColor)
         }
     }
 }
@@ -425,6 +449,9 @@ private fun IslandPill(
     cutoutWidth: Dp,
     loadIcon: suspend (String) -> ImageBitmap?,
     iconCache: SnapshotStateMap<String, ImageBitmap?>,
+    islandColor: Color,
+    contentColor: Color,
+    subContentColor: Color,
     editMode: Boolean,
     modifier: Modifier = Modifier,
     balanced: Boolean = true,
@@ -439,9 +466,9 @@ private fun IslandPill(
     // Tap wird vom umschließenden Container (mit Erweiterung unter die Statusleiste) gehandhabt.
     var rowModifier = modifier
         .clip(shape)
-        .background(IslandSurface)
+        .background(islandColor)
     if (editMode) {
-        rowModifier = rowModifier.border(1.dp, IslandText.copy(alpha = 0.45f), shape)
+        rowModifier = rowModifier.border(1.dp, contentColor.copy(alpha = 0.45f), shape)
     }
 
     val styleModifier = rowModifier
@@ -474,9 +501,9 @@ private fun IslandPill(
                     is IslandContent.Notification -> AppIcon(c.pkg, loadIcon, iconCache)
                     // Kein Wort: Live-Zeit wenn ableitbar, sonst nur das App-Icon der Uhr.
                     is IslandContent.Timer ->
-                        if (c.displayMs != null) TimerLabel(formatRemaining(c.displayMs)) else AppIcon(c.pkg, loadIcon, iconCache)
-                    is IslandContent.Battery -> ShortLabel("${c.level}%")
-                    is IslandContent.Media -> MediaArt(c.art)
+                        if (c.displayMs != null) TimerLabel(formatRemaining(c.displayMs), contentColor) else AppIcon(c.pkg, loadIcon, iconCache)
+                    is IslandContent.Battery -> ShortLabel("${c.level}%", contentColor)
+                    is IslandContent.Media -> MediaArt(c.art, islandColor)
                 }
             },
             // Kleiner Statuspunkt rechts der Kamera.
@@ -484,8 +511,8 @@ private fun IslandPill(
                 when (c) {
                     is IslandContent.Notification -> Dot(AccentBlue)
                     is IslandContent.Timer -> Dot(if (c.paused) TimerAmber else ChargingGreen)
-                    is IslandContent.Battery -> Dot(if (c.charging) ChargingGreen else IslandSubText)
-                    is IslandContent.Media -> Dot(if (c.isPlaying) ChargingGreen else IslandSubText)
+                    is IslandContent.Battery -> Dot(if (c.charging) ChargingGreen else subContentColor)
+                    is IslandContent.Media -> MediaBars(c.isPlaying)
                 }
             }
         )
@@ -546,10 +573,10 @@ private fun CameraBalancedRow(
 }
 
 @Composable
-private fun ShortLabel(text: String, modifier: Modifier = Modifier) {
+private fun ShortLabel(text: String, color: Color = IslandText, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        color = IslandText,
+        color = color,
         fontSize = 14.sp,
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
@@ -577,16 +604,16 @@ private fun ShortLabel(text: String, modifier: Modifier = Modifier) {
  * darüber, sodass ihr linker Rand konstant ist (gleicher Außen-Abstand wie der Punkt rechts).
  */
 @Composable
-private fun TimerLabel(text: String) {
+private fun TimerLabel(text: String, color: Color = IslandText) {
     val placeholder = if (text.count { it == ':' } == 2) "00:00:00" else "00:00"
     Box(contentAlignment = Alignment.CenterStart) {
-        ShortLabel(placeholder, Modifier.alpha(0f))
-        ShortLabel(text)
+        ShortLabel(placeholder, color, Modifier.alpha(0f))
+        ShortLabel(text, color)
     }
 }
 
 @Composable
-private fun MediaArt(art: Bitmap?) {
+private fun MediaArt(art: Bitmap?, placeholderColor: Color) {
     // Cover-Slot konstant 20.dp halten: Beim Track-Wechsel kommt das neue Album-Bitmap
     // asynchron (kurzzeitig null) nach. Fiele der Slot dann auf einen 8.dp-Dot zurück, schrumpfte
     // und wüchse die Pille und spränge horizontal (Re-Center) → Flackern. Letztes Cover puffern
@@ -599,7 +626,7 @@ private fun MediaArt(art: Bitmap?) {
         modifier = Modifier
             .size(20.dp)
             .clip(RoundedCornerShape(5.dp))
-            .background(IslandSurface),
+            .background(placeholderColor),
         contentAlignment = Alignment.Center
     ) {
         if (bmp != null) {
@@ -640,6 +667,60 @@ private fun Dot(color: Color) {
         Modifier
             .size(8.dp)
             .clip(CircleShape)
+            .background(color)
+    )
+}
+
+/** Höhe des Balken-Bands (Equalizer) im Medien-Status rechts der Kamera. */
+private val MediaBarsHeight = 14.dp
+
+/**
+ * Equalizer-Balken als Medien-Statusanzeige (ersetzt den Punkt): bei Wiedergabe „tanzen" die
+ * Balken (mehrere phasenversetzte Endlos-Animationen), bei Pause stehen sie in festen Resthöhen
+ * still – wie aus Now-Playing-Anzeigen bekannt. Grün bei Wiedergabe, gedämpft grau bei Pause.
+ * Bei deaktivierten Animationen bleiben die Balken ebenfalls statisch.
+ */
+@Composable
+private fun MediaBars(isPlaying: Boolean) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val color = if (isPlaying) ChargingGreen else IslandSubText
+    // Pro Balken: Tempo (ms) der Endlos-Bewegung und Resthöhe (Anteil) im Stillstand.
+    val durations = listOf(560, 420, 680, 500)
+    val rests = listOf(0.5f, 0.8f, 0.35f, 0.6f)
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier.height(MediaBarsHeight)
+    ) {
+        if (isPlaying && animationsEnabled) {
+            val transition = rememberInfiniteTransition(label = "mediaBars")
+            durations.forEachIndexed { i, dur ->
+                val fraction by transition.animateFloat(
+                    initialValue = 0.25f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(dur, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse,
+                        initialStartOffset = StartOffset(i * 90)
+                    ),
+                    label = "mediaBar$i"
+                )
+                EqualizerBar(fraction, color)
+            }
+        } else {
+            rests.forEach { EqualizerBar(it, color) }
+        }
+    }
+}
+
+/** Einzelner Equalizer-Balken; [heightFraction] = Anteil der vollen Bandhöhe (von unten wachsend). */
+@Composable
+private fun EqualizerBar(heightFraction: Float, color: Color) {
+    Box(
+        modifier = Modifier
+            .width(2.5.dp)
+            .fillMaxHeight(heightFraction.coerceIn(0.15f, 1f))
+            .clip(RoundedCornerShape(1.5.dp))
             .background(color)
     )
 }

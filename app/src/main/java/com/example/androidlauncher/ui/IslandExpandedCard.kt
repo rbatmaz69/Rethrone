@@ -22,20 +22,27 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,31 +50,67 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.data.IslandContent
 import com.example.androidlauncher.data.NotificationAction
 import com.example.androidlauncher.isPauseActionTitle
 import com.example.androidlauncher.isResumeActionTitle
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
+import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.RethroneShapes
 import com.example.androidlauncher.ui.theme.RethroneSprings
+
+/**
+ * Bündelt die aus dem App-Theme abgeleiteten Farben der Insel-Karte, damit die Unterkarten
+ * (Notification/Media/Timer) konsistent dieselbe themenbasierte Palette nutzen statt der früher
+ * hartcodierten Dunkel-Farben. So passt sich die geöffnete Insel jedem Farbthema / Material You an.
+ */
+private data class IslandCardColors(
+    val surface: Color,
+    val text: Color,
+    val subText: Color,
+    val accent: Color
+)
+
+@Composable
+private fun rememberIslandCardColors(islandColor: Color): IslandCardColors {
+    val isDarkText = LocalDarkTextEnabled.current
+    // Inhaltsfarbe per Kontrast aus der gewählten Insel-Farbe ableiten (dunkler Text auf heller
+    // Insel, sonst weiß) – so bleibt der Text bei jeder Farbe lesbar. Akzent bleibt der Theme-
+    // Akzent (Buttons/Chips), damit die Insel zum App-Design passt.
+    val text = if (islandColor.luminance() > 0.5f) Color(0xFF010101) else Color.White
+    return IslandCardColors(
+        surface = islandColor,
+        text = text,
+        subText = text.copy(alpha = 0.6f),
+        accent = LocalColorTheme.current.highlightColor(isDarkText)
+    )
+}
 
 /**
  * Große, aufgeklappte Insel-Karte. Erscheint über dem restlichen UI (eigener `zIndex` in
  * `MainActivity`), zeigt den vollständigen Inhalt und – bei Benachrichtigungen – die
  * Aktions-Buttons zum direkten Reagieren. Tap auf den Text öffnet die App, Tap auf das Scrim
- * (oder Back) schließt die Karte.
+ * (oder Back) schließt die Karte. Stil & Farben folgen dem App-Theme (Material-3-Expressive).
  *
  * @param content der eingefrorene Inhalt (siehe `DynamicIslandManager.expandedContent`).
  * @param onAction Aktions-Button gedrückt (sendet den zugehörigen PendingIntent).
+ * @param onReply Reply-Aktion abgeschickt (RemoteInput, z. B. WhatsApp): (Aktion, Text).
  * @param onOpen Tap auf den Inhalt (öffnet die App via contentIntent).
  * @param onDismiss Karte schließen.
  */
@@ -79,11 +122,15 @@ fun IslandExpandedCard(
     onDismiss: () -> Unit,
     allContents: List<IslandContent> = emptyList(),
     onSwitch: (IslandContent) -> Unit = {},
+    onReply: (NotificationAction, String) -> Unit = { _, _ -> },
     onTimerControl: (NotificationAction) -> Unit = {},
     onMediaPlayPause: () -> Unit = {},
     onMediaNext: () -> Unit = {},
-    onMediaPrev: () -> Unit = {}
+    onMediaPrev: () -> Unit = {},
+    islandColor: Color = Color(0xFF0B0B0C)
 ) {
+    val colors = rememberIslandCardColors(islandColor)
+    val cardShape = RethroneShapes.extraLarge
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -106,8 +153,13 @@ fun IslandExpandedCard(
                 .padding(horizontal = 20.dp)
                 .padding(top = 12.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(32.dp))
-                .background(IslandSurface)
+                // Weiche, RUNDE Tiefe (Default `clip = true` ⇒ Schatten folgt der Form). Das frühere
+                // `designSurface(clip = false)` projizierte dagegen eine rechteckige Schatten-Box,
+                // die beim Erscheinen hinter der runden Karte aufblitzte.
+                .shadow(16.dp, cardShape)
+                .clip(cardShape)
+                // Solide, frei wählbare Insel-Farbe (Default Schwarz) – gilt für Pille & Karte.
+                .background(colors.surface)
                 // Klicks auf der Karte sollen nicht das Scrim-Dismiss auslösen.
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -138,7 +190,7 @@ fun IslandExpandedCard(
                 .padding(20.dp)
         ) {
             if (tabs.size > 1) {
-                ActivitySwitcher(tabs, content, onSwitch)
+                ActivitySwitcher(tabs, content, colors, onSwitch)
             }
             val animationsEnabled = LocalAnimationsEnabled.current
             val speed = LocalAnimationSpeed.current
@@ -183,12 +235,13 @@ fun IslandExpandedCard(
                 // ohne eigenen Column-Container würden sie im AnimatedContent-Box überlappen.
                 Column {
                     when (c) {
-                        is IslandContent.Notification -> NotificationCard(c, onAction)
-                        is IslandContent.Media -> MediaCard(c, onMediaPlayPause, onMediaNext, onMediaPrev)
-                        is IslandContent.Timer -> TimerCard(c, onTimerControl)
+                        is IslandContent.Notification -> NotificationCard(c, colors, onAction, onReply)
+                        is IslandContent.Media -> MediaCard(c, colors, onMediaPlayPause, onMediaNext, onMediaPrev)
+                        is IslandContent.Timer -> TimerCard(c, colors, onTimerControl)
                         is IslandContent.Battery -> SimpleCard(
                             if (c.charging) "Wird geladen" else "Netzteil getrennt",
-                            "${c.level}%"
+                            "${c.level}%",
+                            colors
                         )
                     }
                 }
@@ -201,14 +254,16 @@ fun IslandExpandedCard(
 @Composable
 private fun NotificationCard(
     content: IslandContent.Notification,
-    onAction: (NotificationAction) -> Unit
+    colors: IslandCardColors,
+    onAction: (NotificationAction) -> Unit,
+    onReply: (NotificationAction, String) -> Unit
 ) {
     if (content.title.isNotBlank()) {
         Text(
             text = content.title,
-            color = IslandText,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
+            color = colors.text,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -216,13 +271,16 @@ private fun NotificationCard(
     if (content.text.isNotBlank()) {
         Text(
             text = content.text,
-            color = IslandSubText,
-            fontSize = 15.sp,
+            color = colors.subText,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 6,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 6.dp)
         )
     }
+    // Inline-Antwort: eine angetippte Reply-Aktion (RemoteInput) klappt unten ein Textfeld auf,
+    // statt sofort einen leeren Intent zu feuern.
+    var replyingTo by remember(content) { mutableStateOf<NotificationAction?>(null) }
     if (content.actions.isNotEmpty()) {
         FlowRow(
             modifier = Modifier
@@ -232,24 +290,115 @@ private fun NotificationCard(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             content.actions.forEach { action ->
-                ActionChip(action.title) { onAction(action) }
+                val selected = replyingTo === action
+                ActionChip(action.title, colors, selected = selected) {
+                    if (action.isReply) {
+                        replyingTo = if (selected) null else action
+                    } else {
+                        onAction(action)
+                    }
+                }
             }
+        }
+    }
+    replyingTo?.let { action ->
+        ReplyField(
+            colors = colors,
+            onSend = { text ->
+                onReply(action, text)
+                replyingTo = null
+            }
+        )
+    }
+}
+
+/**
+ * Inline-Antwortfeld für RemoteInput-Aktionen. Fokussiert sich automatisch (öffnet die Tastatur),
+ * `Senden` über die IME-Action oder den Button. Themenbasiert gestaltet (kein Material-Default).
+ */
+@Composable
+private fun ReplyField(colors: IslandCardColors, onSend: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    val submit = {
+        val t = text.trim()
+        if (t.isNotEmpty()) {
+            keyboard?.hide()
+            onSend(t)
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 14.dp)
+            .clip(RethroneShapes.large)
+            .background(colors.text.copy(alpha = 0.10f))
+            .padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            if (text.isEmpty()) {
+                Text(
+                    text = "Antworten…",
+                    color = colors.subText,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+            BasicTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 40.dp)
+                    .focusRequester(focusRequester),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.text),
+                singleLine = true,
+                cursorBrush = SolidColor(colors.accent),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { submit() })
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(colors.accent)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = { submit() }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Send,
+                contentDescription = "Senden",
+                tint = colors.surface,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun ActionChip(label: String, onClick: () -> Unit) {
+private fun ActionChip(
+    label: String,
+    colors: IslandCardColors,
+    selected: Boolean = false,
+    onClick: () -> Unit
+) {
     Text(
         text = label,
-        color = IslandText,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.SemiBold,
+        color = if (selected) colors.surface else colors.text,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.12f))
+            .clip(RethroneShapes.small)
+            .background(if (selected) colors.accent else colors.text.copy(alpha = 0.10f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -264,6 +413,7 @@ private fun ActionChip(label: String, onClick: () -> Unit) {
 private fun ActivitySwitcher(
     all: List<IslandContent>,
     current: IslandContent,
+    colors: IslandCardColors,
     onSwitch: (IslandContent) -> Unit
 ) {
     FlowRow(
@@ -277,14 +427,14 @@ private fun ActivitySwitcher(
             val selected = item::class == current::class
             Text(
                 text = activityChipLabel(item),
-                color = if (selected) IslandSurface else IslandText,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
+                color = if (selected) colors.surface else colors.text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (selected) IslandText else Color.White.copy(alpha = 0.12f))
+                    .clip(RethroneShapes.extraSmall)
+                    .background(if (selected) colors.accent else colors.text.copy(alpha = 0.10f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -318,6 +468,7 @@ private fun activityChipLabel(content: IslandContent): String = when (content) {
 @Composable
 private fun MediaCard(
     content: IslandContent.Media,
+    colors: IslandCardColors,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit
@@ -335,8 +486,8 @@ private fun MediaCard(
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color.White.copy(alpha = 0.12f))
+                .clip(RethroneShapes.small)
+                .background(colors.text.copy(alpha = 0.10f))
         ) {
             if (bmp != null) {
                 Image(
@@ -351,17 +502,17 @@ private fun MediaCard(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = content.title.ifBlank { "Wiedergabe" },
-                color = IslandText,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
+                color = colors.text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (content.artist.isNotBlank()) {
                 Text(
                     text = content.artist,
-                    color = IslandSubText,
-                    fontSize = 14.sp,
+                    color = colors.subText,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp)
@@ -376,21 +527,34 @@ private fun MediaCard(
         horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TransportButton(Icons.Rounded.SkipPrevious, onPrev)
+        TransportButton(Icons.Rounded.SkipPrevious, colors, onPrev)
         TransportButton(
             if (content.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-            onPlayPause
+            colors,
+            onPlayPause,
+            emphasized = true
         )
-        TransportButton(Icons.Rounded.SkipNext, onNext)
+        TransportButton(Icons.Rounded.SkipNext, colors, onNext)
     }
 }
 
+/**
+ * Transport-/Steuer-Button. [emphasized] hebt die primäre Aktion (Play/Pause) mit einem
+ * dezenten Akzent-Hintergrundkreis hervor (Material-3-Expressive), wie der Icon-Kreis im
+ * [InfoDialog].
+ */
 @Composable
-private fun TransportButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+private fun TransportButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    colors: IslandCardColors,
+    onClick: () -> Unit,
+    emphasized: Boolean = false
+) {
     Box(
         modifier = Modifier
             .size(50.dp)
             .clip(CircleShape)
+            .then(if (emphasized) Modifier.background(colors.accent.copy(alpha = 0.16f)) else Modifier)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -398,7 +562,12 @@ private fun TransportButton(icon: androidx.compose.ui.graphics.vector.ImageVecto
             ),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, tint = IslandText, modifier = Modifier.size(32.dp))
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (emphasized) colors.accent else colors.text,
+            modifier = Modifier.size(32.dp)
+        )
     }
 }
 
@@ -410,12 +579,16 @@ private fun TransportButton(icon: androidx.compose.ui.graphics.vector.ImageVecto
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TimerCard(content: IslandContent.Timer, onControl: (NotificationAction) -> Unit) {
+private fun TimerCard(
+    content: IslandContent.Timer,
+    colors: IslandCardColors,
+    onControl: (NotificationAction) -> Unit
+) {
     Text(
         text = content.displayMs?.let { formatRemaining(it) } ?: "--:--",
-        color = IslandText,
-        fontSize = 40.sp,
-        fontWeight = FontWeight.Bold
+        color = colors.text,
+        style = MaterialTheme.typography.displaySmall,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
     )
     val toggle = content.actions.firstOrNull {
         isPauseActionTitle(it.title) || isResumeActionTitle(it.title)
@@ -430,8 +603,11 @@ private fun TimerCard(content: IslandContent.Timer, onControl: (NotificationActi
             verticalAlignment = Alignment.CenterVertically
         ) {
             TransportButton(
-                if (isResumeActionTitle(toggle.title)) Icons.Rounded.PlayArrow else Icons.Rounded.Pause
-            ) { onControl(toggle) }
+                if (isResumeActionTitle(toggle.title)) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                colors,
+                { onControl(toggle) },
+                emphasized = true
+            )
         }
     }
     if (others.isNotEmpty()) {
@@ -442,19 +618,24 @@ private fun TimerCard(content: IslandContent.Timer, onControl: (NotificationActi
             horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            others.forEach { action -> ActionChip(action.title) { onControl(action) } }
+            others.forEach { action -> ActionChip(action.title, colors) { onControl(action) } }
         }
     }
 }
 
 @Composable
-private fun SimpleCard(primary: String, secondary: String) {
-    Text(primary, color = IslandText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+private fun SimpleCard(primary: String, secondary: String, colors: IslandCardColors) {
+    Text(
+        primary,
+        color = colors.text,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+    )
     if (secondary.isNotBlank()) {
         Text(
             text = secondary,
-            color = IslandSubText,
-            fontSize = 15.sp,
+            color = colors.subText,
+            style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 6.dp)
         )
     }

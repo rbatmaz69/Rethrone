@@ -337,7 +337,7 @@ class NotificationService : NotificationListenerService() {
             if (actionTitle.isNullOrBlank() || actionIntent == null) {
                 null
             } else {
-                NotificationAction(actionTitle, actionIntent)
+                NotificationAction(actionTitle, actionIntent, action.remoteInputs?.toList().orEmpty())
             }
         }.orEmpty()
         return NotificationInfo(
@@ -392,7 +392,7 @@ class NotificationService : NotificationListenerService() {
             if (actionTitle.isNullOrBlank() || actionIntent == null) {
                 null
             } else {
-                NotificationAction(actionTitle, actionIntent)
+                NotificationAction(actionTitle, actionIntent, action.remoteInputs?.toList().orEmpty())
             }
         }.orEmpty()
         // Pausiert (laut Aktions-Titeln)? Anchor bleibt erhalten – das Einfrieren übernimmt

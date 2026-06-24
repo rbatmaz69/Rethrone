@@ -99,6 +99,8 @@ fun EditConfigMenu(
     onCalendarWidgetToggled: (Boolean) -> Unit,
     isDynamicIslandEnabled: Boolean,
     onDynamicIslandToggled: (Boolean) -> Unit,
+    dynamicIslandColor: Color,
+    onDynamicIslandColorChange: (Color) -> Unit,
     appAccessMode: AppAccessMode,
     onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
@@ -113,6 +115,7 @@ fun EditConfigMenu(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
     val menuListState = rememberLazyListState()
 
+    var showIslandColorPicker by remember { mutableStateOf(false) }
     var isDefaultLauncherSet by remember { mutableStateOf(isDefaultLauncher(context)) }
     var isNotificationEnabled by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
     var isAccessibilityEnabled by remember { mutableStateOf(LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) }
@@ -251,6 +254,17 @@ fun EditConfigMenu(
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "dynamic_island_switch"
                 )
+            }
+
+            if (isDynamicIslandEnabled) {
+                item {
+                    ColorPickerRow(
+                        label = stringResource(R.string.dynamic_island_color),
+                        color = dynamicIslandColor,
+                        mainTextColor = mainTextColor,
+                        onClick = { showIslandColorPicker = true }
+                    )
+                }
             }
 
             item {
@@ -522,6 +536,17 @@ fun EditConfigMenu(
                 )
             }
         }
+    }
+
+    if (showIslandColorPicker) {
+        ColorPickerDialog(
+            title = stringResource(R.string.dynamic_island_color),
+            color = dynamicIslandColor,
+            onColorChange = onDynamicIslandColorChange,
+            backgroundColor = surfaceAccent,
+            mainTextColor = mainTextColor,
+            onDismiss = { showIslandColorPicker = false }
+        )
     }
 }
 

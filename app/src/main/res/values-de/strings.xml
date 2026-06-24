@@ -118,6 +118,7 @@
     <string name="weather_widget_desc">Zeigt Symbol und Temperatur unter der Uhr</string>
     <string name="dynamic_island">Dynamic Island</string>
     <string name="dynamic_island_desc">Pille an der Kamera, erscheint bei Ereignissen: Benachrichtigungen, Timer, Medien und Laden</string>
+    <string name="dynamic_island_color">Insel-Farbe</string>
     <string name="app_access_label">App-Zugriff</string>
     <string name="edit_home_layout">Startbildschirm-Layout anpassen</string>
     <string name="edit_app_icons">App-Icons anpassen</string>

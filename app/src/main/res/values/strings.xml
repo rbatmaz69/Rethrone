@@ -118,6 +118,7 @@
     <string name="weather_widget_desc">Shows an icon and temperature below the clock</string>
     <string name="dynamic_island">Dynamic Island</string>
     <string name="dynamic_island_desc">Pill at the camera that appears on events: notifications, timers, media and charging</string>
+    <string name="dynamic_island_color">Dynamic Island color</string>
     <string name="app_access_label">App access</string>
     <string name="edit_home_layout">Customize home screen layout</string>
     <string name="edit_app_icons">Customize app icons</string>
