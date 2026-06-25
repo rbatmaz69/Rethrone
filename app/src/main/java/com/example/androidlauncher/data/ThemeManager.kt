@@ -93,6 +93,24 @@ class ThemeManager(private val context: Context) {
         private val CLOCK_WIDGET_KEY = booleanPreferencesKey("clock_widget_enabled")
         // Kalender-/Datum-Widget (Standard: an).
         private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
+        private val DYNAMIC_ISLAND_KEY = booleanPreferencesKey("dynamic_island_enabled")
+        private val DYNAMIC_ISLAND_OFFSET_KEY = floatPreferencesKey("dynamic_island_offset")
+        // ARGB-Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
+        private val DYNAMIC_ISLAND_COLOR_KEY = intPreferencesKey("dynamic_island_color")
+        // Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
+        private val EDGE_LIGHTING_KEY = booleanPreferencesKey("edge_lighting_enabled")
+        // ARGB-Farbe des Edge Lightings. Default: Akzent-Blau.
+        private val EDGE_LIGHTING_COLOR_KEY = intPreferencesKey("edge_lighting_color")
+        // Edge-Lighting-Tempo (höher = schneller). Default: 1.0.
+        private val EDGE_LIGHTING_SPEED_KEY = floatPreferencesKey("edge_lighting_speed")
+        // Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1.
+        private val EDGE_LIGHTING_LAPS_KEY = intPreferencesKey("edge_lighting_laps")
+        // Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0.
+        private val EDGE_LIGHTING_THICKNESS_KEY = floatPreferencesKey("edge_lighting_thickness")
+        // Edge-Lighting-Stil (EdgeLightingStyle-Name). Default: SWEEP.
+        private val EDGE_LIGHTING_STYLE_KEY = stringPreferencesKey("edge_lighting_style")
+        // Insel-Öffnungs-/Schließstil (IslandAnimationStyle-Name). Default: FROM_NOTCH.
+        private val ISLAND_ANIMATION_STYLE_KEY = stringPreferencesKey("island_animation_style")
         // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
 
@@ -326,6 +344,64 @@ class ThemeManager(private val context: Context) {
      */
     val isCalendarWidgetEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[CALENDAR_WIDGET_KEY] ?: true }
+
+    /**
+     * Observable flow für die Dynamic Island (Pille am oberen Rand). Default: an.
+     */
+    val isDynamicIslandEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[DYNAMIC_ISLAND_KEY] ?: true }
+
+    /**
+     * Manueller vertikaler Feinversatz der Dynamic Island in dp (−16..16). Default: 0.
+     */
+    val dynamicIslandOffset: Flow<Float> = context.dataStore.data
+        .map { it[DYNAMIC_ISLAND_OFFSET_KEY] ?: 0f }
+
+    /**
+     * Frei wählbare Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
+     */
+    val dynamicIslandColor: Flow<Color> = context.dataStore.data
+        .map { Color(it[DYNAMIC_ISLAND_COLOR_KEY] ?: 0xFF0B0B0C.toInt()) }
+
+    /**
+     * Observable flow für das Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
+     */
+    val isEdgeLightingEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[EDGE_LIGHTING_KEY] ?: false }
+
+    /**
+     * Frei wählbare Farbe des Edge Lightings. Default: Akzent-Blau.
+     */
+    val edgeLightingColor: Flow<Color> = context.dataStore.data
+        .map { Color(it[EDGE_LIGHTING_COLOR_KEY] ?: 0xFF0A84FF.toInt()) }
+
+    /** Edge-Lighting-Tempo (höher = schneller). Default: 1.0. */
+    val edgeLightingSpeed: Flow<Float> = context.dataStore.data
+        .map { (it[EDGE_LIGHTING_SPEED_KEY] ?: 1f).coerceIn(0.5f, 2f) }
+
+    /** Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1. */
+    val edgeLightingLaps: Flow<Int> = context.dataStore.data
+        .map { (it[EDGE_LIGHTING_LAPS_KEY] ?: 1).coerceIn(1, 5) }
+
+    /** Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0. */
+    val edgeLightingThickness: Flow<Float> = context.dataStore.data
+        .map { (it[EDGE_LIGHTING_THICKNESS_KEY] ?: 1f).coerceIn(0.5f, 2f) }
+
+    /** Edge-Lighting-Stil. Default: SWEEP. */
+    val edgeLightingStyle: Flow<EdgeLightingStyle> = context.dataStore.data
+        .map { prefs ->
+            prefs[EDGE_LIGHTING_STYLE_KEY]?.let {
+                runCatching { EdgeLightingStyle.valueOf(it) }.getOrNull()
+            } ?: EdgeLightingStyle.SWEEP
+        }
+
+    /** Insel-Öffnungs-/Schließstil. Default: FROM_NOTCH. */
+    val islandAnimationStyle: Flow<IslandAnimationStyle> = context.dataStore.data
+        .map { prefs ->
+            prefs[ISLAND_ANIMATION_STYLE_KEY]?.let {
+                runCatching { IslandAnimationStyle.valueOf(it) }.getOrNull()
+            } ?: IslandAnimationStyle.FROM_NOTCH
+        }
 
     /**
      * Observable flow for shake gesture toggle.
@@ -640,6 +716,86 @@ class ThemeManager(private val context: Context) {
     suspend fun setCalendarWidgetEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[CALENDAR_WIDGET_KEY] = enabled
+        }
+    }
+
+    /**
+     * Schaltet die Dynamic Island ein/aus.
+     */
+    suspend fun setDynamicIslandEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[DYNAMIC_ISLAND_KEY] = enabled
+        }
+    }
+
+    /**
+     * Setzt den vertikalen Feinversatz der Dynamic Island (auf −16..16 dp begrenzt).
+     */
+    suspend fun setDynamicIslandOffset(offsetDp: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[DYNAMIC_ISLAND_OFFSET_KEY] = offsetDp.coerceIn(-12f, 40f)
+        }
+    }
+
+    /**
+     * Setzt die frei wählbare Farbe der Dynamic Island (Pille + Karte).
+     */
+    suspend fun setDynamicIslandColor(color: Color) {
+        context.dataStore.edit { preferences ->
+            preferences[DYNAMIC_ISLAND_COLOR_KEY] = color.toArgb()
+        }
+    }
+
+    /**
+     * Schaltet das Edge Lighting (leuchtender Rand bei Benachrichtigungen) ein/aus.
+     */
+    suspend fun setEdgeLightingEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_KEY] = enabled
+        }
+    }
+
+    /**
+     * Setzt die frei wählbare Farbe des Edge Lightings.
+     */
+    suspend fun setEdgeLightingColor(color: Color) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_COLOR_KEY] = color.toArgb()
+        }
+    }
+
+    /** Setzt das Edge-Lighting-Tempo (0.5..2.0; höher = schneller). */
+    suspend fun setEdgeLightingSpeed(speed: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_SPEED_KEY] = speed.coerceIn(0.5f, 2f)
+        }
+    }
+
+    /** Setzt die Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). */
+    suspend fun setEdgeLightingLaps(laps: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_LAPS_KEY] = laps.coerceIn(1, 5)
+        }
+    }
+
+    /** Setzt die Edge-Lighting-Stärke (0.5..2.0; skaliert Strich-/Glow-Breite). */
+    suspend fun setEdgeLightingThickness(thickness: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_THICKNESS_KEY] = thickness.coerceIn(0.5f, 2f)
+        }
+    }
+
+    /** Setzt den Edge-Lighting-Stil. */
+    suspend fun setEdgeLightingStyle(style: EdgeLightingStyle) {
+        context.dataStore.edit { preferences ->
+            preferences[EDGE_LIGHTING_STYLE_KEY] = style.name
+        }
+    }
+
+    /** Setzt den Insel-Öffnungs-/Schließstil. */
+    suspend fun setIslandAnimationStyle(style: IslandAnimationStyle) {
+        context.dataStore.edit { preferences ->
+            preferences[ISLAND_ANIMATION_STYLE_KEY] = style.name
         }
     }
 }

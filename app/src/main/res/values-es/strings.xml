@@ -110,6 +110,9 @@
     <!-- Menú Editar -->
     <string name="haptic_feedback">Respuesta háptica</string>
     <string name="haptic_feedback_desc">Vibración en interacciones como la edición de favoritos</string>
+    <string name="dynamic_island">Dynamic Island</string>
+    <string name="dynamic_island_desc">Píldora flotante arriba con medios, notificaciones y carga</string>
+    <string name="dynamic_island_color">Color de la isla</string>
     <string name="clock_widget">Widget de reloj</string>
     <string name="clock_widget_desc">Muestra la hora en la pantalla de inicio</string>
     <string name="calendar_widget">Widget de calendario</string>

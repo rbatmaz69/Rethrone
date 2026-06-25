@@ -56,6 +56,38 @@ object RethroneSprings {
         dampingRatio = 0.85f,
         stiffness = Spring.StiffnessMedium * stiffnessScale
     )
+
+    /**
+     * Größen-Morph (Breite/Höhe eines `AnimatedContent`-Containers): weich und **ohne**
+     * Nachschwingen, damit ein wachsender/schrumpfender Container (z. B. die Dynamic-Island-
+     * Pille beim Inhalts-Wechsel) sauber in einem Zug morpht, statt am Rand zu wippen. Bewusst
+     * etwas weicher (MediumLow) als [effects], damit der Größen-Verlauf zur Überblendung passt.
+     * [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> morph(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow * stiffnessScale
+    )
+
+    /**
+     * Insel-Öffnung: physischer, ausladender „Aus-der-Notch"-Schwung mit deutlichem, verspieltem
+     * Überschwingen/Nachfedern. Bewusst weicher (mehr Bounce) und langsamer als [container]/[morph] –
+     * die kleine, schwebende Pille darf am Rand kurz überschwingen (kein Vollbild-Container → keine
+     * Wallpaper-Lücke). [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> island(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = 0.45f,
+        stiffness = Spring.StiffnessMediumLow * 0.7f * stiffnessScale
+    )
+
+    /**
+     * Wie [island], aber **stärker federnd** (mehr Bounce/Pop) – für den Insel-Stil „Bounce".
+     * [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> islandBouncy(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = 0.35f,
+        stiffness = Spring.StiffnessMediumLow * 0.7f * stiffnessScale
+    )
 }
 
 /**

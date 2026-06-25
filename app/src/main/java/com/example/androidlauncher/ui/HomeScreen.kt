@@ -561,11 +561,31 @@ fun HomeScreen(
                 Modifier
                     .pointerInput(isEditMode, appAccessMode) {
                         if (!isEditMode) {
-                            detectVerticalDragGestures { _, dragAmount ->
-                                // Im HOME_LIST-Modus gibt es keinen hochziehbaren Drawer – der App-Zugriff
-                                // läuft über die seitliche Randleiste (HomeAppScrubber).
-                                if (dragAmount < -50 && appAccessMode != AppAccessMode.HOME_LIST) onOpenDrawer()
-                                else if (dragAmount > 50) expandNotifications(context)
+                            // Untere System-Gestenzone (Home-Wisch) aussparen, sonst öffnet ein Wisch
+                            // von ganz unten versehentlich den Drawer. Zudem die Gesamtstrecke
+                            // akkumulieren (robuster als der fragile Pro-Frame-Delta).
+                            val deadZonePx = 48.dp.toPx()
+                            val thresholdPx = 60f
+                            var startY = 0f
+                            var totalDy = 0f
+                            var handled = false
+                            detectVerticalDragGestures(
+                                onDragStart = { offset -> startY = offset.y; totalDy = 0f; handled = false },
+                                onDragCancel = { handled = false }
+                            ) { _, dragAmount ->
+                                val startedInBottomGestureZone = startY > size.height - deadZonePx
+                                if (!handled && !startedInBottomGestureZone) {
+                                    totalDy += dragAmount
+                                    // Im HOME_LIST-Modus gibt es keinen hochziehbaren Drawer – der App-Zugriff
+                                    // läuft über die seitliche Randleiste (HomeAppScrubber).
+                                    if (totalDy < -thresholdPx && appAccessMode != AppAccessMode.HOME_LIST) {
+                                        handled = true
+                                        onOpenDrawer()
+                                    } else if (totalDy > thresholdPx) {
+                                        handled = true
+                                        expandNotifications(context)
+                                    }
+                                }
                             }
                         }
                     }

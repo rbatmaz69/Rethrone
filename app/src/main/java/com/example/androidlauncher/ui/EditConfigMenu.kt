@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Bell
+import com.composables.icons.lucide.Sparkles
 import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Shield
@@ -57,6 +58,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.window.Dialog
 import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppAccessMode
+import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.GestureAction
@@ -97,6 +99,12 @@ fun EditConfigMenu(
     onClockWidgetToggled: (Boolean) -> Unit,
     isCalendarWidgetEnabled: Boolean,
     onCalendarWidgetToggled: (Boolean) -> Unit,
+    isDynamicIslandEnabled: Boolean,
+    onDynamicIslandToggled: (Boolean) -> Unit,
+    islandAnimationStyle: IslandAnimationStyle,
+    onIslandAnimationStyleChange: (IslandAnimationStyle) -> Unit,
+    isEdgeLightingEnabled: Boolean,
+    onOpenEdgeLightingConfig: () -> Unit,
     appAccessMode: AppAccessMode,
     onAppAccessModeChange: (AppAccessMode) -> Unit,
     onClearSearchHistory: () -> Unit,
@@ -233,6 +241,50 @@ fun EditConfigMenu(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "weather_widget_switch"
+                )
+            }
+
+            item {
+                EditToggleItem(
+                    icon = Lucide.Bell,
+                    label = stringResource(R.string.dynamic_island),
+                    description = stringResource(R.string.dynamic_island_desc),
+                    checked = isDynamicIslandEnabled,
+                    onCheckedChange = { onDynamicIslandToggled(it) },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    switchTestTag = "dynamic_island_switch"
+                )
+            }
+
+            if (isDynamicIslandEnabled) {
+                item {
+                    EditIslandAnimationSelectorItem(
+                        label = stringResource(R.string.island_anim_style),
+                        selectedStyle = islandAnimationStyle,
+                        onStyleSelected = onIslandAnimationStyleChange,
+                        mainTextColor = mainTextColor,
+                        designStyle = designStyle,
+                        surfaceAccent = surfaceAccent,
+                        isDarkTextEnabled = isDarkTextEnabled,
+                        testTag = "island_animation_selector"
+                    )
+                }
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.Sparkles,
+                    label = stringResource(R.string.edge_lighting),
+                    onClick = onOpenEdgeLightingConfig,
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    statusLabel = if (isEdgeLightingEnabled) null else stringResource(R.string.status_off),
+                    testTag = "edge_lighting_menu_item"
                 )
             }
 
@@ -506,6 +558,7 @@ fun EditConfigMenu(
             }
         }
     }
+
 }
 
 @Composable
@@ -727,6 +780,86 @@ private fun EditAppAccessSelectorItem(
                             expanded = false
                             if (mode != selectedMode) {
                                 onModeSelected(mode)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Dropdown-Auswahl des Insel-Öffnungs-/Schließstils ([IslandAnimationStyle]). */
+@Composable
+private fun EditIslandAnimationSelectorItem(
+    label: String,
+    selectedStyle: IslandAnimationStyle,
+    onStyleSelected: (IslandAnimationStyle) -> Unit,
+    mainTextColor: Color,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
+    isDarkTextEnabled: Boolean,
+    testTag: String
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val backgroundModifier = Modifier.designSurface(
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
+        fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+        borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .then(backgroundModifier)
+            .testTag(testTag)
+            .clickable { expanded = true },
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 18.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Lucide.Sparkles,
+                contentDescription = null,
+                tint = mainTextColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = label,
+                color = mainTextColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = stringResource(selectedStyle.labelRes),
+                color = mainTextColor.copy(alpha = 0.6f),
+                fontSize = 15.sp,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Icon(
+                imageVector = Lucide.ChevronDown,
+                contentDescription = null,
+                tint = mainTextColor.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                IslandAnimationStyle.entries.forEach { style ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(style.labelRes)) },
+                        onClick = {
+                            expanded = false
+                            if (style != selectedStyle) {
+                                onStyleSelected(style)
                             }
                         }
                     )

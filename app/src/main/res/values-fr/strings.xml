@@ -110,6 +110,9 @@
     <!-- Menu Modifier -->
     <string name="haptic_feedback">Retour haptique</string>
     <string name="haptic_feedback_desc">Vibration lors des interactions comme l\'édition des favoris</string>
+    <string name="dynamic_island">Dynamic Island</string>
+    <string name="dynamic_island_desc">Pastille flottante en haut : médias, notifications et charge</string>
+    <string name="dynamic_island_color">Couleur de l\'îlot</string>
     <string name="clock_widget">Widget horloge</string>
     <string name="clock_widget_desc">Affiche l\'heure sur l\'écran d\'accueil</string>
     <string name="calendar_widget">Widget calendrier</string>

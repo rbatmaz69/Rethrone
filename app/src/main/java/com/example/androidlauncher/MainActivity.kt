@@ -38,6 +38,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInHorizontally
@@ -50,6 +52,8 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,9 +68,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -81,6 +88,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppAccessMode
+import com.example.androidlauncher.data.EdgeLightingStyle
+import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.AutoIconRule
@@ -90,6 +99,7 @@ import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.HomeLayout
+import com.example.androidlauncher.data.IslandContent
 import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
@@ -103,6 +113,13 @@ import com.example.androidlauncher.gesture.GestureActionHandler
 import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppDrawer
+import com.example.androidlauncher.ui.DynamicIsland
+import com.example.androidlauncher.ui.EdgeLighting
+import com.example.androidlauncher.ui.EdgeLightingConfigMenu
+import com.example.androidlauncher.ui.IslandEditControls
+import com.example.androidlauncher.ui.IslandExpandedCard
+import com.example.androidlauncher.ui.sendNotificationReply
+import com.example.androidlauncher.ui.sendPendingIntent
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
 import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.ColorConfigMenu
@@ -153,6 +170,10 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
         private const val SEARCH_RETURN_TARGET = "__search_return_target__"
         private const val RETURN_TAG = "ReturnFlow"
+
+        // Begrenzter vertikaler Verschiebebereich der Dynamic Island (dp) im Layout-Edit-Modus.
+        private const val DYNAMIC_ISLAND_MIN_OFFSET_DP = -12f
+        private const val DYNAMIC_ISLAND_MAX_OFFSET_DP = 40f
     }
 
     // Von Hilt bereitgestellte Datenschicht-Singletons (siehe di/DataModule).
@@ -176,6 +197,9 @@ class MainActivity : ComponentActivity() {
 
     @javax.inject.Inject
     lateinit var shakeManager: LauncherShakeManager
+
+    @javax.inject.Inject
+    lateinit var dynamicIslandManager: com.example.androidlauncher.data.DynamicIslandManager
 
     private lateinit var backCallback: OnBackPressedCallback
     private var lastDefaultLauncherPackage: String? = null
@@ -273,6 +297,21 @@ class MainActivity : ComponentActivity() {
             val isWeatherWidgetEnabled by themeManager.isWeatherWidgetEnabled.collectAsState(initial = true)
             val isClockWidgetEnabled by themeManager.isClockWidgetEnabled.collectAsState(initial = true)
             val isCalendarWidgetEnabled by themeManager.isCalendarWidgetEnabled.collectAsState(initial = true)
+            val isDynamicIslandEnabled by themeManager.isDynamicIslandEnabled.collectAsState(initial = true)
+            val dynamicIslandOffset by themeManager.dynamicIslandOffset.collectAsState(initial = 0f)
+            val dynamicIslandColor by themeManager.dynamicIslandColor.collectAsState(initial = Color(0xFF0B0B0C))
+            val islandAnimationStyle by themeManager.islandAnimationStyle.collectAsState(initial = IslandAnimationStyle.FROM_NOTCH)
+            val isEdgeLightingEnabled by themeManager.isEdgeLightingEnabled.collectAsState(initial = false)
+            val edgeLightingColor by themeManager.edgeLightingColor.collectAsState(initial = Color(0xFF0A84FF))
+            val edgeLightingSpeed by themeManager.edgeLightingSpeed.collectAsState(initial = 1f)
+            val edgeLightingLaps by themeManager.edgeLightingLaps.collectAsState(initial = 1)
+            val edgeLightingThickness by themeManager.edgeLightingThickness.collectAsState(initial = 1f)
+            val edgeLightingStyle by themeManager.edgeLightingStyle.collectAsState(initial = EdgeLightingStyle.SWEEP)
+            // Edge-Lighting-Puls: jede neue Benachrichtigung erhöht den Zähler → eine Lauf-Runde.
+            var edgePulseId by remember { mutableStateOf(0) }
+            LaunchedEffect(Unit) {
+                dynamicIslandManager.notificationPulse.collect { edgePulseId++ }
+            }
             val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
             // Erststart-Onboarding: Default true vermeidet Aufblitzen für Bestandsnutzer,
             // bis der echte Wert aus DataStore geladen ist.
@@ -505,6 +544,7 @@ class MainActivity : ComponentActivity() {
                 var isFavoritesConfigOpen by remember { mutableStateOf(false) }
                 var isColorConfigOpen by remember { mutableStateOf(false) }
                 var isAnimationsConfigOpen by remember { mutableStateOf(false) }
+                var isEdgeLightingConfigOpen by remember { mutableStateOf(false) }
                 var isGesturesConfigOpen by remember { mutableStateOf(false) }
                 var isDesignMenuOpen by remember { mutableStateOf(false) }
                 var isThemeMenuOpen by remember { mutableStateOf(false) }
@@ -1004,6 +1044,7 @@ class MainActivity : ComponentActivity() {
                         isThemeMenuOpen -> isThemeMenuOpen = false
                         isDesignMenuOpen -> isDesignMenuOpen = false
                         isAnimationsConfigOpen -> isAnimationsConfigOpen = false
+                        isEdgeLightingConfigOpen -> isEdgeLightingConfigOpen = false
                         isGesturesConfigOpen -> isGesturesConfigOpen = false
                         isColorConfigOpen -> isColorConfigOpen = false
                         isSizeConfigOpen -> isSizeConfigOpen = false
@@ -1166,6 +1207,140 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // Edge Lighting: leuchtender Rand-Lauf bei neuen Benachrichtigungen (Samsung-Stil).
+                    // Eigenständig (unabhängig von Island-Toggle & Drawer); zeichnet nur während einer
+                    // Runde und fängt keine Touches ab.
+                    if (isEdgeLightingEnabled) {
+                        EdgeLighting(
+                            modifier = Modifier.fillMaxSize().zIndex(6500f),
+                            color = edgeLightingColor,
+                            pulseId = edgePulseId,
+                            style = edgeLightingStyle,
+                            lapDurationMs = (1400f / edgeLightingSpeed).roundToInt(),
+                            laps = edgeLightingLaps,
+                            thickness = edgeLightingThickness
+                        )
+                    }
+
+                    // Dynamic Island: ereignisgesteuerte Pille an der Kamera. Nur auf dem
+                    // Home-Screen (nicht im Drawer) und wenn per Einstellung aktiviert.
+                    // Im Leerlauf zeichnet die Composable selbst nichts – außer im Layout-Edit-Modus,
+                    // wo eine ziehbare Platzhalter-Pille zum vertikalen Feinjustieren erscheint.
+                    if (isDynamicIslandEnabled && !isDrawerOpen) {
+                        val islandState by dynamicIslandManager.state.collectAsState()
+                        val islandExpanded by dynamicIslandManager.expandedContent.collectAsState()
+                        DynamicIsland(
+                            state = islandState,
+                            onTap = { content -> dynamicIslandManager.expand(content) },
+                            loadIcon = { pkg -> appRepository.loadIcon(pkg) },
+                            verticalOffsetDp = dynamicIslandOffset,
+                            islandColor = dynamicIslandColor,
+                            editMode = isHomeEditMode,
+                            onSwipeNext = { dynamicIslandManager.selectNext() },
+                            onSwipePrevious = { dynamicIslandManager.selectPrevious() },
+                            animationStyle = islandAnimationStyle,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                        // Höhen-Steuerung im Layout-Editor: unter der Statusleiste, damit die
+                        // Taps ankommen (in der Statusleiste würde das System sie abfangen).
+                        if (isHomeEditMode) {
+                            IslandEditControls(
+                                onNudge = { deltaDp ->
+                                    val next = (dynamicIslandOffset + deltaDp)
+                                        .coerceIn(DYNAMIC_ISLAND_MIN_OFFSET_DP, DYNAMIC_ISLAND_MAX_OFFSET_DP)
+                                    scope.launch { themeManager.setDynamicIslandOffset(next) }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .statusBarsPadding()
+                                    .padding(top = 8.dp)
+                                    .zIndex(7000f)
+                            )
+                        }
+                        // Aufgeklappte Karte: federnd aus dem Kamerabereich (oben-mitte) wachsen
+                        // bzw. dahin zurückschrumpfen. lastExpanded puffert den Inhalt, damit die
+                        // Schließen-Animation nach dem Dismiss noch etwas anzuzeigen hat.
+                        var lastExpanded by remember { mutableStateOf<IslandContent?>(null) }
+                        LaunchedEffect(islandExpanded) {
+                            if (islandExpanded != null) lastExpanded = islandExpanded
+                        }
+                        val islandAnimEnabled = LocalAnimationsEnabled.current
+                        AnimatedVisibility(
+                            visible = islandExpanded != null,
+                            modifier = Modifier.fillMaxSize().zIndex(7000f),
+                            enter = if (islandAnimEnabled) {
+                                scaleIn(
+                                    RethroneSprings.container(animationSpeed),
+                                    initialScale = 0.85f,
+                                    transformOrigin = TransformOrigin(0.5f, 0f)
+                                ) + fadeIn(RethroneSprings.effects(animationSpeed))
+                            } else {
+                                fadeIn()
+                            },
+                            exit = if (islandAnimEnabled) {
+                                scaleOut(
+                                    RethroneSprings.effects(animationSpeed),
+                                    targetScale = 0.85f,
+                                    transformOrigin = TransformOrigin(0.5f, 0f)
+                                ) + fadeOut(RethroneSprings.effects(animationSpeed))
+                            } else {
+                                fadeOut()
+                            }
+                        ) {
+                            val expandedContent = islandExpanded ?: lastExpanded
+                            if (expandedContent != null) {
+                                // Medien-/Timer-Karte muss live sein (Play/Pause-Icon & Restzeit
+                                // aktualisieren sich): den aktuellen Zustand nehmen, sonst die
+                                // eingefrorene Kopie.
+                                val liveMedia = islandState.all
+                                    .firstOrNull { it is IslandContent.Media } as? IslandContent.Media
+                                val liveTimer = islandState.all
+                                    .firstOrNull { it is IslandContent.Timer } as? IslandContent.Timer
+                                val cardContent = when (expandedContent) {
+                                    is IslandContent.Media -> liveMedia ?: expandedContent
+                                    is IslandContent.Timer -> liveTimer ?: expandedContent
+                                    else -> expandedContent
+                                }
+                                IslandExpandedCard(
+                                    content = cardContent,
+                                    allContents = islandState.all,
+                                    onSwitch = { c ->
+                                        dynamicIslandManager.selectActivity(c)
+                                        dynamicIslandManager.expand(c)
+                                    },
+                                    onAction = { action ->
+                                        sendPendingIntent(action.intent)
+                                        dynamicIslandManager.dismissExpanded()
+                                    },
+                                    onReply = { action, text ->
+                                        sendNotificationReply(context, action, text)
+                                        dynamicIslandManager.dismissExpanded()
+                                    },
+                                    // Timer steuern (Pause/Play/…): Karte bewusst offen lassen,
+                                    // damit man direkt weiter steuern kann.
+                                    onTimerControl = { action -> sendPendingIntent(action.intent) },
+                                    onOpen = { content ->
+                                        val intent = when (content) {
+                                            is IslandContent.Notification -> content.contentIntent
+                                            is IslandContent.Timer -> content.contentIntent
+                                            else -> null
+                                        }
+                                        // Bei Medien & Timer Karte offen lassen (nur Buttons/Scrim agieren).
+                                        if (content !is IslandContent.Media && content !is IslandContent.Timer) {
+                                            sendPendingIntent(intent)
+                                            dynamicIslandManager.dismissExpanded()
+                                        }
+                                    },
+                                    onDismiss = { dynamicIslandManager.dismissExpanded() },
+                                    onMediaPlayPause = { dynamicIslandManager.mediaPlayPause() },
+                                    onMediaNext = { dynamicIslandManager.mediaNext() },
+                                    onMediaPrev = { dynamicIslandManager.mediaPrevious() },
+                                    islandColor = dynamicIslandColor
+                                )
+                            }
+                        }
+                    }
+
                     MenuOverlay(
                         visible = isFavoritesConfigOpen,
                         customWallpaperUri = customWallpaperUri,
@@ -1247,6 +1422,10 @@ class MainActivity : ComponentActivity() {
                             onCustomBackgroundChange = { scope.launch { themeManager.setCustomBackgroundColor(it) } },
                             customMenuColor = customMenuColor,
                             onCustomMenuChange = { scope.launch { themeManager.setCustomMenuColor(it) } },
+                            dynamicIslandColor = dynamicIslandColor,
+                            onDynamicIslandColorChange = { scope.launch { themeManager.setDynamicIslandColor(it) } },
+                            edgeLightingColor = edgeLightingColor,
+                            onEdgeLightingColorChange = { scope.launch { themeManager.setEdgeLightingColor(it) } },
                             customWallpaperUri = customWallpaperUri,
                             onClose = { isColorConfigOpen = false }
                         )
@@ -1383,6 +1562,16 @@ class MainActivity : ComponentActivity() {
                             onCalendarWidgetToggled = { enabled ->
                                 scope.launch { themeManager.setCalendarWidgetEnabled(enabled) }
                             },
+                            isDynamicIslandEnabled = isDynamicIslandEnabled,
+                            onDynamicIslandToggled = { enabled ->
+                                scope.launch { themeManager.setDynamicIslandEnabled(enabled) }
+                            },
+                            islandAnimationStyle = islandAnimationStyle,
+                            onIslandAnimationStyleChange = { style ->
+                                scope.launch { themeManager.setIslandAnimationStyle(style) }
+                            },
+                            isEdgeLightingEnabled = isEdgeLightingEnabled,
+                            onOpenEdgeLightingConfig = { isEdgeLightingConfigOpen = true },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->
                                 scope.launch { themeManager.setAppAccessMode(mode) }
@@ -1435,6 +1624,26 @@ class MainActivity : ComponentActivity() {
                             animationSpeed = animationSpeed,
                             onAnimationSpeedChanged = { scope.launch { themeManager.setAnimationSpeed(it) } },
                             onClose = { isAnimationsConfigOpen = false }
+                        )
+                    }
+
+                    MenuOverlay(
+                        visible = isEdgeLightingConfigOpen,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { isEdgeLightingConfigOpen = false }
+                    ) {
+                        EdgeLightingConfigMenu(
+                            isEnabled = isEdgeLightingEnabled,
+                            onEnabledChange = { scope.launch { themeManager.setEdgeLightingEnabled(it) } },
+                            style = edgeLightingStyle,
+                            onStyleChange = { scope.launch { themeManager.setEdgeLightingStyle(it) } },
+                            speed = edgeLightingSpeed,
+                            onSpeedChange = { scope.launch { themeManager.setEdgeLightingSpeed(it) } },
+                            laps = edgeLightingLaps,
+                            onLapsChange = { scope.launch { themeManager.setEdgeLightingLaps(it) } },
+                            thickness = edgeLightingThickness,
+                            onThicknessChange = { scope.launch { themeManager.setEdgeLightingThickness(it) } },
+                            onClose = { isEdgeLightingConfigOpen = false }
                         )
                     }
 
