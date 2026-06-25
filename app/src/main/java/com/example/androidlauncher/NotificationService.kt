@@ -170,7 +170,12 @@ class NotificationService : NotificationListenerService() {
             val cb = object : MediaController.Callback() {
                 override fun onPlaybackStateChanged(state: PlaybackState?) = recomputeMedia()
                 override fun onMetadataChanged(metadata: MediaMetadata?) = recomputeMedia()
-                override fun onSessionDestroyed() = recomputeMedia()
+                override fun onSessionDestroyed() {
+                    // Tote Session sofort abmelden + aus dem Cache werfen, sonst meldet sie evtl.
+                    // weiter STATE_PAUSED und die Media-Pille bliebe hängen.
+                    controllerCallbacks.remove(controller)?.let { controller.unregisterCallback(it) }
+                    recomputeMedia()
+                }
             }
             controller.registerCallback(cb, mainHandler)
             controllerCallbacks[controller] = cb
@@ -180,7 +185,13 @@ class NotificationService : NotificationListenerService() {
 
     /** Wählt die aktive Session (bevorzugt spielend) und aktualisiert [activeMedia]. */
     private fun recomputeMedia() {
-        val controllers = controllerCallbacks.keys.toList()
+        // Autoritative, frische Liste vom System abfragen – nicht den (evtl. veralteten) Cache. So
+        // können tote/geschlossene Sessions die Pille nicht mehr künstlich am Leben halten.
+        val controllers = try {
+            mediaSessionManager?.getActiveSessions(listenerComponent).orEmpty()
+        } catch (e: Exception) {
+            controllerCallbacks.keys.toList()
+        }
         val active = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
             ?: controllers.firstOrNull {
                 val s = it.playbackState?.state
