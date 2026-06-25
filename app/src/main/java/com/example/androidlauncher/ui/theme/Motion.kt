@@ -79,6 +79,15 @@ object RethroneSprings {
         dampingRatio = 0.45f,
         stiffness = Spring.StiffnessMediumLow * 0.7f * stiffnessScale
     )
+
+    /**
+     * Wie [island], aber **stärker federnd** (mehr Bounce/Pop) – für den Insel-Stil „Bounce".
+     * [stiffnessScale] skaliert das Tempo (höher = schneller).
+     */
+    fun <T> islandBouncy(stiffnessScale: Float = 1f): androidx.compose.animation.core.SpringSpec<T> = spring(
+        dampingRatio = 0.35f,
+        stiffness = Spring.StiffnessMediumLow * 0.7f * stiffnessScale
+    )
 }
 
 /**

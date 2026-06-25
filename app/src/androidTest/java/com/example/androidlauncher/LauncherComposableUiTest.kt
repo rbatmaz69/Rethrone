@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRuleMode
+import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.HomeScreen
@@ -161,6 +162,8 @@ class LauncherComposableUiTest {
                     onCalendarWidgetToggled = {},
                     isDynamicIslandEnabled = true,
                     onDynamicIslandToggled = {},
+                    islandAnimationStyle = IslandAnimationStyle.FROM_NOTCH,
+                    onIslandAnimationStyleChange = {},
                     isEdgeLightingEnabled = false,
                     onOpenEdgeLightingConfig = {},
                     appAccessMode = AppAccessMode.HOME_LIST,
@@ -208,6 +211,8 @@ class LauncherComposableUiTest {
                     onCalendarWidgetToggled = {},
                     isDynamicIslandEnabled = true,
                     onDynamicIslandToggled = {},
+                    islandAnimationStyle = IslandAnimationStyle.FROM_NOTCH,
+                    onIslandAnimationStyleChange = {},
                     isEdgeLightingEnabled = false,
                     onOpenEdgeLightingConfig = {},
                     appAccessMode = AppAccessMode.HOME_LIST,

@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.IslandContent
 import androidx.compose.ui.graphics.luminance
 import com.example.androidlauncher.data.IslandState
@@ -125,6 +126,36 @@ private val IslandPillHeight = 30.dp
  *
  * Dunkle Oberfläche (themenunabhängig) für maximalen Kontrast wie beim iOS-Original.
  */
+/**
+ * Enter-Transition der Insel je nach [IslandAnimationStyle]. Alle „Wachs"-Stile starten opak aus
+ * Breite 0 (nur Breite animiert, Höhe konstant); [IslandAnimationStyle.SOFT] blendet dezent ein.
+ */
+private fun islandEnter(style: IslandAnimationStyle, speed: Float): EnterTransition = when (style) {
+    IslandAnimationStyle.FROM_NOTCH -> expandIn(RethroneSprings.island(speed), Alignment.TopCenter) { full -> IntSize(0, full.height) }
+    IslandAnimationStyle.BOUNCE -> expandIn(RethroneSprings.islandBouncy(speed), Alignment.TopCenter) { full -> IntSize(0, full.height) }
+    IslandAnimationStyle.SNAPPY -> expandIn(RethroneSprings.effects(speed), Alignment.TopCenter) { full -> IntSize(0, full.height) }
+    IslandAnimationStyle.SOFT -> fadeIn(RethroneSprings.effects(speed)) +
+        scaleIn(RethroneSprings.effects(speed), initialScale = 0.92f, transformOrigin = TransformOrigin(0.5f, 0f))
+}
+
+/** Exit-Transition der Insel je nach [IslandAnimationStyle] (Spiegelbild des Enters). */
+private fun islandExit(style: IslandAnimationStyle, speed: Float): ExitTransition = when (style) {
+    IslandAnimationStyle.SOFT -> fadeOut(RethroneSprings.effects(speed)) +
+        scaleOut(RethroneSprings.effects(speed), targetScale = 0.92f, transformOrigin = TransformOrigin(0.5f, 0f))
+    IslandAnimationStyle.SNAPPY -> shrinkOut(RethroneSprings.effects(speed), Alignment.TopCenter) { full -> IntSize(0, full.height) } +
+        fadeOut(RethroneSprings.effects(speed))
+    // FROM_NOTCH & BOUNCE: sauber ohne Bounce zur Notch zusammenziehen (morph) + kurzes Fade.
+    else -> shrinkOut(RethroneSprings.morph(speed), Alignment.TopCenter) { full -> IntSize(0, full.height) } +
+        fadeOut(RethroneSprings.effects(speed))
+}
+
+/** Start-Stauchung des vertikalen Jelly-Squash je Stil (1f = kein Jelly). */
+private fun islandJellyFromScaleY(style: IslandAnimationStyle): Float = when (style) {
+    IslandAnimationStyle.FROM_NOTCH -> 0.8f
+    IslandAnimationStyle.BOUNCE -> 0.7f
+    IslandAnimationStyle.SOFT, IslandAnimationStyle.SNAPPY -> 1f
+}
+
 @Composable
 fun DynamicIsland(
     state: IslandState,
@@ -135,6 +166,7 @@ fun DynamicIsland(
     editMode: Boolean = false,
     onSwipeNext: () -> Unit = {},
     onSwipePrevious: () -> Unit = {},
+    animationStyle: IslandAnimationStyle = IslandAnimationStyle.FROM_NOTCH,
     modifier: Modifier = Modifier
 ) {
     // Kontrast-Inhaltsfarbe: dunkler Text auf heller Insel, sonst weiß – damit auch frei gewählte
@@ -220,31 +252,10 @@ fun DynamicIsland(
             }
             IntOffset(x, y)
         },
-        // „Aus der Notch heraus": die OPAKE Pille wächst physisch aus Breite 0 nach links UND rechts
-        // aus der Kamera-Mitte heraus (kein Fade – das überdeckte sonst die Bewegung = „statisch").
-        // Höhe bleibt konstant (full.height), nur die Breite animiert; `island` gibt den ausladenden,
-        // nachfedernden Schwung. Start aus 0 → langer, gut sichtbarer Sweep.
-        enter = if (animationsEnabled) {
-            expandIn(
-                RethroneSprings.island(speed),
-                expandFrom = Alignment.TopCenter,
-                initialSize = { full -> IntSize(0, full.height) }
-            )
-        } else {
-            fadeIn()
-        },
-        // Schließen umgekehrt: Breite kollabiert zur Notch-Mitte. Bewusst OHNE Bounce (`morph`), da ein
-        // überschwingender Spring beim Schrumpfen auf 0 am Ende zurückfedern/flackern würde; kurzes
-        // Fade weicht das Verschwinden ab.
-        exit = if (animationsEnabled) {
-            shrinkOut(
-                RethroneSprings.morph(speed),
-                shrinkTowards = Alignment.TopCenter,
-                targetSize = { full -> IntSize(0, full.height) }
-            ) + fadeOut(RethroneSprings.effects(speed))
-        } else {
-            fadeOut()
-        }
+        // Öffnungs-/Schließanimation je nach gewähltem Stil (siehe islandEnter/islandExit).
+        // Bei deaktivierten Animationen reines Fade.
+        enter = if (animationsEnabled) islandEnter(animationStyle, speed) else fadeIn(),
+        exit = if (animationsEnabled) islandExit(animationStyle, speed) else fadeOut()
     ) {
         if (editMode) {
             // Vorschau ohne Tap/Swipe (Höhe via separate Steuerleiste).
@@ -273,13 +284,18 @@ fun DynamicIsland(
                 label = "islandPress"
             )
             // „Jelly": vertikaler Mitfeder-Fortschritt aus der Enter/Exit-Transition der ganzen Insel.
-            // 0→1 beim Erscheinen (mit dezentem Overshoot durch `island`), 1→0 beim Schließen (ohne
-            // Bounce, `morph`). Triggert NUR beim Auf-/Abtauchen – nicht beim Inhalts-/App-Wechsel
-            // (dann bleibt AnimatedVisibility = Visible → appear = 1).
+            // 0→1 beim Erscheinen, 1→0 beim Schließen. Triggert NUR beim Auf-/Abtauchen – nicht beim
+            // Inhalts-/App-Wechsel (dann bleibt AnimatedVisibility = Visible → appear = 1).
+            // Start-Stauchung & Feder hängen vom Stil ab; bei jellyFrom == 1f ist der Jelly inaktiv.
+            val jellyFrom = islandJellyFromScaleY(animationStyle)
             val appear by transition.animateFloat(
                 transitionSpec = {
                     if (!animationsEnabled) snap()
-                    else if (targetState == EnterExitState.Visible) RethroneSprings.island(speed)
+                    else if (targetState == EnterExitState.Visible) when (animationStyle) {
+                        IslandAnimationStyle.BOUNCE -> RethroneSprings.islandBouncy(speed)
+                        IslandAnimationStyle.FROM_NOTCH -> RethroneSprings.island(speed)
+                        else -> RethroneSprings.effects(speed)
+                    }
                     else RethroneSprings.morph(speed)
                 },
                 label = "islandJelly"
@@ -291,7 +307,7 @@ fun DynamicIsland(
                     // Layout-Einfluss → Kamera-Zentrierung/Anker (onGloballyPositioned) bleibt stabil.
                     // Die Breite macht weiterhin der Clip (expandIn) – hier nur die zweite Achse.
                     .graphicsLayer {
-                        scaleY = 0.8f + 0.2f * appear
+                        scaleY = jellyFrom + (1f - jellyFrom) * appear
                         transformOrigin = TransformOrigin(0.5f, 0f)
                     }
                     .clickable(

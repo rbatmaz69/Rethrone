@@ -109,6 +109,8 @@ class ThemeManager(private val context: Context) {
         private val EDGE_LIGHTING_THICKNESS_KEY = floatPreferencesKey("edge_lighting_thickness")
         // Edge-Lighting-Stil (EdgeLightingStyle-Name). Default: SWEEP.
         private val EDGE_LIGHTING_STYLE_KEY = stringPreferencesKey("edge_lighting_style")
+        // Insel-Öffnungs-/Schließstil (IslandAnimationStyle-Name). Default: FROM_NOTCH.
+        private val ISLAND_ANIMATION_STYLE_KEY = stringPreferencesKey("island_animation_style")
         // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
 
@@ -391,6 +393,14 @@ class ThemeManager(private val context: Context) {
             prefs[EDGE_LIGHTING_STYLE_KEY]?.let {
                 runCatching { EdgeLightingStyle.valueOf(it) }.getOrNull()
             } ?: EdgeLightingStyle.SWEEP
+        }
+
+    /** Insel-Öffnungs-/Schließstil. Default: FROM_NOTCH. */
+    val islandAnimationStyle: Flow<IslandAnimationStyle> = context.dataStore.data
+        .map { prefs ->
+            prefs[ISLAND_ANIMATION_STYLE_KEY]?.let {
+                runCatching { IslandAnimationStyle.valueOf(it) }.getOrNull()
+            } ?: IslandAnimationStyle.FROM_NOTCH
         }
 
     /**
@@ -779,6 +789,13 @@ class ThemeManager(private val context: Context) {
     suspend fun setEdgeLightingStyle(style: EdgeLightingStyle) {
         context.dataStore.edit { preferences ->
             preferences[EDGE_LIGHTING_STYLE_KEY] = style.name
+        }
+    }
+
+    /** Setzt den Insel-Öffnungs-/Schließstil. */
+    suspend fun setIslandAnimationStyle(style: IslandAnimationStyle) {
+        context.dataStore.edit { preferences ->
+            preferences[ISLAND_ANIMATION_STYLE_KEY] = style.name
         }
     }
 }

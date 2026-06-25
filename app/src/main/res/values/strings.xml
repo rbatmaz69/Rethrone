@@ -119,6 +119,11 @@
     <string name="dynamic_island">Dynamic Island</string>
     <string name="dynamic_island_desc">Pill at the camera that appears on events: notifications, timers, media and charging</string>
     <string name="dynamic_island_color">Dynamic Island color</string>
+    <string name="island_anim_style">Island animation</string>
+    <string name="island_anim_from_notch">From notch</string>
+    <string name="island_anim_soft">Soft</string>
+    <string name="island_anim_bounce">Bounce</string>
+    <string name="island_anim_snappy">Snappy</string>
     <string name="edge_lighting">Edge Lighting</string>
     <string name="edge_lighting_desc">Screen edges glow when a new notification arrives</string>
     <string name="edge_lighting_color">Edge Lighting color</string>

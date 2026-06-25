@@ -119,6 +119,11 @@
     <string name="dynamic_island">Dynamic Island</string>
     <string name="dynamic_island_desc">Pille an der Kamera, erscheint bei Ereignissen: Benachrichtigungen, Timer, Medien und Laden</string>
     <string name="dynamic_island_color">Insel-Farbe</string>
+    <string name="island_anim_style">Insel-Animation</string>
+    <string name="island_anim_from_notch">Aus der Notch</string>
+    <string name="island_anim_soft">Sanft</string>
+    <string name="island_anim_bounce">Bounce</string>
+    <string name="island_anim_snappy">Snappy</string>
     <string name="edge_lighting">Edge Lighting</string>
     <string name="edge_lighting_desc">Die Bildschirmränder leuchten bei neuen Benachrichtigungen auf</string>
     <string name="edge_lighting_color">Edge-Lighting-Farbe</string>

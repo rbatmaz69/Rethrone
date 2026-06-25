@@ -89,6 +89,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.EdgeLightingStyle
+import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.AutoIconRule
@@ -299,6 +300,7 @@ class MainActivity : ComponentActivity() {
             val isDynamicIslandEnabled by themeManager.isDynamicIslandEnabled.collectAsState(initial = true)
             val dynamicIslandOffset by themeManager.dynamicIslandOffset.collectAsState(initial = 0f)
             val dynamicIslandColor by themeManager.dynamicIslandColor.collectAsState(initial = Color(0xFF0B0B0C))
+            val islandAnimationStyle by themeManager.islandAnimationStyle.collectAsState(initial = IslandAnimationStyle.FROM_NOTCH)
             val isEdgeLightingEnabled by themeManager.isEdgeLightingEnabled.collectAsState(initial = false)
             val edgeLightingColor by themeManager.edgeLightingColor.collectAsState(initial = Color(0xFF0A84FF))
             val edgeLightingSpeed by themeManager.edgeLightingSpeed.collectAsState(initial = 1f)
@@ -1236,6 +1238,7 @@ class MainActivity : ComponentActivity() {
                             editMode = isHomeEditMode,
                             onSwipeNext = { dynamicIslandManager.selectNext() },
                             onSwipePrevious = { dynamicIslandManager.selectPrevious() },
+                            animationStyle = islandAnimationStyle,
                             modifier = Modifier.align(Alignment.TopCenter)
                         )
                         // Höhen-Steuerung im Layout-Editor: unter der Statusleiste, damit die
@@ -1562,6 +1565,10 @@ class MainActivity : ComponentActivity() {
                             isDynamicIslandEnabled = isDynamicIslandEnabled,
                             onDynamicIslandToggled = { enabled ->
                                 scope.launch { themeManager.setDynamicIslandEnabled(enabled) }
+                            },
+                            islandAnimationStyle = islandAnimationStyle,
+                            onIslandAnimationStyleChange = { style ->
+                                scope.launch { themeManager.setIslandAnimationStyle(style) }
                             },
                             isEdgeLightingEnabled = isEdgeLightingEnabled,
                             onOpenEdgeLightingConfig = { isEdgeLightingConfigOpen = true },
