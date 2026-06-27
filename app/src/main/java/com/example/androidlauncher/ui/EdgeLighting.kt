@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.unit.dp
 import com.example.androidlauncher.data.EdgeLightingStyle
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 
 /**
@@ -83,7 +85,9 @@ fun EdgeLighting(
         val glowPx = 18.dp.toPx() * thickness
         val corePx = 6.dp.toPx() * thickness
         val radiusPx = 44.dp.toPx()
-        val inset = glowPx / 2f
+        // Bündig am äußersten Bildschirmrand: nur die Kern-Linie minimal nach innen setzen,
+        // der Glow darf nach außen über die Kante hinaus geclippt werden.
+        val inset = corePx / 2f
 
         // Abgerundetes Rechteck als geschlossene Schleife = Laufpfad / Voll-Rand.
         val path = Path().apply {
@@ -118,20 +122,41 @@ fun EdgeLighting(
             return Offset(posBuf[0], posBuf[1])
         }
 
-        // Komet: Schweif (f=0) → Kopf (f=1) entgegen der Laufrichtung [dir].
+        // Zusammenhängender Teilpfad von [startDist] bis [endDist] entlang der geschlossenen
+        // Schleife. Bei Umlauf (endDist > length) wird in zwei getSegment-Aufrufe gesplittet,
+        // damit eine **durchgehende** Linie statt einzelner Segmente entsteht.
+        fun subPath(startDist: Float, endDist: Float): Path {
+            val out = Path()
+            val android = out.asAndroidPath()
+            var s = startDist % length
+            if (s < 0f) s += length
+            val span = (endDist - startDist).coerceIn(0f, length)
+            val e = s + span
+            if (e <= length) {
+                measure.getSegment(s, e, android, true)
+            } else {
+                measure.getSegment(s, length, android, true)
+                measure.getSegment(0f, e - length, android, true)
+            }
+            return out
+        }
+
+        // Komet als durchgehende Linie: voller Schweif (Glow + Kern) plus heller Kopf-Abschnitt.
+        // Kopf bei [headDist], Schweif entgegen der Laufrichtung [dir].
         fun drawComet(headDist: Float, dir: Float, baseAlpha: Float) {
             val cometLen = length * 0.32f
-            val segments = 26
-            for (i in 0 until segments) {
-                val f0 = i / segments.toFloat()
-                val f1 = (i + 1) / segments.toFloat()
-                val p0 = pointAt(headDist - dir * (1f - f0) * cometLen)
-                val p1 = pointAt(headDist - dir * (1f - f1) * cometLen)
-                val a = (f1 * f1) * baseAlpha
-                drawLine(color.copy(alpha = a * 0.25f), p0, p1, strokeWidth = glowPx, cap = StrokeCap.Round)
-                val coreColor = lerpColor(color, Color.White, (f1 * f1) * 0.5f)
-                drawLine(coreColor.copy(alpha = a), p0, p1, strokeWidth = corePx, cap = StrokeCap.Round)
-            }
+            val tail = headDist - dir * cometLen
+            val fullStart = min(headDist, tail)
+            val fullEnd = max(headDist, tail)
+            val fullPath = subPath(fullStart, fullEnd)
+            // Weicher Glow-Saum.
+            drawPath(fullPath, color.copy(alpha = 0.18f * baseAlpha), style = Stroke(width = glowPx, cap = StrokeCap.Round))
+            // Durchgehende Kern-Linie.
+            drawPath(fullPath, color.copy(alpha = 0.55f * baseAlpha), style = Stroke(width = corePx, cap = StrokeCap.Round))
+            // Heller Kopf (~35 % der Kometenlänge), Richtung Weiß.
+            val headTail = headDist - dir * cometLen * 0.35f
+            val headPath = subPath(min(headDist, headTail), max(headDist, headTail))
+            drawPath(headPath, lerpColor(color, Color.White, 0.4f).copy(alpha = baseAlpha), style = Stroke(width = corePx, cap = StrokeCap.Round))
         }
 
         val t = p % 1f

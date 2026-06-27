@@ -86,6 +86,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.EdgeLightingStyle
@@ -308,9 +309,15 @@ class MainActivity : ComponentActivity() {
             val edgeLightingThickness by themeManager.edgeLightingThickness.collectAsState(initial = 1f)
             val edgeLightingStyle by themeManager.edgeLightingStyle.collectAsState(initial = EdgeLightingStyle.SWEEP)
             // Edge-Lighting-Puls: jede neue Benachrichtigung erhöht den Zähler → eine Lauf-Runde.
+            // Nur einsammeln, während der Launcher im Vordergrund (RESUMED) ist – so löst eine
+            // Benachrichtigung, die in einer anderen App eintrifft, kein nachträgliches Seitenlicht
+            // beim Zurückkehren aus (notificationPulse hat replay=0, Hintergrund-Pulse verfallen).
             var edgePulseId by remember { mutableStateOf(0) }
-            LaunchedEffect(Unit) {
-                dynamicIslandManager.notificationPulse.collect { edgePulseId++ }
+            val edgePulseLifecycleOwner = LocalLifecycleOwner.current
+            LaunchedEffect(edgePulseLifecycleOwner) {
+                edgePulseLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    dynamicIslandManager.notificationPulse.collect { edgePulseId++ }
+                }
             }
             val appAccessMode by themeManager.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
             // Erststart-Onboarding: Default true vermeidet Aufblitzen für Bestandsnutzer,
