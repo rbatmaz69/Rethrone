@@ -391,6 +391,8 @@
     <string name="onboarding_perm_accessibility_desc">Nötig, um einzelne Apps mit PIN, Muster oder Biometrie zu sperren.</string>
     <string name="onboarding_perm_location_title">Standort (grob)</string>
     <string name="onboarding_perm_location_desc">Lässt das Wetter-Widget die Lage in deiner Nähe anzeigen.</string>
+    <string name="onboarding_perm_notifications_title">Benachrichtigungszugriff</string>
+    <string name="onboarding_perm_notifications_desc">Treibt Dynamic Island, Seitenlicht und Benachrichtigungs-Vorschauen an.</string>
     <string name="onboarding_personalize_title">Mach es zu deinem</string>
     <string name="onboarding_personalize_desc">Wähle einen Look. Alles lässt sich später in den Einstellungen feinjustieren.</string>
     <string name="onboarding_personalize_design">Oberflächen-Stil</string>

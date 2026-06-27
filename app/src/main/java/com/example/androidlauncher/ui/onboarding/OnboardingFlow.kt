@@ -65,6 +65,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.composables.icons.lucide.ArrowUp
+import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.ChartColumn
 import com.composables.icons.lucide.Hand
@@ -84,7 +85,9 @@ import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppIconView
 import com.example.androidlauncher.ui.isDefaultLauncher
+import com.example.androidlauncher.ui.isNotificationServiceEnabled
 import com.example.androidlauncher.ui.openAccessibilitySettings
+import com.example.androidlauncher.ui.openNotificationSettings
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -136,6 +139,7 @@ fun OnboardingFlow(
     var accessibilityOn by remember {
         mutableStateOf(LauncherAccessibilityService.isAccessibilityServiceEnabled(context))
     }
+    var notificationAccessOn by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
     var locationOn by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -151,6 +155,7 @@ fun OnboardingFlow(
                 defaultLauncherOn = isDefaultLauncher(context)
                 usageAccessOn = ForegroundAppResolver.hasUsageAccess(context)
                 accessibilityOn = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
+                notificationAccessOn = isNotificationServiceEnabled(context)
                 locationOn = ContextCompat.checkSelfPermission(
                     context, Manifest.permission.ACCESS_COARSE_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED
@@ -224,6 +229,7 @@ fun OnboardingFlow(
                             mainTextColor, secondaryTextColor,
                             usageAccessOn = usageAccessOn,
                             accessibilityOn = accessibilityOn,
+                            notificationAccessOn = notificationAccessOn,
                             locationOn = locationOn,
                             onUsageAccess = {
                                 haptics.tap()
@@ -232,6 +238,10 @@ fun OnboardingFlow(
                             onAccessibility = {
                                 haptics.tap()
                                 openAccessibilitySettings(context)
+                            },
+                            onNotificationAccess = {
+                                haptics.tap()
+                                openNotificationSettings(context)
                             },
                             onLocation = {
                                 haptics.tap()
@@ -398,9 +408,11 @@ private fun PermissionsPage(
     secondaryTextColor: Color,
     usageAccessOn: Boolean,
     accessibilityOn: Boolean,
+    notificationAccessOn: Boolean,
     locationOn: Boolean,
     onUsageAccess: () -> Unit,
     onAccessibility: () -> Unit,
+    onNotificationAccess: () -> Unit,
     onLocation: () -> Unit
 ) {
     Text(
@@ -434,6 +446,16 @@ private fun PermissionsPage(
         description = stringResource(R.string.onboarding_perm_accessibility_desc),
         granted = accessibilityOn,
         onGrant = onAccessibility,
+        mainTextColor = mainTextColor,
+        secondaryTextColor = secondaryTextColor
+    )
+    Spacer(Modifier.height(14.dp))
+    PermissionCard(
+        icon = Lucide.Bell,
+        title = stringResource(R.string.onboarding_perm_notifications_title),
+        description = stringResource(R.string.onboarding_perm_notifications_desc),
+        granted = notificationAccessOn,
+        onGrant = onNotificationAccess,
         mainTextColor = mainTextColor,
         secondaryTextColor = secondaryTextColor
     )

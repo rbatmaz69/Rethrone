@@ -376,6 +376,8 @@
     <string name="onboarding_perm_accessibility_desc">Necessaria per bloccare le app con PIN, sequenza o biometria.</string>
     <string name="onboarding_perm_location_title">Posizione (approssimativa)</string>
     <string name="onboarding_perm_location_desc">Consente al widget meteo di mostrare le condizioni vicino a te.</string>
+    <string name="onboarding_perm_notifications_title">Accesso alle notifiche</string>
+    <string name="onboarding_perm_notifications_desc">Alimenta l\'isola dinamica, l\'illuminazione dei bordi e le anteprime delle notifiche.</string>
     <string name="onboarding_personalize_title">Rendilo tuo</string>
     <string name="onboarding_personalize_desc">Scegli un aspetto. Tutto è regolabile più tardi nelle impostazioni.</string>
     <string name="onboarding_personalize_design">Stile delle superfici</string>

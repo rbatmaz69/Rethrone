@@ -376,6 +376,8 @@
     <string name="onboarding_perm_accessibility_desc">Nécessaire pour verrouiller des apps par code, schéma ou biométrie.</string>
     <string name="onboarding_perm_location_title">Localisation (approximative)</string>
     <string name="onboarding_perm_location_desc">Permet au widget météo d\'afficher les conditions près de vous.</string>
+    <string name="onboarding_perm_notifications_title">Accès aux notifications</string>
+    <string name="onboarding_perm_notifications_desc">Alimente l\'îlot dynamique, l\'éclairage des bords et les aperçus de notifications.</string>
     <string name="onboarding_personalize_title">Personnalisez</string>
     <string name="onboarding_personalize_desc">Choisissez un style. Tout se règle plus tard dans les paramètres.</string>
     <string name="onboarding_personalize_design">Style des surfaces</string>

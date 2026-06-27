@@ -391,6 +391,8 @@
     <string name="onboarding_perm_accessibility_desc">Required to lock individual apps behind a PIN, pattern or biometrics.</string>
     <string name="onboarding_perm_location_title">Location (approximate)</string>
     <string name="onboarding_perm_location_desc">Lets the weather widget show conditions near you.</string>
+    <string name="onboarding_perm_notifications_title">Notification access</string>
+    <string name="onboarding_perm_notifications_desc">Powers the Dynamic Island, edge lighting and notification previews.</string>
     <string name="onboarding_personalize_title">Make it yours</string>
     <string name="onboarding_personalize_desc">Pick a look. You can fine-tune everything later in the settings.</string>
     <string name="onboarding_personalize_design">Surface style</string>

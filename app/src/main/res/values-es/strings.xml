@@ -376,6 +376,8 @@
     <string name="onboarding_perm_accessibility_desc">Necesario para bloquear apps con PIN, patrón o biometría.</string>
     <string name="onboarding_perm_location_title">Ubicación (aproximada)</string>
     <string name="onboarding_perm_location_desc">Permite que el widget del tiempo muestre las condiciones cerca de ti.</string>
+    <string name="onboarding_perm_notifications_title">Acceso a notificaciones</string>
+    <string name="onboarding_perm_notifications_desc">Impulsa la Isla Dinámica, la luz de bordes y las vistas previas de notificaciones.</string>
     <string name="onboarding_personalize_title">Hazlo tuyo</string>
     <string name="onboarding_personalize_desc">Elige un estilo. Todo se puede ajustar después en los ajustes.</string>
     <string name="onboarding_personalize_design">Estilo de superficie</string>
