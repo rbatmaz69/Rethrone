@@ -95,6 +95,11 @@ class ThemeManager(private val context: Context) {
         private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
         private val DYNAMIC_ISLAND_KEY = booleanPreferencesKey("dynamic_island_enabled")
         private val DYNAMIC_ISLAND_OFFSET_KEY = floatPreferencesKey("dynamic_island_offset")
+        // Einmalige Migration: Mit der cutout-basierten Auto-Zentrierung wechselt die vertikale
+        // Basis von statusBar/2 auf die echte Kamera-Mitte. Ein alter, gegen statusBar/2
+        // kompensierter Offset würde sonst doppelt wirken → bis der Nutzer den Offset erstmals
+        // neu setzt, alten Wert ignorieren (als 0 behandeln).
+        private val DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY = booleanPreferencesKey("dynamic_island_offset_migrated_v2")
         // ARGB-Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
         private val DYNAMIC_ISLAND_COLOR_KEY = intPreferencesKey("dynamic_island_color")
         // Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
@@ -352,10 +357,19 @@ class ThemeManager(private val context: Context) {
         .map { it[DYNAMIC_ISLAND_KEY] ?: true }
 
     /**
-     * Manueller vertikaler Feinversatz der Dynamic Island in dp (−16..16). Default: 0.
+     * Manueller vertikaler Feinversatz der Dynamic Island in dp (−12..40). Default: 0.
+     * Seit der cutout-basierten Auto-Zentrierung nur noch optionale Feinjustierung. Alte
+     * (gegen statusBar/2 kompensierte) Werte werden einmalig ignoriert, bis der Nutzer den
+     * Offset über [setDynamicIslandOffset] erstmals selbst setzt (siehe MIGRATED_V2-Flag).
      */
     val dynamicIslandOffset: Flow<Float> = context.dataStore.data
-        .map { it[DYNAMIC_ISLAND_OFFSET_KEY] ?: 0f }
+        .map { prefs ->
+            if (prefs[DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY] == true) {
+                prefs[DYNAMIC_ISLAND_OFFSET_KEY] ?: 0f
+            } else {
+                0f
+            }
+        }
 
     /**
      * Frei wählbare Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
@@ -734,6 +748,9 @@ class ThemeManager(private val context: Context) {
     suspend fun setDynamicIslandOffset(offsetDp: Float) {
         context.dataStore.edit { preferences ->
             preferences[DYNAMIC_ISLAND_OFFSET_KEY] = offsetDp.coerceIn(-12f, 40f)
+            // Erste bewusste Justierung schließt die Einmal-Migration ab → ab jetzt wird der
+            // gespeicherte Wert wieder verwendet.
+            preferences[DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY] = true
         }
     }
 

@@ -2,6 +2,8 @@ package com.example.androidlauncher.ui
 
 import android.graphics.Bitmap
 import android.os.Build
+import android.util.Log
+import com.example.androidlauncher.BuildConfig
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
@@ -120,6 +122,15 @@ private const val EDIT_NUDGE_DP = 2f
 private val IslandPillHeight = 30.dp
 
 /**
+ * Fester vertikaler Default-Versatz nach unten gegenüber der geometrischen Kamera-Mitte. Rein
+ * geometrisch sitzt die Pille exakt mittig auf der Kamera, wirkt dort aber leicht „zu hoch" (oberer
+ * Pillenrand klatscht an den Bildschirmrand). Ein fester dp-Wert ist dichteunabhängig → auf jedem
+ * Gerät physisch gleich groß und damit universell (im Gegensatz zu einer aus der stark
+ * schwankenden Cutout-Höhe abgeleiteten Korrektur). Feinjustierung darüber via [verticalOffsetDp].
+ */
+private val ISLAND_CAMERA_BIAS_DP = 4.dp
+
+/**
  * Kompakte Dynamic-Island-Pille an der Front-Kamera. Erscheint **nur**, wenn gerade etwas
  * aktiv ist ([IslandState.content] != null) – im Leerlauf wird nichts gezeichnet. Tap löst
  * [onTap] aus (klappt die große Karte auf, siehe [IslandExpandedCard]).
@@ -228,8 +239,16 @@ fun DynamicIsland(
         // Im Edit-Modus immer sichtbar (Platzhalter zum Ziehen), sonst nur bei aktivem Inhalt.
         visible = content != null || editMode,
         modifier = modifier.offset {
-            // Vertikal IMMER im Statusleisten-Band zentrieren (geräteadaptiv auf Kamerahöhe).
-            val targetCenterY = statusBarTopPx / 2f + verticalOffsetDp.dp.toPx()
+            // Vertikal auf die ECHTE Kamera-Mitte zentrieren – dieselbe Hardware-Quelle
+            // (DisplayCutout.boundingRectTop) wie die horizontale Zentrierung, daher auf jedem
+            // Gerät passend ohne manuelles Justieren. `verticalOffsetDp` ist nur noch eine
+            // optionale Feinjustierung (Default 0). Fallback auf Statusleisten-Bandmitte für
+            // notchlose Geräte / Tablets, die keinen Cutout melden.
+            val targetCenterY = if (cutout != null) {
+                cutout.centerY + ISLAND_CAMERA_BIAS_DP.toPx() + verticalOffsetDp.dp.toPx()
+            } else {
+                statusBarTopPx / 2f + verticalOffsetDp.dp.toPx()
+            }
             val y = (targetCenterY - clusterHeightPx / 2f).coerceAtLeast(0f).roundToInt()
             // Horizontal: Mitte der AKTIVEN Pille unter die Kamera legen, Cluster auf dem Schirm
             // geclampt. Beim Switch wandert die Pille im Cluster → der Cluster gleitet so, dass
@@ -887,6 +906,16 @@ private fun rememberCutoutInfo(): CutoutInfo? {
             else -> cutout.boundingRects.firstOrNull()
         }
         if (rect != null && !rect.isEmpty && view.width > 0) {
+            // Diagnostik (nur Debug): echte Cutout-Rohwerte des Geräts, um den vertikalen
+            // Default-Bias [ISLAND_CAMERA_BIAS_DP] datenbasiert verifizieren/kalibrieren zu können
+            // (Maße schwanken stark pro Gerät). Auslesen mit: adb logcat -s IslandCutout
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    "IslandCutout",
+                    "centerY=${rect.centerY()} height=${rect.height()} width=${rect.width()} " +
+                        "screenW=${view.width} density=${density.density}"
+                )
+            }
             CutoutInfo(
                 rect.centerX().toFloat(),
                 rect.centerY().toFloat(),
