@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -236,6 +237,9 @@ fun NiagaraAppDrawer(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
+                            // Clip vor der Translation: das elastische Ziehen/Bounce
+                            // bleibt im Listenbereich und überlappt nicht den Header.
+                            .clipToBounds()
                             .graphicsLayer { translationY = swipeToClose.offsetY }
                             .nestedScroll(swipeToClose.connection),
                         state = listState,

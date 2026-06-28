@@ -149,6 +149,10 @@ class SwipeToCloseState(
  * @param isAtTop liefert, ob die Liste/das Grid ganz oben steht.
  * @param isAtBottom liefert, ob das Listenende erreicht ist (kein Weiterscrollen).
  */
+// Dämpfungsfaktor: skaliert die rohe Fling-Geschwindigkeit (px/s) auf die
+// Anfangsgeschwindigkeit der Bounce-Feder.
+private const val BOUNCE_VELOCITY_FACTOR = 0.16f
+
 @Composable
 fun rememberSwipeToCloseRubberBand(
     closeThreshold: Dp = 64.dp,
@@ -160,6 +164,9 @@ fun rememberSwipeToCloseRubberBand(
     val density = LocalDensity.current
     val thresholdPx = with(density) { closeThreshold.toPx() }
     val maxDragPx = with(density) { maxDrag.toPx() }
+    // Obergrenze für die Anfangsgeschwindigkeit des Fling-Bounce – begrenzt den
+    // Ausschlag bei sehr schnellem Fling, hält den Effekt aber spürbar.
+    val maxBounceVelocityPx = with(density) { 340.dp.toPx() }
     val speed = LocalAnimationSpeed.current
     val scope = rememberCoroutineScope()
 
@@ -193,23 +200,57 @@ fun rememberSwipeToCloseRubberBand(
         }
     }
 
+    // Dezenter Fling-Bounce: trifft der Schwung ein Listenende, federt der Inhalt
+    // mit der Restgeschwindigkeit kurz aus und settlet wieder. [velocity] in px/s,
+    // Vorzeichen bestimmt die Richtung (oben positiv, unten negativ).
+    fun bounce(velocity: Float) {
+        if (velocity == 0f) return
+        val initial = (velocity * BOUNCE_VELOCITY_FACTOR)
+            .coerceIn(-maxBounceVelocityPx, maxBounceVelocityPx)
+        rawDrag.floatValue = 0f
+        settling.value = true
+        scope.launch {
+            settle.snapTo(0f)
+            settle.animateTo(0f, RethroneSprings.spatial(speed), initialVelocity = initial)
+            settling.value = false
+        }
+    }
+
     val connection = remember(thresholdPx, onClose) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput) {
-                    // Oberer Rand: Ziehen nach unten → Rubber-Band + ggf. Close.
-                    if (isAtTop() && available.y > 0f) {
-                        settling.value = false
-                        rawDrag.floatValue += available.y
-                        if (rawDrag.floatValue >= thresholdPx) {
-                            rawDrag.floatValue = 0f
-                            onClose()
-                        }
-                        return Offset(0f, available.y)
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                val dy = available.y
+                val current = rawDrag.floatValue
+
+                // Oberes Band: aktiv (current>0) oder Start beim Ziehen nach unten am
+                // oberen Rand. Folgt dem Finger; beim Nulldurchgang Rest an die Liste.
+                if (current > 0f || (current == 0f && isAtTop() && dy > 0f)) {
+                    settling.value = false
+                    val next = current + dy
+                    if (next <= 0f) {
+                        rawDrag.floatValue = 0f
+                        return Offset(0f, -current)
                     }
-                    // Gegenrichtung aus einem aktiven Versatz heraus → zurückfedern.
-                    if (rawDrag.floatValue > 0f && available.y < 0f) springBack()
-                    else if (rawDrag.floatValue < 0f && available.y > 0f) springBack()
+                    rawDrag.floatValue = next
+                    if (next >= thresholdPx) {
+                        rawDrag.floatValue = 0f
+                        onClose()
+                    }
+                    return Offset(0f, dy)
+                }
+
+                // Unteres Band: aktiv (current<0) → folgt dem Finger zurück, Rest an
+                // die Liste, sobald das Band aufgelöst ist.
+                if (current < 0f) {
+                    settling.value = false
+                    val next = current + dy
+                    if (next >= 0f) {
+                        rawDrag.floatValue = 0f
+                        return Offset(0f, -current)
+                    }
+                    rawDrag.floatValue = next
+                    return Offset(0f, dy)
                 }
                 return Offset.Zero
             }
@@ -237,7 +278,14 @@ fun rememberSwipeToCloseRubberBand(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                springBack()
+                if (rawDrag.floatValue != 0f) {
+                    // Aktiver Drag-Versatz → sanft aus der aktuellen Auslenkung zurück.
+                    springBack()
+                } else when {
+                    // Reiner Schwung in ein Ende (kein vorheriges Ziehen) → dezenter Bounce.
+                    isAtTop() && available.y > 0f -> bounce(available.y)
+                    isAtBottom() && available.y < 0f -> bounce(available.y)
+                }
                 return Velocity.Zero
             }
         }
