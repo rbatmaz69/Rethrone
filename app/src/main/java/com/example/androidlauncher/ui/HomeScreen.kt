@@ -223,8 +223,8 @@ fun HomeScreen(
     // translateRect/expandRect/intersects liegen jetzt framework-frei in HomeGeometry.kt
     // (unit-getestet); die Aufrufe loesen auf die Top-Level-Funktionen auf.
 
-    // rectContains(...) und intersectionArea(...) liegen jetzt framework-frei in HomeGeometry.kt
-    // (unit-getestet); die Aufrufe unten loesen auf die Top-Level-Funktionen auf.
+    // rectContains(...) liegt jetzt framework-frei in HomeGeometry.kt (unit-getestet); die
+    // Aufrufe unten loesen auf die Top-Level-Funktion auf.
 
     // Sammel-Padding je Element: Favoriten behalten ihren Rahmenabstand, Text-Elemente
     // (Uhr/Datum/Wetter) liegen im Neutralzustand bündig gestapelt → kein Inter-Padding.
@@ -233,9 +233,6 @@ fun HomeScreen(
 
     fun baseRect(target: HomeEditTarget, o: Offset): Rect? =
         neutralBounds[target]?.let { translateRect(it, o.x, o.y) }
-
-    fun overlapRect(target: HomeEditTarget, o: Offset): Rect? =
-        baseRect(target, o)?.let { expandRect(it, framePadding(target)) }
 
     fun navRect(target: HomeEditTarget, o: Offset): Rect? =
         baseRect(target, o)?.let { expandRect(it, navCollisionPaddingPx) }
@@ -288,21 +285,6 @@ fun HomeScreen(
     }
 
     /**
-     * Gesamt-Überlappungsfläche von [target] (an Position [pos]) mit allen anderen Elementen.
-     * 0, wenn das Element frei steht.
-     */
-    fun totalOverlap(target: HomeEditTarget, pos: Offset): Float {
-        val rect = overlapRect(target, pos) ?: return 0f
-        var sum = 0f
-        for (other in HomeEditTarget.entries) {
-            if (other == target) continue
-            val otherRect = overlapRect(other, offsets[other] ?: Offset.Zero) ?: continue
-            sum += intersectionArea(rect, otherRect)
-        }
-        return sum
-    }
-
-    /**
      * Harte Constraints für [target] an [pos]: innerhalb des Bildschirms (kein Clamp nötig)
      * und keine Kollision mit Navigationsleiste oder unteren Steuer-Buttons.
      */
@@ -318,23 +300,17 @@ fun HomeScreen(
     /**
      * Sucht eine erreichbare Offset-Position zwischen [baseOffset] und [desiredOffset].
      *
-     * Überlappungs-bewusst: Überlappen sich Uhr & Favoriten am Start ([baseOffset]) bereits,
-     * werden Bewegungen akzeptiert, die die Überlappung **nicht vergrößern** (Auseinanderziehen
-     * möglich, Tieferrutschen blockiert). Ohne Start-Überlappung gilt die strenge Regel (keine
-     * neue Überlappung), wodurch das bisherige Verhalten erhalten bleibt.
+     * Widgets dürfen sich frei überlappen – es gibt keine Kollisionssperre zwischen den
+     * Home-Elementen mehr. Begrenzt wird nur durch die harten Constraints ([hardOkAt]):
+     * Bildschirmrand, System-Navigationsleiste und untere Steuer-Buttons. Das Probing entlang
+     * der Achse sorgt dafür, dass ein Zug Richtung Sperrzone so weit wie erlaubt gleitet.
      */
     fun reachableOffset(
         baseOffset: Float,
         desiredOffset: Float,
-        overlapAt: (Float) -> Float,
         hardOkAt: (Float) -> Boolean
     ): Float? {
-        val baseOverlap = overlapAt(baseOffset)
-        fun acceptable(offset: Float): Boolean {
-            if (!hardOkAt(offset)) return false
-            val overlap = overlapAt(offset)
-            return if (baseOverlap > 0f) overlap <= baseOverlap else overlap == 0f
-        }
+        fun acceptable(offset: Float): Boolean = hardOkAt(offset)
 
         if (abs(desiredOffset - baseOffset) < 0.5f) {
             return if (acceptable(baseOffset)) baseOffset else null
@@ -368,7 +344,6 @@ fun HomeScreen(
             return reachableOffset(
                 baseOffset = fromX,
                 desiredOffset = desired,
-                overlapAt = { x -> totalOverlap(target, Offset(x, fromY)) },
                 hardOkAt = { x -> hardOk(target, Offset(x, fromY)) }
             ) ?: fromX
         }
@@ -377,7 +352,6 @@ fun HomeScreen(
             return reachableOffset(
                 baseOffset = fromY,
                 desiredOffset = desired,
-                overlapAt = { y -> totalOverlap(target, Offset(fromX, y)) },
                 hardOkAt = { y -> hardOk(target, Offset(fromX, y)) }
             ) ?: fromY
         }
@@ -1336,18 +1310,23 @@ fun ClockText(
     ) { timeStr ->
         Text(
             text = timeStr,
+            // Seitliches/vertikales Polster INNERHALB des Clips, damit Glyphen-Überhänge
+            // (kursive/dekorative Fonts, negatives letterSpacing) nicht abgeschnitten werden.
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             fontSize = 72.sp * fontSize.scale,
             fontWeight = appFontWeight.weight,
             letterSpacing = (-2).sp,
             lineHeight = 72.sp * fontSize.scale,
             // Entfernt das zusätzliche Font-Padding (enger Rahmen), behält aber die gewählte
             // App-Schriftart bei, indem auf den aktuellen LocalTextStyle gemergt wird.
+            // Trim.None hält die Box-Höhe = volle lineHeight (schriftunabhängig) → konstante
+            // Abstände oben/unten, egal welche Schriftart gewählt ist.
             style = LocalTextStyle.current.merge(
                 TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     lineHeightStyle = LineHeightStyle(
                         alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.Both
+                        trim = LineHeightStyle.Trim.None
                     )
                 )
             ),
@@ -1410,12 +1389,13 @@ fun DateText(
             fontSize = 18.sp * fontSize.scale,
             fontWeight = appFontWeight.weight,
             lineHeight = 18.sp * fontSize.scale,
+            // Trim.None: Box-Höhe = volle lineHeight, schriftunabhängig → konstante Abstände.
             style = LocalTextStyle.current.merge(
                 TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     lineHeightStyle = LineHeightStyle(
                         alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.Both
+                        trim = LineHeightStyle.Trim.None
                     )
                 )
             ),
