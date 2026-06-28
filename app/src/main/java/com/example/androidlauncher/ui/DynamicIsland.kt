@@ -240,7 +240,10 @@ fun DynamicIsland(
                 val lo = half + margin
                 val hi = cutout.screenWidth - half - margin
                 val anchor = animatedAnchor.value
-                val clusterCenterScreen = if (anchor >= 0f && clusterWidthPx > 0) {
+                // Im Edit-Modus den (schriftabhängigen) Live-Anker ignorieren und die Pille fest
+                // unter dem Cutout zentrieren – dort wird nur die vertikale Position eingestellt,
+                // horizontal soll sie unabhängig von der Schriftart stabil bleiben.
+                val clusterCenterScreen = if (!editMode && anchor >= 0f && clusterWidthPx > 0) {
                     cutout.centerX - (anchor - clusterWidthPx / 2f)
                 } else {
                     cutout.centerX

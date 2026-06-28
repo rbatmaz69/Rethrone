@@ -607,11 +607,14 @@ fun HomeScreen(
                 onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds)
             }
 
-            // Obere Gruppe (oben verankert): Uhr, Datum, Wetter.
+            // Obere Gruppe (oben verankert): nur die Uhr. Das Datum liegt bewusst auf einer
+            // eigenen Ebene (siehe unten), damit es NICHT von der – je nach Schriftart
+            // unterschiedlich hohen – Uhr-Box mitgeschoben wird.
             Column(modifier = Modifier.fillMaxSize()) {
                 Spacer(modifier = Modifier.height(30.dp))
 
-                // 1. Uhr (unabhängig verschiebbar, nur wenn aktiviert)
+                // 1. Uhr (unabhängig verschiebbar, nur wenn aktiviert). Natürliche Höhe
+                // (wrapContent), damit hohe/dekorative Schriften nicht abgeschnitten werden.
                 if (LocalClockWidgetEnabled.current) {
                     Box(
                         modifier = Modifier
@@ -627,24 +630,27 @@ fun HomeScreen(
                         )
                     }
                 }
+            }
 
-                // 2. Datum (unabhängig verschiebbar, nur wenn aktiviert)
-                if (LocalCalendarWidgetEnabled.current) {
-                    Box(
-                        modifier = Modifier
-                            .wrapContentWidth(Alignment.Start)
-                            .targetLayout(HomeEditTarget.DATE)
-                            .targetEditModifier(HomeEditTarget.DATE)
-                    ) {
-                        DateText(
-                            time = currentTime,
-                            isPreview = isPreview || isEditMode,
-                            returnIconPackage = returnIconPackage,
-                            onAppLaunchForReturn = launchForReturn
-                        )
-                    }
+            // 2. Datum: eigene Ebene mit fester, schriftunabhängiger Verankerung unter der
+            // Standard-Uhrposition. Dadurch springt das Datum beim Schriftartwechsel nicht mehr
+            // weg (es hängt nicht mehr an der gemessenen Uhr-Box-Höhe). Frei verschiebbar.
+            if (LocalCalendarWidgetEnabled.current) {
+                val dateTopAnchor = 30.dp + with(density) { (72.sp * fontSize.scale).toDp() } + 8.dp
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = dateTopAnchor)
+                        .targetLayout(HomeEditTarget.DATE)
+                        .targetEditModifier(HomeEditTarget.DATE)
+                ) {
+                    DateText(
+                        time = currentTime,
+                        isPreview = isPreview || isEditMode,
+                        returnIconPackage = returnIconPackage,
+                        onAppLaunchForReturn = launchForReturn
+                    )
                 }
-
             }
 
             // 3. Wetter: standardmäßig rechts oben in der Ecke (unter der Statusleiste,
@@ -1319,14 +1325,14 @@ fun ClockText(
             lineHeight = 72.sp * fontSize.scale,
             // Entfernt das zusätzliche Font-Padding (enger Rahmen), behält aber die gewählte
             // App-Schriftart bei, indem auf den aktuellen LocalTextStyle gemergt wird.
-            // Trim.None hält die Box-Höhe = volle lineHeight (schriftunabhängig) → konstante
-            // Abstände oben/unten, egal welche Schriftart gewählt ist.
+            // Trim.Both passt die Box an die echten Glyphen an → hohe/dekorative Schriften
+            // werden NICHT vom Clip abgeschnitten.
             style = LocalTextStyle.current.merge(
                 TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     lineHeightStyle = LineHeightStyle(
                         alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.None
+                        trim = LineHeightStyle.Trim.Both
                     )
                 )
             ),
@@ -1389,13 +1395,13 @@ fun DateText(
             fontSize = 18.sp * fontSize.scale,
             fontWeight = appFontWeight.weight,
             lineHeight = 18.sp * fontSize.scale,
-            // Trim.None: Box-Höhe = volle lineHeight, schriftunabhängig → konstante Abstände.
+            // Trim.Both passt die Box an die echten Glyphen an (kein Abschneiden).
             style = LocalTextStyle.current.merge(
                 TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     lineHeightStyle = LineHeightStyle(
                         alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.None
+                        trim = LineHeightStyle.Trim.Both
                     )
                 )
             ),
