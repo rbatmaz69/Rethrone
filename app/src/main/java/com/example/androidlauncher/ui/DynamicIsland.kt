@@ -3,7 +3,6 @@ package com.example.androidlauncher.ui
 import android.graphics.Bitmap
 import android.os.Build
 import android.util.Log
-import com.example.androidlauncher.BuildConfig
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
@@ -96,6 +95,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.androidlauncher.BuildConfig
 import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.IslandContent
 import androidx.compose.ui.graphics.luminance
