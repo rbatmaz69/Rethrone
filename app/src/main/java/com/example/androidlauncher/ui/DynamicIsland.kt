@@ -77,8 +77,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
@@ -98,7 +99,6 @@ import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.BuildConfig
 import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.IslandContent
-import androidx.compose.ui.graphics.luminance
 import com.example.androidlauncher.data.IslandState
 import com.example.androidlauncher.data.activityId
 import com.example.androidlauncher.data.iconPackage
@@ -142,9 +142,18 @@ private val ISLAND_CAMERA_BIAS_DP = 4.dp
  * Breite 0 (nur Breite animiert, Höhe konstant); [IslandAnimationStyle.SOFT] blendet dezent ein.
  */
 private fun islandEnter(style: IslandAnimationStyle, speed: Float): EnterTransition = when (style) {
-    IslandAnimationStyle.FROM_NOTCH -> expandIn(RethroneSprings.island(speed), Alignment.TopCenter) { full -> IntSize(0, full.height) }
-    IslandAnimationStyle.BOUNCE -> expandIn(RethroneSprings.islandBouncy(speed), Alignment.TopCenter) { full -> IntSize(0, full.height) }
-    IslandAnimationStyle.SNAPPY -> expandIn(RethroneSprings.effects(speed), Alignment.TopCenter) { full -> IntSize(0, full.height) }
+    IslandAnimationStyle.FROM_NOTCH -> expandIn(
+        RethroneSprings.island(speed),
+        Alignment.TopCenter
+    ) { full -> IntSize(0, full.height) }
+    IslandAnimationStyle.BOUNCE -> expandIn(
+        RethroneSprings.islandBouncy(speed),
+        Alignment.TopCenter
+    ) { full -> IntSize(0, full.height) }
+    IslandAnimationStyle.SNAPPY -> expandIn(
+        RethroneSprings.effects(speed),
+        Alignment.TopCenter
+    ) { full -> IntSize(0, full.height) }
     IslandAnimationStyle.SOFT -> fadeIn(RethroneSprings.effects(speed)) +
         scaleIn(RethroneSprings.effects(speed), initialScale = 0.92f, transformOrigin = TransformOrigin(0.5f, 0f))
 }
@@ -312,13 +321,17 @@ fun DynamicIsland(
             val jellyFrom = islandJellyFromScaleY(animationStyle)
             val appear by transition.animateFloat(
                 transitionSpec = {
-                    if (!animationsEnabled) snap()
-                    else if (targetState == EnterExitState.Visible) when (animationStyle) {
-                        IslandAnimationStyle.BOUNCE -> RethroneSprings.islandBouncy(speed)
-                        IslandAnimationStyle.FROM_NOTCH -> RethroneSprings.island(speed)
-                        else -> RethroneSprings.effects(speed)
+                    if (!animationsEnabled) {
+                        snap()
+                    } else if (targetState == EnterExitState.Visible) {
+                        when (animationStyle) {
+                            IslandAnimationStyle.BOUNCE -> RethroneSprings.islandBouncy(speed)
+                            IslandAnimationStyle.FROM_NOTCH -> RethroneSprings.island(speed)
+                            else -> RethroneSprings.effects(speed)
+                        }
+                    } else {
+                        RethroneSprings.morph(speed)
                     }
-                    else RethroneSprings.morph(speed)
                 },
                 label = "islandJelly"
             ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
@@ -358,7 +371,10 @@ fun DynamicIsland(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
+                        .graphicsLayer {
+                            scaleX = pressScale;
+                            scaleY = pressScale
+                        }
                         .onGloballyPositioned {
                             rowCoords = it
                             clusterWidthPx = it.size.width
@@ -609,7 +625,14 @@ private fun IslandPill(
                     is IslandContent.Notification -> AppIcon(c.pkg, loadIcon, iconCache)
                     // Kein Wort: Live-Zeit wenn ableitbar, sonst nur das App-Icon der Uhr.
                     is IslandContent.Timer ->
-                        if (c.displayMs != null) TimerLabel(formatRemaining(c.displayMs), contentColor) else AppIcon(c.pkg, loadIcon, iconCache)
+                        if (c.displayMs != null) {
+                            TimerLabel(
+                                formatRemaining(c.displayMs),
+                                contentColor
+                            )
+                        } else {
+                            AppIcon(c.pkg, loadIcon, iconCache)
+                        }
                     is IslandContent.Battery -> ShortLabel("${c.level}%", contentColor)
                     is IslandContent.Media -> MediaArt(c.art, islandColor)
                 }
@@ -673,8 +696,11 @@ private fun CameraBalancedRow(
             cam.place(leftSide, (height - cam.height) / 2)
             // Folgend: balanced ⇒ an den äußeren Pillen-Rand (spiegelt den Timer links →
             // Notch mittig zwischen beiden); kompakt ⇒ dicht an die Notch.
-            val trailX = if (balanced) leftSide + cam.width + rightSide - trail.width
-            else leftSide + cam.width
+            val trailX = if (balanced) {
+                leftSide + cam.width + rightSide - trail.width
+            } else {
+                leftSide + cam.width
+            }
             trail.place(trailX, (height - trail.height) / 2)
         }
     }

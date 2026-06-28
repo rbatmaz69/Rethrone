@@ -148,21 +148,26 @@ object LiquidGlass {
                 Modifier
             }
         return softShadow.then(
-        when (style) {
-            DesignStyle.GLASS -> this
-                .background(glassBrush(isDarkText, glassStartAlpha, glassEndAlpha), shape)
-                .border(BorderStroke(borderWidth, glassBorder), shape)
-            DesignStyle.FLAT -> this
-                .background(baseColor.copy(alpha = fillAlpha), shape)
-            DesignStyle.MINIMAL -> this
-            DesignStyle.OUTLINE -> this
-                .border(BorderStroke(borderWidth, baseColor.copy(alpha = 0.5f)), shape)
-            DesignStyle.SOLID -> this
-                .background(accent, shape)
-            DesignStyle.TINTED -> this
-                .background(tintedBrush(accent), shape)
-                .border(BorderStroke(borderWidth, accent.copy(alpha = 0.4f)), shape)
-        }
+            when (style) {
+                DesignStyle.GLASS ->
+                    this
+                        .background(glassBrush(isDarkText, glassStartAlpha, glassEndAlpha), shape)
+                        .border(BorderStroke(borderWidth, glassBorder), shape)
+                DesignStyle.FLAT ->
+                    this
+                        .background(baseColor.copy(alpha = fillAlpha), shape)
+                DesignStyle.MINIMAL -> this
+                DesignStyle.OUTLINE ->
+                    this
+                        .border(BorderStroke(borderWidth, baseColor.copy(alpha = 0.5f)), shape)
+                DesignStyle.SOLID ->
+                    this
+                        .background(accent, shape)
+                DesignStyle.TINTED ->
+                    this
+                        .background(tintedBrush(accent), shape)
+                        .border(BorderStroke(borderWidth, accent.copy(alpha = 0.4f)), shape)
+            }
         )
     }
 
@@ -208,9 +213,13 @@ object LiquidGlass {
                 checkedTrackColor = Color.White.copy(alpha = 0.2f),
                 uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                 checkedThumbColor = if (isDarkText) Color.Black else Color.White,
-                uncheckedThumbColor = if (isDarkText) Color.Black.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.9f),
+                uncheckedThumbColor = if (isDarkText) Color.Black.copy(
+                    alpha = 0.9f
+                ) else Color.White.copy(alpha = 0.9f),
                 checkedBorderColor = if (isDarkText) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f),
-                uncheckedBorderColor = if (isDarkText) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f)
+                uncheckedBorderColor = if (isDarkText) Color.Black.copy(
+                    alpha = 0.1f
+                ) else Color.White.copy(alpha = 0.1f)
             )
         }
     }
@@ -229,4 +238,3 @@ object LiquidGlass {
     fun secondaryTextColor(isDarkText: Boolean): Color =
         if (isDarkText) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
 }
-

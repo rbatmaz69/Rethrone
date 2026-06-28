@@ -5,12 +5,17 @@ import android.net.Uri
 import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -19,32 +24,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
-import com.example.androidlauncher.ui.theme.RethroneSprings
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInParent
@@ -56,26 +47,23 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
-import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.RethroneSprings
 import com.example.androidlauncher.ui.theme.seedRevision
-import com.example.androidlauncher.ui.LiquidGlass.designSurface
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import kotlin.math.abs
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
  * NiagaraAppDrawer ist die alternative AppDrawer-Layoutvariante (Version 2).
@@ -195,15 +183,27 @@ fun NiagaraAppDrawer(
                 Row {
                     IconButton(
                         onClick = {
-                            if (searchExpanded) { searchExpanded = false; appDrawerVm.setSearchQuery("") }
-                            else searchExpanded = true
+                            if (searchExpanded) {
+                                searchExpanded = false;
+                                appDrawerVm.setSearchQuery("")
+                            } else {
+                                searchExpanded = true
+                            }
                         },
                         modifier = Modifier.testTag("niagara_search_toggle")
                     ) {
-                        Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.cd_search), tint = mainTextColor)
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = stringResource(R.string.cd_search),
+                            tint = mainTextColor
+                        )
                     }
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
+                        Icon(
+                            Icons.Rounded.Close,
+                            contentDescription = stringResource(R.string.cd_close),
+                            tint = mainTextColor
+                        )
                     }
                 }
             }
@@ -254,7 +254,9 @@ fun NiagaraAppDrawer(
                                     bouncePackage = returnIconPackage,
                                     mainTextColor = mainTextColor,
                                     onLaunch = { bounds ->
-                                        context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { intent ->
+                                        context.packageManager.getLaunchIntentForPackage(
+                                            app.packageName
+                                        )?.let { intent ->
                                             onLaunchApp(app.packageName, intent, bounds)
                                         }
                                     },
@@ -278,12 +280,18 @@ fun NiagaraAppDrawer(
                                         bouncePackage = returnIconPackage,
                                         mainTextColor = mainTextColor,
                                         onLaunch = { bounds ->
-                                            context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { intent ->
+                                            context.packageManager.getLaunchIntentForPackage(
+                                                app.packageName
+                                            )?.let { intent ->
                                                 onLaunchApp(app.packageName, intent, bounds)
                                             }
                                         },
                                         onLongPress = { bounds ->
-                                            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            if (hapticEnabled) {
+                                                haptic.performHapticFeedback(
+                                                    HapticFeedbackType.LongPress
+                                                )
+                                            }
                                             menuApp = app
                                             menuAppBounds = bounds
                                         }
@@ -471,7 +479,10 @@ private fun NiagaraAppRow(
     ) {
         Box(
             modifier = Modifier
-                .graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }
+                .graphicsLayer {
+                    scaleX = bounceScale;
+                    scaleY = bounceScale
+                }
                 .onGloballyPositioned { iconBounds = it.boundsInRoot() }
         ) {
             AppIconView(app, customIcons = customIcons)

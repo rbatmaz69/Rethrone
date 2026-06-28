@@ -132,8 +132,10 @@ class WeatherRepository(private val context: Context) {
     suspend fun ipLocation(): Pair<Double, Double>? = withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
         try {
-            connection = (URL("https://ipwho.is/?fields=latitude,longitude,success")
-                .openConnection() as HttpURLConnection).apply {
+            connection = (
+                URL("https://ipwho.is/?fields=latitude,longitude,success")
+                    .openConnection() as HttpURLConnection
+                ).apply {
                 requestMethod = "GET"
                 connectTimeout = 8000
                 readTimeout = 8000
@@ -183,6 +185,7 @@ class WeatherRepository(private val context: Context) {
         // (z. B. App-Drawer → Startseite), damit das Wetter nicht kurz verschwindet.
         @Volatile
         private var cachedData: WeatherData? = null
+
         @Volatile
         private var cachedAtElapsedMs: Long = 0L
 

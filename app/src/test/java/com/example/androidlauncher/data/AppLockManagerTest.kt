@@ -3,8 +3,8 @@ package com.example.androidlauncher.data
 import android.util.Base64
 import io.mockk.every
 import io.mockk.mockkStatic
-import io.mockk.unmockkAll
 import io.mockk.slot
+import io.mockk.unmockkAll
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals

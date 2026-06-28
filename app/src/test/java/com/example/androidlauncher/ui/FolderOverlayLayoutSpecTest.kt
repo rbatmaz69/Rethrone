@@ -55,4 +55,3 @@ class FolderOverlayLayoutSpecTest {
         assertTrue(spec.gridHeightDp in 238..390)
     }
 }
-

@@ -12,6 +12,7 @@ value class FontSize(val scale: Float) {
         const val MAX = 1.60f
 
         val STANDARD = FontSize(1.0f)
+
         // Presets für Tests/Defaults und Abwärtskompatibilität.
         val SMALL = FontSize(0.85f)
         val LARGE = FontSize(1.2f)

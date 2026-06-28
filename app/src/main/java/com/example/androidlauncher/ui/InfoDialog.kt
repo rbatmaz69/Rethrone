@@ -111,6 +111,7 @@ fun InfoDialog(
                 // App Info
                 val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                 val versionName = packageInfo.versionName ?: "1.0"
+
                 @Suppress("DEPRECATION")
                 val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                     packageInfo.longVersionCode

@@ -174,9 +174,14 @@ class NotificationClassifierTest {
     @Test
     fun `anchor for countdown chronometer is the future end`() {
         val a = resolveTimerAnchor(
-            showChronometer = true, isCountDownChronometer = true,
-            isStopwatchChannel = false, isTimerChannel = true,
-            whenMs = now + 60_000, nowMs = now, horizonMs = horizon, candidateText = null
+            showChronometer = true,
+            isCountDownChronometer = true,
+            isStopwatchChannel = false,
+            isTimerChannel = true,
+            whenMs = now + 60_000,
+            nowMs = now,
+            horizonMs = horizon,
+            candidateText = null
         )
         assertEquals(TimerAnchor(now + 60_000, countUp = false), a)
     }
@@ -184,9 +189,14 @@ class NotificationClassifierTest {
     @Test
     fun `anchor for count-up chronometer is the past start`() {
         val a = resolveTimerAnchor(
-            showChronometer = true, isCountDownChronometer = false,
-            isStopwatchChannel = false, isTimerChannel = false,
-            whenMs = now - 30_000, nowMs = now, horizonMs = horizon, candidateText = null
+            showChronometer = true,
+            isCountDownChronometer = false,
+            isStopwatchChannel = false,
+            isTimerChannel = false,
+            whenMs = now - 30_000,
+            nowMs = now,
+            horizonMs = horizon,
+            candidateText = null
         )
         assertEquals(TimerAnchor(now - 30_000, countUp = true), a)
     }
@@ -194,9 +204,14 @@ class NotificationClassifierTest {
     @Test
     fun `anchor for stopwatch channel without extras uses when as start`() {
         val a = resolveTimerAnchor(
-            showChronometer = false, isCountDownChronometer = false,
-            isStopwatchChannel = true, isTimerChannel = false,
-            whenMs = now - 90_000, nowMs = now, horizonMs = horizon, candidateText = null
+            showChronometer = false,
+            isCountDownChronometer = false,
+            isStopwatchChannel = true,
+            isTimerChannel = false,
+            whenMs = now - 90_000,
+            nowMs = now,
+            horizonMs = horizon,
+            candidateText = null
         )
         assertEquals(TimerAnchor(now - 90_000, countUp = true), a)
     }
@@ -204,9 +219,14 @@ class NotificationClassifierTest {
     @Test
     fun `anchor for timer channel falls back to parsed text end`() {
         val a = resolveTimerAnchor(
-            showChronometer = false, isCountDownChronometer = false,
-            isStopwatchChannel = false, isTimerChannel = true,
-            whenMs = now, nowMs = now, horizonMs = horizon, candidateText = "0:59"
+            showChronometer = false,
+            isCountDownChronometer = false,
+            isStopwatchChannel = false,
+            isTimerChannel = true,
+            whenMs = now,
+            nowMs = now,
+            horizonMs = horizon,
+            candidateText = "0:59"
         )
         assertEquals(TimerAnchor(now + 59_000, countUp = false), a)
     }
@@ -214,9 +234,14 @@ class NotificationClassifierTest {
     @Test
     fun `anchor is null when nothing is parseable`() {
         val a = resolveTimerAnchor(
-            showChronometer = false, isCountDownChronometer = false,
-            isStopwatchChannel = false, isTimerChannel = true,
-            whenMs = now, nowMs = now, horizonMs = horizon, candidateText = "Timer läuft"
+            showChronometer = false,
+            isCountDownChronometer = false,
+            isStopwatchChannel = false,
+            isTimerChannel = true,
+            whenMs = now,
+            nowMs = now,
+            horizonMs = horizon,
+            candidateText = "Timer läuft"
         )
         assertEquals(TimerAnchor(null, countUp = false), a)
     }

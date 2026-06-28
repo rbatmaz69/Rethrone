@@ -5,10 +5,7 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.Intent
-import android.os.Build
 import android.os.Process
-import android.provider.Settings
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -22,8 +19,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import io.mockk.mockkConstructor
-import io.mockk.unmockkConstructor
 
 class ForegroundAppResolverTest {
 

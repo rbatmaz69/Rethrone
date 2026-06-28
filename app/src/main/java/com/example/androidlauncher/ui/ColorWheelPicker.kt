@@ -8,6 +8,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Colorize
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,16 +21,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Colorize
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.R
 
@@ -41,13 +41,24 @@ private fun Color.toHsv(): FloatArray {
 }
 
 private val hueColors: List<Color> = listOf(
-    Color(0xFFFF0000), Color(0xFFFFFF00), Color(0xFF00FF00),
-    Color(0xFF00FFFF), Color(0xFF0000FF), Color(0xFFFF00FF), Color(0xFFFF0000)
+    Color(0xFFFF0000),
+    Color(0xFFFFFF00),
+    Color(0xFF00FF00),
+    Color(0xFF00FFFF),
+    Color(0xFF0000FF),
+    Color(0xFFFF00FF),
+    Color(0xFFFF0000)
 )
 
 private val quickSwatches: List<Color> = listOf(
-    Color.White, Color(0xFF010101), Color(0xFFEF4444), Color(0xFFF59E0B),
-    Color(0xFF22C55E), Color(0xFF0EA5E9), Color(0xFF6366F1), Color(0xFFEC4899)
+    Color.White,
+    Color(0xFF010101),
+    Color(0xFFEF4444),
+    Color(0xFFF59E0B),
+    Color(0xFF22C55E),
+    Color(0xFF0EA5E9),
+    Color(0xFF6366F1),
+    Color(0xFFEC4899)
 )
 
 /**
@@ -103,7 +114,12 @@ fun ColorWheelPicker(
             val cx = sat * size.width
             val cy = (1f - value) * size.height
             drawCircle(color = Color.White, radius = 10f, center = Offset(cx, cy), style = Stroke(width = 3f))
-            drawCircle(color = Color.Black.copy(alpha = 0.6f), radius = 13f, center = Offset(cx, cy), style = Stroke(width = 1.5f))
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.6f),
+                radius = 13f,
+                center = Offset(cx, cy),
+                style = Stroke(width = 1.5f)
+            )
         }
 
         // Hue-Slider
@@ -129,7 +145,12 @@ fun ColorWheelPicker(
         ) {
             drawRect(brush = Brush.horizontalGradient(hueColors))
             val x = (hue / 360f) * size.width
-            drawCircle(color = Color.White, radius = size.height / 2f - 2f, center = Offset(x.coerceIn(0f, size.width), size.height / 2f), style = Stroke(width = 3f))
+            drawCircle(
+                color = Color.White,
+                radius = size.height / 2f - 2f,
+                center = Offset(x.coerceIn(0f, size.width), size.height / 2f),
+                style = Stroke(width = 3f)
+            )
         }
 
         // Vorschau + Hex
@@ -173,7 +194,9 @@ fun ColorWheelPicker(
                         .pointerInput(swatch) {
                             detectTapGestures {
                                 val hsv = swatch.toHsv()
-                                hue = hsv[0]; sat = hsv[1]; value = hsv[2]
+                                hue = hsv[0];
+                                sat = hsv[1];
+                                value = hsv[2]
                                 onColorChange(swatch)
                             }
                         }

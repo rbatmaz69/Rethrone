@@ -72,7 +72,10 @@ class ReturnOriginStoreTest {
         ReturnOriginStore.save(context, "com.target.app", animation)
 
         verify {
-            editor.putString("origin_com.target.app", "HOME|com.source.app|com.target.app|10.0,20.0,30.0,40.0|123456789")
+            editor.putString(
+                "origin_com.target.app",
+                "HOME|com.source.app|com.target.app|10.0,20.0,30.0,40.0|123456789"
+            )
         }
         verify {
             editor.putString("last_launched_package", "com.target.app")
@@ -80,7 +83,9 @@ class ReturnOriginStoreTest {
         verify { editor.apply() }
 
         // test get
-        every { prefs.getString("origin_com.target.app", null) } returns "HOME|com.source.app|com.target.app|10.0,20.0,30.0,40.0|123456789"
+        every {
+            prefs.getString("origin_com.target.app", null)
+        } returns "HOME|com.source.app|com.target.app|10.0,20.0,30.0,40.0|123456789"
 
         val decoded = ReturnOriginStore.get(context, "com.target.app")
         assertNotNull(decoded)
@@ -149,12 +154,3 @@ class ReturnOriginStoreTest {
         verify { editor.apply() }
     }
 }
-
-
-
-
-
-
-
-
-

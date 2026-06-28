@@ -20,8 +20,8 @@ import com.example.androidlauncher.ui.theme.ColorTheme
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 // DataStore for saving general app settings
 private val Context.dataStore by preferencesDataStore(name = "settings")
@@ -32,31 +32,40 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
 class ThemeManager(private val context: Context) {
     companion object {
         private val THEME_KEY = stringPreferencesKey("selected_theme")
+
         // Neue stufenlose numerische Keys.
         private val FONT_SIZE_SCALE_KEY = floatPreferencesKey("font_size_scale")
         private val FONT_WEIGHT_VALUE_KEY = intPreferencesKey("font_weight_value")
         private val ICON_SIZE_DP_KEY = floatPreferencesKey("icon_size_dp")
         private val FAVORITE_SPACING_DP_KEY = floatPreferencesKey("favorite_spacing_dp")
+
         // Alte String-Keys (Enum-Namen) – nur noch zur einmaligen Migration gelesen.
         private val LEGACY_FONT_SIZE_KEY = stringPreferencesKey("font_size")
         private val LEGACY_FONT_WEIGHT_KEY = stringPreferencesKey("font_weight")
         private val LEGACY_ICON_SIZE_KEY = stringPreferencesKey("icon_size")
         private val LEGACY_FAVORITE_SPACING_KEY = stringPreferencesKey("favorite_icon_spacing")
         private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
+
         // ARGB-Werte für frei wählbare Icon-/Schriftfarbe (Default Weiß).
         private val ICON_COLOR_KEY = intPreferencesKey("icon_color")
         private val HOME_TEXT_COLOR_KEY = intPreferencesKey("home_text_color")
+
         // ARGB-Flächenfarben für das CUSTOM-Theme ("Eigene Farbe").
         private val CUSTOM_BG_COLOR_KEY = intPreferencesKey("custom_bg_color")
         private val CUSTOM_MENU_COLOR_KEY = intPreferencesKey("custom_menu_color")
+
         // Komma-separierte Paketnamen der ausgeblendeten Apps.
         private val HIDDEN_APPS_KEY = stringPreferencesKey("hidden_apps")
+
         // App-Sperre: Komma-separierte Paketnamen der gesperrten Apps (verschlüsselt).
         private val LOCKED_APPS_KEY = stringPreferencesKey("locked_apps")
+
         // Typ des Sperr-Geheimnisses: "pin", "pattern" oder "none".
         private val LOCK_TYPE_KEY = stringPreferencesKey("lock_type")
+
         // Gesalzener Hash des PIN/Musters (Format salt:hash, verschlüsselt). Nie das Geheimnis selbst.
         private val LOCK_SECRET_KEY = stringPreferencesKey("lock_secret")
+
         // Ob zusätzlich per Biometrie/Geräte-Credential entsperrt werden darf.
         private val LOCK_BIOMETRIC_KEY = booleanPreferencesKey("lock_biometric_enabled")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
@@ -70,52 +79,69 @@ class ThemeManager(private val context: Context) {
         private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
         private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
         private val DOUBLE_SHAKE_ACTION_KEY = stringPreferencesKey("double_shake_action")
+
         // Paketname der App, die bei GestureAction.OPEN_APP (Schütteln) gestartet wird.
         private val SHAKE_OPEN_APP_PACKAGE_KEY = stringPreferencesKey("shake_open_app_package")
+
         // Doppeltipp-Geste auf dem Startbildschirm.
         private val DOUBLE_TAP_ACTION_KEY = stringPreferencesKey("double_tap_action")
         private val DOUBLE_TAP_APP_PACKAGE_KEY = stringPreferencesKey("double_tap_app_package")
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
         private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
+
         // Einzelne Animationsarten (greifen nur, wenn der Master oben aktiv ist; Standard: an).
         private val ANIMATION_APP_OPEN_KEY = booleanPreferencesKey("animation_app_open")
         private val ANIMATION_APP_CLOSE_KEY = booleanPreferencesKey("animation_app_close")
         private val ANIMATION_MENUS_KEY = booleanPreferencesKey("animation_menus")
         private val ANIMATION_FAVORITES_KEY = booleanPreferencesKey("animation_favorites")
+
         // Globaler Tempo-Faktor für alle Animationen (1.0 = normal, 2.0 = doppelt so schnell,
         // 0.5 = halbes Tempo). Standard: 1.0.
         private val ANIMATION_SPEED_KEY = floatPreferencesKey("animation_speed")
         private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
+
         // Wetter-Widget unter Uhr/Datum (Standard: an).
         private val WEATHER_WIDGET_KEY = booleanPreferencesKey("weather_widget_enabled")
+
         // Uhr-Widget (Standard: an).
         private val CLOCK_WIDGET_KEY = booleanPreferencesKey("clock_widget_enabled")
+
         // Kalender-/Datum-Widget (Standard: an).
         private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
         private val DYNAMIC_ISLAND_KEY = booleanPreferencesKey("dynamic_island_enabled")
         private val DYNAMIC_ISLAND_OFFSET_KEY = floatPreferencesKey("dynamic_island_offset")
+
         // Einmalige Migration: Mit der cutout-basierten Auto-Zentrierung wechselt die vertikale
         // Basis von statusBar/2 auf die echte Kamera-Mitte. Ein alter, gegen statusBar/2
         // kompensierter Offset würde sonst doppelt wirken → bis der Nutzer den Offset erstmals
         // neu setzt, alten Wert ignorieren (als 0 behandeln).
         private val DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY = booleanPreferencesKey("dynamic_island_offset_migrated_v2")
+
         // ARGB-Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
         private val DYNAMIC_ISLAND_COLOR_KEY = intPreferencesKey("dynamic_island_color")
+
         // Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
         private val EDGE_LIGHTING_KEY = booleanPreferencesKey("edge_lighting_enabled")
+
         // ARGB-Farbe des Edge Lightings. Default: Akzent-Blau.
         private val EDGE_LIGHTING_COLOR_KEY = intPreferencesKey("edge_lighting_color")
+
         // Edge-Lighting-Tempo (höher = schneller). Default: 1.0.
         private val EDGE_LIGHTING_SPEED_KEY = floatPreferencesKey("edge_lighting_speed")
+
         // Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1.
         private val EDGE_LIGHTING_LAPS_KEY = intPreferencesKey("edge_lighting_laps")
+
         // Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0.
         private val EDGE_LIGHTING_THICKNESS_KEY = floatPreferencesKey("edge_lighting_thickness")
+
         // Edge-Lighting-Stil (EdgeLightingStyle-Name). Default: SWEEP.
         private val EDGE_LIGHTING_STYLE_KEY = stringPreferencesKey("edge_lighting_style")
+
         // Insel-Öffnungs-/Schließstil (IslandAnimationStyle-Name). Default: FROM_NOTCH.
         private val ISLAND_ANIMATION_STYLE_KEY = stringPreferencesKey("island_animation_style")
+
         // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
 
@@ -141,16 +167,30 @@ class ThemeManager(private val context: Context) {
 
     // ── Sanfte Migration alter Enum-Namen (String) auf die neuen numerischen Werte ──
     private fun legacyFontSizeScale(name: String?): Float? = when (name) {
-        "SMALL" -> 0.85f; "STANDARD" -> 1.0f; "LARGE" -> 1.2f; else -> null
+        "SMALL" -> 0.85f;
+        "STANDARD" -> 1.0f;
+        "LARGE" -> 1.2f;
+        else -> null
     }
     private fun legacyFontWeightValue(name: String?): Int? = when (name) {
-        "LIGHT" -> 300; "NORMAL" -> 400; "BOLD" -> 700; else -> null
+        "LIGHT" -> 300;
+        "NORMAL" -> 400;
+        "BOLD" -> 700;
+        else -> null
     }
     private fun legacyIconSizeDp(name: String?): Float? = when (name) {
-        "SMALL" -> 40f; "STANDARD" -> 48f; "LARGE" -> 56f; else -> null
+        "SMALL" -> 40f;
+        "STANDARD" -> 48f;
+        "LARGE" -> 56f;
+        else -> null
     }
     private fun legacyFavoriteSpacingDp(name: String?): Float? = when (name) {
-        "ENG" -> 4f; "KOMPAKT" -> 8f; "STANDARD" -> 12f; "LOCKER" -> 20f; "WEIT" -> 28f; else -> null
+        "ENG" -> 4f;
+        "KOMPAKT" -> 8f;
+        "STANDARD" -> 12f;
+        "LOCKER" -> 20f;
+        "WEIT" -> 28f;
+        else -> null
     }
 
     val selectedFontSize: Flow<FontSize> = context.dataStore.data
@@ -438,7 +478,11 @@ class ThemeManager(private val context: Context) {
      * Paketname der App, die bei [GestureAction.OPEN_APP] (Schütteln) gestartet wird (null, wenn keine gewählt).
      */
     val shakeOpenAppPackage: Flow<String?> = context.dataStore.data
-        .map { preferences -> CryptoManager.decryptOrLegacy(preferences[SHAKE_OPEN_APP_PACKAGE_KEY]).takeIf { it.isNotBlank() } }
+        .map { preferences ->
+            CryptoManager.decryptOrLegacy(
+                preferences[SHAKE_OPEN_APP_PACKAGE_KEY]
+            ).takeIf { it.isNotBlank() }
+        }
 
     /**
      * Aktion für die Doppeltipp-Geste auf dem Startbildschirm. Default: Bildschirm sperren
@@ -454,7 +498,11 @@ class ThemeManager(private val context: Context) {
      * Paketname der App, die bei [GestureAction.OPEN_APP] (Doppeltippen) gestartet wird (null, wenn keine gewählt).
      */
     val doubleTapAppPackage: Flow<String?> = context.dataStore.data
-        .map { preferences -> CryptoManager.decryptOrLegacy(preferences[DOUBLE_TAP_APP_PACKAGE_KEY]).takeIf { it.isNotBlank() } }
+        .map { preferences ->
+            CryptoManager.decryptOrLegacy(
+                preferences[DOUBLE_TAP_APP_PACKAGE_KEY]
+            ).takeIf { it.isNotBlank() }
+        }
 
     /**
      * Gewählte Art des App-Zugriffs. Default ist die Drawer-Liste (Niagara-Stil).
@@ -499,17 +547,36 @@ class ThemeManager(private val context: Context) {
     }.distinctUntilChanged()
 
     suspend fun setTheme(theme: ColorTheme) { context.dataStore.edit { it[THEME_KEY] = theme.name } }
-    suspend fun setFontSize(scale: Float) { context.dataStore.edit { it[FONT_SIZE_SCALE_KEY] = scale.coerceIn(FontSize.MIN, FontSize.MAX) } }
-    suspend fun setFontWeight(value: Int) { context.dataStore.edit { it[FONT_WEIGHT_VALUE_KEY] = value.coerceIn(FontWeightLevel.MIN, FontWeightLevel.MAX) } }
-    suspend fun setIconSize(size: Dp) { context.dataStore.edit { it[ICON_SIZE_DP_KEY] = size.coerceIn(IconSize.MIN, IconSize.MAX).value } }
-    suspend fun setFavoriteSpacing(spacing: Dp) { context.dataStore.edit { it[FAVORITE_SPACING_DP_KEY] = spacing.coerceIn(FavoriteSpacing.MIN, FavoriteSpacing.MAX).value } }
+    suspend fun setFontSize(scale: Float) {
+        context.dataStore.edit { it[FONT_SIZE_SCALE_KEY] = scale.coerceIn(FontSize.MIN, FontSize.MAX) }
+    }
+    suspend fun setFontWeight(value: Int) {
+        context.dataStore.edit { it[FONT_WEIGHT_VALUE_KEY] = value.coerceIn(FontWeightLevel.MIN, FontWeightLevel.MAX) }
+    }
+    suspend fun setIconSize(size: Dp) {
+        context.dataStore.edit { it[ICON_SIZE_DP_KEY] = size.coerceIn(IconSize.MIN, IconSize.MAX).value }
+    }
+    suspend fun setFavoriteSpacing(spacing: Dp) {
+        context.dataStore.edit {
+            it[FAVORITE_SPACING_DP_KEY] = spacing.coerceIn(FavoriteSpacing.MIN, FavoriteSpacing.MAX).value
+        }
+    }
     suspend fun setDarkTextEnabled(enabled: Boolean) { context.dataStore.edit { it[DARK_TEXT_KEY] = enabled } }
     suspend fun setIconColor(color: Color) { context.dataStore.edit { it[ICON_COLOR_KEY] = color.toArgb() } }
     suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }
-    suspend fun setCustomBackgroundColor(color: Color) { context.dataStore.edit { it[CUSTOM_BG_COLOR_KEY] = color.toArgb() } }
-    suspend fun setCustomMenuColor(color: Color) { context.dataStore.edit { it[CUSTOM_MENU_COLOR_KEY] = color.toArgb() } }
-    suspend fun setHiddenApps(packages: Set<String>) { context.dataStore.edit { it[HIDDEN_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) } }
-    suspend fun setLockedApps(packages: Set<String>) { context.dataStore.edit { it[LOCKED_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) } }
+    suspend fun setCustomBackgroundColor(color: Color) {
+        context.dataStore.edit { it[CUSTOM_BG_COLOR_KEY] = color.toArgb() }
+    }
+    suspend fun setCustomMenuColor(
+        color: Color
+    ) { context.dataStore.edit { it[CUSTOM_MENU_COLOR_KEY] = color.toArgb() } }
+    suspend fun setHiddenApps(packages: Set<String>) {
+        context.dataStore.edit { it[HIDDEN_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) }
+    }
+    suspend fun setLockedApps(packages: Set<String>) {
+        context.dataStore.edit { it[LOCKED_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) }
+    }
+
     /** Speichert Typ ("pin"/"pattern") und gesalzenen Hash-Token des Geheimnisses. */
     suspend fun setLockSecret(type: String, secretToken: String) {
         context.dataStore.edit {
@@ -517,6 +584,7 @@ class ThemeManager(private val context: Context) {
             it[LOCK_SECRET_KEY] = CryptoManager.encrypt(secretToken)
         }
     }
+
     /** Entfernt den hinterlegten Code (Typ zurück auf "none"). */
     suspend fun clearLockSecret() {
         context.dataStore.edit {
@@ -524,7 +592,9 @@ class ThemeManager(private val context: Context) {
             it.remove(LOCK_SECRET_KEY)
         }
     }
-    suspend fun setLockBiometricEnabled(enabled: Boolean) { context.dataStore.edit { it[LOCK_BIOMETRIC_KEY] = enabled } }
+    suspend fun setLockBiometricEnabled(
+        enabled: Boolean
+    ) { context.dataStore.edit { it[LOCK_BIOMETRIC_KEY] = enabled } }
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
     suspend fun setDesignStyle(style: DesignStyle) {
@@ -534,9 +604,21 @@ class ThemeManager(private val context: Context) {
             it[LIQUID_GLASS_KEY] = style.isGlassLike
         }
     }
-    suspend fun setFavoritesBorderStyle(style: FavoritesBorderStyle) { context.dataStore.edit { it[FAVORITES_BORDER_KEY] = style.name } }
+    suspend fun setFavoritesBorderStyle(style: FavoritesBorderStyle) {
+        context.dataStore.edit { it[FAVORITES_BORDER_KEY] = style.name }
+    }
     suspend fun setAppFont(font: AppFont) { context.dataStore.edit { it[APP_FONT_KEY] = font.name } }
-    suspend fun setCustomWallpaperUri(uri: String?) { context.dataStore.edit { if (uri == null) it.remove(CUSTOM_WALLPAPER_KEY) else it[CUSTOM_WALLPAPER_KEY] = uri } }
+    suspend fun setCustomWallpaperUri(uri: String?) {
+        context.dataStore.edit {
+            if (uri == null) {
+                it.remove(
+                    CUSTOM_WALLPAPER_KEY
+                )
+            } else {
+                it[CUSTOM_WALLPAPER_KEY] = uri
+            }
+        }
+    }
     suspend fun setWallpaperBlur(blur: Float) { context.dataStore.edit { it[WALLPAPER_BLUR_KEY] = blur } }
     suspend fun setWallpaperDim(dim: Float) { context.dataStore.edit { it[WALLPAPER_DIM_KEY] = dim } }
     suspend fun setWallpaperZoom(zoom: Float) { context.dataStore.edit { it[WALLPAPER_ZOOM_KEY] = zoom } }
@@ -562,12 +644,16 @@ class ThemeManager(private val context: Context) {
         // Try to update system setting
         try {
             if (Settings.System.canWrite(context)) {
-                Settings.System.putInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, if (enabled) 1 else 0)
+                Settings.System.putInt(
+                    context.contentResolver,
+                    Settings.System.HAPTIC_FEEDBACK_ENABLED,
+                    if (enabled) 1 else 0
+                )
             }
         } catch (e: Exception) {
             // Permission might be missing
         }
-        
+
         // Also update internally to stay consistent
         context.dataStore.edit { it[HAPTIC_FEEDBACK_KEY] = enabled }
     }

@@ -17,6 +17,7 @@ data class IconSize(val size: Dp) {
         val MAX = 72.dp
 
         val STANDARD = IconSize(48.dp)
+
         // Presets für Tests/Defaults und Abwärtskompatibilität.
         val SMALL = IconSize(40.dp)
         val LARGE = IconSize(56.dp)

@@ -1,8 +1,8 @@
 package com.example.androidlauncher.ui
 
-import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
@@ -49,4 +49,3 @@ fun <T> appTween(
 @Composable
 fun scaledDurationMs(base: Int): Int =
     if (LocalAnimationsEnabled.current) (base / LocalAnimationSpeed.current).roundToInt() else 0
-

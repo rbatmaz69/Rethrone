@@ -1,17 +1,12 @@
 package com.example.androidlauncher.ui
 
-import android.content.Intent
 import android.app.SearchManager
+import android.content.Intent
 import android.net.Uri
-import androidx.core.net.toUri
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.animation.core.Animatable
-import androidx.compose.ui.graphics.graphicsLayer
-import com.example.androidlauncher.ui.theme.RethroneSprings
-import kotlin.coroutines.cancellation.CancellationException
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,10 +20,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Close
-import com.composables.icons.lucide.History
-import com.composables.icons.lucide.Lucide
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +35,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -50,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -57,19 +52,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.R
+import androidx.core.net.toUri
+import com.composables.icons.lucide.History
+import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.LauncherLogic
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppUsageStats
+import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.SearchHistoryEntry
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalFontSize
-import com.example.androidlauncher.ui.theme.seedRevision
-import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.LocalFontSize
+import com.example.androidlauncher.ui.theme.RethroneSprings
+import com.example.androidlauncher.ui.theme.seedRevision
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.min
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
@@ -136,8 +135,14 @@ fun HybridSearch(
         .background(searchSurfaceBrush, RoundedCornerShape(28.dp))
         .then(
             when (designStyle) {
-                DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(28.dp))
-                DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(28.dp))
+                DesignStyle.GLASS -> Modifier.border(
+                    BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)),
+                    RoundedCornerShape(28.dp)
+                )
+                DesignStyle.TINTED -> Modifier.border(
+                    BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)),
+                    RoundedCornerShape(28.dp)
+                )
                 DesignStyle.MINIMAL -> Modifier
                 else -> Modifier.border(BorderStroke(1.dp, themeBorderColor), RoundedCornerShape(28.dp))
             }
@@ -446,7 +451,9 @@ fun HybridSearch(
                                         onClose()
                                     }
                                     true
-                                } else false
+                                } else {
+                                    false
+                                }
                             },
                         textStyle = LocalTextStyle.current.copy(color = mainTextColor, fontSize = 18.sp),
                         singleLine = true,

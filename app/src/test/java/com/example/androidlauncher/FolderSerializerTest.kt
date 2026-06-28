@@ -124,4 +124,3 @@ class FolderSerializerTest {
         assertEquals(10, parsed.size)
     }
 }
-

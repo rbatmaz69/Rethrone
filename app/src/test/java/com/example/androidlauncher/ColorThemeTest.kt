@@ -81,7 +81,12 @@ class ColorThemeTest {
     @Test
     fun `all drawerBackground colors have full alpha`() {
         ColorTheme.entries.forEach { theme ->
-            assertEquals("Theme ${theme.name} drawerBackground should be fully opaque", 1.0f, theme.drawerBackground.alpha, 0.001f)
+            assertEquals(
+                "Theme ${theme.name} drawerBackground should be fully opaque",
+                1.0f,
+                theme.drawerBackground.alpha,
+                0.001f
+            )
         }
     }
 
@@ -109,8 +114,14 @@ class ColorThemeTest {
         // CUSTOM stellt die frei gewählten Flächenfarben faithful dar; der Kontrast liegt
         // dort in der Verantwortung des Nutzers (eigene Textfarbe) und ist daher ausgenommen.
         ColorTheme.entries.filter { it != ColorTheme.CUSTOM }.forEach { theme ->
-            assertTrue("${theme.name} should keep readable contrast in dark mode", theme.passesContrastForMainText(false))
-            assertTrue("${theme.name} should keep readable contrast in light mode", theme.passesContrastForMainText(true))
+            assertTrue(
+                "${theme.name} should keep readable contrast in dark mode",
+                theme.passesContrastForMainText(false)
+            )
+            assertTrue(
+                "${theme.name} should keep readable contrast in light mode",
+                theme.passesContrastForMainText(true)
+            )
         }
     }
 

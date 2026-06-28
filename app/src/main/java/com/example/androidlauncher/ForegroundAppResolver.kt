@@ -51,7 +51,10 @@ object ForegroundAppResolver {
         val eventCandidate = getEventCandidate(context, usageStatsManager, allowedPackages)
         val statsCandidate = getUsageStatsCandidate(context, usageStatsManager, allowedPackages)
         val resolved = eventCandidate ?: statsCandidate
-        Log.d(TAG, "recentForegroundObservation=$resolved eventCandidate=$eventCandidate statsCandidate=$statsCandidate")
+        Log.d(
+            TAG,
+            "recentForegroundObservation=$resolved eventCandidate=$eventCandidate statsCandidate=$statsCandidate"
+        )
         return resolved
     }
 

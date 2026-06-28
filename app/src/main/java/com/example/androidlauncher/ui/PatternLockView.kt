@@ -2,6 +2,7 @@ package com.example.androidlauncher.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,8 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.Canvas
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.RethroneSprings
 

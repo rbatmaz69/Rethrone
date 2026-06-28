@@ -1,8 +1,8 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -19,23 +19,23 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.R
 import androidx.compose.ui.zIndex
+import com.composables.icons.lucide.*
+import com.composables.icons.lucide.Lucide
+import com.example.androidlauncher.R
+import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalColorTheme
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
+import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import com.example.androidlauncher.ui.theme.LocalFontSize
 import com.example.androidlauncher.ui.theme.RethroneSprings
-import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.seedRevision
-import com.example.androidlauncher.data.DesignStyle
-import com.example.androidlauncher.ui.theme.LocalDesignStyle
-import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.*
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -72,7 +72,7 @@ fun AppContextMenu(
 
     val density = LocalDensity.current
     val config = LocalConfiguration.current
-    
+
     // Get system bars insets to avoid overlapping with navigation bar or status bar
     val systemBars = WindowInsets.systemBars.asPaddingValues()
     val topInsetPx = with(density) { systemBars.calculateTopPadding().toPx() }
@@ -131,22 +131,22 @@ fun AppContextMenu(
             targetBounds?.let { bounds ->
                 val menuWidth = 240.dp
                 val menuWidthPx = with(density) { menuWidth.toPx() }
-                
+
                 val itemsCount = 3 + (if (onMoveToFolder != null) 1 else 0) + (if (onRemoveFromFolder != null) 1 else 0)
                 val estimatedMenuHeightPx = with(density) { (itemsCount * 48 + itemsCount + 16).dp.toPx() }
 
                 // Horizontal positioning (centered to icon, but with screen safety)
                 var finalOffsetX = bounds.center.x - (menuWidthPx / 2)
                 finalOffsetX = finalOffsetX.coerceIn(
-                    with(density) { 16.dp.toPx() }, 
+                    with(density) { 16.dp.toPx() },
                     screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() }
                 )
-                
+
                 // Vertical positioning logic: check if there's enough space below
                 val paddingPx = with(density) { 16.dp.toPx() }
                 val spaceBelow = screenHeightPx - bounds.bottom - bottomInsetPx - paddingPx
                 val spaceAbove = bounds.top - topInsetPx - paddingPx
-                
+
                 var finalOffsetY: Float
                 if (spaceBelow >= estimatedMenuHeightPx) {
                     // Prefer showing below
@@ -166,14 +166,23 @@ fun AppContextMenu(
 
                 val currentOffsetX = startOffsetX + (finalOffsetX - startOffsetX) * progress
                 val currentOffsetY = startOffsetY + (finalOffsetY - startOffsetY) * progress
-                
+
                 val scale = 0.05f + (0.95f * progress)
 
                 val menuModifier = when (designStyle) {
-                    DesignStyle.GLASS -> Modifier.border(BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)), RoundedCornerShape(24.dp))
-                    DesignStyle.TINTED -> Modifier.border(BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)), RoundedCornerShape(24.dp))
+                    DesignStyle.GLASS -> Modifier.border(
+                        BorderStroke(1.2.dp, LiquidGlass.borderBrush(isDarkTextEnabled)),
+                        RoundedCornerShape(24.dp)
+                    )
+                    DesignStyle.TINTED -> Modifier.border(
+                        BorderStroke(1.2.dp, surfaceAccent.copy(alpha = 0.4f)),
+                        RoundedCornerShape(24.dp)
+                    )
                     DesignStyle.MINIMAL -> Modifier
-                    else -> Modifier.border(BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)), RoundedCornerShape(24.dp))
+                    else -> Modifier.border(
+                        BorderStroke(1.dp, mainTextColor.copy(alpha = 0.12f)),
+                        RoundedCornerShape(24.dp)
+                    )
                 }
 
                 Surface(
@@ -189,53 +198,86 @@ fun AppContextMenu(
                         .clickable(enabled = false) {}
                         .then(menuModifier),
                     color = menuSurfaceColor.copy(alpha = 0.98f),
-                     shape = RoundedCornerShape(24.dp),
-                     shadowElevation = 24.dp
-                 ) {
+                    shape = RoundedCornerShape(24.dp),
+                    shadowElevation = 24.dp
+                ) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         ContextMenuItem(
                             icon = Lucide.Info,
                             text = stringResource(R.string.ctx_app_info),
                             color = mainTextColor,
-                            onClick = { onAppInfo(); dismissWithAnimation() }
+                            onClick = {
+                                onAppInfo()
+                                dismissWithAnimation()
+                            }
                         )
 
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            color = mainTextColor.copy(alpha = 0.08f)
+                        )
 
                         ContextMenuItem(
                             icon = if (isFavorite) Lucide.StarOff else Lucide.Star,
-                            text = if (isFavorite) stringResource(R.string.ctx_remove_from_home) else stringResource(R.string.ctx_add_to_favorites),
+                            text = if (isFavorite) {
+                                stringResource(
+                                    R.string.ctx_remove_from_home
+                                )
+                            } else {
+                                stringResource(R.string.ctx_add_to_favorites)
+                            },
                             color = if (isFavorite) favoriteHighlightColor else mainTextColor,
-                            onClick = { onToggleFavorite(); dismissWithAnimation() }
+                            onClick = {
+                                onToggleFavorite()
+                                dismissWithAnimation()
+                            }
                         )
 
                         if (onMoveToFolder != null) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                color = mainTextColor.copy(alpha = 0.08f)
+                            )
                             ContextMenuItem(
                                 icon = Lucide.FolderInput,
                                 text = stringResource(R.string.ctx_move_to_folder),
                                 color = mainTextColor,
-                                onClick = { onMoveToFolder(); dismissWithAnimation() }
+                                onClick = {
+                                    onMoveToFolder()
+                                    dismissWithAnimation()
+                                }
                             )
                         }
 
                         if (onRemoveFromFolder != null) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                color = mainTextColor.copy(alpha = 0.08f)
+                            )
                             ContextMenuItem(
                                 icon = Lucide.FolderOutput,
                                 text = stringResource(R.string.ctx_remove_from_folder),
                                 color = mainTextColor,
-                                onClick = { onRemoveFromFolder(); dismissWithAnimation() }
+                                onClick = {
+                                    onRemoveFromFolder()
+                                    dismissWithAnimation()
+                                }
                             )
                         }
 
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = mainTextColor.copy(alpha = 0.08f))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            color = mainTextColor.copy(alpha = 0.08f)
+                        )
 
                         ContextMenuItem(
                             icon = Lucide.Trash2,
                             text = stringResource(R.string.uninstall),
                             color = Color(0xFFEF5350),
-                            onClick = { onUninstall(); dismissWithAnimation() }
+                            onClick = {
+                                onUninstall()
+                                dismissWithAnimation()
+                            }
                         )
                     }
                 }
@@ -252,7 +294,7 @@ private fun ContextMenuItem(
     onClick: () -> Unit
 ) {
     val fontSize = LocalFontSize.current
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()

@@ -39,13 +39,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.R
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.example.androidlauncher.LauncherAccessibilityService
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppLockManager
 import com.example.androidlauncher.data.DesignStyle
@@ -125,8 +125,11 @@ fun AppLockMenu(
 
     val sortedApps = remember(apps) { apps.sortedBy { it.label.lowercase() } }
     val filteredApps = remember(sortedApps, searchQuery) {
-        if (searchQuery.isBlank()) sortedApps
-        else sortedApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+        if (searchQuery.isBlank()) {
+            sortedApps
+        } else {
+            sortedApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+        }
     }
 
     Column(
@@ -141,7 +144,12 @@ fun AppLockMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(stringResource(R.string.app_lock), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(
+                stringResource(R.string.app_lock),
+                fontSize = 28.sp,
+                fontWeight = fontWeight.weight,
+                color = mainTextColor
+            )
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
@@ -317,7 +325,11 @@ private fun LockSecretSetup(
 
         when (type) {
             null -> {
-                Text(stringResource(R.string.lock_choose_method), color = mainTextColor.copy(alpha = 0.7f), fontSize = 15.sp)
+                Text(
+                    stringResource(R.string.lock_choose_method),
+                    color = mainTextColor.copy(alpha = 0.7f),
+                    fontSize = 15.sp
+                )
                 Spacer(Modifier.height(20.dp))
                 SettingsActionRow(
                     label = stringResource(R.string.lock_pin_code),
@@ -339,7 +351,9 @@ private fun LockSecretSetup(
             }
             "pattern" -> {
                 Text(
-                    if (firstEntry == null) stringResource(R.string.lock_draw_pattern) else stringResource(R.string.lock_confirm_pattern),
+                    if (firstEntry == null) stringResource(
+                        R.string.lock_draw_pattern
+                    ) else stringResource(R.string.lock_confirm_pattern),
                     color = error?.let { Color(0xFFE0584F) } ?: mainTextColor,
                     fontSize = 16.sp
                 )
@@ -355,8 +369,14 @@ private fun LockSecretSetup(
                             firstEntry = firstEntry,
                             minLength = 4,
                             tooShortMessage = minPointsMessage,
-                            onFirst = { firstEntry = it; error = null },
-                            onMismatch = { firstEntry = null; error = patternMismatchMessage },
+                            onFirst = {
+                                firstEntry = it;
+                                error = null
+                            },
+                            onMismatch = {
+                                firstEntry = null;
+                                error = patternMismatchMessage
+                            },
                             onTooShort = { error = it },
                             onMatch = { onConfirm("pattern", it) }
                         )
@@ -368,7 +388,9 @@ private fun LockSecretSetup(
             }
             else -> { // "pin"
                 Text(
-                    if (firstEntry == null) stringResource(R.string.lock_enter_pin) else stringResource(R.string.lock_confirm_pin),
+                    if (firstEntry == null) stringResource(
+                        R.string.lock_enter_pin
+                    ) else stringResource(R.string.lock_confirm_pin),
                     color = mainTextColor,
                     fontSize = 16.sp
                 )
@@ -403,9 +425,20 @@ private fun LockSecretSetup(
                                 firstEntry = firstEntry,
                                 minLength = 4,
                                 tooShortMessage = minDigitsMessage,
-                                onFirst = { firstEntry = it; pin = ""; error = null },
-                                onMismatch = { firstEntry = null; pin = ""; error = pinMismatchMessage },
-                                onTooShort = { pin = ""; error = it },
+                                onFirst = {
+                                    firstEntry = it;
+                                    pin = "";
+                                    error = null
+                                },
+                                onMismatch = {
+                                    firstEntry = null;
+                                    pin = "";
+                                    error = pinMismatchMessage
+                                },
+                                onTooShort = {
+                                    pin = "";
+                                    error = it
+                                },
                                 onMatch = { onConfirm("pin", it) }
                             )
                         }

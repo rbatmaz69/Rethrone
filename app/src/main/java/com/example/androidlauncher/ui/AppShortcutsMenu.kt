@@ -14,12 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -33,8 +31,8 @@ import androidx.compose.ui.zIndex
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.RethroneSprings
 import com.example.androidlauncher.ui.theme.LocalHapticFeedbackEnabled
+import com.example.androidlauncher.ui.theme.RethroneSprings
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -75,7 +73,7 @@ fun AppShortcutsMenu(
     val mainTextColor = if (isDarkTextEnabled) Color(0xFF010101) else Color.White
 
     val density = LocalDensity.current
-    
+
     // Wir messen die Größe und Position des Menü-Containers selbst
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     var containerPositionInRoot by remember { mutableStateOf(Offset.Zero) }
@@ -149,7 +147,7 @@ fun AppShortcutsMenu(
                 // Vertikale Positionierung: Wenn das Icon im unteren Bereich ist, Menü nach OBEN schieben
                 val isNearBottom = bounds.bottom > screenHeightPx * 0.75f
                 var finalOffsetY: Float
-                
+
                 if (isNearBottom) {
                     // Über dem Icon platzieren
                     finalOffsetY = bounds.top - estimatedMenuHeightPx - with(density) { 8.dp.toPx() }
@@ -160,12 +158,15 @@ fun AppShortcutsMenu(
 
                 // System Bars berücksichtigen (Padding oben/unten)
                 val topInset = with(density) { WindowInsets.systemBars.asPaddingValues().calculateTopPadding().toPx() }
-                val bottomInset = with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
-                
+                val bottomInset =
+                    with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
+
                 val minY = topInset + with(density) { 16.dp.toPx() }
                 val maxY = screenHeightPx - bottomInset - estimatedMenuHeightPx - with(density) { 16.dp.toPx() }
 
-                finalOffsetX = finalOffsetX.coerceIn(with(density) { 16.dp.toPx() }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
+                finalOffsetX = finalOffsetX.coerceIn(with(density) {
+                    16.dp.toPx()
+                }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
                 finalOffsetY = finalOffsetY.coerceIn(minY, maxY)
 
                 // Korrektur des Offsets relativ zum Container
@@ -224,7 +225,9 @@ fun ShortcutMenuItem(
     val interactionSource = remember { MutableInteractionSource() }
     val label = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
         shortcut.shortLabel ?: shortcut.longLabel ?: ""
-    } else ""
+    } else {
+        ""
+    }
 
     Row(
         modifier = Modifier

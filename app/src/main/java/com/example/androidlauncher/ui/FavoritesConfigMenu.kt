@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,17 +26,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -57,7 +55,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -268,10 +265,10 @@ fun FavoritesConfigMenu(
             item { Text(stringResource(R.string.all_apps_label), color = grayTone, fontSize = 12.sp) }
             itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { index, app ->
                 val isFav = app.packageName in selectedPackages
-                
+
                 val isSearching = searchQuery.isNotBlank()
                 var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
-                
+
                 LaunchedEffect(app.packageName, isSearching) {
                     if (isSearching) {
                         delay((index % 12) * 30L)
@@ -281,9 +278,9 @@ fun FavoritesConfigMenu(
 
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(400)) + 
-                            scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
-                            slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
+                    enter = fadeIn(animationSpec = tween(400)) +
+                        scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                        slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
                     exit = fadeOut(animationSpec = tween(200))
                 ) {
                     val intSrc = remember { MutableInteractionSource() }
@@ -294,7 +291,10 @@ fun FavoritesConfigMenu(
                             .then(
                                 if (isFav) {
                                     Modifier.designSurface(
-                                        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                                        designStyle,
+                                        RoundedCornerShape(16.dp),
+                                        isDarkTextEnabled,
+                                        surfaceAccent,
                                         fillAlpha = 0.05f
                                     )
                                 } else {
@@ -322,7 +322,9 @@ fun FavoritesConfigMenu(
                             AppIconView(app)
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                app.label, color = mainTextColor, fontSize = 16.sp,
+                                app.label,
+                                color = mainTextColor,
+                                fontSize = 16.sp,
                                 modifier = Modifier.weight(1f)
                             )
                             Checkbox(
@@ -470,7 +472,12 @@ private fun FavoritesBorderChip(
             contentAlignment = Alignment.Center
         ) {
             if (isSelected) {
-                Icon(Icons.Rounded.Check, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = mainTextColor,
+                    modifier = Modifier.size(18.dp)
+                )
             } else if (style == FavoritesBorderStyle.NONE) {
                 Text("Ø", color = mainTextColor.copy(alpha = 0.4f), fontSize = 16.sp)
             }

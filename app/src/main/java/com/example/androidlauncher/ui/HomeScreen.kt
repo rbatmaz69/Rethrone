@@ -3,7 +3,6 @@ package com.example.androidlauncher.ui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.SystemClock
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -28,8 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
@@ -73,14 +70,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Sun
 import com.example.androidlauncher.FavoritesEntranceTracker
-import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
@@ -89,7 +83,6 @@ import com.example.androidlauncher.data.WeatherRepository
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -207,7 +200,8 @@ fun HomeScreen(
     val navCollisionPaddingPx = favoritesFramePaddingPx
     val bottomControlsPaddingPx = with(density) { 8.dp.toPx() }
 
-    val navigationBarHeightPx = with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
+    val navigationBarHeightPx =
+        with(density) { WindowInsets.systemBars.asPaddingValues().calculateBottomPadding().toPx() }
     val editSelectionHitPaddingPx = with(density) { 12.dp.toPx() }
     val dragVisualDeadzonePx = 1f
     val reachabilityProbeStepPx = 1f
@@ -523,7 +517,8 @@ fun HomeScreen(
 
     val rotation by animateFloatAsState(
         targetValue = if (isSettingsOpen) 180f else 0f,
-        animationSpec = tween(if (menuAnimationsEnabled) 300 else 0, easing = EaseInOutCubic), label = ""
+        animationSpec = tween(if (menuAnimationsEnabled) 300 else 0, easing = EaseInOutCubic),
+        label = ""
     )
 
     Box(
@@ -531,64 +526,72 @@ fun HomeScreen(
             .fillMaxSize()
             .testTag("home_screen")
             .onGloballyPositioned { rootSize = it.size }
-            .then(if (!isPreview) {
-                Modifier
-                    .pointerInput(isEditMode, appAccessMode) {
-                        if (!isEditMode) {
-                            // Untere System-Gestenzone (Home-Wisch) aussparen, sonst öffnet ein Wisch
-                            // von ganz unten versehentlich den Drawer. Zudem die Gesamtstrecke
-                            // akkumulieren (robuster als der fragile Pro-Frame-Delta).
-                            val deadZonePx = 48.dp.toPx()
-                            val thresholdPx = 60f
-                            var startY = 0f
-                            var totalDy = 0f
-                            var handled = false
-                            detectVerticalDragGestures(
-                                onDragStart = { offset -> startY = offset.y; totalDy = 0f; handled = false },
-                                onDragCancel = { handled = false }
-                            ) { _, dragAmount ->
-                                val startedInBottomGestureZone = startY > size.height - deadZonePx
-                                if (!handled && !startedInBottomGestureZone) {
-                                    totalDy += dragAmount
-                                    // Im HOME_LIST-Modus gibt es keinen hochziehbaren Drawer – der App-Zugriff
-                                    // läuft über die seitliche Randleiste (HomeAppScrubber).
-                                    if (totalDy < -thresholdPx && appAccessMode != AppAccessMode.HOME_LIST) {
-                                        handled = true
-                                        onOpenDrawer()
-                                    } else if (totalDy > thresholdPx) {
-                                        handled = true
-                                        expandNotifications(context)
+            .then(
+                if (!isPreview) {
+                    Modifier
+                        .pointerInput(isEditMode, appAccessMode) {
+                            if (!isEditMode) {
+                                // Untere System-Gestenzone (Home-Wisch) aussparen, sonst öffnet ein Wisch
+                                // von ganz unten versehentlich den Drawer. Zudem die Gesamtstrecke
+                                // akkumulieren (robuster als der fragile Pro-Frame-Delta).
+                                val deadZonePx = 48.dp.toPx()
+                                val thresholdPx = 60f
+                                var startY = 0f
+                                var totalDy = 0f
+                                var handled = false
+                                detectVerticalDragGestures(
+                                    onDragStart = { offset ->
+                                        startY = offset.y
+                                        totalDy = 0f
+                                        handled = false
+                                    },
+                                    onDragCancel = { handled = false }
+                                ) { _, dragAmount ->
+                                    val startedInBottomGestureZone = startY > size.height - deadZonePx
+                                    if (!handled && !startedInBottomGestureZone) {
+                                        totalDy += dragAmount
+                                        // Im HOME_LIST-Modus gibt es keinen hochziehbaren Drawer – der App-Zugriff
+                                        // läuft über die seitliche Randleiste (HomeAppScrubber).
+                                        if (totalDy < -thresholdPx && appAccessMode != AppAccessMode.HOME_LIST) {
+                                            handled = true
+                                            onOpenDrawer()
+                                        } else if (totalDy > thresholdPx) {
+                                            handled = true
+                                            expandNotifications(context)
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    .pointerInput(isEditMode) {
-                        detectTapGestures(
-                            onTap = { tapOffset ->
-                                if (isEditMode && selectedEditTarget != null) {
-                                    val hitTarget = HomeEditTarget.entries.any { target ->
-                                        val rect = neutralBounds[target]?.let {
-                                            translateRect(it, offsets[target]?.x ?: 0f, offsets[target]?.y ?: 0f)
-                                        } ?: return@any false
-                                        val hitRect = expandRect(rect, framePadding(target) + editSelectionHitPaddingPx)
-                                        rectContains(hitRect, tapOffset)
-                                    }
-                                    val hitEditControls = editControlsBounds?.let { rectContains(it, tapOffset) } == true
+                        .pointerInput(isEditMode) {
+                            detectTapGestures(
+                                onTap = { tapOffset ->
+                                    if (isEditMode && selectedEditTarget != null) {
+                                        val hitTarget = HomeEditTarget.entries.any { target ->
+                                            val rect = neutralBounds[target]?.let {
+                                                translateRect(it, offsets[target]?.x ?: 0f, offsets[target]?.y ?: 0f)
+                                            } ?: return@any false
+                                            val hitRect = expandRect(rect, framePadding(target) + editSelectionHitPaddingPx)
+                                            rectContains(hitRect, tapOffset)
+                                        }
+                                        val hitEditControls = editControlsBounds?.let { rectContains(it, tapOffset) } == true
 
-                                    if (!hitTarget && !hitEditControls) {
-                                        selectedEditTarget = null
-                                        isEditTargetUserPinned = false
+                                        if (!hitTarget && !hitEditControls) {
+                                            selectedEditTarget = null
+                                            isEditTargetUserPinned = false
+                                        }
                                     }
+                                },
+                                onDoubleTap = {
+                                    if (isEditMode) return@detectTapGestures
+                                    currentOnGestureAction(currentDoubleTapAction, currentDoubleTapAppPackage)
                                 }
-                            },
-                            onDoubleTap = {
-                                if (isEditMode) return@detectTapGestures
-                                currentOnGestureAction(currentDoubleTapAction, currentDoubleTapAppPackage)
-                            }
-                        )
-                    }
-            } else Modifier)
+                            )
+                        }
+                } else {
+                    Modifier
+                }
+            )
     ) {
         // --- Haupt-Layout ---
         // Zwei voneinander unabhängige, bildschirmfüllende Ebenen: die obere Gruppe
@@ -726,7 +729,11 @@ fun HomeScreen(
                                                     context.packageManager
                                                         .getLaunchIntentForPackage(app.packageName)
                                                         ?.let { intent ->
-                                                            onLaunchApp(app.packageName, intent, favItemBounds[hoveredFavIndex])
+                                                            onLaunchApp(
+                                                                app.packageName,
+                                                                intent,
+                                                                favItemBounds[hoveredFavIndex]
+                                                            )
                                                         }
                                                 }
                                                 break
@@ -814,7 +821,11 @@ fun HomeScreen(
                                     isHovered = index == hoveredFavIndex,
                                     onBoundsChanged = { favItemBounds[index] = it },
                                     onAppLaunchForReturn = { pkg, bounds ->
-                                        onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds)
+                                        onLaunchApp(
+                                            pkg,
+                                            context.packageManager.getLaunchIntentForPackage(pkg)!!,
+                                            bounds
+                                        )
                                     },
                                     onShortcutRequested = { shortcutApp, bounds ->
                                         selectedShortcutApp = shortcutApp
@@ -885,7 +896,11 @@ fun HomeScreen(
                                     favorites = offsets[HomeEditTarget.FAVORITES] ?: Offset.Zero
                                 )
                             )
-                            Toast.makeText(context, context.getString(R.string.position_saved), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.position_saved),
+                                Toast.LENGTH_SHORT
+                            ).show()
                             onToggleEditMode()
                         },
                         sizeDp = 56.dp,
@@ -935,7 +950,8 @@ fun HomeScreen(
 
                 val rotation by animateFloatAsState(
                     targetValue = if (isSettingsOpen) 180f else 0f,
-                    animationSpec = tween(if (animationsEnabled) 300 else 0, easing = EaseInOutCubic), label = ""
+                    animationSpec = tween(if (animationsEnabled) 300 else 0, easing = EaseInOutCubic),
+                    label = ""
                 )
 
                 Column(
@@ -976,7 +992,13 @@ fun HomeScreen(
                                     rotationZ = searchButtonRotation
                                 }
                                 .size(56.dp)
-                                .designSurface(designStyle, CircleShape, isDarkTextEnabled, surfaceAccent, fillAlpha = 0.15f)
+                                .designSurface(
+                                    designStyle,
+                                    CircleShape,
+                                    isDarkTextEnabled,
+                                    surfaceAccent,
+                                    fillAlpha = 0.15f
+                                )
                                 .clip(CircleShape)
                                 .testTag("home_search_button")
                                 .onGloballyPositioned {
@@ -1005,7 +1027,6 @@ fun HomeScreen(
                         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                         label = "SettingsBtnScale"
                     )
-
 
                     Box(
                         modifier = Modifier
@@ -1055,7 +1076,10 @@ fun HomeScreen(
                 AppShortcutsMenu(
                     packageName = app.packageName,
                     targetBounds = shortcutMenuBounds,
-                    onDismiss = { selectedShortcutApp = null; shortcutMenuBounds = null },
+                    onDismiss = {
+                        selectedShortcutApp = null
+                        shortcutMenuBounds = null
+                    },
                     onShortcutClick = { shortcut -> launchShortcut(context, app.packageName, shortcut.id) }
                 )
             }
@@ -1204,7 +1228,9 @@ private fun FavoriteItem(
                                                 right = ib.left + iconSize.width,
                                                 bottom = ib.center.y + iconSize.height / 2f
                                             )
-                                        } else ib
+                                        } else {
+                                            ib
+                                        }
                                         onShortcutRequested(app, anchor)
                                     }
                                     horizontalOffset = 0f
@@ -1233,7 +1259,10 @@ private fun FavoriteItem(
         ) {
             Box(
                 modifier = Modifier
-                    .graphicsLayer { scaleX = bounceScale; scaleY = bounceScale }
+                    .graphicsLayer {
+                        scaleX = bounceScale
+                        scaleY = bounceScale
+                    }
                     .onGloballyPositioned {
                         iconBounds.value = it.boundsInRoot()
                         iconSize = it.size
@@ -1300,7 +1329,10 @@ fun ClockText(
         label = "clockCrossfade",
         modifier = Modifier
             .onGloballyPositioned { clockBounds.value = it.boundsInRoot() }
-            .graphicsLayer { scaleX = bounceScaleTime; scaleY = bounceScaleTime }
+            .graphicsLayer {
+                scaleX = bounceScaleTime
+                scaleY = bounceScaleTime
+            }
             .clip(RoundedCornerShape(8.dp))
             .then(
                 if (!isPreview) {
@@ -1375,14 +1407,21 @@ fun DateText(
         label = "dateCrossfade",
         modifier = Modifier
             .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
-            .graphicsLayer { scaleX = bounceScaleDate; scaleY = bounceScaleDate }
+            .graphicsLayer {
+                scaleX = bounceScaleDate
+                scaleY = bounceScaleDate
+            }
             .clip(RoundedCornerShape(8.dp))
             .then(
                 if (!isPreview) {
                     Modifier
                         .bounceClick(intSrcDate)
                         .clickable(interactionSource = intSrcDate, indication = null) {
-                            launchCalendarApp(context, calendarBounds.value, onAppLaunchForReturn) { calendarPackage = it }
+                            launchCalendarApp(
+                                context,
+                                calendarBounds.value,
+                                onAppLaunchForReturn
+                            ) { calendarPackage = it }
                         }
                 } else {
                     Modifier

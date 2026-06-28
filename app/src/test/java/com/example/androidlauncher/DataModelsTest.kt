@@ -1,14 +1,14 @@
 package com.example.androidlauncher
 
+import androidx.compose.ui.unit.dp
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FavoriteSpacing
+import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
 import org.junit.Assert.*
 import org.junit.Test
-import androidx.compose.ui.unit.dp
 
 class DataModelsTest {
 

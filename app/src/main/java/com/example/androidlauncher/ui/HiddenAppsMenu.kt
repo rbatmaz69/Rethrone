@@ -1,6 +1,5 @@
 package com.example.androidlauncher.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,8 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
@@ -53,8 +52,11 @@ fun HiddenAppsMenu(
     var searchQuery by remember { mutableStateOf("") }
     val sortedApps = remember(apps) { apps.sortedBy { it.label.lowercase() } }
     val filteredApps = remember(sortedApps, searchQuery) {
-        if (searchQuery.isBlank()) sortedApps
-        else sortedApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+        if (searchQuery.isBlank()) {
+            sortedApps
+        } else {
+            sortedApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+        }
     }
 
     Column(
@@ -70,7 +72,12 @@ fun HiddenAppsMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(stringResource(R.string.hide_apps), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(
+                stringResource(R.string.hide_apps),
+                fontSize = 28.sp,
+                fontWeight = fontWeight.weight,
+                color = mainTextColor
+            )
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }

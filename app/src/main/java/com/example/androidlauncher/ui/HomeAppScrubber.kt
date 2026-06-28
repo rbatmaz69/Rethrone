@@ -5,6 +5,7 @@ import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +35,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -125,8 +125,8 @@ fun HomeAppScrubber(
     // App-Auswahl per Bewegungs-Absicht statt fester X-Distanz: eine bewusst nach links gerichtete,
     // eher waagerechte Bewegung wechselt schnell in die Auswahl; die senkrechte Bogenbewegung beim
     // Scrubben nicht. Werte sind UX-Tuning (kleiner = reaktiver).
-    val commitEnterPx = with(density) { 28.dp.toPx() }       // Links-Bewegung bis App-Auswahl aktiv
-    val scrubFreezePx = with(density) { 12.dp.toPx() }       // ab hier Buchstabe einfrieren (kein Wechsel mehr)
+    val commitEnterPx = with(density) { 28.dp.toPx() } // Links-Bewegung bis App-Auswahl aktiv
+    val scrubFreezePx = with(density) { 12.dp.toPx() } // ab hier Buchstabe einfrieren (kein Wechsel mehr)
     val exitListThresholdPx = with(density) { 32.dp.toPx() } // wieder so nah an der Leiste → Scrubben
 
     var active by remember { mutableStateOf(false) }
@@ -148,8 +148,11 @@ fun HomeAppScrubber(
 
     val barAlpha by animateFloatAsState(targetValue = if (active) 1f else 0f, label = "ScrubberBarAlpha")
 
-    val currentApps: List<AppInfo> = if (letters.isEmpty()) emptyList()
-        else ordered[letters[currentLetterIndex.coerceIn(0, letters.size - 1)]] ?: emptyList()
+    val currentApps: List<AppInfo> = if (letters.isEmpty()) {
+        emptyList()
+    } else {
+        ordered[letters[currentLetterIndex.coerceIn(0, letters.size - 1)]] ?: emptyList()
+    }
 
     fun tick() {
         if (hapticEnabled) {
@@ -161,9 +164,11 @@ fun HomeAppScrubber(
     // Deutlich anderes Feedback an der obersten/untersten Listengrenze („geht nicht weiter").
     fun edgeTick() {
         if (!hapticEnabled) return
-        val constant = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-            HapticFeedbackConstants.REJECT          // API 30+: „geht nicht weiter"
-        else HapticFeedbackConstants.LONG_PRESS     // Fallback (kräftiger als KEYBOARD_TAP)
+        val constant = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            HapticFeedbackConstants.REJECT // API 30+: „geht nicht weiter"
+        } else {
+            HapticFeedbackConstants.LONG_PRESS // Fallback (kräftiger als KEYBOARD_TAP)
+        }
         @Suppress("DEPRECATION")
         view.performHapticFeedback(constant)
     }
@@ -207,7 +212,10 @@ fun HomeAppScrubber(
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                                    .graphicsLayer {
+                                        scaleX = scale;
+                                        scaleY = scale
+                                    }
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(highlightColor.copy(alpha = 0.85f * hl))
                                     .padding(horizontal = 12.dp),
@@ -295,17 +303,32 @@ fun HomeAppScrubber(
                                     val denom = (letters.size - 1).coerceAtLeast(1)
                                     val stepPx = (0.32f * rootHeightPx / denom).coerceIn(minStepPx, maxStepPx)
                                     var idx = currentLetterIndex
-                                    while (accumPx >= stepPx) { idx++; accumPx -= stepPx }
-                                    while (accumPx <= -stepPx) { idx--; accumPx += stepPx }
+                                    while (accumPx >= stepPx) {
+                                        idx++;
+                                        accumPx -= stepPx
+                                    }
+                                    while (accumPx <= -stepPx) {
+                                        idx--;
+                                        accumPx += stepPx
+                                    }
                                     val last = letters.size - 1
                                     val clamped = idx.coerceIn(0, last)
-                                    if (clamped != currentLetterIndex) { currentLetterIndex = clamped; tick() }
+                                    if (clamped != currentLetterIndex) {
+                                        currentLetterIndex = clamped;
+                                        tick()
+                                    }
                                     when {
                                         idx < 0 && currentLetterIndex == 0 ->
-                                            if (edgeSignaled != -1) { edgeTick(); edgeSignaled = -1 }
+                                            if (edgeSignaled != -1) {
+                                                edgeTick();
+                                                edgeSignaled = -1
+                                            }
                                         idx > last && currentLetterIndex == last ->
-                                            if (edgeSignaled != 1) { edgeTick(); edgeSignaled = 1 }
-                                        else -> edgeSignaled = 0   // weg von der Grenze → wieder scharf
+                                            if (edgeSignaled != 1) {
+                                                edgeTick();
+                                                edgeSignaled = 1
+                                            }
+                                        else -> edgeSignaled = 0 // weg von der Grenze → wieder scharf
                                     }
                                     hoveredIndex = -1
                                     val count = (ordered[letters[currentLetterIndex]] ?: emptyList()).size
@@ -318,7 +341,10 @@ fun HomeAppScrubber(
                                     val rel = rootY - listTopYPx
                                     val idx = (rel / rowHeightPx).toInt()
                                     val newHover = if (idx in 0 until count) idx else -1
-                                    if (newHover != hoveredIndex) { hoveredIndex = newHover; if (newHover >= 0) tick() }
+                                    if (newHover != hoveredIndex) {
+                                        hoveredIndex = newHover;
+                                        if (newHover >= 0) tick()
+                                    }
                                 } else {
                                     // Links-Commit im Gange: Buchstabe eingefroren, noch keine App gewählt.
                                     hoveredIndex = -1
@@ -336,11 +362,14 @@ fun HomeAppScrubber(
                                     if (inListMode && hoveredIndex >= 0) {
                                         val group = ordered[letters[currentLetterIndex]] ?: emptyList()
                                         group.getOrNull(hoveredIndex)?.let { app ->
-                                            context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { intent ->
+                                            context.packageManager.getLaunchIntentForPackage(
+                                                app.packageName
+                                            )?.let { intent ->
                                                 val sb = stripBounds
                                                 val rowTop = listTopYPx + hoveredIndex * rowHeightPx
                                                 val listLeft = (sb.left - gapPx - listWidthPx).coerceAtLeast(0f)
-                                                val bounds = Rect(listLeft, rowTop, sb.left - gapPx, rowTop + rowHeightPx)
+                                                val bounds =
+                                                    Rect(listLeft, rowTop, sb.left - gapPx, rowTop + rowHeightPx)
                                                 onLaunchApp(app.packageName, intent, bounds)
                                             }
                                         }

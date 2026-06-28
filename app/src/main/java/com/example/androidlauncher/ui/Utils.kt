@@ -27,20 +27,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
@@ -59,15 +59,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -75,17 +75,17 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.zIndex
 import com.composables.icons.lucide.Lucide
-import com.example.androidlauncher.R
 import com.example.androidlauncher.NotificationService
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconFallbackType
 import com.example.androidlauncher.data.IconManager
@@ -281,10 +281,12 @@ fun rememberSwipeToCloseRubberBand(
                 if (rawDrag.floatValue != 0f) {
                     // Aktiver Drag-Versatz → sanft aus der aktuellen Auslenkung zurück.
                     springBack()
-                } else when {
-                    // Reiner Schwung in ein Ende (kein vorheriges Ziehen) → dezenter Bounce.
-                    isAtTop() && available.y > 0f -> bounce(available.y)
-                    isAtBottom() && available.y < 0f -> bounce(available.y)
+                } else {
+                    when {
+                        // Reiner Schwung in ein Ende (kein vorheriges Ziehen) → dezenter Bounce.
+                        isAtTop() && available.y > 0f -> bounce(available.y)
+                        isAtBottom() && available.y < 0f -> bounce(available.y)
+                    }
                 }
                 return Velocity.Zero
             }
@@ -628,7 +630,9 @@ private fun backgroundActivityStartOptions(): android.os.Bundle? =
                 ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
             )
             .toBundle()
-    } else null
+    } else {
+        null
+    }
 
 /**
  * Sendet einen [android.app.PendingIntent] (z. B. eine Benachrichtigungs-Aktion oder den
@@ -674,8 +678,8 @@ fun sendNotificationReply(
 
 @Composable
 fun ReturnAnimationOverlay(
-    bounds: Rect?, 
-    rootSize: IntSize, 
+    bounds: Rect?,
+    rootSize: IntSize,
     background: Color,
     backgroundBrush: Brush? = null,
     onFinished: () -> Unit,
@@ -736,8 +740,11 @@ fun ReturnAnimationOverlay(
                     this.alpha = overlayAlpha
                 }
                 .then(
-                    if (backgroundBrush != null) Modifier.background(backgroundBrush)
-                    else Modifier.background(background)
+                    if (backgroundBrush != null) {
+                        Modifier.background(backgroundBrush)
+                    } else {
+                        Modifier.background(background)
+                    }
                 )
         )
     }
@@ -803,8 +810,11 @@ fun LaunchAnimationOverlay(
                     this.alpha = overlayAlpha
                 }
                 .then(
-                    if (backgroundBrush != null) Modifier.background(backgroundBrush)
-                    else Modifier.background(background)
+                    if (backgroundBrush != null) {
+                        Modifier.background(backgroundBrush)
+                    } else {
+                        Modifier.background(background)
+                    }
                 )
         )
     }
@@ -814,7 +824,9 @@ fun getAppShortcuts(context: Context, packageName: String): List<ShortcutInfo> {
     val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     val query = LauncherApps.ShortcutQuery().apply {
         setPackage(packageName)
-        setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED)
+        setQueryFlags(
+            LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED
+        )
     }
     return try {
         launcherApps.getShortcuts(query, Process.myUserHandle()) ?: emptyList()

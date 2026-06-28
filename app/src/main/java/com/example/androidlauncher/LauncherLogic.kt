@@ -53,14 +53,16 @@ object LauncherLogic {
         val lowerQuery = query.lowercase()
 
         return apps.filter { it.label.contains(lowerQuery, ignoreCase = true) }
-            .sortedWith(compareBy<AppInfo> {
-                val lowerLabel = it.label.lowercase()
-                when {
-                    lowerLabel == lowerQuery -> 0
-                    lowerLabel.startsWith(lowerQuery) -> 1
-                    else -> 2
-                }
-            }.thenBy { it.label })
+            .sortedWith(
+                compareBy<AppInfo> {
+                    val lowerLabel = it.label.lowercase()
+                    when {
+                        lowerLabel == lowerQuery -> 0
+                        lowerLabel.startsWith(lowerQuery) -> 1
+                        else -> 2
+                    }
+                }.thenBy { it.label }
+            )
     }
 
     fun rankAppSuggestions(
@@ -199,7 +201,9 @@ object LauncherLogic {
             if (folder.id == folderId) {
                 if (packageName !in folder.appPackageNames) {
                     folder.copy(appPackageNames = folder.appPackageNames + packageName)
-                } else folder
+                } else {
+                    folder
+                }
             } else {
                 // Ensure app is not in other folders
                 folder.copy(appPackageNames = folder.appPackageNames - packageName)
@@ -216,7 +220,9 @@ object LauncherLogic {
             if (folder.id == folderId) {
                 val newList = folder.appPackageNames - packageName
                 if (newList.isEmpty()) null else folder.copy(appPackageNames = newList)
-            } else folder
+            } else {
+                folder
+            }
         }
     }
 

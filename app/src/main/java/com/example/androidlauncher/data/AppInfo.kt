@@ -1,9 +1,9 @@
 package com.example.androidlauncher.data
 
+import android.content.Intent
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
-import android.content.Intent
 
 /**
  * Data class representing an application installed on the device.

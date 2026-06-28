@@ -22,6 +22,7 @@ class LauncherShakeManagerTest {
     private lateinit var appContext: Context
     private lateinit var sensorManager: SensorManager
     private lateinit var sensor: Sensor
+
     @Before
     fun setUp() {
         context = mockk(relaxed = true)
@@ -32,22 +33,26 @@ class LauncherShakeManagerTest {
         every { appContext.getSystemService(SensorManager::class.java) } returns sensorManager
         mockkStatic(SystemClock::class)
     }
+
     @After
     fun tearDown() {
         unmockkAll()
     }
+
     @Test
     fun testIsAvailable() {
         every { sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) } returns sensor
         val manager = LauncherShakeManager(context)
         assertTrue(manager.isAvailable())
     }
+
     @Test
     fun testIsNotAvailable() {
         every { sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) } returns null
         val manager = LauncherShakeManager(context)
         assertFalse(manager.isAvailable())
     }
+
     @Test
     fun testStartStop() {
         every { sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) } returns sensor

@@ -21,11 +21,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.R
-import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.LayoutGrid
+import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Smartphone
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -72,7 +72,12 @@ fun GesturesConfigMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(stringResource(R.string.label_gestures), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(
+                stringResource(R.string.label_gestures),
+                fontSize = 28.sp,
+                fontWeight = fontWeight.weight,
+                color = mainTextColor
+            )
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
@@ -119,7 +124,10 @@ fun GesturesConfigMenu(
                         GestureAppPickerDialog(
                             apps = apps,
                             selectedPackage = doubleTapAppPackage,
-                            onAppSelected = { onDoubleTapAppPackageChange(it); showPicker = false },
+                            onAppSelected = {
+                                onDoubleTapAppPackageChange(it);
+                                showPicker = false
+                            },
                             onDismiss = { showPicker = false },
                             mainTextColor = mainTextColor,
                             designStyle = designStyle,
@@ -178,7 +186,10 @@ fun GesturesConfigMenu(
                             GestureAppPickerDialog(
                                 apps = apps,
                                 selectedPackage = shakeOpenAppPackage,
-                                onAppSelected = { onShakeOpenAppPackageChange(it); showPicker = false },
+                                onAppSelected = {
+                                    onShakeOpenAppPackageChange(it);
+                                    showPicker = false
+                                },
                                 onDismiss = { showPicker = false },
                                 mainTextColor = mainTextColor,
                                 designStyle = designStyle,

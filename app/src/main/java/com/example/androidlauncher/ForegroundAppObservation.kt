@@ -5,4 +5,3 @@ data class ForegroundAppObservation(
     val observedAtMs: Long,
     val source: String
 )
-

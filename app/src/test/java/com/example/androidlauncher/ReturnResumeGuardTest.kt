@@ -58,4 +58,3 @@ class ReturnResumeGuardTest {
         assertEquals(ReturnResumeGuardState(), resume.nextState)
     }
 }
-

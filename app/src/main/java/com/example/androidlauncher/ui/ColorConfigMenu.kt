@@ -1,5 +1,8 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
@@ -18,28 +22,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import com.example.androidlauncher.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
-import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.RethroneSprings
 import com.example.androidlauncher.ui.theme.seedRevision
-
 
 /**
  * Menu for configuring the visual theme of the launcher.
@@ -78,7 +75,6 @@ fun ColorConfigMenu(
 
     // Hintergrund (Wallpaper + Theme-Verlauf) stellt das gemeinsame MenuOverlay bereit.
     Box(modifier = Modifier.fillMaxSize().testTag("color_config_menu")) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -86,8 +82,17 @@ fun ColorConfigMenu(
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.color_config_title), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(R.string.color_config_title),
+                    fontSize = 28.sp,
+                    fontWeight = fontWeight.weight,
+                    color = mainTextColor
+                )
                 IconButton(onClick = onClose) {
                     Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
                 }
@@ -95,7 +100,11 @@ fun ColorConfigMenu(
 
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
 
-            Text(stringResource(R.string.color_config_title), color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
+            Text(
+                stringResource(R.string.color_config_title),
+                color = mainTextColor.copy(alpha = 0.5f),
+                fontSize = 14.sp
+            )
             Spacer(modifier = Modifier.height(12.dp))
             ColorPickerRow(
                 label = stringResource(R.string.color_label_home_text),
@@ -145,7 +154,11 @@ fun ColorConfigMenu(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(stringResource(R.string.color_section_appearance), color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp)
+            Text(
+                stringResource(R.string.color_section_appearance),
+                color = mainTextColor.copy(alpha = 0.5f),
+                fontSize = 14.sp
+            )
             Spacer(modifier = Modifier.height(12.dp))
 
             // Antippbare Zeile → Theme-Untermenü.
@@ -162,7 +175,11 @@ fun ColorConfigMenu(
             ) {
                 Text(stringResource(R.string.label_themes), color = mainTextColor, fontSize = 16.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(selectedTheme.themeNameRes?.let { stringResource(it) } ?: selectedTheme.themeName, color = mainTextColor.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Text(
+                        selectedTheme.themeNameRes?.let { stringResource(it) } ?: selectedTheme.themeName,
+                        color = mainTextColor.copy(alpha = 0.6f),
+                        fontSize = 14.sp
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -189,7 +206,11 @@ fun ColorConfigMenu(
             ) {
                 Text(stringResource(R.string.label_design), color = mainTextColor, fontSize = 16.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(designStyle.titleRes), color = mainTextColor.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Text(
+                        stringResource(designStyle.titleRes),
+                        color = mainTextColor.copy(alpha = 0.6f),
+                        fontSize = 14.sp
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -207,15 +228,30 @@ fun ColorConfigMenu(
             val (pickerTitle, pickerColor, pickerOnChange) = when (activePicker) {
                 "text" -> Triple(stringResource(R.string.color_label_home_text), homeTextColor, onHomeTextColorChange)
                 "icon" -> Triple(stringResource(R.string.color_label_icon), iconColor, onIconColorChange)
-                "island" -> Triple(stringResource(R.string.dynamic_island_color), dynamicIslandColor, onDynamicIslandColorChange)
-                "edge" -> Triple(stringResource(R.string.edge_lighting_color), edgeLightingColor, onEdgeLightingColorChange)
-                "bg" -> Triple(stringResource(R.string.color_label_background), customBackgroundColor, onCustomBackgroundChange)
+                "island" -> Triple(
+                    stringResource(R.string.dynamic_island_color),
+                    dynamicIslandColor,
+                    onDynamicIslandColorChange
+                )
+                "edge" -> Triple(
+                    stringResource(R.string.edge_lighting_color),
+                    edgeLightingColor,
+                    onEdgeLightingColorChange
+                )
+                "bg" -> Triple(
+                    stringResource(R.string.color_label_background),
+                    customBackgroundColor,
+                    onCustomBackgroundChange
+                )
                 else -> Triple(stringResource(R.string.color_label_menu), customMenuColor, onCustomMenuChange)
             }
             if (eyedropperActive) {
                 WallpaperEyedropper(
                     customWallpaperUri = customWallpaperUri,
-                    onPicked = { c -> pickerOnChange(c); eyedropperActive = false },
+                    onPicked = { c ->
+                        pickerOnChange(c);
+                        eyedropperActive = false
+                    },
                     onCancel = { eyedropperActive = false }
                 )
             } else {
@@ -318,7 +354,6 @@ fun ThemeSelectionMenu(
 
     // Hintergrund (Wallpaper + Theme-Verlauf) stellt das gemeinsame MenuOverlay bereit.
     Box(modifier = Modifier.fillMaxSize().testTag("theme_selection_menu")) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -326,8 +361,17 @@ fun ThemeSelectionMenu(
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.label_themes), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(R.string.label_themes),
+                    fontSize = 28.sp,
+                    fontWeight = fontWeight.weight,
+                    color = mainTextColor
+                )
                 IconButton(onClick = onClose) {
                     Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
                 }
@@ -356,7 +400,14 @@ fun ThemeSelectionMenu(
 }
 
 @Composable
-fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color, designStyle: DesignStyle, isDarkTextEnabled: Boolean, onClick: () -> Unit) {
+fun ThemeOptionItem(
+    theme: ColorTheme,
+    isSelected: Boolean,
+    mainTextColor: Color,
+    designStyle: DesignStyle,
+    isDarkTextEnabled: Boolean,
+    onClick: () -> Unit
+) {
     val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     // Material-3-Expressive: weicher Auswahl-Übergang statt hartem Umspringen.
     val animationsEnabled = LocalAnimationsEnabled.current
@@ -366,7 +417,9 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
     val itemShape = RoundedCornerShape(20.dp)
     val itemModifier = Modifier
         .designSurface(
-            designStyle, itemShape, isDarkTextEnabled,
+            designStyle,
+            itemShape,
+            isDarkTextEnabled,
             accent = theme.menuSurfaceColor(isDarkTextEnabled),
             fillAlpha = fillAlpha
         )
@@ -383,7 +436,10 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
         modifier = Modifier
             .fillMaxWidth()
             .then(itemModifier)
-            .clickable(onClick = { haptics.select(); onClick() })
+            .clickable(onClick = {
+                haptics.select();
+                onClick()
+            })
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -399,10 +455,14 @@ fun ThemeOptionItem(theme: ColorTheme, isSelected: Boolean, mainTextColor: Color
             )
 
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(theme.themeNameRes?.let { stringResource(it) } ?: theme.themeName, color = mainTextColor, fontSize = 16.sp)
+                    Text(
+                        theme.themeNameRes?.let { stringResource(it) } ?: theme.themeName,
+                        color = mainTextColor,
+                        fontSize = 16.sp
+                    )
                     if (theme.isArtTheme) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(

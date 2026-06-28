@@ -2,6 +2,9 @@ package com.example.androidlauncher.ui
 
 import android.app.Application
 import android.content.Intent
+import android.util.LruCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.androidlauncher.LauncherLogic
@@ -10,16 +13,13 @@ import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.IconManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.ui.geometry.Offset
-import android.util.LruCache
-import androidx.compose.ui.graphics.ImageBitmap
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,7 +60,7 @@ class AppDrawerViewModel @javax.inject.Inject constructor(
 
     // --- A: LRU Cache for Loaded Bitmaps & Intents ---
     private val _iconBitmapCache = LruCache<String, ImageBitmap>(80)
-    
+
     private val _launchIntentCache = MutableStateFlow<Map<String, Intent?>>(emptyMap())
     val launchIntentCache: StateFlow<Map<String, Intent?>> = _launchIntentCache.asStateFlow()
 

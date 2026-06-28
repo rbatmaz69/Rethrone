@@ -16,11 +16,11 @@ import androidx.compose.ui.unit.dp
  * - die benannten Aliase [RethroneShape] für Sonderfälle (z. B. Pille).
  */
 val RethroneShapes = Shapes(
-    extraSmall = RoundedCornerShape(12.dp),  // Chips, kleine Tags
-    small = RoundedCornerShape(16.dp),       // kleine Buttons, Zeilen
-    medium = RoundedCornerShape(22.dp),      // Karten, Menü-Zeilen
-    large = RoundedCornerShape(28.dp),       // Tiles, Container
-    extraLarge = RoundedCornerShape(36.dp),  // große Sheets / Modals
+    extraSmall = RoundedCornerShape(12.dp), // Chips, kleine Tags
+    small = RoundedCornerShape(16.dp), // kleine Buttons, Zeilen
+    medium = RoundedCornerShape(22.dp), // Karten, Menü-Zeilen
+    large = RoundedCornerShape(28.dp), // Tiles, Container
+    extraLarge = RoundedCornerShape(36.dp), // große Sheets / Modals
 )
 
 /**

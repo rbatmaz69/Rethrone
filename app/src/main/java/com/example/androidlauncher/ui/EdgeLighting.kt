@@ -19,13 +19,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.unit.dp
 import com.example.androidlauncher.data.EdgeLightingStyle
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import androidx.compose.ui.graphics.lerp as lerpColor
 
 /**
  * Edge-Lighting-Overlay im Samsung-Stil: Bei jeder Änderung von [pulseId] leuchtet der abgerundete
@@ -150,13 +150,25 @@ fun EdgeLighting(
             val fullEnd = max(headDist, tail)
             val fullPath = subPath(fullStart, fullEnd)
             // Weicher Glow-Saum.
-            drawPath(fullPath, color.copy(alpha = 0.18f * baseAlpha), style = Stroke(width = glowPx, cap = StrokeCap.Round))
+            drawPath(
+                fullPath,
+                color.copy(alpha = 0.18f * baseAlpha),
+                style = Stroke(width = glowPx, cap = StrokeCap.Round)
+            )
             // Durchgehende Kern-Linie.
-            drawPath(fullPath, color.copy(alpha = 0.55f * baseAlpha), style = Stroke(width = corePx, cap = StrokeCap.Round))
+            drawPath(
+                fullPath,
+                color.copy(alpha = 0.55f * baseAlpha),
+                style = Stroke(width = corePx, cap = StrokeCap.Round)
+            )
             // Heller Kopf (~35 % der Kometenlänge), Richtung Weiß.
             val headTail = headDist - dir * cometLen * 0.35f
             val headPath = subPath(min(headDist, headTail), max(headDist, headTail))
-            drawPath(headPath, lerpColor(color, Color.White, 0.4f).copy(alpha = baseAlpha), style = Stroke(width = corePx, cap = StrokeCap.Round))
+            drawPath(
+                headPath,
+                lerpColor(color, Color.White, 0.4f).copy(alpha = baseAlpha),
+                style = Stroke(width = corePx, cap = StrokeCap.Round)
+            )
         }
 
         val t = p % 1f
@@ -173,11 +185,14 @@ fun EdgeLighting(
                 for (i in 0 until scan) {
                     val d = length * i / scan
                     val distSq = (pointAt(d) - topCenter).getDistanceSquared()
-                    if (distSq < best) { best = distSq; topCenterDist = d }
+                    if (distSq < best) {
+                        best = distSq
+                        topCenterDist = d
+                    }
                 }
                 val half = length / 2f
-                drawComet(topCenterDist + t * half, dir = 1f, baseAlpha = envelope)   // im Uhrzeigersinn
-                drawComet(topCenterDist - t * half, dir = -1f, baseAlpha = envelope)  // gegen den Uhrzeigersinn
+                drawComet(topCenterDist + t * half, dir = 1f, baseAlpha = envelope) // im Uhrzeigersinn
+                drawComet(topCenterDist - t * half, dir = -1f, baseAlpha = envelope) // gegen den Uhrzeigersinn
             }
             EdgeLightingStyle.GLOW_PULSE -> Unit // oben behandelt
         }

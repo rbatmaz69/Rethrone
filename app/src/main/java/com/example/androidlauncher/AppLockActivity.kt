@@ -7,20 +7,20 @@ import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.FragmentActivity
+import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppLockManager
+import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.ui.AppLockScreen
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
-import com.example.androidlauncher.data.DesignStyle
-import com.example.androidlauncher.data.AppFont
-import com.example.androidlauncher.data.FontWeightLevel
-import androidx.compose.ui.graphics.asImageBitmap
 
 /**
  * Vollbild-Sperr-Activity, die über einer geschützten App erscheint und vor dem Zugriff eine
@@ -53,11 +53,14 @@ class AppLockActivity : FragmentActivity() {
         }
 
         // Zurück-Geste verlässt die geschützte App zum Startbildschirm (App bleibt gesperrt).
-        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                goHome()
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : androidx.activity.OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    goHome()
+                }
             }
-        })
+        )
 
         // themeManager wird von Hilt injiziert (siehe Feld oben).
         val pm = packageManager
@@ -109,11 +112,14 @@ class AppLockActivity : FragmentActivity() {
         if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) return
 
         val executor = ContextCompat.getMainExecutor(this)
-        val prompt = BiometricPrompt(this, executor, object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                unlockAndFinish(targetPackage)
+        val prompt = BiometricPrompt(
+            this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    unlockAndFinish(targetPackage)
+                }
             }
-        })
+        )
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(getString(R.string.app_lock_unlock_title))
             .setSubtitle(getString(R.string.app_lock_unlock_subtitle))

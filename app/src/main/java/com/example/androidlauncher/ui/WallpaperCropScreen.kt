@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.animation.core.EaseInOutCubic
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
@@ -47,9 +46,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.androidlauncher.R
 import kotlinx.coroutines.Dispatchers
@@ -373,7 +372,11 @@ fun WallpaperCropScreen(
                                     if (resultUri != null) {
                                         pendingCroppedUri = resultUri
                                     } else {
-                                        Toast.makeText(context, context.getString(R.string.image_save_error), Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.image_save_error),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 }
                             }

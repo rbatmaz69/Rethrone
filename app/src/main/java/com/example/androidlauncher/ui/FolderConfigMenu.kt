@@ -10,9 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -28,22 +28,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.R
-import com.example.androidlauncher.LauncherLogic
-import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.data.FolderInfo
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
+import com.example.androidlauncher.LauncherLogic
+import com.example.androidlauncher.R
+import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalAppFont
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 import kotlinx.coroutines.delay
 
 /**
@@ -88,7 +88,7 @@ fun FolderConfigMenu(
     }
 
     val filteredApps = remember(allApps, searchQuery) { LauncherLogic.filterApps(allApps, searchQuery) }
-    
+
     // CUSTOM: Split filtered apps into selected and unselected, both sorted alphabetically for display.
     val displaySelectedApps = remember(filteredApps, selectedPackages) {
         filteredApps.filter { it.packageName in selectedPackages }.sortedBy { it.label.lowercase() }
@@ -102,7 +102,11 @@ fun FolderConfigMenu(
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 16.dp)) {
         // Header
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Column(modifier = Modifier.weight(1f)) {
                 BasicTextField(
                     value = folderName,
@@ -116,18 +120,33 @@ fun FolderConfigMenu(
                     cursorBrush = SolidColor(mainTextColor),
                     decorationBox = {
                         if (folderName.isEmpty()) {
-                            Text(stringResource(R.string.folder_name_hint), color = mainTextColor.copy(alpha = 0.4f), fontSize = 24.sp, fontFamily = appFont.fontFamily)
+                            Text(
+                                stringResource(R.string.folder_name_hint),
+                                color = mainTextColor.copy(alpha = 0.4f),
+                                fontSize = 24.sp,
+                                fontFamily = appFont.fontFamily
+                            )
                         }
                         it()
                     }
                 )
-                Text(stringResource(R.string.folder_apps_selected, selectedPackages.size), fontSize = 14.sp, color = grayTone)
+                Text(
+                    stringResource(R.string.folder_apps_selected, selectedPackages.size),
+                    fontSize = 14.sp,
+                    color = grayTone
+                )
             }
             Row {
                 IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(Lucide.Trash2, contentDescription = stringResource(R.string.cd_delete_folder), tint = Color.Red.copy(alpha = 0.8f))
+                    Icon(
+                        Lucide.Trash2,
+                        contentDescription = stringResource(R.string.cd_delete_folder),
+                        tint = Color.Red.copy(alpha = 0.8f)
+                    )
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, contentDescription = null, tint = mainTextColor) }
+                IconButton(
+                    onClick = onClose
+                ) { Icon(Icons.Rounded.Close, contentDescription = null, tint = mainTextColor) }
             }
         }
 
@@ -190,7 +209,7 @@ fun FolderConfigMenu(
                 item { Text(stringResource(R.string.more_apps), color = grayTone, fontSize = 12.sp) }
                 itemsIndexed(items = displayUnselectedApps, key = { _, app -> app.packageName }) { index, app ->
                     val isAlreadyInAnotherFolder = app.packageName in appsInOtherFolders
-                    
+
                     val isSearching = searchQuery.isNotBlank()
                     var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
 
@@ -204,8 +223,8 @@ fun FolderConfigMenu(
                     AnimatedVisibility(
                         visible = isVisible,
                         enter = fadeIn(animationSpec = tween(400)) +
-                                scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
-                                slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
+                            scaleIn(initialScale = 0.95f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) +
+                            slideInVertically(initialOffsetY = { 20 }, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)),
                         exit = fadeOut(animationSpec = tween(200))
                     ) {
                         AppSelectionItem(
@@ -242,14 +261,19 @@ fun FolderConfigMenu(
                 }) { Text(stringResource(R.string.delete), color = Color.Red) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.cancel), color = Color.Gray) }
+                TextButton(
+                    onClick = { showDeleteConfirm = false }
+                ) { Text(stringResource(R.string.cancel), color = Color.Gray) }
             },
             containerColor = colorTheme.drawerBackground
         )
     }
 
     // Confirmation Button
-    Box(modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(32.dp), contentAlignment = Alignment.BottomEnd) {
+    Box(
+        modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(32.dp),
+        contentAlignment = Alignment.BottomEnd
+    ) {
         val intSrc = remember { MutableInteractionSource() }
         val checkmarkColor = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A)
 
@@ -272,7 +296,11 @@ fun FolderConfigMenu(
                             val finalPackages = selectedPackages.distinct()
                             onConfirm(folder.copy(name = folderName, appPackageNames = finalPackages))
                         } else {
-                            Toast.makeText(context, context.getString(R.string.folder_name_required), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.folder_name_required),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 ),
@@ -311,7 +339,10 @@ private fun AppSelectionItem(
             .then(
                 if (isSelected) {
                     Modifier.designSurface(
-                        designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                        designStyle,
+                        RoundedCornerShape(16.dp),
+                        isDarkTextEnabled,
+                        surfaceAccent,
                         fillAlpha = 0.05f
                     )
                 } else {

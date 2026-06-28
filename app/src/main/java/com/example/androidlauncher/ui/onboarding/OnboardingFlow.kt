@@ -24,10 +24,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -66,8 +65,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.composables.icons.lucide.ArrowUp
 import com.composables.icons.lucide.Bell
-import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.ChartColumn
+import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.Lucide
@@ -95,6 +94,7 @@ import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import com.example.androidlauncher.ui.theme.RethroneShape
 import com.example.androidlauncher.ui.theme.rememberAppHaptics
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.grid.items as gridItems
 
 /**
  * Erststart-Onboarding: ruhiger Vollbild-Wizard im Material-3-Expressive-Look.
@@ -216,7 +216,8 @@ fun OnboardingFlow(
                     }
                     1 -> ScrollPage {
                         DefaultLauncherPage(
-                            mainTextColor, secondaryTextColor,
+                            mainTextColor,
+                            secondaryTextColor,
                             isActive = defaultLauncherOn,
                             onAction = {
                                 haptics.tap()
@@ -251,7 +252,8 @@ fun OnboardingFlow(
                     }
                     3 -> ScrollPage {
                         PersonalizePage(
-                            mainTextColor, secondaryTextColor,
+                            mainTextColor,
+                            secondaryTextColor,
                             selectedTheme = colorTheme,
                             selectedDesign = designStyle,
                             onSelectTheme = { theme ->
@@ -265,7 +267,8 @@ fun OnboardingFlow(
                         )
                     }
                     4 -> FavoritesPage(
-                        mainTextColor, secondaryTextColor,
+                        mainTextColor,
+                        secondaryTextColor,
                         apps = apps,
                         favoritePackages = favoritePackages,
                         onFavoritesChange = onFavoritesChange
@@ -851,10 +854,13 @@ private fun FavoriteCell(
                 .size(60.dp)
                 .clip(RoundedCornerShape(18.dp))
                 .then(
-                    if (selected) Modifier
-                        .background(mainTextColor.copy(alpha = 0.18f))
-                        .border(BorderStroke(2.dp, mainTextColor.copy(alpha = 0.9f)), RoundedCornerShape(18.dp))
-                    else Modifier
+                    if (selected) {
+                        Modifier
+                            .background(mainTextColor.copy(alpha = 0.18f))
+                            .border(BorderStroke(2.dp, mainTextColor.copy(alpha = 0.9f)), RoundedCornerShape(18.dp))
+                    } else {
+                        Modifier
+                    }
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -904,8 +910,11 @@ private fun ThemeSwatch(
             .clip(CircleShape)
             .background(Brush.linearGradient(theme.artGradient))
             .then(
-                if (selected) Modifier.border(BorderStroke(3.dp, ringColor), CircleShape)
-                else Modifier.border(BorderStroke(1.dp, ringColor.copy(alpha = 0.25f)), CircleShape)
+                if (selected) {
+                    Modifier.border(BorderStroke(3.dp, ringColor), CircleShape)
+                } else {
+                    Modifier.border(BorderStroke(1.dp, ringColor.copy(alpha = 0.25f)), CircleShape)
+                }
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
@@ -940,8 +949,11 @@ private fun ChoiceChip(
         modifier = Modifier
             .clip(RethroneShape.Pill)
             .then(
-                if (selected) Modifier.background(mainTextColor.copy(alpha = 0.18f))
-                else Modifier
+                if (selected) {
+                    Modifier.background(mainTextColor.copy(alpha = 0.18f))
+                } else {
+                    Modifier
+                }
             )
             .border(
                 BorderStroke(

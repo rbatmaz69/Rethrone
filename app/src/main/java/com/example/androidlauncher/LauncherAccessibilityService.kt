@@ -56,7 +56,9 @@ class LauncherAccessibilityService : AccessibilityService() {
         if (
             event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             event.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED
-        ) return
+        ) {
+            return
+        }
 
         val packageName = event.packageName?.toString()?.takeIf { it.isNotBlank() } ?: return
         Log.d(TAG, "event type=${event.eventType} package=$packageName")

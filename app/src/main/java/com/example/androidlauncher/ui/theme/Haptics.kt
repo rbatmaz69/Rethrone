@@ -40,8 +40,11 @@ class AppHaptics(
 
     /** Bestätigender Impuls (Menü öffnen, abschließende Aktion). */
     fun confirm() = perform(
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM
-        else HapticFeedbackConstants.KEYBOARD_TAP
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            HapticFeedbackConstants.CONFIRM
+        } else {
+            HapticFeedbackConstants.KEYBOARD_TAP
+        }
     )
 }
 

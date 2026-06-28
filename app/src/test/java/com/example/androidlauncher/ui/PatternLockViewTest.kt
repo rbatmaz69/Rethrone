@@ -16,11 +16,11 @@ class PatternLockViewTest {
     @Test
     fun cellCenters_mapToCorrectIndex() {
         // Zentrum jeder Zelle (row*3 + col)
-        assertEquals(0, hitNode(Offset(50f, 50f), size))    // oben links
-        assertEquals(2, hitNode(Offset(250f, 50f), size))   // oben rechts
-        assertEquals(4, hitNode(Offset(150f, 150f), size))  // Mitte
-        assertEquals(6, hitNode(Offset(50f, 250f), size))   // unten links
-        assertEquals(8, hitNode(Offset(250f, 250f), size))  // unten rechts
+        assertEquals(0, hitNode(Offset(50f, 50f), size)) // oben links
+        assertEquals(2, hitNode(Offset(250f, 50f), size)) // oben rechts
+        assertEquals(4, hitNode(Offset(150f, 150f), size)) // Mitte
+        assertEquals(6, hitNode(Offset(50f, 250f), size)) // unten links
+        assertEquals(8, hitNode(Offset(250f, 250f), size)) // unten rechts
     }
 
     @Test

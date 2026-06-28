@@ -74,7 +74,12 @@ fun EdgeLightingConfigMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(stringResource(R.string.edge_lighting), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(
+                stringResource(R.string.edge_lighting),
+                fontSize = 28.sp,
+                fontWeight = fontWeight.weight,
+                color = mainTextColor
+            )
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }

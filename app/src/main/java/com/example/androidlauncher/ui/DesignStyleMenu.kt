@@ -1,5 +1,8 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,9 +31,6 @@ import androidx.compose.ui.unit.sp
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
-import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
@@ -66,7 +66,12 @@ fun DesignStyleMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(stringResource(R.string.label_design), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(
+                stringResource(R.string.label_design),
+                fontSize = 28.sp,
+                fontWeight = fontWeight.weight,
+                color = mainTextColor
+            )
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
@@ -126,7 +131,10 @@ private fun DesignStyleTile(
         modifier = Modifier
             .fillMaxWidth()
             .clip(outerShape)
-            .clickable { haptics.select(); onClick() }
+            .clickable {
+                haptics.select()
+                onClick()
+            }
             .background(mainTextColor.copy(alpha = bgAlpha), outerShape)
             .testTag("design_tile_${style.name}")
             .padding(12.dp),

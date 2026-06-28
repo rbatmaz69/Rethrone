@@ -15,14 +15,12 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import com.example.androidlauncher.ui.theme.RethroneSprings
-import kotlin.coroutines.cancellation.CancellationException
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
@@ -40,26 +38,24 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,10 +63,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -82,83 +78,86 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppAccessMode
-import com.example.androidlauncher.data.EdgeLightingStyle
-import com.example.androidlauncher.data.IslandAnimationStyle
+import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.EdgeLightingStyle
+import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderInfo
 import com.example.androidlauncher.data.FolderManager
-import com.example.androidlauncher.data.HomeLayout
-import com.example.androidlauncher.data.IslandContent
-import com.example.androidlauncher.data.FavoriteSpacing
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
+import com.example.androidlauncher.data.GestureAction
+import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.IconQualityEvaluator
 import com.example.androidlauncher.data.IconSize
+import com.example.androidlauncher.data.IslandAnimationStyle
+import com.example.androidlauncher.data.IslandContent
 import com.example.androidlauncher.data.SearchSuggestionsManager
-import com.example.androidlauncher.data.GestureAction
+import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.gesture.GestureActionEffects
 import com.example.androidlauncher.gesture.GestureActionHandler
-import com.example.androidlauncher.ui.expandNotifications
-import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.ui.AnimationsConfigMenu
 import com.example.androidlauncher.ui.AppDrawer
+import com.example.androidlauncher.ui.AppLockMenu
+import com.example.androidlauncher.ui.ColorConfigMenu
+import com.example.androidlauncher.ui.DesignStyleMenu
 import com.example.androidlauncher.ui.DynamicIsland
 import com.example.androidlauncher.ui.EdgeLighting
 import com.example.androidlauncher.ui.EdgeLightingConfigMenu
-import com.example.androidlauncher.ui.IslandEditControls
-import com.example.androidlauncher.ui.IslandExpandedCard
-import com.example.androidlauncher.ui.sendNotificationReply
-import com.example.androidlauncher.ui.sendPendingIntent
-import com.example.androidlauncher.ui.onboarding.OnboardingFlow
-import com.example.androidlauncher.ui.HybridSearch
-import com.example.androidlauncher.ui.ColorConfigMenu
-import com.example.androidlauncher.ui.AnimationsConfigMenu
-import com.example.androidlauncher.ui.GesturesConfigMenu
-import com.example.androidlauncher.ui.ThemeSelectionMenu
-import com.example.androidlauncher.ui.DesignStyleMenu
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.FavoritesConfigMenu
 import com.example.androidlauncher.ui.FolderConfigMenu
 import com.example.androidlauncher.ui.FontSelectionMenu
+import com.example.androidlauncher.ui.GesturesConfigMenu
+import com.example.androidlauncher.ui.HiddenAppsMenu
 import com.example.androidlauncher.ui.HomeScreen
+import com.example.androidlauncher.ui.HybridSearch
 import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.InfoDialog
-import com.example.androidlauncher.ui.UninstallAppsMenu
-import com.example.androidlauncher.ui.HiddenAppsMenu
-import com.example.androidlauncher.ui.AppLockMenu
+import com.example.androidlauncher.ui.IslandEditControls
+import com.example.androidlauncher.ui.IslandExpandedCard
 import com.example.androidlauncher.ui.LaunchAnimationOverlay
 import com.example.androidlauncher.ui.NiagaraAppDrawer
 import com.example.androidlauncher.ui.ReturnAnimationOverlay
 import com.example.androidlauncher.ui.SizeConfigMenu
 import com.example.androidlauncher.ui.SystemWallpaperView
+import com.example.androidlauncher.ui.ThemeSelectionMenu
+import com.example.androidlauncher.ui.UninstallAppsMenu
 import com.example.androidlauncher.ui.WallpaperConfigMenu
 import com.example.androidlauncher.ui.WallpaperCropScreen
+import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.ui.launchAppNoTransition
+import com.example.androidlauncher.ui.onboarding.OnboardingFlow
 import com.example.androidlauncher.ui.openDefaultLauncherSettings
+import com.example.androidlauncher.ui.sendNotificationReply
+import com.example.androidlauncher.ui.sendPendingIntent
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
-import com.example.androidlauncher.ui.theme.seedRevision
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalMenuAnimationEnabled
+import com.example.androidlauncher.ui.theme.RethroneSprings
+import com.example.androidlauncher.ui.theme.seedRevision
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -258,13 +257,17 @@ class MainActivity : ComponentActivity() {
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentFontWeight by themeManager.selectedFontWeight.collectAsState(initial = FontWeightLevel.NORMAL)
             val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
-            val currentFavoriteSpacing by themeManager.selectedFavoriteSpacing.collectAsState(initial = FavoriteSpacing.STANDARD)
+            val currentFavoriteSpacing by themeManager.selectedFavoriteSpacing.collectAsState(
+                initial = FavoriteSpacing.STANDARD
+            )
             val currentAppFont by themeManager.selectedAppFont.collectAsState(initial = AppFont.SYSTEM_DEFAULT)
             // Initiale Werte passend zum warmen Standard-Theme "Tulpe" (vermeidet weißes Aufblitzen).
             val isDarkTextEnabled by themeManager.isDarkTextEnabled.collectAsState(initial = true)
             val iconColor by themeManager.iconColor.collectAsState(initial = Color(0xFF2C2A28))
             val homeTextColor by themeManager.homeTextColor.collectAsState(initial = Color(0xFF2C2A28))
-            val customBackgroundColor by themeManager.customBackgroundColor.collectAsState(initial = ColorTheme.FallbackCustomBackground)
+            val customBackgroundColor by themeManager.customBackgroundColor.collectAsState(
+                initial = ColorTheme.FallbackCustomBackground
+            )
             val customMenuColor by themeManager.customMenuColor.collectAsState(initial = ColorTheme.FallbackCustomMenu)
             // CUSTOM-Theme: gewählte Flächenfarben in den Holder spiegeln (treibt die Farb-Pipeline).
             LaunchedEffect(customBackgroundColor, customMenuColor) {
@@ -276,7 +279,9 @@ class MainActivity : ComponentActivity() {
             val lockType by themeManager.lockType.collectAsState(initial = "none")
             val lockBiometricEnabled by themeManager.isLockBiometricEnabled.collectAsState(initial = false)
             val designStyle by themeManager.designStyle.collectAsState(initial = DesignStyle.GLASS)
-            val favoritesBorderStyle by themeManager.favoritesBorderStyle.collectAsState(initial = FavoritesBorderStyle.NONE)
+            val favoritesBorderStyle by themeManager.favoritesBorderStyle.collectAsState(
+                initial = FavoritesBorderStyle.NONE
+            )
             val isShakeGesturesEnabled by themeManager.isShakeGesturesEnabled.collectAsState(initial = true)
             val doubleShakeAction by themeManager.doubleShakeAction.collectAsState(initial = GestureAction.FLASHLIGHT)
             val shakeOpenAppPackage by themeManager.shakeOpenAppPackage.collectAsState(initial = null)
@@ -301,7 +306,9 @@ class MainActivity : ComponentActivity() {
             val isDynamicIslandEnabled by themeManager.isDynamicIslandEnabled.collectAsState(initial = true)
             val dynamicIslandOffset by themeManager.dynamicIslandOffset.collectAsState(initial = 0f)
             val dynamicIslandColor by themeManager.dynamicIslandColor.collectAsState(initial = Color(0xFF0B0B0C))
-            val islandAnimationStyle by themeManager.islandAnimationStyle.collectAsState(initial = IslandAnimationStyle.FROM_NOTCH)
+            val islandAnimationStyle by themeManager.islandAnimationStyle.collectAsState(
+                initial = IslandAnimationStyle.FROM_NOTCH
+            )
             val isEdgeLightingEnabled by themeManager.isEdgeLightingEnabled.collectAsState(initial = false)
             val edgeLightingColor by themeManager.edgeLightingColor.collectAsState(initial = Color(0xFF0A84FF))
             val edgeLightingSpeed by themeManager.edgeLightingSpeed.collectAsState(initial = 1f)
@@ -381,7 +388,11 @@ class MainActivity : ComponentActivity() {
                         launcherDeviceActions.vibrateGestureFeedback(this@MainActivity)
                     }
                     FlashlightToggleResult.Unsupported -> {
-                        Toast.makeText(context, context.getString(R.string.flashlight_unsupported), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.flashlight_unsupported),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     FlashlightToggleResult.MissingPermission -> {
                         Toast.makeText(
@@ -597,13 +608,15 @@ class MainActivity : ComponentActivity() {
                             if (resumeDecision.shouldSuppress) {
                                 val awaitingUserPresent = returnResumeGuardState.awaitingUserPresent
                                 val skipNextResume = returnResumeGuardState.skipNextResume
-                                 Log.d(
-                                     RETURN_TAG,
+                                Log.d(
+                                    RETURN_TAG,
                                     "skip return animation on launcher resume caused by lockscreen state awaitingUserPresent=$awaitingUserPresent skipNextResume=$skipNextResume"
-                                 )
-                                 return@LifecycleEventObserver
-                             }
-                            val accessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
+                                )
+                                return@LifecycleEventObserver
+                            }
+                            val accessibilityEnabled = LauncherAccessibilityService.isAccessibilityServiceEnabled(
+                                context
+                            )
                             val usageAccessEnabled = ForegroundAppResolver.hasUsageAccess(context)
                             val storedPackages = ReturnOriginStore.getStoredPackageNames(context)
                             val beforeLauncherObservation = if (accessibilityEnabled) {
@@ -619,13 +632,16 @@ class MainActivity : ComponentActivity() {
                             val storedOriginCount = ReturnOriginStore.getStoredOriginCount(context)
                             Log.d(
                                 RETURN_TAG,
-                                "resume a11y=$accessibilityEnabled usage=$usageAccessEnabled storedPackages=$storedPackages storedOrigins=$storedOriginCount pending=${pendingReturnAnimation?.launchedPackageName} pendingLaunchWall=${pendingReturnAnimationStartedWallClockMs} beforeLauncher=$beforeLauncherObservation usageObservation=$usageObservation"
+                                "resume a11y=$accessibilityEnabled usage=$usageAccessEnabled storedPackages=$storedPackages storedOrigins=$storedOriginCount pending=${pendingReturnAnimation?.launchedPackageName} pendingLaunchWall=$pendingReturnAnimationStartedWallClockMs beforeLauncher=$beforeLauncherObservation usageObservation=$usageObservation"
                             )
 
                             if (!accessibilityEnabled && !usageAccessEnabled && storedOriginCount > 1 && !hasShownUsageAccessPrompt) {
                                 showUsageAccessPrompt = true
                                 hasShownUsageAccessPrompt = true
-                                Log.d(RETURN_TAG, "prompt usage access because multiple origins exist and no foreground tracking is available")
+                                Log.d(
+                                    RETURN_TAG,
+                                    "prompt usage access because multiple origins exist and no foreground tracking is available"
+                                )
                             }
 
                             val gateDecision = ReturnAnimationGate.resolve(
@@ -635,17 +651,17 @@ class MainActivity : ComponentActivity() {
                                 observations = listOfNotNull(beforeLauncherObservation, usageObservation)
                             )
                             val selectedReturnAnimation = gateDecision.returnAnimation
-                             val gateReason = gateDecision.reason
-                             val gateMatchedObservation = gateDecision.matchedObservation
+                            val gateReason = gateDecision.reason
+                            val gateMatchedObservation = gateDecision.matchedObservation
                             val chosenPackage = selectedReturnAnimation?.launchedPackageName
                             val targetPackage = selectedReturnAnimation?.packageName
                             val source = selectedReturnAnimation?.source
                             val hasBounds = selectedReturnAnimation?.bounds != null
 
-                             Log.d(
-                                 RETURN_TAG,
-                                 "resume gateReason=$gateReason matchedObservation=$gateMatchedObservation chosen=$chosenPackage target=$targetPackage source=$source bounds=$hasBounds"
-                             )
+                            Log.d(
+                                RETURN_TAG,
+                                "resume gateReason=$gateReason matchedObservation=$gateMatchedObservation chosen=$chosenPackage target=$targetPackage source=$source bounds=$hasBounds"
+                            )
 
                             selectedReturnAnimation?.let { animation ->
                                 isDrawerOpen = animation.source == LaunchSource.DRAWER
@@ -660,7 +676,7 @@ class MainActivity : ComponentActivity() {
                                     isWallpaperConfigOpen = false
                                     isInfoOpen = false
                                     selectedFolderForConfig = null
-                                 }
+                                }
                                 if (appCloseAnimActiveRef.value) {
                                     activeReturnAnimation = animation
                                     returnIconPackage = null
@@ -674,7 +690,10 @@ class MainActivity : ComponentActivity() {
                                 pendingReturnAnimation = null
                                 pendingReturnAnimationStartedWallClockMs = 0L
                                 ReturnOriginStore.clear(context, animation.launchedPackageName)
-                                Log.d(RETURN_TAG, "activateReturn launched=${animation.launchedPackageName} target=${animation.packageName} source=${animation.source}")
+                                Log.d(
+                                    RETURN_TAG,
+                                    "activateReturn launched=${animation.launchedPackageName} target=${animation.packageName} source=${animation.source}"
+                                )
                             }
                         }
                     }
@@ -737,8 +756,11 @@ class MainActivity : ComponentActivity() {
                 // Anzeige-Liste ohne ausgeblendete Apps (Drawer/Startseiten-Liste/Suche/Favoriten).
                 // Das Ausblenden-Menü selbst nutzt weiterhin die volle `allApps`-Liste.
                 val visibleApps = remember(allApps.toList(), hiddenApps) {
-                    if (hiddenApps.isEmpty()) allApps.toList()
-                    else allApps.filterNot { it.packageName in hiddenApps }
+                    if (hiddenApps.isEmpty()) {
+                        allApps.toList()
+                    } else {
+                        allApps.filterNot { it.packageName in hiddenApps }
+                    }
                 }
                 val favorites = remember(visibleApps, favoritePackages) {
                     LauncherLogic.getFavoriteApps(visibleApps, favoritePackages)
@@ -834,10 +856,14 @@ class MainActivity : ComponentActivity() {
                             val cx = rootSize.width / 2f
                             val cy = rootSize.height / 2f
                             androidx.compose.ui.geometry.Rect(
-                                cx - sizePx / 2f, cy - sizePx / 2f,
-                                cx + sizePx / 2f, cy + sizePx / 2f
+                                cx - sizePx / 2f,
+                                cy - sizePx / 2f,
+                                cx + sizePx / 2f,
+                                cy + sizePx / 2f
                             )
-                        } else null
+                        } else {
+                            null
+                        }
                     val effectiveReturnBounds = returnBounds ?: bounds ?: centerFallbackRect
                     val returnAnimation = ReturnAnimation(
                         bounds = effectiveReturnBounds,
@@ -854,7 +880,7 @@ class MainActivity : ComponentActivity() {
                     pendingReturnAnimationStartedWallClockMs = System.currentTimeMillis()
                     ReturnOriginStore.save(context, packageName, returnAnimation)
                     isAppLaunchAnimating = true
-                    
+
                     if (appOpenAnimActive) {
                         activeLaunchBackground = overlayColor
                         activeLaunchBackgroundBrush = overlayBrush
@@ -916,7 +942,10 @@ class MainActivity : ComponentActivity() {
                         ?: context.packageManager.resolveActivity(Intent(intent), 0)?.activityInfo?.packageName
                         ?: intent.data?.host
                         ?: "search-launch"
-                    Log.d(RETURN_TAG, "requestSearchLaunch resolved=$resolvedPackageName bounds=${bounds != null} searchButton=${homeSearchButtonBounds != null}")
+                    Log.d(
+                        RETURN_TAG,
+                        "requestSearchLaunch resolved=$resolvedPackageName bounds=${bounds != null} searchButton=${homeSearchButtonBounds != null}"
+                    )
                     requestLauncherLaunch(
                         packageName = resolvedPackageName,
                         intent = intent,
@@ -955,18 +984,24 @@ class MainActivity : ComponentActivity() {
                             when (intent?.action) {
                                 Intent.ACTION_SCREEN_OFF -> {
                                     returnResumeGuardState = ReturnResumeGuard.onScreenOff(
-                                         state = returnResumeGuardState,
-                                         launcherWasForeground = isLauncherResumed
-                                     )
+                                        state = returnResumeGuardState,
+                                        launcherWasForeground = isLauncherResumed
+                                    )
                                     if (isLauncherResumed) {
-                                        Log.d(RETURN_TAG, "screen off while launcher foreground -> suppress return during lockscreen cycle")
+                                        Log.d(
+                                            RETURN_TAG,
+                                            "screen off while launcher foreground -> suppress return during lockscreen cycle"
+                                        )
                                     }
                                 }
                                 Intent.ACTION_USER_PRESENT -> {
                                     val previousState = returnResumeGuardState
                                     returnResumeGuardState = ReturnResumeGuard.onUserPresent(returnResumeGuardState)
                                     if (previousState != returnResumeGuardState) {
-                                        Log.d(RETURN_TAG, "user present after launcher screen off -> suppress next launcher resume return")
+                                        Log.d(
+                                            RETURN_TAG,
+                                            "user present after launcher screen off -> suppress next launcher resume return"
+                                        )
                                     }
                                 }
                                 Intent.ACTION_PACKAGE_ADDED,
@@ -1102,7 +1137,7 @@ class MainActivity : ComponentActivity() {
                                         initialOffsetY = { it },
                                         animationSpec = drawerSlideSpec
                                     ) + fadeIn(animationSpec = drawerFadeSpec)
-                                ).togetherWith(fadeOut(animationSpec = drawerFadeSpec))
+                                    ).togetherWith(fadeOut(animationSpec = drawerFadeSpec))
                             } else {
                                 fadeIn(animationSpec = drawerFadeSpec).togetherWith(
                                     slideOutVertically(
@@ -1483,7 +1518,9 @@ class MainActivity : ComponentActivity() {
                             currentIconSize = currentIconSize,
                             onIconSizeSelected = { scope.launch { themeManager.setIconSize(it.size) } },
                             currentFavoriteSpacing = currentFavoriteSpacing,
-                            onFavoriteSpacingSelected = { scope.launch { themeManager.setFavoriteSpacing(it.spacing) } },
+                            onFavoriteSpacingSelected = { scope.launch { themeManager.setFavoriteSpacing(
+                                it.spacing
+                            ) } },
                             currentAppFont = currentAppFont,
                             onOpenFontSelection = { isFontSelectionOpen = true },
                             customWallpaperUri = customWallpaperUri,
@@ -1517,7 +1554,11 @@ class MainActivity : ComponentActivity() {
                                 scope.launch {
                                     themeManager.setHomeLayout(HomeLayout())
                                 }
-                                Toast.makeText(context, context.getString(R.string.home_layout_reset), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.home_layout_reset),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             },
                             onOpenIconConfig = { isIconConfigOpen = true },
                             onOpenUninstallApps = { isUninstallAppsOpen = true },
@@ -1538,11 +1579,15 @@ class MainActivity : ComponentActivity() {
                                     themeManager.setWallpaperDim(0.1f)
                                     themeManager.setWallpaperZoom(1.0f)
                                 }
-                                Toast.makeText(context, context.getString(R.string.wallpaper_removed), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.wallpaper_removed),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             },
                             onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
                             isCustomHomeLayoutSet =
-                                abs(homeLayout.clock.x) > 0.5f || abs(homeLayout.clock.y) > 0.5f ||
+                            abs(homeLayout.clock.x) > 0.5f || abs(homeLayout.clock.y) > 0.5f ||
                                 abs(homeLayout.date.x) > 0.5f || abs(homeLayout.date.y) > 0.5f ||
                                 abs(homeLayout.weather.x) > 0.5f || abs(homeLayout.weather.y) > 0.5f ||
                                 abs(homeLayout.favorites.x) > 0.5f || abs(homeLayout.favorites.y) > 0.5f,
@@ -1585,7 +1630,11 @@ class MainActivity : ComponentActivity() {
                             },
                             onClearSearchHistory = {
                                 scope.launch { searchSuggestionsManager.clearWebHistory() }
-                                Toast.makeText(context, context.getString(R.string.search_history_cleared), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.search_history_cleared),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             },
                             isHapticFeedbackEnabled = isHapticFeedbackEnabled,
                             onHapticFeedbackToggled = { enabled ->
@@ -1621,13 +1670,19 @@ class MainActivity : ComponentActivity() {
                             isAnimationsEnabled = isAnimationsEnabled,
                             onAnimationsToggled = { scope.launch { themeManager.setAnimationsEnabled(it) } },
                             isAppOpenAnimationEnabled = isAppOpenAnimationEnabled,
-                            onAppOpenAnimationToggled = { scope.launch { themeManager.setAppOpenAnimationEnabled(it) } },
+                            onAppOpenAnimationToggled = { scope.launch { themeManager.setAppOpenAnimationEnabled(
+                                it
+                            ) } },
                             isAppCloseAnimationEnabled = isAppCloseAnimationEnabled,
-                            onAppCloseAnimationToggled = { scope.launch { themeManager.setAppCloseAnimationEnabled(it) } },
+                            onAppCloseAnimationToggled = { scope.launch { themeManager.setAppCloseAnimationEnabled(
+                                it
+                            ) } },
                             isMenuAnimationEnabled = isMenuAnimationEnabled,
                             onMenuAnimationToggled = { scope.launch { themeManager.setMenuAnimationEnabled(it) } },
                             isFavoritesAnimationEnabled = isFavoritesAnimationEnabled,
-                            onFavoritesAnimationToggled = { scope.launch { themeManager.setFavoritesAnimationEnabled(it) } },
+                            onFavoritesAnimationToggled = { scope.launch { themeManager.setFavoritesAnimationEnabled(
+                                it
+                            ) } },
                             animationSpeed = animationSpeed,
                             onAnimationSpeedChanged = { scope.launch { themeManager.setAnimationSpeed(it) } },
                             onClose = { isAnimationsConfigOpen = false }

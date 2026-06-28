@@ -117,12 +117,33 @@ fun WallpaperConfigMenu(
         Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
 
         // Controls
-        ControlSlider(label = stringResource(R.string.wallpaper_blur), value = blurLevel, onValueChange = onBlurChange, range = 0f..25f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
-        ControlSlider(label = stringResource(R.string.wallpaper_dim), value = dimLevel, onValueChange = onDimChange, range = 0f..0.8f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
-        ControlSlider(label = stringResource(R.string.wallpaper_zoom), value = zoomLevel, onValueChange = onZoomChange, range = 1.0f..2.0f, mainTextColor = mainTextColor, secondaryTextColor = secondaryTextColor)
-        
+        ControlSlider(
+            label = stringResource(R.string.wallpaper_blur),
+            value = blurLevel,
+            onValueChange = onBlurChange,
+            range = 0f..25f,
+            mainTextColor = mainTextColor,
+            secondaryTextColor = secondaryTextColor
+        )
+        ControlSlider(
+            label = stringResource(R.string.wallpaper_dim),
+            value = dimLevel,
+            onValueChange = onDimChange,
+            range = 0f..0.8f,
+            mainTextColor = mainTextColor,
+            secondaryTextColor = secondaryTextColor
+        )
+        ControlSlider(
+            label = stringResource(R.string.wallpaper_zoom),
+            value = zoomLevel,
+            onValueChange = onZoomChange,
+            range = 1.0f..2.0f,
+            mainTextColor = mainTextColor,
+            secondaryTextColor = secondaryTextColor
+        )
+
         Spacer(modifier = Modifier.weight(0.2f).heightIn(min = 8.dp, max = 16.dp))
-        
+
         Button(
             onClick = {
                 onBlurChange(0f)

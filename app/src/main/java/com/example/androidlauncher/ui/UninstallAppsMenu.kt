@@ -4,9 +4,6 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,22 +19,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.R
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Trash2
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalFontWeight
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.LocalFontWeight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -117,8 +114,11 @@ fun UninstallAppsMenu(
 
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(uninstallableApps, searchQuery) {
-        if (searchQuery.isBlank()) uninstallableApps
-        else uninstallableApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+        if (searchQuery.isBlank()) {
+            uninstallableApps
+        } else {
+            uninstallableApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
+        }
     }
 
     val selectedPackages = remember { mutableStateListOf<String>() }
@@ -237,8 +237,11 @@ fun UninstallAppsMenu(
                     app = app,
                     isSelected = app.packageName in selectedPackages,
                     onToggleSelected = {
-                        if (app.packageName in selectedPackages) selectedPackages.remove(app.packageName)
-                        else selectedPackages.add(app.packageName)
+                        if (app.packageName in selectedPackages) {
+                            selectedPackages.remove(app.packageName)
+                        } else {
+                            selectedPackages.add(app.packageName)
+                        }
                     },
                     onRequestUninstall = { pendingConfirmation = listOf(app.packageName) },
                     mainTextColor = mainTextColor,
@@ -372,7 +375,12 @@ private fun UninstallAppRow(
                         .padding(horizontal = 24.dp),
                     contentAlignment = Alignment.CenterEnd
                 ) {
-                    Icon(Lucide.Trash2, contentDescription = null, tint = DestructiveColor, modifier = Modifier.size(24.dp))
+                    Icon(
+                        Lucide.Trash2,
+                        contentDescription = null,
+                        tint = DestructiveColor,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         }
@@ -412,7 +420,12 @@ private fun UninstallAppRow(
                     onClick = onRequestUninstall,
                     modifier = Modifier.testTag("uninstall_button_${app.packageName}")
                 ) {
-                    Icon(Lucide.Trash2, contentDescription = stringResource(R.string.uninstall), tint = DestructiveColor, modifier = Modifier.size(22.dp))
+                    Icon(
+                        Lucide.Trash2,
+                        contentDescription = stringResource(R.string.uninstall),
+                        tint = DestructiveColor,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
         }

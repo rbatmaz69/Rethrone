@@ -85,16 +85,20 @@ fun SizeConfigMenu(
                     color = mainTextColor
                 )
                 IconButton(onClick = onClose) {
-                    Icon(imageVector = Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.cd_close),
+                        tint = mainTextColor
+                    )
                 }
             }
-            
+
             // Proportionale Abstände durch Weights in den Spacern
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
-            
+
             Text(stringResource(R.string.preview), color = secondaryTextColor, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Vorschau-Box mit flexibler Höhe aber Fokus auf deinen 240dp
             Box(
                 modifier = Modifier
@@ -107,43 +111,83 @@ fun SizeConfigMenu(
             ) {
                 SystemWallpaperView(customWallpaperUri)
                 Column(modifier = Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.Start) {
-                    Text("12:00", color = mainTextColor, fontSize = (40.sp * currentFontSize.scale), fontWeight = currentFontWeight.weight, letterSpacing = (-1).sp)
+                    Text(
+                        "12:00",
+                        color = mainTextColor,
+                        fontSize = (40.sp * currentFontSize.scale),
+                        fontWeight = currentFontWeight.weight,
+                        letterSpacing = (-1).sp
+                    )
                     Spacer(modifier = Modifier.height(20.dp))
                     repeat(2) { index ->
                         if (index > 0) Spacer(modifier = Modifier.height(currentFavoriteSpacing.spacing))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(32.dp * currentIconSize.scale).background(mainTextColor.copy(alpha = 0.3f), CircleShape))
+                            Box(
+                                modifier = Modifier.size(
+                                    32.dp * currentIconSize.scale
+                                ).background(mainTextColor.copy(alpha = 0.3f), CircleShape)
+                            )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(stringResource(R.string.preview_favorite), color = mainTextColor, fontSize = (16.sp * currentFontSize.scale), fontWeight = FontWeight.Normal)
+                            Text(
+                                stringResource(R.string.preview_favorite),
+                                color = mainTextColor,
+                                fontSize = (16.sp * currentFontSize.scale),
+                                fontWeight = FontWeight.Normal
+                            )
                         }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
-            
+
             Text(text = stringResource(R.string.font_label), color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
             val fontButtonModifier = Modifier.designSurface(
-                designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f
+                designStyle,
+                RoundedCornerShape(16.dp),
+                isDarkTextEnabled,
+                surfaceAccent,
+                fillAlpha = 0.1f
             )
 
             Box(
-                modifier = Modifier.fillMaxWidth().height(56.dp).then(fontButtonModifier).clip(RoundedCornerShape(16.dp)).clickable { onOpenFontSelection() }.padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().height(
+                    56.dp
+                ).then(fontButtonModifier).clip(RoundedCornerShape(16.dp)).clickable {
+                    onOpenFontSelection()
+                }.padding(horizontal = 16.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Column {
                         Text(text = stringResource(R.string.choose_font), fontSize = 16.sp, color = mainTextColor)
-                        Text(text = currentAppFont.label, fontSize = 12.sp, color = mainTextColor.copy(alpha = 0.6f), fontFamily = currentAppFont.fontFamily)
+                        Text(
+                            text = currentAppFont.label,
+                            fontSize = 12.sp,
+                            color = mainTextColor.copy(alpha = 0.6f),
+                            fontFamily = currentAppFont.fontFamily
+                        )
                     }
-                    Icon(imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.6f))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = mainTextColor.copy(alpha = 0.6f)
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
-            
+
             // Slider Bereich – stufenlos/feinstufig wie der Animationsgeschwindigkeits-Slider.
-            val sliderColors = SliderDefaults.colors(thumbColor = mainTextColor, activeTrackColor = mainTextColor, inactiveTrackColor = mainTextColor.copy(alpha = 0.2f))
+            val sliderColors = SliderDefaults.colors(
+                thumbColor = mainTextColor,
+                activeTrackColor = mainTextColor,
+                inactiveTrackColor = mainTextColor.copy(alpha = 0.2f)
+            )
 
             // Lokale Merker des zuletzt „getickten" Werts – verhindert Doppel-Ticks
             // durch die asynchrone DataStore-Aktualisierung der current*-Werte.
@@ -152,12 +196,19 @@ fun SizeConfigMenu(
             var lastIconSize by remember { mutableStateOf(currentIconSize) }
             var lastSpacing by remember { mutableStateOf(currentFavoriteSpacing) }
 
-            Text(stringResource(R.string.font_size_label, (currentFontSize.scale * 100).roundToInt()), color = secondaryTextColor, fontSize = 12.sp)
+            Text(
+                stringResource(R.string.font_size_label, (currentFontSize.scale * 100).roundToInt()),
+                color = secondaryTextColor,
+                fontSize = 12.sp
+            )
             Slider(
                 value = currentFontSize.scale,
                 onValueChange = {
                     val next = FontSize.of(it)
-                    if (next != lastFontSize) { haptics.select(); lastFontSize = next }
+                    if (next != lastFontSize) {
+                        haptics.select();
+                        lastFontSize = next
+                    }
                     onFontSizeSelected(next)
                 },
                 valueRange = FontSize.MIN..FontSize.MAX,
@@ -167,12 +218,23 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(stringResource(R.string.font_weight_label, currentFontWeight.weightValue, stringResource(currentFontWeight.labelRes)), color = secondaryTextColor, fontSize = 12.sp)
+            Text(
+                stringResource(
+                    R.string.font_weight_label,
+                    currentFontWeight.weightValue,
+                    stringResource(currentFontWeight.labelRes)
+                ),
+                color = secondaryTextColor,
+                fontSize = 12.sp
+            )
             Slider(
                 value = currentFontWeight.weightValue.toFloat(),
                 onValueChange = {
                     val next = FontWeightLevel.of(it.roundToInt())
-                    if (next != lastFontWeight) { haptics.select(); lastFontWeight = next }
+                    if (next != lastFontWeight) {
+                        haptics.select();
+                        lastFontWeight = next
+                    }
                     onFontWeightSelected(next)
                 },
                 valueRange = FontWeightLevel.MIN.toFloat()..FontWeightLevel.MAX.toFloat(),
@@ -182,12 +244,19 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(stringResource(R.string.icon_size_label, currentIconSize.size.value.roundToInt()), color = secondaryTextColor, fontSize = 12.sp)
+            Text(
+                stringResource(R.string.icon_size_label, currentIconSize.size.value.roundToInt()),
+                color = secondaryTextColor,
+                fontSize = 12.sp
+            )
             Slider(
                 value = currentIconSize.size.value,
                 onValueChange = {
                     val next = IconSize.of(it.dp)
-                    if (next != lastIconSize) { haptics.select(); lastIconSize = next }
+                    if (next != lastIconSize) {
+                        haptics.select();
+                        lastIconSize = next
+                    }
                     onIconSizeSelected(next)
                 },
                 valueRange = IconSize.MIN.value..IconSize.MAX.value,
@@ -197,12 +266,19 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(stringResource(R.string.icon_spacing_label, currentFavoriteSpacing.spacing.value.roundToInt()), color = secondaryTextColor, fontSize = 12.sp)
+            Text(
+                stringResource(R.string.icon_spacing_label, currentFavoriteSpacing.spacing.value.roundToInt()),
+                color = secondaryTextColor,
+                fontSize = 12.sp
+            )
             Slider(
                 value = currentFavoriteSpacing.spacing.value,
                 onValueChange = {
                     val next = FavoriteSpacing.of(it.dp)
-                    if (next != lastSpacing) { haptics.select(); lastSpacing = next }
+                    if (next != lastSpacing) {
+                        haptics.select();
+                        lastSpacing = next
+                    }
                     onFavoriteSpacingSelected(next)
                 },
                 valueRange = FavoriteSpacing.MIN.value..FavoriteSpacing.MAX.value,

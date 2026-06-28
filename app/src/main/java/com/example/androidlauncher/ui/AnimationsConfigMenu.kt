@@ -23,13 +23,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.androidlauncher.R
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Maximize2
 import com.composables.icons.lucide.Menu
 import com.composables.icons.lucide.Minimize2
 import com.composables.icons.lucide.Sparkles
 import com.composables.icons.lucide.Star
+import com.example.androidlauncher.R
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
@@ -83,7 +83,12 @@ fun AnimationsConfigMenu(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(stringResource(R.string.label_animations), fontSize = 28.sp, fontWeight = fontWeight.weight, color = mainTextColor)
+            Text(
+                stringResource(R.string.label_animations),
+                fontSize = 28.sp,
+                fontWeight = fontWeight.weight,
+                color = mainTextColor
+            )
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
@@ -133,7 +138,10 @@ fun AnimationsConfigMenu(
                         value = animationSpeed,
                         onValueChange = {
                             val step = (it * 10).roundToInt()
-                            if (sliderEnabled && step != lastSpeedStep) { haptics.select(); lastSpeedStep = step }
+                            if (sliderEnabled && step != lastSpeedStep) {
+                                haptics.select();
+                                lastSpeedStep = step
+                            }
                             onAnimationSpeedChanged(it)
                         },
                         valueRange = 0.5f..2f,

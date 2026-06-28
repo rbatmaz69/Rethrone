@@ -1,16 +1,14 @@
 package com.example.androidlauncher.ui
 
-import com.example.androidlauncher.ForegroundAppResolver
-import com.example.androidlauncher.LauncherAccessibilityService
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Lock
@@ -27,48 +25,48 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import com.example.androidlauncher.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Settings2
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.composables.icons.lucide.Ban
 import com.composables.icons.lucide.Bell
-import com.composables.icons.lucide.Sparkles
-import com.composables.icons.lucide.Image
-import com.composables.icons.lucide.Pencil
-import com.composables.icons.lucide.Shield
+import com.composables.icons.lucide.BellOff
+import com.composables.icons.lucide.Calendar
+import com.composables.icons.lucide.Camera
+import com.composables.icons.lucide.ChevronDown
+import com.composables.icons.lucide.Clock
+import com.composables.icons.lucide.CloudSun
+import com.composables.icons.lucide.Flashlight
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.House
-import com.composables.icons.lucide.Smartphone
-import com.composables.icons.lucide.Ban
-import com.composables.icons.lucide.BellOff
-import com.composables.icons.lucide.Camera
-import com.composables.icons.lucide.Search
-import com.composables.icons.lucide.ChevronDown
-import com.composables.icons.lucide.CloudSun
-import com.composables.icons.lucide.Clock
-import com.composables.icons.lucide.Calendar
-import com.composables.icons.lucide.Flashlight
+import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.List
 import com.composables.icons.lucide.Lock
+import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.PanelRight
+import com.composables.icons.lucide.Pencil
+import com.composables.icons.lucide.Search
+import com.composables.icons.lucide.Settings2
+import com.composables.icons.lucide.Shield
+import com.composables.icons.lucide.Smartphone
+import com.composables.icons.lucide.Sparkles
 import com.composables.icons.lucide.Trash2
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.window.Dialog
+import com.example.androidlauncher.ForegroundAppResolver
+import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.LauncherLogic
+import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppAccessMode
-import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.GestureAction
+import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 
 /**
  * Konfigurationsmenü für Anpassungen.
@@ -121,7 +119,11 @@ fun EditConfigMenu(
 
     var isDefaultLauncherSet by remember { mutableStateOf(isDefaultLauncher(context)) }
     var isNotificationEnabled by remember { mutableStateOf(isNotificationServiceEnabled(context)) }
-    var isAccessibilityEnabled by remember { mutableStateOf(LauncherAccessibilityService.isAccessibilityServiceEnabled(context)) }
+    var isAccessibilityEnabled by remember {
+        mutableStateOf(
+            LauncherAccessibilityService.isAccessibilityServiceEnabled(context)
+        )
+    }
     var isUsageAccessEnabled by remember { mutableStateOf(ForegroundAppResolver.hasUsageAccess(context)) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -385,7 +387,7 @@ fun EditConfigMenu(
                         onClick = onOpenWallpaperAdjust,
                         mainTextColor = mainTextColor,
                         designStyle = designStyle,
-                    surfaceAccent = surfaceAccent,
+                        surfaceAccent = surfaceAccent,
                         isDarkTextEnabled = isDarkTextEnabled
                     )
                 }
@@ -503,7 +505,13 @@ fun EditConfigMenu(
                     icon = Lucide.House,
                     label = stringResource(R.string.default_launcher),
                     onClick = onOpenDefaultLauncher,
-                    statusLabel = if (isDefaultLauncherSet) stringResource(R.string.status_on) else stringResource(R.string.status_off),
+                    statusLabel = if (isDefaultLauncherSet) {
+                        stringResource(
+                            R.string.status_on
+                        )
+                    } else {
+                        stringResource(R.string.status_off)
+                    },
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
@@ -519,7 +527,13 @@ fun EditConfigMenu(
                     onClick = {
                         openNotificationSettings(context)
                     },
-                    statusLabel = if (isNotificationEnabled) stringResource(R.string.status_on) else stringResource(R.string.status_off),
+                    statusLabel = if (isNotificationEnabled) {
+                        stringResource(
+                            R.string.status_on
+                        )
+                    } else {
+                        stringResource(R.string.status_off)
+                    },
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
@@ -534,7 +548,13 @@ fun EditConfigMenu(
                     onClick = {
                         openAccessibilitySettings(context)
                     },
-                    statusLabel = if (isAccessibilityEnabled) stringResource(R.string.status_on) else stringResource(R.string.status_off),
+                    statusLabel = if (isAccessibilityEnabled) {
+                        stringResource(
+                            R.string.status_on
+                        )
+                    } else {
+                        stringResource(R.string.status_off)
+                    },
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
@@ -549,7 +569,13 @@ fun EditConfigMenu(
                     onClick = {
                         ForegroundAppResolver.openUsageAccessSettings(context)
                     },
-                    statusLabel = if (isUsageAccessEnabled) stringResource(R.string.status_on) else stringResource(R.string.status_off),
+                    statusLabel = if (isUsageAccessEnabled) {
+                        stringResource(
+                            R.string.status_on
+                        )
+                    } else {
+                        stringResource(R.string.status_off)
+                    },
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
@@ -558,7 +584,6 @@ fun EditConfigMenu(
             }
         }
     }
-
 }
 
 @Composable
@@ -609,14 +634,29 @@ fun EditMenuItem(
         ) {
             Icon(imageVector = icon, contentDescription = null, tint = mainTextColor, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(16.dp))
-            Text(text = label, color = mainTextColor, fontSize = 18.sp, fontWeight = FontWeight.Normal, modifier = Modifier.weight(1f))
+            Text(
+                text = label,
+                color = mainTextColor,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
             if (statusLabel != null) {
-                Text(text = statusLabel, color = mainTextColor.copy(alpha = 0.5f), fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                Text(
+                    text = statusLabel,
+                    color = mainTextColor.copy(alpha = 0.5f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
             }
             if (trailingContent != null) {
                 trailingContent()
             } else {
-                Icon(imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = mainTextColor.copy(alpha = 0.4f))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = mainTextColor.copy(alpha = 0.4f)
+                )
             }
         }
     }
@@ -637,7 +677,10 @@ fun EditToggleItem(
     enabled: Boolean = true
 ) {
     val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
-    val toggle: (Boolean) -> Unit = { haptics.toggle(it); onCheckedChange(it) }
+    val toggle: (Boolean) -> Unit = {
+        haptics.toggle(it);
+        onCheckedChange(it)
+    }
     // Ausgegraut, wenn deaktiviert (z. B. wenn der Master-Schalter aus ist).
     val contentColor = if (enabled) mainTextColor else mainTextColor.copy(alpha = 0.35f)
     val backgroundModifier = Modifier.designSurface(
@@ -1028,7 +1071,13 @@ internal fun GestureAppPickerDialog(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     placeholder = { Text(stringResource(R.string.search), color = mainTextColor.copy(alpha = 0.5f)) },
-                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = mainTextColor.copy(alpha = 0.6f)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = mainTextColor.copy(alpha = 0.6f)
+                        )
+                    },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = mainTextColor,
@@ -1055,7 +1104,10 @@ internal fun GestureAppPickerDialog(
                                 .then(
                                     if (isSelected) {
                                         Modifier.designSurface(
-                                            designStyle, RoundedCornerShape(16.dp), isDarkTextEnabled, surfaceAccent,
+                                            designStyle,
+                                            RoundedCornerShape(16.dp),
+                                            isDarkTextEnabled,
+                                            surfaceAccent,
                                             fillAlpha = 0.08f
                                         )
                                     } else {

@@ -17,8 +17,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.DesignStyle
-import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.FavoriteSpacing
+import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.IconSize
@@ -30,26 +30,32 @@ import com.example.androidlauncher.data.IconSize
 val LocalColorTheme = staticCompositionLocalOf { ColorTheme.SIGNATURE }
 val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
 val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
+
 /** Vertikaler Abstand zwischen den Favoriten-Icons (Startbildschirm). */
 val LocalFavoriteSpacing = staticCompositionLocalOf { FavoriteSpacing.STANDARD }
 val LocalFontWeight = staticCompositionLocalOf { FontWeightLevel.NORMAL }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
+
 /** Frei wählbare Iconfarbe (gilt überall). */
 val LocalIconColor = staticCompositionLocalOf { Color.White }
+
 /** Frei wählbare Schriftfarbe – nur Startbildschirm. */
 val LocalHomeTextColor = staticCompositionLocalOf { Color.White }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
 val LocalDesignStyle = staticCompositionLocalOf { DesignStyle.GLASS }
 val LocalFavoritesBorderStyle = staticCompositionLocalOf { FavoritesBorderStyle.NONE }
 val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
+
 /**
  * CompositionLocal for haptic feedback enabled state.
  */
 val LocalHapticFeedbackEnabled = staticCompositionLocalOf { true }
+
 /**
  * CompositionLocal for animations enabled state.
  */
 val LocalAnimationsEnabled = staticCompositionLocalOf { true }
+
 /**
  * CompositionLocals für einzelne Animationsarten. Diese sind bereits mit dem
  * Master (LocalAnimationsEnabled) verknüpft: ist der Master aus, sind alle false.
@@ -58,19 +64,23 @@ val LocalAppOpenAnimationEnabled = staticCompositionLocalOf { true }
 val LocalAppCloseAnimationEnabled = staticCompositionLocalOf { true }
 val LocalMenuAnimationEnabled = staticCompositionLocalOf { true }
 val LocalFavoritesAnimationEnabled = staticCompositionLocalOf { true }
+
 /**
  * Globaler Tempo-Faktor für Animationen (1f = normal, 2f = doppelt so schnell,
  * 0.5f = halbes Tempo). Wird von appTween/appSpring & den Menü-Übergängen genutzt.
  */
 val LocalAnimationSpeed = staticCompositionLocalOf { 1f }
+
 /**
  * CompositionLocal für das Wetter-Widget (Symbol + Temperatur unter der Uhr).
  */
 val LocalWeatherWidgetEnabled = staticCompositionLocalOf { true }
+
 /**
  * CompositionLocal für das Uhr-Widget.
  */
 val LocalClockWidgetEnabled = staticCompositionLocalOf { true }
+
 /**
  * CompositionLocal für das Kalender-/Datum-Widget.
  */

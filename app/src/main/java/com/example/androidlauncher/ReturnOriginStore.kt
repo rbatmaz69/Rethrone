@@ -35,7 +35,10 @@ object ReturnOriginStore {
     }
 
     fun save(context: Context, launchedPackageName: String, animation: ReturnAnimation) {
-        Log.d(TAG, "save launched=$launchedPackageName source=${animation.source} target=${animation.packageName} bounds=${animation.bounds != null}")
+        Log.d(
+            TAG,
+            "save launched=$launchedPackageName source=${animation.source} target=${animation.packageName} bounds=${animation.bounds != null}"
+        )
         prefs(context).edit()
             .putString(ENTRY_PREFIX + launchedPackageName, encode(animation))
             .putString(LAST_LAUNCHED_PACKAGE_KEY, launchedPackageName)
@@ -45,7 +48,10 @@ object ReturnOriginStore {
     fun get(context: Context, launchedPackageName: String): ReturnAnimation? {
         val encoded = prefs(context).getString(ENTRY_PREFIX + launchedPackageName, null) ?: return null
         val decoded = decode(encoded)
-        Log.d(TAG, "get launched=$launchedPackageName hit=${decoded != null} target=${decoded?.packageName} source=${decoded?.source}")
+        Log.d(
+            TAG,
+            "get launched=$launchedPackageName hit=${decoded != null} target=${decoded?.packageName} source=${decoded?.source}"
+        )
         return decoded
     }
 

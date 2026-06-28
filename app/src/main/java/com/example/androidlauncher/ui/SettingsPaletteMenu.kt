@@ -22,17 +22,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import com.example.androidlauncher.R
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Palette
 import com.composables.icons.lucide.Pencil
+import com.example.androidlauncher.R
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
-import com.example.androidlauncher.ui.theme.LocalHomeTextColor
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
+import com.example.androidlauncher.ui.theme.LocalHomeTextColor
 import kotlinx.coroutines.delay
 import kotlin.math.*
 
@@ -68,17 +68,22 @@ fun SettingsPaletteMenu(
     // Icon-Tönung folgt der gewählten Farbe – wie alles andere auf der Startseite.
     val mainTextColor = LocalHomeTextColor.current
     val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
-    
+
     val settingsItems = listOf(
         PaletteMenuItem("themes", Lucide.Palette, stringResource(R.string.label_themes), onOpenColorConfig),
         PaletteMenuItem("size", Lucide.ALargeSmall, stringResource(R.string.label_size), onOpenSizeConfig),
-        PaletteMenuItem("favorites", Icons.Rounded.Star, stringResource(R.string.favorites_title), onOpenFavoritesConfig),
+        PaletteMenuItem(
+            "favorites",
+            Icons.Rounded.Star,
+            stringResource(R.string.favorites_title),
+            onOpenFavoritesConfig
+        ),
         PaletteMenuItem("edit", Lucide.Pencil, stringResource(R.string.edit_config_title), onOpenSystemSettings),
         PaletteMenuItem("info", Icons.Rounded.Info, stringResource(R.string.label_info), onOpenInfo),
     )
 
-    val radius = 110f 
-    val startAngle = 85f 
+    val radius = 110f
+    val startAngle = 85f
     val endAngle = 185f
     val density = LocalDensity.current
 
@@ -114,7 +119,14 @@ fun SettingsPaletteMenu(
 
                 val pressScale by animateFloatAsState(
                     targetValue = if (isPressed) 0.92f else 1f,
-                    animationSpec = if (animationsEnabled) spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow) else snap(),
+                    animationSpec = if (animationsEnabled) {
+                        spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    } else {
+                        snap()
+                    },
                     label = "PressScale_${item.id}"
                 )
 

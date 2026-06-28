@@ -729,10 +729,10 @@ enum class ColorTheme(
     // Auf den „dunkler Text"-Modus ausgelegt (starke Dunkel-Blends).
     SOFT_SAND(
         "Tulpe",
-        Color(0xFFFFF1C0),               // primary  – helles Butter (oberer Verlauf)
-        Color(0xFFFFCB6E),               // secondary – warmes Gold (Akzentquelle)
-        Color.Black,                     // tertiary
-        Color(0xFF1F1608),               // drawerBackground – warmer Dunkel-Anker (nur Hell-Text-Fallback)
+        Color(0xFFFFF1C0), // primary  – helles Butter (oberer Verlauf)
+        Color(0xFFFFCB6E), // secondary – warmes Gold (Akzentquelle)
+        Color.Black, // tertiary
+        Color(0xFF1F1608), // drawerBackground – warmer Dunkel-Anker (nur Hell-Text-Fallback)
         artGradient = listOf(Color(0xFFFFFDF6), Color(0xFFFFF1C0), Color(0xFFFFE08A), Color(0xFFFFCB6E)),
         menuGradient = listOf(Color(0xFFFFFDF6), Color(0xFFFFF6E4), Color(0xFFFFEFD0)),
         searchGradient = listOf(Color(0xFFFFFDF6), Color(0xFFFFF6E6), Color(0xFFFFF0D6)),
@@ -745,7 +745,7 @@ enum class ColorTheme(
         darkAnimationBlend = 0.60f,
         backgroundRes = R.drawable.bg_soft_sand,
         heroImageRes = R.drawable.ic_tulip_silhouette,
-        heroTint = Color(0xFFB5762A)     // warmes Amber – tönt die schwarze Silhouette weich ein
+        heroTint = Color(0xFFB5762A) // warmes Amber – tönt die schwarze Silhouette weich ein
     ),
 
     // ── Material You: Farben aus dem Hintergrundbild (Laufzeit-Seed) ──
@@ -797,12 +797,18 @@ enum class ColorTheme(
         if (darkTextEnabled) rHighlight().blendWith(Color.Black, 0.08f) else rHighlight().blendWith(Color.White, 0.08f)
 
     fun borderColor(darkTextEnabled: Boolean): Color =
-        if (darkTextEnabled) rPrimary().blendWith(Color.Black, 0.48f).copy(alpha = 0.22f)
-        else rSecondary().blendWith(Color.White, 0.15f).copy(alpha = 0.28f)
+        if (darkTextEnabled) {
+            rPrimary().blendWith(Color.Black, 0.48f).copy(alpha = 0.22f)
+        } else {
+            rSecondary().blendWith(Color.White, 0.15f).copy(alpha = 0.28f)
+        }
 
     fun overlayScrimColor(darkTextEnabled: Boolean): Color =
-        if (darkTextEnabled) rPrimary().blendWith(Color.White, 0.82f).copy(alpha = 0.52f)
-        else rDrawerBackground().blendWith(Color.Black, 0.18f).copy(alpha = 0.64f)
+        if (darkTextEnabled) {
+            rPrimary().blendWith(Color.White, 0.82f).copy(alpha = 0.52f)
+        } else {
+            rDrawerBackground().blendWith(Color.Black, 0.18f).copy(alpha = 0.64f)
+        }
 
     /** Für Material3-`colorScheme.primary` (DYNAMIC liefert die Wallpaper-Primärfarbe). */
     fun schemePrimary(): Color = rPrimary()
@@ -927,7 +933,11 @@ enum class ColorTheme(
             drawerBackground = bg,
             art = listOf(bg.blendWith(Color.Black, 0.05f), bg, bg.blendWith(Color.White, 0.04f)),
             menu = listOf(mn.blendWith(Color.Black, 0.05f), mn, mn.blendWith(Color.White, 0.05f)),
-            search = listOf(mn.blendWith(Color.Black, 0.02f), mn.blendWith(Color.White, 0.04f), mn.blendWith(Color.White, 0.10f)),
+            search = listOf(
+                mn.blendWith(Color.Black, 0.02f),
+                mn.blendWith(Color.White, 0.04f),
+                mn.blendWith(Color.White, 0.10f)
+            ),
             anim = listOf(bg.blendWith(Color.Black, 0.05f), bg, mn)
         )
     }
@@ -958,12 +968,16 @@ enum class ColorTheme(
     companion object {
         val DarkTextColor = Color(0xFF010101)
         const val MinimumReadableContrast = 4.5f
+
         /** Warmweißer Anker für ein weicheres helles Rendering (statt reinweiß). */
         val WarmLightAnchor = Color(0xFFF4EEE2)
+
         /** Warmer Dunkel-Anker statt reinem Schwarz – verleiht allen Themes Wärme. */
         val WarmDarkAnchor = Color(0xFF0E0B07)
+
         /** Fallback-Seed für DYNAMIC, wenn keine Wallpaper-Farben vorliegen (Tests/Boot). */
         val FallbackDynamicPrimary = Color(0xFF6D5DBE)
+
         /** Fallback-Flächenfarben für CUSTOM (Tests/Boot, bis der Holder befüllt ist). */
         val FallbackCustomBackground = Color(0xFFF4EEE2)
         val FallbackCustomMenu = Color(0xFFFFFFFF)
@@ -976,7 +990,7 @@ enum class ColorTheme(
  * werden – sonst aktualisiert „Eigene Farbe" erst nach einem Theme-Wechsel.
  */
 fun ColorTheme.seedRevision(): Any? = when (this) {
-    ColorTheme.CUSTOM  -> CustomColorHolder.background to CustomColorHolder.menu
+    ColorTheme.CUSTOM -> CustomColorHolder.background to CustomColorHolder.menu
     ColorTheme.DYNAMIC -> DynamicColorHolder.seed
     else -> null
 }
@@ -1033,7 +1047,9 @@ private fun contrastRatio(foreground: Color, background: Color): Float {
 }
 
 private fun Color.relativeLuminance(): Float {
-    fun channel(value: Float): Float = if (value <= 0.03928f) value / 12.92f else ((value + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
+    fun channel(
+        value: Float
+    ): Float = if (value <= 0.03928f) value / 12.92f else ((value + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
     val r = channel(red)
     val g = channel(green)
     val b = channel(blue)
