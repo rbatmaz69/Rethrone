@@ -114,6 +114,13 @@ class NotificationService : NotificationListenerService() {
     private val listenerComponent by lazy { ComponentName(this, NotificationService::class.java) }
     private val controllerCallbacks = mutableMapOf<MediaController, MediaController.Callback>()
 
+    /**
+     * Sessions, die wir in dieser Prozess-Lebenszeit **schon einmal spielend** gesehen haben.
+     * Nur solche dürfen pausiert eine Pille zeigen – so taucht eine von Spotify spontan
+     * aufgeweckte, nie gespielte Session nicht von selbst in der Insel auf.
+     */
+    private val seenPlayingTokens = mutableSetOf<android.media.session.MediaSession.Token>()
+
     private val sessionsListener =
         MediaSessionManager.OnActiveSessionsChangedListener { controllers -> onSessionsChanged(controllers) }
 
@@ -192,10 +199,19 @@ class NotificationService : NotificationListenerService() {
         } catch (e: Exception) {
             controllerCallbacks.keys.toList()
         }
+        // Tote Sessions vergessen, lebende mit aktueller Wiedergabe als „schon gespielt" merken.
+        val currentTokens = controllers.mapNotNull { it.sessionToken }.toSet()
+        seenPlayingTokens.retainAll(currentTokens)
+        controllers.forEach { c ->
+            if (c.playbackState?.state == PlaybackState.STATE_PLAYING) {
+                c.sessionToken?.let { seenPlayingTokens.add(it) }
+            }
+        }
         val active = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
             ?: controllers.firstOrNull {
                 val s = it.playbackState?.state
-                s == PlaybackState.STATE_PAUSED || s == PlaybackState.STATE_BUFFERING
+                (s == PlaybackState.STATE_PAUSED || s == PlaybackState.STATE_BUFFERING) &&
+                    it.sessionToken in seenPlayingTokens
             }
         if (active == null) {
             transportControls = null
