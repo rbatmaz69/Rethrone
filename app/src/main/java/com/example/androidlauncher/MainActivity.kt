@@ -1316,7 +1316,7 @@ class MainActivity : ComponentActivity() {
                                         dynamicIslandManager.expand(c)
                                     },
                                     onAction = { action ->
-                                        sendPendingIntent(action.intent)
+                                        sendPendingIntent(context, action.intent)
                                         dynamicIslandManager.dismissExpanded()
                                     },
                                     onReply = { action, text ->
@@ -1325,7 +1325,7 @@ class MainActivity : ComponentActivity() {
                                     },
                                     // Timer steuern (Pause/Play/…): Karte bewusst offen lassen,
                                     // damit man direkt weiter steuern kann.
-                                    onTimerControl = { action -> sendPendingIntent(action.intent) },
+                                    onTimerControl = { action -> sendPendingIntent(context, action.intent) },
                                     onOpen = { content ->
                                         val intent = when (content) {
                                             is IslandContent.Notification -> content.contentIntent
@@ -1334,7 +1334,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                         // Bei Medien & Timer Karte offen lassen (nur Buttons/Scrim agieren).
                                         if (content !is IslandContent.Media && content !is IslandContent.Timer) {
-                                            sendPendingIntent(intent)
+                                            sendPendingIntent(context, intent)
                                             dynamicIslandManager.dismissExpanded()
                                         }
                                     },

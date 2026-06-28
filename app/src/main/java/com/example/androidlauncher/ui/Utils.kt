@@ -617,15 +617,29 @@ fun launchAppNoTransition(context: Context, intent: Intent) {
 }
 
 /**
+ * Optionen, die dem feuernden App-Prozess Background-Activity-Launch erlauben. Ab Android 14
+ * (API 34) blockiert das System sonst still jede Activity, die ein fremder PendingIntent startet
+ * (z. B. „Öffnen", „Zurückrufen", contentIntent) – die Buttons erscheinen, reagieren aber nicht.
+ */
+private fun backgroundActivityStartOptions(): android.os.Bundle? =
+    if (Build.VERSION.SDK_INT >= 34) {
+        ActivityOptions.makeBasic()
+            .setPendingIntentBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+            )
+            .toBundle()
+    } else null
+
+/**
  * Sendet einen [android.app.PendingIntent] (z. B. eine Benachrichtigungs-Aktion oder den
  * contentIntent zum Öffnen der App). Abgebrochene Intents werden still ignoriert.
  *
  * @return true, wenn das Senden ausgelöst wurde.
  */
-fun sendPendingIntent(pendingIntent: android.app.PendingIntent?): Boolean {
+fun sendPendingIntent(context: Context, pendingIntent: android.app.PendingIntent?): Boolean {
     if (pendingIntent == null) return false
     return try {
-        pendingIntent.send()
+        pendingIntent.send(context, 0, null, null, null, null, backgroundActivityStartOptions())
         true
     } catch (_: android.app.PendingIntent.CanceledException) {
         false
@@ -644,14 +658,14 @@ fun sendNotificationReply(
     action: com.example.androidlauncher.data.NotificationAction,
     replyText: CharSequence
 ): Boolean {
-    if (action.remoteInputs.isEmpty()) return sendPendingIntent(action.intent)
+    if (action.remoteInputs.isEmpty()) return sendPendingIntent(context, action.intent)
     val fillIn = android.content.Intent()
     val results = android.os.Bundle().apply {
         action.remoteInputs.forEach { putCharSequence(it.resultKey, replyText) }
     }
     android.app.RemoteInput.addResultsToIntent(action.remoteInputs.toTypedArray(), fillIn, results)
     return try {
-        action.intent.send(context, 0, fillIn)
+        action.intent.send(context, 0, fillIn, null, null, null, backgroundActivityStartOptions())
         true
     } catch (_: android.app.PendingIntent.CanceledException) {
         false
