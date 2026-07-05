@@ -8,6 +8,7 @@ import com.example.androidlauncher.data.DynamicIslandManager
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.IconManager
+import com.example.androidlauncher.data.NotificationStateStore
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.settings.AnimationSettings
@@ -73,8 +74,14 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideDynamicIslandManager(@ApplicationContext context: Context): DynamicIslandManager =
-        DynamicIslandManager(context)
+    fun provideNotificationStateStore(): NotificationStateStore = NotificationStateStore()
+
+    @Provides
+    @Singleton
+    fun provideDynamicIslandManager(
+        @ApplicationContext context: Context,
+        notificationStateStore: NotificationStateStore,
+    ): DynamicIslandManager = DynamicIslandManager(context, notificationStateStore)
 
     @Provides
     @Singleton

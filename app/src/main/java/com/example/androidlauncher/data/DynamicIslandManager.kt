@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
-import com.example.androidlauncher.NotificationService
 import com.example.androidlauncher.timerRemainingMs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +39,7 @@ import kotlinx.coroutines.launch
  */
 class DynamicIslandManager(
     context: Context,
+    private val notifications: NotificationStateStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
     private val appContext = context.applicationContext
@@ -60,7 +60,7 @@ class DynamicIslandManager(
         scope.launch {
             // Basis = Erzeugungszeit, damit bereits aktive (alte) Benachrichtigungen nicht pulsen.
             var lastMax = System.currentTimeMillis()
-            NotificationService.activeNotificationDetails
+            notifications.activeNotificationDetails
                 .map { list -> list.maxByOrNull { it.postTimeMs }?.postTimeMs }
                 .collect { max ->
                     if (max != null && max > lastMax) {
@@ -88,7 +88,7 @@ class DynamicIslandManager(
 
     /** Laufender Countdown/Stoppuhr der Uhr-App; Zeit wird jede Sekunde neu berechnet. */
     private val timerFlow: Flow<IslandContent.Timer?> =
-        combine(NotificationService.activeTimer, secondTick) { timer, _ ->
+        combine(notifications.activeTimer, secondTick) { timer, _ ->
             if (timer == null) {
                 lastTimerDisplayMs = null
                 null
@@ -123,7 +123,7 @@ class DynamicIslandManager(
      */
     @Suppress("OPT_IN_USAGE")
     private val notificationFlow: Flow<IslandContent.Notification?> =
-        NotificationService.activeNotificationDetails
+        notifications.activeNotificationDetails
             .map { list -> list.maxByOrNull { it.postTimeMs } }
             .distinctUntilChanged { a, b -> a?.pkg == b?.pkg && a?.postTimeMs == b?.postTimeMs }
             .transformLatest { info ->
@@ -172,16 +172,16 @@ class DynamicIslandManager(
 
     /** Aktive Medienwiedergabe aus der MediaSession (oder `null`). */
     private val mediaFlow: Flow<IslandContent.Media?> =
-        NotificationService.activeMedia.map { media ->
+        notifications.activeMedia.map { media ->
             media?.let { IslandContent.Media(it.title, it.artist, it.isPlaying, it.art, it.packageName) }
         }
 
     /** Vom Nutzer gewählte „Haupt"-Aktivität (activityId) oder `null` = höchste Priorität. */
     private val _selectedId = MutableStateFlow<String?>(null)
 
-    fun mediaPlayPause() = NotificationService.mediaPlayPause()
-    fun mediaNext() = NotificationService.mediaNext()
-    fun mediaPrevious() = NotificationService.mediaPrevious()
+    fun mediaPlayPause() = notifications.mediaPlayPause()
+    fun mediaNext() = notifications.mediaNext()
+    fun mediaPrevious() = notifications.mediaPrevious()
 
     /** Alle aktiven Aktivitäten, prioritätssortiert. */
     private val contentsFlow: Flow<List<IslandContent>> =

@@ -25,13 +25,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.LauncherLogic
-import com.example.androidlauncher.NotificationService
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconFallbackType
 import com.example.androidlauncher.data.IconManager
+import com.example.androidlauncher.data.NotificationStateStore
+import com.example.androidlauncher.data.NotificationStateStoreEntryPoint
 import com.example.androidlauncher.ui.theme.LocalIconColor
 import com.example.androidlauncher.ui.theme.LocalIconSize
 import com.example.androidlauncher.ui.theme.LocalNotificationDotsEnabled
+import dagger.hilt.android.EntryPointAccessors
 
 /**
  * Composable das ein App-Icon rendert.
@@ -56,7 +58,7 @@ fun AppIconView(
 
     val dotsEnabled = showBadge && LocalNotificationDotsEnabled.current
     val activeNotifications by if (dotsEnabled) {
-        NotificationService.activeNotificationPackages.collectAsState()
+        rememberNotificationStateStore().activeNotificationPackages.collectAsState()
     } else {
         remember { mutableStateOf(emptySet<String>()) }
     }
@@ -140,6 +142,21 @@ private fun NeutralIconFallback(
             fontSize = (iconSize.value * 0.6f).sp,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+/**
+ * Löst das [NotificationStateStore]-Singleton aus dem Hilt-Graphen auf – für dieses
+ * freistehende Composable ohne eigenes ViewModel (A5-Split: ersetzt den statischen
+ * Zugriff auf NotificationService-Companion-Flows).
+ */
+@Composable
+private fun rememberNotificationStateStore(): NotificationStateStore {
+    val appContext = LocalContext.current.applicationContext
+    return remember {
+        EntryPointAccessors
+            .fromApplication(appContext, NotificationStateStoreEntryPoint::class.java)
+            .notificationStateStore()
     }
 }
 

@@ -3,11 +3,7 @@ package com.example.androidlauncher
 import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
-import android.graphics.Bitmap
-import android.media.MediaMetadata
-import android.media.session.MediaController
 import android.media.session.MediaSessionManager
-import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -18,121 +14,43 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Chronometer
 import android.widget.FrameLayout
-import com.example.androidlauncher.data.NotificationAction
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-
-/**
- * Kompakte Detail-Repräsentation einer aktiven Benachrichtigung für die Dynamic Island.
- *
- * @param postTimeMs Zeitpunkt des Postings (zum Ermitteln der „neuesten" Benachrichtigung).
- * @param actions Inline-Aktionen (z. B. Antworten) für die aufgeklappte Karte.
- * @param contentIntent Öffnet die zugehörige App beim Tap auf den Text.
- */
-data class NotificationInfo(
-    val pkg: String,
-    val title: String,
-    val text: String,
-    val postTimeMs: Long,
-    val actions: List<NotificationAction> = emptyList(),
-    val contentIntent: android.app.PendingIntent? = null
-)
-
-/**
- * Laufender Timer/Stoppuhr der Uhr-App. Zeit-Bezug via [resolveTimerAnchor] (reflection-frei).
- */
-data class TimerInfo(
-    val pkg: String,
-    val label: String,
-    /** Bezugszeit: bei Countdown das Zielende, bei Stoppuhr die Startzeit; `null` = keine Zeit. */
-    val anchorMs: Long?,
-    /** `true` ⇒ hochzählende Stoppuhr (verstrichene Zeit), `false` ⇒ Countdown. */
-    val countUp: Boolean = false,
-    /** `true` ⇒ Aktivität ist pausiert; der Manager hält dann den zuletzt gezeigten Wert. */
-    val paused: Boolean = false,
-    val contentIntent: android.app.PendingIntent? = null,
-    val actions: List<NotificationAction> = emptyList()
-)
-
-/**
- * Aktuelle Medienwiedergabe (aus der aktiven MediaSession) für die Dynamic Island.
- */
-data class MediaInfo(
-    val title: String,
-    val artist: String,
-    val isPlaying: Boolean,
-    val art: Bitmap?,
-    val packageName: String
-)
+import com.example.androidlauncher.data.MediaSessionMonitor
+import com.example.androidlauncher.data.NotificationStateStore
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * Service that listens for notification events.
- * Stellt für die Dynamic Island getrennte Flows bereit: normale Benachrichtigungen und
- * laufende Timer. Mediensteuerung wird ausgefiltert (separat über MediaSession behandelt).
+ * A5-Split: nur noch ein dünner Listener – die Flows leben im injizierten
+ * [NotificationStateStore], das Parsen in [NotificationParser], die
+ * MediaSession-Beobachtung im [MediaSessionMonitor]. Hier verbleibt einzig die
+ * View-basierte Chronometer-Verfeinerung (braucht Context + Main-Thread).
  */
+@AndroidEntryPoint
 class NotificationService : NotificationListenerService() {
 
-    companion object {
-        /** Plausibilitätsgrenze für eine Timer-Zielzeit (48 h). */
-        private const val MAX_TIMER_HORIZON_MS = 48L * 60 * 60 * 1000
-
-        private val _activeNotificationPackages = MutableStateFlow<Set<String>>(emptySet())
-        val activeNotificationPackages = _activeNotificationPackages.asStateFlow()
-
-        /** Detail-Flow (Paket/Titel/Text/Aktionen) für die Dynamic Island. Media + Timer ausgefiltert. */
-        private val _activeNotificationDetails = MutableStateFlow<List<NotificationInfo>>(emptyList())
-        val activeNotificationDetails = _activeNotificationDetails.asStateFlow()
-
-        /** Aktuell laufender Countdown-Timer der Uhr-App (oder `null`). */
-        private val _activeTimer = MutableStateFlow<TimerInfo?>(null)
-        val activeTimer = _activeTimer.asStateFlow()
-
-        /** Aktuelle Medienwiedergabe (oder `null`). */
-        private val _activeMedia = MutableStateFlow<MediaInfo?>(null)
-        val activeMedia = _activeMedia.asStateFlow()
-
-        /** Transport-Steuerung der aktiven Session (für Play/Pause/Skip aus der Insel-Karte). */
-        @Volatile
-        private var transportControls: MediaController.TransportControls? = null
-
-        fun mediaPlayPause() {
-            val tc = transportControls ?: return
-            if (_activeMedia.value?.isPlaying == true) tc.pause() else tc.play()
-        }
-
-        fun mediaNext() {
-            transportControls?.skipToNext()
-        }
-
-        fun mediaPrevious() {
-            transportControls?.skipToPrevious()
-        }
-    }
+    @Inject
+    lateinit var stateStore: NotificationStateStore
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var mediaSessionManager: MediaSessionManager? = null
     private val listenerComponent by lazy { ComponentName(this, NotificationService::class.java) }
-    private val controllerCallbacks = mutableMapOf<MediaController, MediaController.Callback>()
-
-    /**
-     * Sessions, die wir in dieser Prozess-Lebenszeit **schon einmal spielend** gesehen haben.
-     * Nur solche dürfen pausiert eine Pille zeigen – so taucht eine von Spotify spontan
-     * aufgeweckte, nie gespielte Session nicht von selbst in der Insel auf.
-     */
-    private val seenPlayingTokens = mutableSetOf<android.media.session.MediaSession.Token>()
-
-    private val sessionsListener =
-        MediaSessionManager.OnActiveSessionsChangedListener { controllers -> onSessionsChanged(controllers) }
+    private var mediaMonitor: MediaSessionMonitor? = null
 
     override fun onListenerConnected() {
         super.onListenerConnected()
         updateNotifications()
-        setupMediaSessions()
+        mediaMonitor = MediaSessionMonitor(
+            mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager,
+            listenerComponent = listenerComponent,
+            handler = mainHandler,
+            onMediaChanged = { media, controls -> stateStore.updateMedia(media, controls) },
+        ).also { it.start() }
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
-        teardownMediaSessions()
+        mediaMonitor?.stop()
+        mediaMonitor = null
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -143,107 +61,6 @@ class NotificationService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
         updateNotifications()
-    }
-
-    // ── MediaSession ─────────────────────────────────────────────────────────────────────
-
-    private fun setupMediaSessions() {
-        try {
-            val msm = getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager ?: return
-            mediaSessionManager = msm
-            msm.addOnActiveSessionsChangedListener(sessionsListener, listenerComponent, mainHandler)
-            onSessionsChanged(msm.getActiveSessions(listenerComponent))
-        } catch (e: Exception) {
-            // Sicherheitsnetz: bei fehlendem Zugriff bleibt die Mediensteuerung einfach leer.
-        }
-    }
-
-    private fun teardownMediaSessions() {
-        try {
-            mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsListener)
-        } catch (e: Exception) {
-            // ignore
-        }
-        controllerCallbacks.forEach { (controller, cb) -> controller.unregisterCallback(cb) }
-        controllerCallbacks.clear()
-        transportControls = null
-        _activeMedia.value = null
-    }
-
-    private fun onSessionsChanged(controllers: List<MediaController>?) {
-        controllerCallbacks.forEach { (controller, cb) -> controller.unregisterCallback(cb) }
-        controllerCallbacks.clear()
-        for (controller in controllers.orEmpty()) {
-            val cb = object : MediaController.Callback() {
-                override fun onPlaybackStateChanged(state: PlaybackState?) = recomputeMedia()
-                override fun onMetadataChanged(metadata: MediaMetadata?) = recomputeMedia()
-                override fun onSessionDestroyed() {
-                    // Tote Session sofort abmelden + aus dem Cache werfen, sonst meldet sie evtl.
-                    // weiter STATE_PAUSED und die Media-Pille bliebe hängen.
-                    controllerCallbacks.remove(controller)?.let { controller.unregisterCallback(it) }
-                    recomputeMedia()
-                }
-            }
-            controller.registerCallback(cb, mainHandler)
-            controllerCallbacks[controller] = cb
-        }
-        recomputeMedia()
-    }
-
-    /** Wählt die aktive Session (bevorzugt spielend) und aktualisiert [activeMedia]. */
-    private fun recomputeMedia() {
-        // Autoritative, frische Liste vom System abfragen – nicht den (evtl. veralteten) Cache. So
-        // können tote/geschlossene Sessions die Pille nicht mehr künstlich am Leben halten.
-        val controllers = try {
-            mediaSessionManager?.getActiveSessions(listenerComponent).orEmpty()
-        } catch (e: Exception) {
-            controllerCallbacks.keys.toList()
-        }
-        // Tote Sessions vergessen, lebende mit aktueller Wiedergabe als „schon gespielt" merken.
-        val currentTokens = controllers.mapNotNull { it.sessionToken }.toSet()
-        seenPlayingTokens.retainAll(currentTokens)
-        controllers.forEach { c ->
-            if (c.playbackState?.state == PlaybackState.STATE_PLAYING) {
-                c.sessionToken?.let { seenPlayingTokens.add(it) }
-            }
-        }
-        val active = controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
-            ?: controllers.firstOrNull {
-                val s = it.playbackState?.state
-                (s == PlaybackState.STATE_PAUSED || s == PlaybackState.STATE_BUFFERING) &&
-                    it.sessionToken in seenPlayingTokens
-            }
-        if (active == null) {
-            transportControls = null
-            _activeMedia.value = null
-            return
-        }
-        transportControls = active.transportControls
-        val md = active.metadata
-        val title = md?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty()
-        val artist = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
-            ?: md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST).orEmpty()
-        if (title.isBlank() && artist.isBlank()) {
-            _activeMedia.value = null
-            return
-        }
-        val art = md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-            ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART)
-        // Buffering/Skip als „spielend" werten: beim Track-Wechsel durchläuft der Player
-        // kurz diese Zustände. Würden sie als Pause gelten, flackerte `isPlaying` und die
-        // Insel-Reihenfolge (spielend vs. pausiert) würde springen.
-        val playbackState = active.playbackState?.state
-        val isPlaying = playbackState == PlaybackState.STATE_PLAYING ||
-            playbackState == PlaybackState.STATE_BUFFERING ||
-            playbackState == PlaybackState.STATE_SKIPPING_TO_NEXT ||
-            playbackState == PlaybackState.STATE_SKIPPING_TO_PREVIOUS
-        _activeMedia.value = MediaInfo(
-            title = title,
-            artist = artist,
-            isPlaying = isPlaying,
-            art = art,
-            packageName = active.packageName ?: ""
-        )
     }
 
     /**
@@ -263,21 +80,20 @@ class NotificationService : NotificationListenerService() {
                 // Gruppen-Zusammenfassungen sind Aggregate (kein echter Inhalt) → überspringen.
                 if (((sbn.notification?.flags ?: 0) and Notification.FLAG_GROUP_SUMMARY) != 0) continue
                 if (BuildConfig.DEBUG) logNotification(sbn, now)
-                when (sbn.kind(now)) {
+                when (NotificationParser.kindOf(sbn, now)) {
                     NotificationKind.MEDIA -> Unit // separat über MediaSession
                     NotificationKind.TIMER -> if (timer == null) {
-                        timer = sbn.toTimerInfo()
+                        timer = NotificationParser.toTimerInfo(sbn, now)
                         timerSbn = sbn
                     }
-                    NotificationKind.NORMAL -> sbn.toInfo()?.let {
+                    NotificationKind.NORMAL -> NotificationParser.toInfo(sbn)?.let {
                         details.add(it)
                         packages.add(it.pkg)
                     }
                 }
             }
 
-            _activeNotificationPackages.value = packages
-            _activeNotificationDetails.value = details
+            stateStore.updateNotifications(packages, details)
             // Die echte Chronometer-Zeit braucht den Main-Thread (View-Erzeugung). Die
             // Listener-Callbacks laufen ohnehin auf Main → dann inline verfeinern und nur EINE
             // Emission setzen. Sonst (defensiv) provisorisch setzen und auf Main nachreichen.
@@ -291,13 +107,13 @@ class NotificationService : NotificationListenerService() {
             } else {
                 provisional
             }
-            _activeTimer.value = resolved
+            stateStore.updateTimer(resolved)
             if (!onMain && provisional != null && sbn != null) {
                 mainHandler.post {
-                    val refined = refineTimerWithChronometer(sbn, provisional)
-                    if (refined != _activeTimer.value && _activeTimer.value === provisional) {
-                        _activeTimer.value = refined
-                    }
+                    stateStore.refineTimerIfCurrent(
+                        expected = provisional,
+                        refined = refineTimerWithChronometer(sbn, provisional),
+                    )
                 }
             }
         } catch (e: Exception) {
@@ -315,124 +131,7 @@ class NotificationService : NotificationListenerService() {
             "pkg=${sbn.packageName} ongoing=$ongoing clock=${isClockPackage(sbn.packageName)} " +
                 "cat=${n?.category} showChrono=${extras?.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER)} " +
                 "countDown=${extras?.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN)} " +
-                "when=${n?.`when`} now=$now kind=${sbn.kind(now)}"
-        )
-    }
-
-    /** Ordnet eine [StatusBarNotification] in [NotificationKind] ein (siehe [classifyNotificationKind]). */
-    private fun StatusBarNotification.kind(nowMs: Long): NotificationKind {
-        val n = notification ?: return NotificationKind.NORMAL
-        val extras = n.extras
-        val isCountDown = extras?.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) == true &&
-            extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN)
-        val isOngoing = (n.flags and Notification.FLAG_ONGOING_EVENT) != 0
-        return classifyNotificationKind(
-            isMedia = isMediaNotification(),
-            isCountDownChronometer = isCountDown,
-            isClockApp = isClockPackage(packageName),
-            isClockActivityChannel = isClockActivityChannel(n.channelId),
-            isOngoing = isOngoing,
-            whenMs = n.`when`,
-            nowMs = nowMs
-        )
-    }
-
-    /**
-     * Erkennt Medien-/Wiedergabe-Benachrichtigungen (Mediensteuerung). EXTRA_MEDIA_SESSION
-     * (MediaSession-Token) ist der robusteste Marker für MediaStyle-Benachrichtigungen,
-     * unabhängig vom Play/Pause-Zustand; CATEGORY_TRANSPORT deckt zusätzliche Transport-Steuerungen ab.
-     */
-    private fun StatusBarNotification.isMediaNotification(): Boolean {
-        val n = notification ?: return false
-        if (n.category == Notification.CATEGORY_TRANSPORT) return true
-        return n.extras?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true
-    }
-
-    /**
-     * Wandelt eine [StatusBarNotification] in die schlanke [NotificationInfo] um (inkl. Aktionen).
-     * Liefert `null`, wenn weder Titel noch Text vorhanden sind (z. B. reine Gruppen-Header).
-     */
-    private fun StatusBarNotification.toInfo(): NotificationInfo? {
-        val n = notification ?: return null
-        val extras = n.extras ?: return null
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-        if (title.isBlank() && text.isBlank()) return null
-        val actions = n.actions?.mapNotNull { action ->
-            val actionTitle = action?.title?.toString()
-            val actionIntent = action?.actionIntent
-            if (actionTitle.isNullOrBlank() || actionIntent == null) {
-                null
-            } else {
-                NotificationAction(actionTitle, actionIntent, action.remoteInputs?.toList().orEmpty())
-            }
-        }.orEmpty()
-        return NotificationInfo(
-            pkg = packageName ?: return null,
-            title = title,
-            text = text,
-            postTimeMs = postTime,
-            actions = actions,
-            contentIntent = n.contentIntent
-        )
-    }
-
-    /**
-     * Baut [TimerInfo] aus einer Timer-/Stoppuhr-Benachrichtigung. Die Bezugszeit kommt
-     * **reflection-frei** aus Standard-Feldern via [resolveTimerAnchor]: Countdown-Chronometer,
-     * Count-up-Chronometer/Stoppuhr (`when` = Start) oder Regex über Title/Text/SubText. Ist
-     * nichts ableitbar (z. B. reine Custom-RemoteViews ohne Zeit), bleibt `anchorMs = null`.
-     */
-    private fun StatusBarNotification.toTimerInfo(): TimerInfo? {
-        val n = notification ?: return null
-        val extras = n.extras
-        val now = System.currentTimeMillis()
-        val showChrono = extras?.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER) == true
-        val isCountDown = showChrono && extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN)
-        val stopwatch = isStopwatchChannel(n.channelId)
-        // Kandidaten-Text für den Regex-Fallback (Title/Text/SubText der Uhr-App).
-        val candidateText = listOfNotNull(
-            extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
-            extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
-            extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
-        ).joinToString(" ").ifBlank { null }
-        // Reflection-freie Zeit-Verankerung aus Standard-Feldern.
-        val anchor = resolveTimerAnchor(
-            showChronometer = showChrono,
-            isCountDownChronometer = isCountDown,
-            isStopwatchChannel = stopwatch,
-            isTimerChannel = isClockActivityChannel(n.channelId),
-            whenMs = n.`when`,
-            nowMs = now,
-            horizonMs = MAX_TIMER_HORIZON_MS,
-            candidateText = candidateText
-        )
-        // Label bleibt als reine Aktivitätsart erhalten (für Switcher-Chip/Accessibility),
-        // wird in der Pille aber nicht mehr als Text gezeigt.
-        val label = when {
-            stopwatch -> "Stoppuhr"
-            else -> extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-        }
-        val actions = n.actions?.mapNotNull { action ->
-            val actionTitle = action?.title?.toString()
-            val actionIntent = action?.actionIntent
-            if (actionTitle.isNullOrBlank() || actionIntent == null) {
-                null
-            } else {
-                NotificationAction(actionTitle, actionIntent, action.remoteInputs?.toList().orEmpty())
-            }
-        }.orEmpty()
-        // Pausiert (laut Aktions-Titeln)? Anchor bleibt erhalten – das Einfrieren übernimmt
-        // der Manager, der den zuletzt gezeigten Wert hält.
-        val paused = timerIsRunning(actions.map { it.title }) == false
-        return TimerInfo(
-            pkg = packageName ?: return null,
-            label = label,
-            anchorMs = anchor.anchorMs,
-            countUp = anchor.countUp,
-            paused = paused,
-            contentIntent = n.contentIntent,
-            actions = actions
+                "when=${n?.`when`} now=$now kind=${NotificationParser.kindOf(sbn, now)}"
         )
     }
 
