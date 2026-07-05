@@ -11,7 +11,8 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
 import com.example.androidlauncher.data.AppLockManager
-import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.di.LauncherServiceEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,20 +34,26 @@ class LauncherAccessibilityService : AccessibilityService() {
     private var lockedAppsCache: Set<String> = emptySet()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    // AccessibilityService unterstützt kein @AndroidEntryPoint, daher werden die
+    // App-Singletons über einen Hilt-EntryPoint aus dem SingletonComponent geholt.
+    private val entryPoint: LauncherServiceEntryPoint by lazy {
+        EntryPointAccessors.fromApplication(applicationContext, LauncherServiceEntryPoint::class.java)
+    }
+    private val appLockManager: AppLockManager by lazy { entryPoint.appLockManager() }
+
     // Beim Sperren des Geräts alle Entsperr-Sitzungen verwerfen.
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-                AppLockManager.lockAll()
+                appLockManager.lockAll()
             }
         }
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        val themeManager = ThemeManager(applicationContext)
         serviceScope.launch {
-            themeManager.lockedApps.collectLatest { lockedAppsCache = it }
+            entryPoint.themeManager().lockedApps.collectLatest { lockedAppsCache = it }
         }
         registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
     }
@@ -77,9 +84,9 @@ class LauncherAccessibilityService : AccessibilityService() {
         // sonst löscht ein verspätetes Event den gerade gesetzten Entsperr-Status und der
         // Sperrbildschirm erscheint nach korrekter PIN erneut (Race Condition).
         if (packageName == applicationContext.packageName) return
-        val alreadyUnlocked = AppLockManager.isUnlocked(packageName)
+        val alreadyUnlocked = appLockManager.isUnlocked(packageName)
         // Nur das aktuelle Vordergrund-Paket bleibt entsperrt; verlassene Apps werden neu gesperrt.
-        AppLockManager.retainOnly(packageName)
+        appLockManager.retainOnly(packageName)
         val shouldLock = shouldShowLockScreen(
             packageName = packageName,
             ownPackage = applicationContext.packageName,

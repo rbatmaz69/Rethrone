@@ -213,7 +213,7 @@ fun HomeAppScrubber(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
-                                        scaleX = scale;
+                                        scaleX = scale
                                         scaleY = scale
                                     }
                                     .clip(RoundedCornerShape(16.dp))
@@ -304,28 +304,28 @@ fun HomeAppScrubber(
                                     val stepPx = (0.32f * rootHeightPx / denom).coerceIn(minStepPx, maxStepPx)
                                     var idx = currentLetterIndex
                                     while (accumPx >= stepPx) {
-                                        idx++;
+                                        idx++
                                         accumPx -= stepPx
                                     }
                                     while (accumPx <= -stepPx) {
-                                        idx--;
+                                        idx--
                                         accumPx += stepPx
                                     }
                                     val last = letters.size - 1
                                     val clamped = idx.coerceIn(0, last)
                                     if (clamped != currentLetterIndex) {
-                                        currentLetterIndex = clamped;
+                                        currentLetterIndex = clamped
                                         tick()
                                     }
                                     when {
                                         idx < 0 && currentLetterIndex == 0 ->
                                             if (edgeSignaled != -1) {
-                                                edgeTick();
+                                                edgeTick()
                                                 edgeSignaled = -1
                                             }
                                         idx > last && currentLetterIndex == last ->
                                             if (edgeSignaled != 1) {
-                                                edgeTick();
+                                                edgeTick()
                                                 edgeSignaled = 1
                                             }
                                         else -> edgeSignaled = 0 // weg von der Grenze → wieder scharf
@@ -342,7 +342,7 @@ fun HomeAppScrubber(
                                     val idx = (rel / rowHeightPx).toInt()
                                     val newHover = if (idx in 0 until count) idx else -1
                                     if (newHover != hoveredIndex) {
-                                        hoveredIndex = newHover;
+                                        hoveredIndex = newHover
                                         if (newHover >= 0) tick()
                                     }
                                 } else {

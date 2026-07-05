@@ -201,6 +201,18 @@ class WeatherRepository(private val context: Context) {
         }
 
         /**
+         * Drossel-Entscheidung: Netzwerkabruf nur, wenn kein Cache existiert oder er
+         * älter als [refreshIntervalMs] ist. Reine Logik – ohne Framework unit-testbar;
+         * die Convenience-Variante [shouldRefresh] wertet den prozessweiten Cache aus.
+         */
+        fun shouldRefresh(cached: WeatherData?, cacheAgeMs: Long, refreshIntervalMs: Long): Boolean =
+            cached == null || cacheAgeMs >= refreshIntervalMs
+
+        /** Drossel-Entscheidung gegen den prozessweiten Cache. */
+        fun shouldRefresh(refreshIntervalMs: Long): Boolean =
+            shouldRefresh(cachedData, cacheAgeMs, refreshIntervalMs)
+
+        /**
          * Klassifiziert einen WMO-Wettercode (Open-Meteo) in eine [WeatherCondition].
          * Reine Logik – ohne Framework unit-testbar.
          */

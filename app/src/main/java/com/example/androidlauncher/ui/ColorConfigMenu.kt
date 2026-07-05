@@ -249,7 +249,7 @@ fun ColorConfigMenu(
                 WallpaperEyedropper(
                     customWallpaperUri = customWallpaperUri,
                     onPicked = { c ->
-                        pickerOnChange(c);
+                        pickerOnChange(c)
                         eyedropperActive = false
                     },
                     onCancel = { eyedropperActive = false }
@@ -437,7 +437,7 @@ fun ThemeOptionItem(
             .fillMaxWidth()
             .then(itemModifier)
             .clickable(onClick = {
-                haptics.select();
+                haptics.select()
                 onClick()
             })
     ) {

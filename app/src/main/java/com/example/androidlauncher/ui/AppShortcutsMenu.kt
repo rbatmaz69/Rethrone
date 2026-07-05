@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.example.androidlauncher.getAppShortcuts
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -164,9 +165,12 @@ fun AppShortcutsMenu(
                 val minY = topInset + with(density) { 16.dp.toPx() }
                 val maxY = screenHeightPx - bottomInset - estimatedMenuHeightPx - with(density) { 16.dp.toPx() }
 
-                finalOffsetX = finalOffsetX.coerceIn(with(density) {
-                    16.dp.toPx()
-                }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })
+                finalOffsetX = finalOffsetX.coerceIn(
+                    with(density) {
+                        16.dp.toPx()
+                    },
+                    screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() }
+                )
                 finalOffsetY = finalOffsetY.coerceIn(minY, maxY)
 
                 // Korrektur des Offsets relativ zum Container

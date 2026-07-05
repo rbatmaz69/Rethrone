@@ -141,9 +141,6 @@ import com.example.androidlauncher.ui.WallpaperCropScreen
 import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
-import com.example.androidlauncher.ui.openDefaultLauncherSettings
-import com.example.androidlauncher.ui.sendNotificationReply
-import com.example.androidlauncher.ui.sendPendingIntent
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
@@ -274,6 +271,7 @@ class MainActivity : ComponentActivity() {
                 com.example.androidlauncher.data.CustomColorHolder.set(customBackgroundColor, customMenuColor)
             }
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
+            val notificationDotsEnabled by themeManager.isNotificationDotsEnabled.collectAsState(initial = true)
             val hiddenApps by themeManager.hiddenApps.collectAsState(initial = emptySet())
             val lockedApps by themeManager.lockedApps.collectAsState(initial = emptySet())
             val lockType by themeManager.lockType.collectAsState(initial = "none")
@@ -484,6 +482,7 @@ class MainActivity : ComponentActivity() {
                 iconColor = iconColor,
                 homeTextColor = homeTextColor,
                 showFavoriteLabels = showFavoriteLabels,
+                notificationDotsEnabled = notificationDotsEnabled,
                 designStyle = designStyle,
                 favoritesBorderStyle = favoritesBorderStyle,
                 appFont = currentAppFont,
@@ -1397,6 +1396,10 @@ class MainActivity : ComponentActivity() {
                             onShowLabelsToggled = { show ->
                                 scope.launch { themeManager.setShowFavoriteLabels(show) }
                             },
+                            notificationDotsEnabled = notificationDotsEnabled,
+                            onNotificationDotsToggled = { enabled ->
+                                scope.launch { themeManager.setNotificationDotsEnabled(enabled) }
+                            },
                             favoritesBorderStyle = favoritesBorderStyle,
                             onBorderStyleSelected = { style ->
                                 scope.launch { themeManager.setFavoritesBorderStyle(style) }
@@ -1518,9 +1521,13 @@ class MainActivity : ComponentActivity() {
                             currentIconSize = currentIconSize,
                             onIconSizeSelected = { scope.launch { themeManager.setIconSize(it.size) } },
                             currentFavoriteSpacing = currentFavoriteSpacing,
-                            onFavoriteSpacingSelected = { scope.launch { themeManager.setFavoriteSpacing(
-                                it.spacing
-                            ) } },
+                            onFavoriteSpacingSelected = {
+                                scope.launch {
+                                    themeManager.setFavoriteSpacing(
+                                        it.spacing
+                                    )
+                                }
+                            },
                             currentAppFont = currentAppFont,
                             onOpenFontSelection = { isFontSelectionOpen = true },
                             customWallpaperUri = customWallpaperUri,
@@ -1670,19 +1677,31 @@ class MainActivity : ComponentActivity() {
                             isAnimationsEnabled = isAnimationsEnabled,
                             onAnimationsToggled = { scope.launch { themeManager.setAnimationsEnabled(it) } },
                             isAppOpenAnimationEnabled = isAppOpenAnimationEnabled,
-                            onAppOpenAnimationToggled = { scope.launch { themeManager.setAppOpenAnimationEnabled(
-                                it
-                            ) } },
+                            onAppOpenAnimationToggled = {
+                                scope.launch {
+                                    themeManager.setAppOpenAnimationEnabled(
+                                        it
+                                    )
+                                }
+                            },
                             isAppCloseAnimationEnabled = isAppCloseAnimationEnabled,
-                            onAppCloseAnimationToggled = { scope.launch { themeManager.setAppCloseAnimationEnabled(
-                                it
-                            ) } },
+                            onAppCloseAnimationToggled = {
+                                scope.launch {
+                                    themeManager.setAppCloseAnimationEnabled(
+                                        it
+                                    )
+                                }
+                            },
                             isMenuAnimationEnabled = isMenuAnimationEnabled,
                             onMenuAnimationToggled = { scope.launch { themeManager.setMenuAnimationEnabled(it) } },
                             isFavoritesAnimationEnabled = isFavoritesAnimationEnabled,
-                            onFavoritesAnimationToggled = { scope.launch { themeManager.setFavoritesAnimationEnabled(
-                                it
-                            ) } },
+                            onFavoritesAnimationToggled = {
+                                scope.launch {
+                                    themeManager.setFavoritesAnimationEnabled(
+                                        it
+                                    )
+                                }
+                            },
                             animationSpeed = animationSpeed,
                             onAnimationSpeedChanged = { scope.launch { themeManager.setAnimationSpeed(it) } },
                             onClose = { isAnimationsConfigOpen = false }

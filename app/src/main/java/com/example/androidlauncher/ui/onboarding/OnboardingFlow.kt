@@ -82,11 +82,11 @@ import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.isDefaultLauncher
+import com.example.androidlauncher.isNotificationServiceEnabled
+import com.example.androidlauncher.openAccessibilitySettings
+import com.example.androidlauncher.openNotificationSettings
 import com.example.androidlauncher.ui.AppIconView
-import com.example.androidlauncher.ui.isDefaultLauncher
-import com.example.androidlauncher.ui.isNotificationServiceEnabled
-import com.example.androidlauncher.ui.openAccessibilitySettings
-import com.example.androidlauncher.ui.openNotificationSettings
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled

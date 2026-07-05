@@ -20,6 +20,9 @@ import java.util.Base64 as JavaBase64
  */
 class AppLockManagerTest {
 
+    // Frische Instanz pro Test; in Produktion ist der Manager ein Hilt-Singleton.
+    private lateinit var manager: AppLockManager
+
     @Before
     fun setUp() {
         // android.util.Base64 -> java.util.Base64 (NO_WRAP entspricht dem RFC4648-Encoder/Decoder).
@@ -32,13 +35,11 @@ class AppLockManagerTest {
         every { Base64.decode(capture(strSlot), any()) } answers {
             JavaBase64.getDecoder().decode(strSlot.captured)
         }
-        // Geteilten Singleton-Zustand zwischen Tests zurücksetzen.
-        AppLockManager.lockAll()
+        manager = AppLockManager()
     }
 
     @After
     fun tearDown() {
-        AppLockManager.lockAll()
         unmockkAll()
     }
 
@@ -46,46 +47,56 @@ class AppLockManagerTest {
 
     @Test
     fun markUnlocked_makesPackageUnlocked() {
-        AppLockManager.markUnlocked("com.whatsapp")
-        assertTrue(AppLockManager.isUnlocked("com.whatsapp"))
+        manager.markUnlocked("com.whatsapp")
+        assertTrue(manager.isUnlocked("com.whatsapp"))
     }
 
     @Test
     fun unknownPackage_isNotUnlocked() {
-        assertFalse(AppLockManager.isUnlocked("com.unknown"))
+        assertFalse(manager.isUnlocked("com.unknown"))
     }
 
     @Test
     fun retainOnly_keepsOnlyCurrentForegroundPackage() {
-        AppLockManager.markUnlocked("com.a")
-        AppLockManager.markUnlocked("com.b")
+        manager.markUnlocked("com.a")
+        manager.markUnlocked("com.b")
 
-        AppLockManager.retainOnly("com.a")
+        manager.retainOnly("com.a")
 
-        assertTrue(AppLockManager.isUnlocked("com.a"))
-        assertFalse(AppLockManager.isUnlocked("com.b"))
+        assertTrue(manager.isUnlocked("com.a"))
+        assertFalse(manager.isUnlocked("com.b"))
     }
 
     @Test
     fun retainOnly_null_locksEverything() {
-        AppLockManager.markUnlocked("com.a")
-        AppLockManager.markUnlocked("com.b")
+        manager.markUnlocked("com.a")
+        manager.markUnlocked("com.b")
 
-        AppLockManager.retainOnly(null)
+        manager.retainOnly(null)
 
-        assertFalse(AppLockManager.isUnlocked("com.a"))
-        assertFalse(AppLockManager.isUnlocked("com.b"))
+        assertFalse(manager.isUnlocked("com.a"))
+        assertFalse(manager.isUnlocked("com.b"))
     }
 
     @Test
     fun lockAll_clearsAllUnlockedPackages() {
-        AppLockManager.markUnlocked("com.a")
-        AppLockManager.markUnlocked("com.b")
+        manager.markUnlocked("com.a")
+        manager.markUnlocked("com.b")
 
-        AppLockManager.lockAll()
+        manager.lockAll()
 
-        assertFalse(AppLockManager.isUnlocked("com.a"))
-        assertFalse(AppLockManager.isUnlocked("com.b"))
+        assertFalse(manager.isUnlocked("com.a"))
+        assertFalse(manager.isUnlocked("com.b"))
+    }
+
+    @Test
+    fun separateInstances_doNotShareSessionState() {
+        // Absicherung der Umstellung von `object` auf Hilt-Singleton: Sitzungen
+        // leben in der Instanz, nicht mehr in globalem statischem Zustand.
+        val other = AppLockManager()
+        manager.markUnlocked("com.a")
+
+        assertFalse(other.isUnlocked("com.a"))
     }
 
     // --- Hashing / verify ---

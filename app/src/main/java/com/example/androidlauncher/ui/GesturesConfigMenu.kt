@@ -125,7 +125,7 @@ fun GesturesConfigMenu(
                             apps = apps,
                             selectedPackage = doubleTapAppPackage,
                             onAppSelected = {
-                                onDoubleTapAppPackageChange(it);
+                                onDoubleTapAppPackageChange(it)
                                 showPicker = false
                             },
                             onDismiss = { showPicker = false },
@@ -187,7 +187,7 @@ fun GesturesConfigMenu(
                                 apps = apps,
                                 selectedPackage = shakeOpenAppPackage,
                                 onAppSelected = {
-                                    onShakeOpenAppPackageChange(it);
+                                    onShakeOpenAppPackageChange(it)
                                     showPicker = false
                                 },
                                 onDismiss = { showPicker = false },

@@ -2,13 +2,20 @@ package com.example.androidlauncher.data
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import io.mockk.Runs
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
@@ -90,5 +97,105 @@ class AppRepositoryTest {
 
         dummyFilesDir.deleteRecursively()
         dummyCacheDir.deleteRecursively()
+    }
+
+    // --- invalidateCacheOnAppUpdate: Build-Token als Marker-Datei im Cache-Verzeichnis ---
+
+    /** Baut Context+PackageManager-Mocks für die Token-Tests; Prefs liefern [legacyToken]. */
+    private fun mockContextForInvalidate(
+        filesDir: File,
+        versionCode: Int,
+        lastUpdateTime: Long,
+        legacyToken: String? = null,
+    ): Pair<Context, SharedPreferences.Editor> {
+        val context = mockk<Context>()
+        val packageManager = mockk<PackageManager>()
+        val pkgInfo = PackageInfo().apply {
+            @Suppress("DEPRECATION")
+            this.versionCode = versionCode
+            this.lastUpdateTime = lastUpdateTime
+        }
+        every { context.filesDir } returns filesDir
+        every { context.packageName } returns "com.rethrone.launcher"
+        every { context.packageManager } returns packageManager
+        every { packageManager.getPackageInfo("com.rethrone.launcher", 0) } returns pkgInfo
+
+        val prefs = mockk<SharedPreferences>()
+        val editor = mockk<SharedPreferences.Editor>()
+        every { context.getSharedPreferences("icon_cache_meta", Context.MODE_PRIVATE) } returns prefs
+        every { prefs.getString("app_build_token", null) } returns legacyToken
+        every { prefs.edit() } returns editor
+        every { editor.clear() } returns editor
+        every { editor.apply() } just Runs
+        return context to editor
+    }
+
+    @Test
+    fun invalidateCache_firstRun_clearsCacheAndWritesTokenFile() = runTest {
+        val filesDir = createTempDir()
+        val iconDir = File(filesDir, "app_icons").apply { mkdirs() }
+        val staleIcon = File(iconDir, "com.app.a.png").apply { createNewFile() }
+        val (context, _) = mockContextForInvalidate(filesDir, versionCode = 2, lastUpdateTime = 1000L)
+
+        AppRepository(context).invalidateCacheOnAppUpdate()
+
+        assertFalse(staleIcon.exists())
+        assertEquals("2:1000", File(iconDir, ".build_token").readText())
+        filesDir.deleteRecursively()
+    }
+
+    @Test
+    fun invalidateCache_unchangedToken_keepsCache() = runTest {
+        val filesDir = createTempDir()
+        val iconDir = File(filesDir, "app_icons").apply { mkdirs() }
+        File(iconDir, ".build_token").writeText("2:1000")
+        val cachedIcon = File(iconDir, "com.app.a.png").apply { createNewFile() }
+        val (context, _) = mockContextForInvalidate(filesDir, versionCode = 2, lastUpdateTime = 1000L)
+
+        AppRepository(context).invalidateCacheOnAppUpdate()
+
+        assertTrue(cachedIcon.exists())
+        filesDir.deleteRecursively()
+    }
+
+    @Test
+    fun invalidateCache_changedToken_clearsCacheAndUpdatesTokenFile() = runTest {
+        val filesDir = createTempDir()
+        val iconDir = File(filesDir, "app_icons").apply { mkdirs() }
+        File(iconDir, ".build_token").writeText("1:500")
+        val staleIcon = File(iconDir, "com.app.a.png").apply { createNewFile() }
+        val (context, _) = mockContextForInvalidate(filesDir, versionCode = 2, lastUpdateTime = 1000L)
+
+        AppRepository(context).invalidateCacheOnAppUpdate()
+
+        assertFalse(staleIcon.exists())
+        assertEquals("2:1000", File(iconDir, ".build_token").readText())
+        filesDir.deleteRecursively()
+    }
+
+    @Test
+    fun invalidateCache_migratesMatchingLegacyToken_withoutClearingCache() = runTest {
+        val filesDir = createTempDir()
+        val iconDir = File(filesDir, "app_icons").apply { mkdirs() }
+        val cachedIcon = File(iconDir, "com.app.a.png").apply { createNewFile() }
+        val (context, editor) = mockContextForInvalidate(
+            filesDir,
+            versionCode = 2,
+            lastUpdateTime = 1000L,
+            legacyToken = "2:1000",
+        )
+
+        AppRepository(context).invalidateCacheOnAppUpdate()
+
+        // Cache bleibt erhalten, Token wandert in die Marker-Datei, Legacy-Prefs werden geleert.
+        assertTrue(cachedIcon.exists())
+        assertEquals("2:1000", File(iconDir, ".build_token").readText())
+        verify { editor.clear() }
+        filesDir.deleteRecursively()
+    }
+
+    private fun createTempDir(): File = File.createTempFile("dummy", "filesdir").apply {
+        delete()
+        mkdir()
     }
 }

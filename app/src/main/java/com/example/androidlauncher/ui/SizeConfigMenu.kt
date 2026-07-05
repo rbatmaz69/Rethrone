@@ -141,7 +141,12 @@ fun SizeConfigMenu(
 
             Spacer(modifier = Modifier.weight(0.5f).heightIn(min = 8.dp, max = 24.dp))
 
-            Text(text = stringResource(R.string.font_label), color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+            Text(
+                text = stringResource(R.string.font_label),
+                color = secondaryTextColor,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             val fontButtonModifier = Modifier.designSurface(
                 designStyle,
                 RoundedCornerShape(16.dp),
@@ -206,7 +211,7 @@ fun SizeConfigMenu(
                 onValueChange = {
                     val next = FontSize.of(it)
                     if (next != lastFontSize) {
-                        haptics.select();
+                        haptics.select()
                         lastFontSize = next
                     }
                     onFontSizeSelected(next)
@@ -232,7 +237,7 @@ fun SizeConfigMenu(
                 onValueChange = {
                     val next = FontWeightLevel.of(it.roundToInt())
                     if (next != lastFontWeight) {
-                        haptics.select();
+                        haptics.select()
                         lastFontWeight = next
                     }
                     onFontWeightSelected(next)
@@ -254,7 +259,7 @@ fun SizeConfigMenu(
                 onValueChange = {
                     val next = IconSize.of(it.dp)
                     if (next != lastIconSize) {
-                        haptics.select();
+                        haptics.select()
                         lastIconSize = next
                     }
                     onIconSizeSelected(next)
@@ -276,7 +281,7 @@ fun SizeConfigMenu(
                 onValueChange = {
                     val next = FavoriteSpacing.of(it.dp)
                     if (next != lastSpacing) {
-                        haptics.select();
+                        haptics.select()
                         lastSpacing = next
                     }
                     onFavoriteSpacingSelected(next)

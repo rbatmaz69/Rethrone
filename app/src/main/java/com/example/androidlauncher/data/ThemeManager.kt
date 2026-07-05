@@ -69,6 +69,7 @@ class ThemeManager(private val context: Context) {
         // Ob zusätzlich per Biometrie/Geräte-Credential entsperrt werden darf.
         private val LOCK_BIOMETRIC_KEY = booleanPreferencesKey("lock_biometric_enabled")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
+        private val NOTIFICATION_DOTS_KEY = booleanPreferencesKey("notification_dots_enabled")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
         private val DESIGN_STYLE_KEY = stringPreferencesKey("design_style")
         private val FAVORITES_BORDER_KEY = stringPreferencesKey("favorites_border_style")
@@ -167,29 +168,29 @@ class ThemeManager(private val context: Context) {
 
     // ── Sanfte Migration alter Enum-Namen (String) auf die neuen numerischen Werte ──
     private fun legacyFontSizeScale(name: String?): Float? = when (name) {
-        "SMALL" -> 0.85f;
-        "STANDARD" -> 1.0f;
-        "LARGE" -> 1.2f;
+        "SMALL" -> 0.85f
+        "STANDARD" -> 1.0f
+        "LARGE" -> 1.2f
         else -> null
     }
     private fun legacyFontWeightValue(name: String?): Int? = when (name) {
-        "LIGHT" -> 300;
-        "NORMAL" -> 400;
-        "BOLD" -> 700;
+        "LIGHT" -> 300
+        "NORMAL" -> 400
+        "BOLD" -> 700
         else -> null
     }
     private fun legacyIconSizeDp(name: String?): Float? = when (name) {
-        "SMALL" -> 40f;
-        "STANDARD" -> 48f;
-        "LARGE" -> 56f;
+        "SMALL" -> 40f
+        "STANDARD" -> 48f
+        "LARGE" -> 56f
         else -> null
     }
     private fun legacyFavoriteSpacingDp(name: String?): Float? = when (name) {
-        "ENG" -> 4f;
-        "KOMPAKT" -> 8f;
-        "STANDARD" -> 12f;
-        "LOCKER" -> 20f;
-        "WEIT" -> 28f;
+        "ENG" -> 4f
+        "KOMPAKT" -> 8f
+        "STANDARD" -> 12f
+        "LOCKER" -> 20f
+        "WEIT" -> 28f
         else -> null
     }
 
@@ -274,6 +275,10 @@ class ThemeManager(private val context: Context) {
 
     val showFavoriteLabels: Flow<Boolean> = context.dataStore.data
         .map { it[SHOW_FAVORITE_LABELS_KEY] ?: false }
+
+    // Default true: Dots waren bisher fest aktiv, Bestandsnutzer behalten das Verhalten.
+    val isNotificationDotsEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[NOTIFICATION_DOTS_KEY] ?: true }
 
     val isLiquidGlassEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[LIQUID_GLASS_KEY] ?: true }
@@ -596,6 +601,9 @@ class ThemeManager(private val context: Context) {
         enabled: Boolean
     ) { context.dataStore.edit { it[LOCK_BIOMETRIC_KEY] = enabled } }
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
+    suspend fun setNotificationDotsEnabled(
+        enabled: Boolean
+    ) { context.dataStore.edit { it[NOTIFICATION_DOTS_KEY] = enabled } }
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
     suspend fun setDesignStyle(style: DesignStyle) {
         context.dataStore.edit {

@@ -801,4 +801,39 @@ class LauncherLogicTest {
     fun `highlightRange matches at the start`() {
         assertEquals(0 to 3, LauncherLogic.highlightRange("Settings", "set"))
     }
+
+    // --- shouldShowNotificationDot ---
+
+    @Test
+    fun `notification dot shows for package with active notification`() {
+        assertTrue(
+            LauncherLogic.shouldShowNotificationDot(
+                packageName = "com.whatsapp",
+                activeNotificationPackages = setOf("com.whatsapp", "com.spotify.music"),
+                dotsEnabled = true,
+            )
+        )
+    }
+
+    @Test
+    fun `notification dot hidden without active notification`() {
+        assertFalse(
+            LauncherLogic.shouldShowNotificationDot(
+                packageName = "com.whatsapp",
+                activeNotificationPackages = setOf("com.spotify.music"),
+                dotsEnabled = true,
+            )
+        )
+    }
+
+    @Test
+    fun `notification dot hidden when setting is disabled`() {
+        assertFalse(
+            LauncherLogic.shouldShowNotificationDot(
+                packageName = "com.whatsapp",
+                activeNotificationPackages = setOf("com.whatsapp"),
+                dotsEnabled = false,
+            )
+        )
+    }
 }

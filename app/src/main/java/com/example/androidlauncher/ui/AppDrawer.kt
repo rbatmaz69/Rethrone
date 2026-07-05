@@ -263,7 +263,7 @@ fun AppDrawer(
                     IconButton(
                         onClick = {
                             if (searchExpanded) {
-                                searchExpanded = false;
+                                searchExpanded = false
                                 appDrawerVm.setSearchQuery("")
                             } else {
                                 searchExpanded = true
@@ -619,8 +619,8 @@ fun AppDrawer(
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                         keyboardActions = KeyboardActions(
                                             onDone = {
-                                                isFolderNameFocused = false;
-                                                focusManager.clearFocus();
+                                                isFolderNameFocused = false
+                                                focusManager.clearFocus()
                                                 keyboardController?.hide()
                                             }
                                         ),
@@ -729,14 +729,20 @@ fun AppDrawer(
                                         newList.add(targetIdx, pkg)
                                         onUpdateFolders(
                                             currentFoldersState.map {
-                                                if (it.id == currentFolderState.id) it.copy(
-                                                    appPackageNames = newList
-                                                ) else it
+                                                if (it.id == currentFolderState.id) {
+                                                    it.copy(
+                                                        appPackageNames = newList
+                                                    )
+                                                } else {
+                                                    it
+                                                }
                                             }
                                         )
-                                        if (hapticEnabled) haptic.performHapticFeedback(
-                                            HapticFeedbackType.TextHandleMove
-                                        )
+                                        if (hapticEnabled) {
+                                            haptic.performHapticFeedback(
+                                                HapticFeedbackType.TextHandleMove
+                                            )
+                                        }
                                     }
                                 }
 
@@ -753,10 +759,12 @@ fun AppDrawer(
                                             if (pages <= 1) return Offset(x = available.x, y = 0f)
                                             val isAtStart = pagerState.currentPage == 0 && pagerState.currentPageOffsetFraction <= 0.001f
                                             val isAtEnd = pagerState.currentPage == pages - 1 && pagerState.currentPageOffsetFraction >= -0.001f
-                                            if ((isAtStart && available.x > 0f) || (isAtEnd && available.x < 0f)) return Offset(
-                                                x = available.x,
-                                                y = 0f
-                                            )
+                                            if ((isAtStart && available.x > 0f) || (isAtEnd && available.x < 0f)) {
+                                                return Offset(
+                                                    x = available.x,
+                                                    y = 0f
+                                                )
+                                            }
                                             return Offset.Zero
                                         }
                                         override suspend fun onPreFling(available: Velocity): Velocity {
@@ -788,9 +796,11 @@ fun AppDrawer(
                                                             offset,
                                                             Offset(offset.x % cellW, offset.y % cellH)
                                                         )
-                                                        if (hapticEnabled) haptic.performHapticFeedback(
-                                                            HapticFeedbackType.LongPress
-                                                        )
+                                                        if (hapticEnabled) {
+                                                            haptic.performHapticFeedback(
+                                                                HapticFeedbackType.LongPress
+                                                            )
+                                                        }
                                                     }
                                                 },
                                                 onDragEnd = { appDrawerVm.onDragEnd() },
@@ -823,9 +833,11 @@ fun AppDrawer(
                                             ) {
                                                 {
                                                         appInfo, bounds ->
-                                                    if (hapticEnabled) haptic.performHapticFeedback(
-                                                        HapticFeedbackType.LongPress
-                                                    )
+                                                    if (hapticEnabled) {
+                                                        haptic.performHapticFeedback(
+                                                            HapticFeedbackType.LongPress
+                                                        )
+                                                    }
                                                     menuApp = appInfo
                                                     menuAppBounds = bounds
                                                 }
@@ -874,7 +886,9 @@ fun AppDrawer(
                                                         ).graphicsLayer {
                                                             rotationZ = if (isEditMode && !isDragging) {
                                                                 if (globalIndex % 2 == 0) wiggleAngle else -wiggleAngle
-                                                            } else 0f;
+                                                            } else {
+                                                                0f
+                                                            }
                                                             alpha = if (isDragging) 0f else 1f
                                                         }.padding(
                                                             top = folderItemTopPadding,
@@ -914,9 +928,11 @@ fun AppDrawer(
                                                                         interactionSource = remember { MutableInteractionSource() },
                                                                         indication = null
                                                                     ) {
-                                                                        if (hapticEnabled) view.performHapticFeedback(
-                                                                            HapticFeedbackConstants.LONG_PRESS
-                                                                        )
+                                                                        if (hapticEnabled) {
+                                                                            view.performHapticFeedback(
+                                                                                HapticFeedbackConstants.LONG_PRESS
+                                                                            )
+                                                                        }
                                                                         val updatedFolders = LauncherLogic.removeAppFromFolder(
                                                                             folders,
                                                                             currentActiveFolder.id,
@@ -932,9 +948,13 @@ fun AppDrawer(
                                                                         width = minusWidth,
                                                                         height = minusHeight
                                                                     ).background(
-                                                                        if (isDarkTextEnabled) Color.White else Color(
-                                                                            0xFF0F172A
-                                                                        ),
+                                                                        if (isDarkTextEnabled) {
+                                                                            Color.White
+                                                                        } else {
+                                                                            Color(
+                                                                                0xFF0F172A
+                                                                            )
+                                                                        },
                                                                         RoundedCornerShape(0.75.dp)
                                                                     )
                                                                 )
@@ -953,10 +973,10 @@ fun AppDrawer(
                                                 modifier = Modifier.size(
                                                     80.dp
                                                 ).graphicsLayer {
-                                                    this.translationX = touchPosition.x - initialTouchOffsetInItem.x;
-                                                    this.translationY = touchPosition.y - initialTouchOffsetInItem.y;
-                                                    this.scaleX = 1.25f;
-                                                    this.scaleY = 1.25f;
+                                                    this.translationX = touchPosition.x - initialTouchOffsetInItem.x
+                                                    this.translationY = touchPosition.y - initialTouchOffsetInItem.y
+                                                    this.scaleX = 1.25f
+                                                    this.scaleY = 1.25f
                                                     this.alpha = 0.95f
                                                 }.zIndex(
                                                     1000f
@@ -986,9 +1006,13 @@ fun AppDrawer(
                                     horizontalArrangement = Arrangement.Center
                                 ) {
                                     repeat(pages) { iteration ->
-                                        val color = if (pagerState.currentPage == iteration) mainTextColor else mainTextColor.copy(
-                                            alpha = 0.3f
-                                        )
+                                        val color = if (pagerState.currentPage == iteration) {
+                                            mainTextColor
+                                        } else {
+                                            mainTextColor.copy(
+                                                alpha = 0.3f
+                                            )
+                                        }
                                         Box(
                                             modifier = Modifier.padding(
                                                 horizontal = 4.dp
@@ -1023,7 +1047,7 @@ fun AppDrawer(
                             Intent(
                                 Intent.ACTION_DELETE
                             ).apply {
-                                data = Uri.fromParts("package", currentMenuApp.packageName, null);
+                                data = Uri.fromParts("package", currentMenuApp.packageName, null)
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             }
                         )
@@ -1037,10 +1061,12 @@ fun AppDrawer(
                 },
                 onMoveToFolder = if (folders.isNotEmpty()) {
                     {
-                        folderSelectionApp = currentMenuApp;
+                        folderSelectionApp = currentMenuApp
                         showFolderSelection = true
                     }
-                } else null,
+                } else {
+                    null
+                },
                 onRemoveFromFolder = folders.find {
                     it.appPackageNames.contains(
                         currentMenuApp.packageName
@@ -1093,9 +1119,13 @@ fun AppDrawer(
                                     RoundedCornerShape(16.dp)
                                 ).clickable {
                                     onUpdateFolders(
-                                        LauncherLogic.addAppToFolder(folders, folder.id, folderSelectionApp!!.packageName)
-                                    );
-                                    showFolderSelection = false;
+                                        LauncherLogic.addAppToFolder(
+                                            folders,
+                                            folder.id,
+                                            folderSelectionApp!!.packageName
+                                        )
+                                    )
+                                    showFolderSelection = false
                                     menuApp = null
                                 }.padding(
                                     vertical = 14.dp,
@@ -1238,7 +1268,7 @@ fun AppItem(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.onGloballyPositioned { coordinates -> itemBounds = coordinates.boundsInRoot() }.graphicsLayer {
-                scaleX = bounceScale;
+                scaleX = bounceScale
                 scaleY = bounceScale
             }.bounceClick(
                 intSrc,
@@ -1252,7 +1282,7 @@ fun AppItem(
             }, onLongClick = { (iconBounds ?: itemBounds)?.let { onLongPress(app, it) } })
         ) {
             Box(modifier = Modifier.onGloballyPositioned { coordinates -> iconBounds = coordinates.boundsInRoot() }) {
-                AppIconView(app, customIcons = customIcons)
+                AppIconView(app, showBadge = true, customIcons = customIcons)
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(

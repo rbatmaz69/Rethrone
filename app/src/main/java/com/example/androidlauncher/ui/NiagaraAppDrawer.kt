@@ -184,7 +184,7 @@ fun NiagaraAppDrawer(
                     IconButton(
                         onClick = {
                             if (searchExpanded) {
-                                searchExpanded = false;
+                                searchExpanded = false
                                 appDrawerVm.setSearchQuery("")
                             } else {
                                 searchExpanded = true
@@ -480,12 +480,12 @@ private fun NiagaraAppRow(
         Box(
             modifier = Modifier
                 .graphicsLayer {
-                    scaleX = bounceScale;
+                    scaleX = bounceScale
                     scaleY = bounceScale
                 }
                 .onGloballyPositioned { iconBounds = it.boundsInRoot() }
         ) {
-            AppIconView(app, customIcons = customIcons)
+            AppIconView(app, showBadge = true, customIcons = customIcons)
         }
         Spacer(modifier = Modifier.width(16.dp))
         Text(

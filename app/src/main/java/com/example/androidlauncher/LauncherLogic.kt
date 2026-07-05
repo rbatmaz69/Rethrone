@@ -488,4 +488,15 @@ object LauncherLogic {
         if (start < 0) return null
         return start to (start + trimmed.length).coerceAtMost(text.length)
     }
+
+    /**
+     * Entscheidet, ob ein App-Icon einen Benachrichtigungs-Dot zeigen soll:
+     * nur wenn die Anzeige aktiviert ist und für das Paket eine aktive
+     * Benachrichtigung vorliegt. Reine Logik – ohne Framework unit-testbar.
+     */
+    fun shouldShowNotificationDot(
+        packageName: String,
+        activeNotificationPackages: Set<String>,
+        dotsEnabled: Boolean,
+    ): Boolean = dotsEnabled && packageName in activeNotificationPackages
 }

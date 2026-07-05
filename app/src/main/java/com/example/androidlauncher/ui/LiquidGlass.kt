@@ -213,13 +213,21 @@ object LiquidGlass {
                 checkedTrackColor = Color.White.copy(alpha = 0.2f),
                 uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                 checkedThumbColor = if (isDarkText) Color.Black else Color.White,
-                uncheckedThumbColor = if (isDarkText) Color.Black.copy(
-                    alpha = 0.9f
-                ) else Color.White.copy(alpha = 0.9f),
+                uncheckedThumbColor = if (isDarkText) {
+                    Color.Black.copy(
+                        alpha = 0.9f
+                    )
+                } else {
+                    Color.White.copy(alpha = 0.9f)
+                },
                 checkedBorderColor = if (isDarkText) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f),
-                uncheckedBorderColor = if (isDarkText) Color.Black.copy(
-                    alpha = 0.1f
-                ) else Color.White.copy(alpha = 0.1f)
+                uncheckedBorderColor = if (isDarkText) {
+                    Color.Black.copy(
+                        alpha = 0.1f
+                    )
+                } else {
+                    Color.White.copy(alpha = 0.1f)
+                }
             )
         }
     }

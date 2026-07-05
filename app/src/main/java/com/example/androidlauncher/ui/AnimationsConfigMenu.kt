@@ -139,7 +139,7 @@ fun AnimationsConfigMenu(
                         onValueChange = {
                             val step = (it * 10).roundToInt()
                             if (sliderEnabled && step != lastSpeedStep) {
-                                haptics.select();
+                                haptics.select()
                                 lastSpeedStep = step
                             }
                             onAnimationSpeedChanged(it)

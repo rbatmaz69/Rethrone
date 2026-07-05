@@ -1,7 +1,9 @@
 package com.example.androidlauncher.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WeatherRepositoryTest {
@@ -50,5 +52,25 @@ class WeatherRepositoryTest {
     @Test
     fun `parseCurrentWeather returns null for invalid json`() {
         assertNull(WeatherRepository.parseCurrentWeather("not json at all"))
+    }
+
+    // ── shouldRefresh (Netzwerk-Drossel) ─────────────────────────────
+
+    @Test
+    fun `shouldRefresh is true without cached data`() {
+        assertTrue(WeatherRepository.shouldRefresh(cached = null, cacheAgeMs = 0L, refreshIntervalMs = 30_000L))
+    }
+
+    @Test
+    fun `shouldRefresh is false while cache is fresh`() {
+        val cached = WeatherData(temperatureC = 20, weatherCode = 0)
+        assertFalse(WeatherRepository.shouldRefresh(cached, cacheAgeMs = 29_999L, refreshIntervalMs = 30_000L))
+    }
+
+    @Test
+    fun `shouldRefresh is true once cache age reaches the interval`() {
+        val cached = WeatherData(temperatureC = 20, weatherCode = 0)
+        assertTrue(WeatherRepository.shouldRefresh(cached, cacheAgeMs = 30_000L, refreshIntervalMs = 30_000L))
+        assertTrue(WeatherRepository.shouldRefresh(cached, cacheAgeMs = Long.MAX_VALUE, refreshIntervalMs = 30_000L))
     }
 }

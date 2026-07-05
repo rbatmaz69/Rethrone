@@ -63,6 +63,10 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.IslandAnimationStyle
+import com.example.androidlauncher.isDefaultLauncher
+import com.example.androidlauncher.isNotificationServiceEnabled
+import com.example.androidlauncher.openAccessibilitySettings
+import com.example.androidlauncher.openNotificationSettings
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -678,7 +682,7 @@ fun EditToggleItem(
 ) {
     val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     val toggle: (Boolean) -> Unit = {
-        haptics.toggle(it);
+        haptics.toggle(it)
         onCheckedChange(it)
     }
     // Ausgegraut, wenn deaktiviert (z. B. wenn der Master-Schalter aus ist).

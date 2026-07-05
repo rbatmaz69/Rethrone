@@ -372,7 +372,7 @@ fun DynamicIsland(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .graphicsLayer {
-                            scaleX = pressScale;
+                            scaleX = pressScale
                             scaleY = pressScale
                         }
                         .onGloballyPositioned {

@@ -42,6 +42,9 @@ val LocalIconColor = staticCompositionLocalOf { Color.White }
 /** Frei wählbare Schriftfarbe – nur Startbildschirm. */
 val LocalHomeTextColor = staticCompositionLocalOf { Color.White }
 val LocalShowFavoriteLabels = staticCompositionLocalOf { false }
+
+/** Ob Benachrichtigungs-Dots auf App-Icons (Favoriten/Drawer) angezeigt werden. */
+val LocalNotificationDotsEnabled = staticCompositionLocalOf { true }
 val LocalDesignStyle = staticCompositionLocalOf { DesignStyle.GLASS }
 val LocalFavoritesBorderStyle = staticCompositionLocalOf { FavoritesBorderStyle.NONE }
 val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM_DEFAULT }
@@ -97,6 +100,7 @@ fun AndroidLauncherTheme(
     iconColor: Color = Color.White,
     homeTextColor: Color = Color.White,
     showFavoriteLabels: Boolean = false,
+    notificationDotsEnabled: Boolean = true,
     designStyle: DesignStyle = DesignStyle.GLASS,
     favoritesBorderStyle: FavoritesBorderStyle = FavoritesBorderStyle.NONE,
     appFont: AppFont = AppFont.SYSTEM_DEFAULT,
@@ -173,6 +177,7 @@ fun AndroidLauncherTheme(
         LocalIconColor provides iconColor,
         LocalHomeTextColor provides homeTextColor,
         LocalShowFavoriteLabels provides showFavoriteLabels,
+        LocalNotificationDotsEnabled provides notificationDotsEnabled,
         LocalDesignStyle provides designStyle,
         LocalFavoritesBorderStyle provides favoritesBorderStyle,
         LocalAppFont provides appFont,
