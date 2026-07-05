@@ -79,7 +79,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -140,6 +139,7 @@ import com.example.androidlauncher.ui.WallpaperConfigMenu
 import com.example.androidlauncher.ui.WallpaperCropScreen
 import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.ui.home.ActiveOverlay
+import com.example.androidlauncher.ui.home.EditConfigActions
 import com.example.androidlauncher.ui.home.HomeViewModel
 import com.example.androidlauncher.ui.home.rememberLaunchTransitionState
 import com.example.androidlauncher.ui.launchAppNoTransition
@@ -1504,117 +1504,21 @@ class MainActivity : ComponentActivity() {
                         customWallpaperUri = customWallpaperUri,
                         onClose = { homeViewModel.closeOverlay() }
                     ) {
-                        EditConfigMenu(
-                            onOpenHomeLayoutEdit = {
-                                homeViewModel.closeOverlay()
-                                homeViewModel.setHomeEditMode(true)
-                            },
-                            onResetHomeLayout = {
-                                scope.launch {
-                                    themeManager.setHomeLayout(HomeLayout())
+                        // A8-Split: Navigation + Einstellungen holt sich das Menü selbst
+                        // (HomeViewModel/EditConfigViewModel); hier bleiben nur die Effekte,
+                        // die die Activity braucht (ActivityResult-Launcher).
+                        val editConfigActions = remember {
+                            object : EditConfigActions {
+                                override fun openDefaultLauncherPrompt() = requestDefaultLauncher()
+
+                                override fun pickWallpaper() {
+                                    wallpaperPickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
                                 }
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.home_layout_reset),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onOpenIconConfig = { homeViewModel.openOverlay(ActiveOverlay.IconConfig) },
-                            onOpenUninstallApps = { homeViewModel.openOverlay(ActiveOverlay.UninstallApps) },
-                            onOpenHiddenApps = { homeViewModel.openOverlay(ActiveOverlay.HiddenApps) },
-                            onOpenAppLock = { homeViewModel.openOverlay(ActiveOverlay.AppLock) },
-                            onOpenDefaultLauncher = { requestDefaultLauncher() },
-                            onChangeWallpaper = {
-                                homeViewModel.closeOverlay()
-                                wallpaperPickerLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
-                            },
-                            onResetWallpaper = {
-                                scope.launch {
-                                    themeManager.setCustomWallpaperUri(null)
-                                    themeManager.setWallpaperBlur(0f)
-                                    themeManager.setWallpaperDim(0.1f)
-                                    themeManager.setWallpaperZoom(1.0f)
-                                }
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.wallpaper_removed),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onOpenWallpaperAdjust = { homeViewModel.openOverlay(ActiveOverlay.WallpaperConfig) },
-                            isCustomHomeLayoutSet =
-                            abs(homeLayout.clock.x) > 0.5f || abs(homeLayout.clock.y) > 0.5f ||
-                                abs(homeLayout.date.x) > 0.5f || abs(homeLayout.date.y) > 0.5f ||
-                                abs(homeLayout.weather.x) > 0.5f || abs(homeLayout.weather.y) > 0.5f ||
-                                abs(homeLayout.favorites.x) > 0.5f || abs(homeLayout.favorites.y) > 0.5f,
-                            isCustomWallpaperSet = customWallpaperUri != null,
-                            onOpenGesturesConfig = { homeViewModel.openOverlay(ActiveOverlay.GesturesConfig) },
-                            isSmartSuggestionsEnabled = isSmartSuggestionsEnabled,
-                            onSmartSuggestionsToggled = { enabled ->
-                                scope.launch { themeManager.setSmartSuggestionsEnabled(enabled) }
-                            },
-                            isAnimationsEnabled = isAnimationsEnabled,
-                            onAnimationsToggled = { enabled ->
-                                scope.launch { themeManager.setAnimationsEnabled(enabled) }
-                            },
-                            onOpenAnimationsConfig = { homeViewModel.openOverlay(ActiveOverlay.AnimationsConfig) },
-                            isWeatherWidgetEnabled = isWeatherWidgetEnabled,
-                            onWeatherWidgetToggled = { enabled ->
-                                scope.launch { themeManager.setWeatherWidgetEnabled(enabled) }
-                            },
-                            isClockWidgetEnabled = isClockWidgetEnabled,
-                            onClockWidgetToggled = { enabled ->
-                                scope.launch { themeManager.setClockWidgetEnabled(enabled) }
-                            },
-                            isCalendarWidgetEnabled = isCalendarWidgetEnabled,
-                            onCalendarWidgetToggled = { enabled ->
-                                scope.launch { themeManager.setCalendarWidgetEnabled(enabled) }
-                            },
-                            isDynamicIslandEnabled = isDynamicIslandEnabled,
-                            onDynamicIslandToggled = { enabled ->
-                                scope.launch { themeManager.setDynamicIslandEnabled(enabled) }
-                            },
-                            islandAnimationStyle = islandAnimationStyle,
-                            onIslandAnimationStyleChange = { style ->
-                                scope.launch { themeManager.setIslandAnimationStyle(style) }
-                            },
-                            isEdgeLightingEnabled = isEdgeLightingEnabled,
-                            onOpenEdgeLightingConfig = { homeViewModel.openOverlay(ActiveOverlay.EdgeLightingConfig) },
-                            appAccessMode = appAccessMode,
-                            onAppAccessModeChange = { mode ->
-                                scope.launch { themeManager.setAppAccessMode(mode) }
-                            },
-                            onClearSearchHistory = {
-                                scope.launch { searchSuggestionsManager.clearWebHistory() }
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.search_history_cleared),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            isHapticFeedbackEnabled = isHapticFeedbackEnabled,
-                            onHapticFeedbackToggled = { enabled ->
-                                scope.launch {
-                                    if (Settings.System.canWrite(context)) {
-                                        themeManager.setHapticFeedbackEnabled(enabled)
-                                    } else {
-                                        val writeSettingsIntent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
-                                            data = ("package:" + context.packageName).toUri()
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                        context.startActivity(writeSettingsIntent)
-                                        Toast.makeText(
-                                            context,
-                                            context.getString(R.string.write_settings_permission_required),
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }
-                            },
-                            onClose = { homeViewModel.closeOverlay() }
-                        )
+                            }
+                        }
+                        EditConfigMenu(actions = editConfigActions)
                     }
 
                     // Untermenü der Animationen – nach dem Edit-Menü komponiert, damit es

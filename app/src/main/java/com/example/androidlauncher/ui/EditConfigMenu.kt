@@ -1,5 +1,8 @@
 package com.example.androidlauncher.ui
 
+import android.content.Intent
+import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +19,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.composables.icons.lucide.Ban
@@ -68,6 +73,10 @@ import com.example.androidlauncher.isNotificationServiceEnabled
 import com.example.androidlauncher.openAccessibilitySettings
 import com.example.androidlauncher.openNotificationSettings
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import com.example.androidlauncher.ui.home.ActiveOverlay
+import com.example.androidlauncher.ui.home.EditConfigActions
+import com.example.androidlauncher.ui.home.EditConfigViewModel
+import com.example.androidlauncher.ui.home.HomeViewModel
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
@@ -77,44 +86,89 @@ import com.example.androidlauncher.ui.theme.LocalDesignStyle
  */
 @Composable
 fun EditConfigMenu(
-    onOpenHomeLayoutEdit: () -> Unit,
-    onResetHomeLayout: () -> Unit,
-    onOpenIconConfig: () -> Unit,
-    onOpenUninstallApps: () -> Unit,
-    onOpenHiddenApps: () -> Unit,
-    onOpenAppLock: () -> Unit,
-    onOpenDefaultLauncher: () -> Unit,
-    onChangeWallpaper: () -> Unit,
-    onResetWallpaper: () -> Unit,
-    onOpenWallpaperAdjust: () -> Unit,
-    isCustomHomeLayoutSet: Boolean,
-    isCustomWallpaperSet: Boolean,
-    onOpenGesturesConfig: () -> Unit,
-    isSmartSuggestionsEnabled: Boolean,
-    onSmartSuggestionsToggled: (Boolean) -> Unit,
-    isAnimationsEnabled: Boolean,
-    onAnimationsToggled: (Boolean) -> Unit,
-    onOpenAnimationsConfig: () -> Unit,
-    isWeatherWidgetEnabled: Boolean,
-    onWeatherWidgetToggled: (Boolean) -> Unit,
-    isClockWidgetEnabled: Boolean,
-    onClockWidgetToggled: (Boolean) -> Unit,
-    isCalendarWidgetEnabled: Boolean,
-    onCalendarWidgetToggled: (Boolean) -> Unit,
-    isDynamicIslandEnabled: Boolean,
-    onDynamicIslandToggled: (Boolean) -> Unit,
-    islandAnimationStyle: IslandAnimationStyle,
-    onIslandAnimationStyleChange: (IslandAnimationStyle) -> Unit,
-    isEdgeLightingEnabled: Boolean,
-    onOpenEdgeLightingConfig: () -> Unit,
-    appAccessMode: AppAccessMode,
-    onAppAccessModeChange: (AppAccessMode) -> Unit,
-    onClearSearchHistory: () -> Unit,
-    isHapticFeedbackEnabled: Boolean,
-    onHapticFeedbackToggled: (Boolean) -> Unit,
-    onClose: () -> Unit
+    actions: EditConfigActions
 ) {
     val context = LocalContext.current
+
+    // A8-Split: Overlay-Navigation direkt über das HomeViewModel (gleiche Activity-
+    // Instanz wie in der MainActivity), Einstellungen über das EditConfigViewModel
+    // aus den A1-Settings-Stores. Die abgeleiteten Locals tragen die früheren
+    // Parameternamen, damit der Menü-Body unverändert bleibt.
+    val homeViewModel: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val editViewModel: EditConfigViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+
+    val onClose = { homeViewModel.closeOverlay() }
+    val onOpenHomeLayoutEdit = {
+        homeViewModel.closeOverlay()
+        homeViewModel.setHomeEditMode(true)
+    }
+    val onOpenIconConfig = { homeViewModel.openOverlay(ActiveOverlay.IconConfig) }
+    val onOpenUninstallApps = { homeViewModel.openOverlay(ActiveOverlay.UninstallApps) }
+    val onOpenHiddenApps = { homeViewModel.openOverlay(ActiveOverlay.HiddenApps) }
+    val onOpenAppLock = { homeViewModel.openOverlay(ActiveOverlay.AppLock) }
+    val onOpenWallpaperAdjust = { homeViewModel.openOverlay(ActiveOverlay.WallpaperConfig) }
+    val onOpenGesturesConfig = { homeViewModel.openOverlay(ActiveOverlay.GesturesConfig) }
+    val onOpenAnimationsConfig = { homeViewModel.openOverlay(ActiveOverlay.AnimationsConfig) }
+    val onOpenEdgeLightingConfig = { homeViewModel.openOverlay(ActiveOverlay.EdgeLightingConfig) }
+    val onOpenDefaultLauncher = { actions.openDefaultLauncherPrompt() }
+    val onChangeWallpaper = {
+        homeViewModel.closeOverlay()
+        actions.pickWallpaper()
+    }
+
+    val isCustomHomeLayoutSet by editViewModel.isCustomHomeLayoutSet.collectAsState(initial = false)
+    val isCustomWallpaperSet by editViewModel.isCustomWallpaperSet.collectAsState(initial = false)
+    val isSmartSuggestionsEnabled by editViewModel.isSmartSuggestionsEnabled.collectAsState(initial = true)
+    val isAnimationsEnabled by editViewModel.isAnimationsEnabled.collectAsState(initial = true)
+    val isWeatherWidgetEnabled by editViewModel.isWeatherWidgetEnabled.collectAsState(initial = true)
+    val isClockWidgetEnabled by editViewModel.isClockWidgetEnabled.collectAsState(initial = true)
+    val isCalendarWidgetEnabled by editViewModel.isCalendarWidgetEnabled.collectAsState(initial = true)
+    val isDynamicIslandEnabled by editViewModel.isDynamicIslandEnabled.collectAsState(initial = true)
+    val islandAnimationStyle by editViewModel.islandAnimationStyle
+        .collectAsState(initial = IslandAnimationStyle.FROM_NOTCH)
+    val isEdgeLightingEnabled by editViewModel.isEdgeLightingEnabled.collectAsState(initial = false)
+    val appAccessMode by editViewModel.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
+    val isHapticFeedbackEnabled by editViewModel.isHapticFeedbackEnabled.collectAsState(initial = true)
+
+    val onSmartSuggestionsToggled: (Boolean) -> Unit = { editViewModel.setSmartSuggestionsEnabled(it) }
+    val onWeatherWidgetToggled: (Boolean) -> Unit = { editViewModel.setWeatherWidgetEnabled(it) }
+    val onClockWidgetToggled: (Boolean) -> Unit = { editViewModel.setClockWidgetEnabled(it) }
+    val onCalendarWidgetToggled: (Boolean) -> Unit = { editViewModel.setCalendarWidgetEnabled(it) }
+    val onDynamicIslandToggled: (Boolean) -> Unit = { editViewModel.setDynamicIslandEnabled(it) }
+    val onIslandAnimationStyleChange: (IslandAnimationStyle) -> Unit =
+        { editViewModel.setIslandAnimationStyle(it) }
+    val onAppAccessModeChange: (AppAccessMode) -> Unit = { editViewModel.setAppAccessMode(it) }
+    val onResetHomeLayout = {
+        editViewModel.resetHomeLayout()
+        Toast.makeText(context, context.getString(R.string.home_layout_reset), Toast.LENGTH_SHORT).show()
+    }
+    val onResetWallpaper = {
+        editViewModel.resetWallpaper()
+        Toast.makeText(context, context.getString(R.string.wallpaper_removed), Toast.LENGTH_SHORT).show()
+    }
+    val onClearSearchHistory = {
+        editViewModel.clearSearchHistory()
+        Toast.makeText(context, context.getString(R.string.search_history_cleared), Toast.LENGTH_SHORT).show()
+    }
+    // Haptik schreibt zusätzlich das System-Setting → ohne WRITE_SETTINGS-Berechtigung
+    // stattdessen den System-Dialog öffnen (Verhalten wie zuvor in der MainActivity).
+    val onHapticFeedbackToggled: (Boolean) -> Unit = { enabled ->
+        if (Settings.System.canWrite(context)) {
+            editViewModel.setHapticFeedbackEnabled(enabled)
+        } else {
+            val writeSettingsIntent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                data = ("package:" + context.packageName).toUri()
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(writeSettingsIntent)
+            Toast.makeText(
+                context,
+                context.getString(R.string.write_settings_permission_required),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val designStyle = LocalDesignStyle.current
     val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
