@@ -7,18 +7,23 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.androidlauncher.data.AppAccessMode
+import androidx.compose.ui.geometry.Offset
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRuleMode
-import com.example.androidlauncher.data.IslandAnimationStyle
+import com.example.androidlauncher.data.HomeLayout
+import com.example.androidlauncher.data.settings.HomeLayoutSettings
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
+import com.example.androidlauncher.ui.home.EditConfigActions
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import javax.inject.Inject
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
@@ -35,6 +40,9 @@ class LauncherComposableUiTest {
 
     @get:Rule(order = 1)
     val composeRule = createAndroidComposeRule<DebugComposeHostActivity>()
+
+    @Inject
+    lateinit var homeLayoutSettings: HomeLayoutSettings
 
     @Test
     fun homeScreen_rendersCoreControls() {
@@ -125,108 +133,48 @@ class LauncherComposableUiTest {
     }
 
     // TODO Emulator-Verifikation noetig: 'edit_home_layout_reset' liegt in einer LazyColumn und ist
-    // bei isCustomHomeLayoutSet=true zwar komponiert, aber evtl. ausserhalb des Viewports. Fix:
+    // bei gesetztem Custom-Layout zwar komponiert, aber evtl. ausserhalb des Viewports. Fix:
     // LazyColumn einen testTag geben und performScrollToNode(hasTestTag("edit_home_layout_reset"))
     // vor assertIsDisplayed()/performClick() nutzen. Reaktivieren nach Emulator-Check.
     @Ignore("LazyColumn-Scroll noetig (performScrollToNode) – mit Emulator verifizieren, dann reaktivieren")
     @Test
     fun editConfigMenu_showsHomeLayoutResetWhenCustomLayoutIsSet() {
-        var wasHomeLayoutReset = false
+        // A8: Das Menue versorgt sich selbst aus den Settings-Stores -> Custom-Layout
+        // direkt im injizierten Store setzen statt per Parameter.
+        hiltRule.inject()
+        runBlocking { homeLayoutSettings.setHomeLayout(HomeLayout(clock = Offset(24f, 0f))) }
 
         composeRule.setContent {
             AndroidLauncherTheme {
-                EditConfigMenu(
-                    onOpenHomeLayoutEdit = {},
-                    onResetHomeLayout = { wasHomeLayoutReset = true },
-                    onOpenIconConfig = {},
-                    onOpenUninstallApps = {},
-                    onOpenHiddenApps = {},
-                    onOpenAppLock = {},
-                    onOpenDefaultLauncher = {},
-                    onChangeWallpaper = {},
-                    onResetWallpaper = {},
-                    onOpenWallpaperAdjust = {},
-                    isCustomHomeLayoutSet = true,
-                    isCustomWallpaperSet = false,
-                    onOpenGesturesConfig = {},
-                    isSmartSuggestionsEnabled = false,
-                    onSmartSuggestionsToggled = {},
-                    isAnimationsEnabled = true,
-                    onAnimationsToggled = {},
-                    onOpenAnimationsConfig = {},
-                    isWeatherWidgetEnabled = false,
-                    onWeatherWidgetToggled = {},
-                    isClockWidgetEnabled = true,
-                    onClockWidgetToggled = {},
-                    isCalendarWidgetEnabled = false,
-                    onCalendarWidgetToggled = {},
-                    isDynamicIslandEnabled = true,
-                    onDynamicIslandToggled = {},
-                    islandAnimationStyle = IslandAnimationStyle.FROM_NOTCH,
-                    onIslandAnimationStyleChange = {},
-                    isEdgeLightingEnabled = false,
-                    onOpenEdgeLightingConfig = {},
-                    appAccessMode = AppAccessMode.HOME_LIST,
-                    onAppAccessModeChange = {},
-                    onClearSearchHistory = {},
-                    isHapticFeedbackEnabled = true,
-                    onHapticFeedbackToggled = {},
-                    onClose = {}
-                )
+                EditConfigMenu(actions = NoopEditConfigActions)
             }
         }
 
         composeRule.onNodeWithTag("edit_home_layout_reset").assertIsDisplayed().performClick()
-        assertEquals(true, wasHomeLayoutReset)
+        // Reset laeuft jetzt ueber das EditConfigViewModel -> im Store verifizieren.
+        composeRule.waitUntil(3_000) {
+            runBlocking { homeLayoutSettings.homeLayout.first() } == HomeLayout()
+        }
     }
 
     @Test
     fun editConfigMenu_hidesHomeLayoutResetWhenLayoutIsDefault() {
+        hiltRule.inject()
+        runBlocking { homeLayoutSettings.setHomeLayout(HomeLayout()) }
+
         composeRule.setContent {
             AndroidLauncherTheme {
-                EditConfigMenu(
-                    onOpenHomeLayoutEdit = {},
-                    onResetHomeLayout = {},
-                    onOpenIconConfig = {},
-                    onOpenUninstallApps = {},
-                    onOpenHiddenApps = {},
-                    onOpenAppLock = {},
-                    onOpenDefaultLauncher = {},
-                    onChangeWallpaper = {},
-                    onResetWallpaper = {},
-                    onOpenWallpaperAdjust = {},
-                    isCustomHomeLayoutSet = false,
-                    isCustomWallpaperSet = false,
-                    onOpenGesturesConfig = {},
-                    isSmartSuggestionsEnabled = false,
-                    onSmartSuggestionsToggled = {},
-                    isAnimationsEnabled = true,
-                    onAnimationsToggled = {},
-                    onOpenAnimationsConfig = {},
-                    isWeatherWidgetEnabled = false,
-                    onWeatherWidgetToggled = {},
-                    isClockWidgetEnabled = true,
-                    onClockWidgetToggled = {},
-                    isCalendarWidgetEnabled = false,
-                    onCalendarWidgetToggled = {},
-                    isDynamicIslandEnabled = true,
-                    onDynamicIslandToggled = {},
-                    islandAnimationStyle = IslandAnimationStyle.FROM_NOTCH,
-                    onIslandAnimationStyleChange = {},
-                    isEdgeLightingEnabled = false,
-                    onOpenEdgeLightingConfig = {},
-                    appAccessMode = AppAccessMode.HOME_LIST,
-                    onAppAccessModeChange = {},
-                    onClearSearchHistory = {},
-                    isHapticFeedbackEnabled = true,
-                    onHapticFeedbackToggled = {},
-                    onClose = {}
-                )
+                EditConfigMenu(actions = NoopEditConfigActions)
             }
         }
 
         composeRule.waitUntil(3_000) {
             composeRule.onAllNodesWithTag("edit_home_layout_reset").fetchSemanticsNodes().isEmpty()
         }
+    }
+
+    private object NoopEditConfigActions : EditConfigActions {
+        override fun openDefaultLauncherPrompt() = Unit
+        override fun pickWallpaper() = Unit
     }
 }
