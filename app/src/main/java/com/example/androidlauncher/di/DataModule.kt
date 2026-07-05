@@ -11,7 +11,9 @@ import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.settings.AnimationSettings
+import com.example.androidlauncher.data.settings.AppearanceSettings
 import com.example.androidlauncher.data.settings.GestureSettings
+import com.example.androidlauncher.data.settings.HomeLayoutSettings
 import com.example.androidlauncher.data.settings.IslandAndEdgeSettings
 import com.example.androidlauncher.data.settings.PrivacySettings
 import com.example.androidlauncher.data.settings.WallpaperSettings
@@ -103,4 +105,14 @@ object DataModule {
     @Singleton
     fun providePrivacySettings(@ApplicationContext context: Context): PrivacySettings =
         PrivacySettings(context)
+
+    @Provides
+    @Singleton
+    fun provideAppearanceSettings(@ApplicationContext context: Context): AppearanceSettings =
+        AppearanceSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideHomeLayoutSettings(@ApplicationContext context: Context): HomeLayoutSettings =
+        HomeLayoutSettings(context)
 }
