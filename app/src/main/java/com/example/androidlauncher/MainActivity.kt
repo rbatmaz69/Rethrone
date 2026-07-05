@@ -139,6 +139,7 @@ import com.example.androidlauncher.ui.UninstallAppsMenu
 import com.example.androidlauncher.ui.WallpaperConfigMenu
 import com.example.androidlauncher.ui.WallpaperCropScreen
 import com.example.androidlauncher.ui.expandNotifications
+import com.example.androidlauncher.ui.home.ActiveOverlay
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
@@ -558,23 +559,26 @@ class MainActivity : ComponentActivity() {
                 // Kurzer Vorlauf, in dem nur das gedrückte Icon poppt, bevor das
                 // wachsende Panel es verdeckt.
                 val launchBounceLeadMs = (120L / animationSpeed).toLong()
-                var isFavoritesConfigOpen by remember { mutableStateOf(false) }
-                var isColorConfigOpen by remember { mutableStateOf(false) }
-                var isAnimationsConfigOpen by remember { mutableStateOf(false) }
-                var isEdgeLightingConfigOpen by remember { mutableStateOf(false) }
-                var isGesturesConfigOpen by remember { mutableStateOf(false) }
-                var isDesignMenuOpen by remember { mutableStateOf(false) }
-                var isThemeMenuOpen by remember { mutableStateOf(false) }
-                var isSizeConfigOpen by remember { mutableStateOf(false) }
-                var isFontSelectionOpen by remember { mutableStateOf(false) }
-                var isEditConfigOpen by remember { mutableStateOf(false) }
-                var isIconConfigOpen by remember { mutableStateOf(false) }
-                var isUninstallAppsOpen by remember { mutableStateOf(false) }
-                var isHiddenAppsOpen by remember { mutableStateOf(false) }
-                var isAppLockOpen by remember { mutableStateOf(false) }
-                var isWallpaperConfigOpen by remember { mutableStateOf(false) }
-                var isInfoOpen by remember { mutableStateOf(false) }
-                var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
+                // A2-Split: genau EIN Overlay kann offen sein (sealed class statt 17 Booleans).
+                // Die abgeleiteten Werte darunter halten die vielen Lese-Stellen stabil.
+                var activeOverlay by remember { mutableStateOf<ActiveOverlay>(ActiveOverlay.None) }
+                val isFavoritesConfigOpen = activeOverlay is ActiveOverlay.FavoritesConfig
+                val isColorConfigOpen = activeOverlay is ActiveOverlay.ColorConfig
+                val isAnimationsConfigOpen = activeOverlay is ActiveOverlay.AnimationsConfig
+                val isEdgeLightingConfigOpen = activeOverlay is ActiveOverlay.EdgeLightingConfig
+                val isGesturesConfigOpen = activeOverlay is ActiveOverlay.GesturesConfig
+                val isDesignMenuOpen = activeOverlay is ActiveOverlay.DesignMenu
+                val isThemeMenuOpen = activeOverlay is ActiveOverlay.ThemeMenu
+                val isSizeConfigOpen = activeOverlay is ActiveOverlay.SizeConfig
+                val isFontSelectionOpen = activeOverlay is ActiveOverlay.FontSelection
+                val isEditConfigOpen = activeOverlay is ActiveOverlay.EditConfig
+                val isIconConfigOpen = activeOverlay is ActiveOverlay.IconConfig
+                val isUninstallAppsOpen = activeOverlay is ActiveOverlay.UninstallApps
+                val isHiddenAppsOpen = activeOverlay is ActiveOverlay.HiddenApps
+                val isAppLockOpen = activeOverlay is ActiveOverlay.AppLock
+                val isWallpaperConfigOpen = activeOverlay is ActiveOverlay.WallpaperConfig
+                val isInfoOpen = activeOverlay is ActiveOverlay.Info
+                val selectedFolderForConfig = (activeOverlay as? ActiveOverlay.FolderConfig)?.folder
                 var selectedFolderForConfigSnapshot by remember { mutableStateOf<FolderInfo?>(null) }
                 val folderConfigExitHoldMs = 320L
                 var isLauncherResumed by remember { mutableStateOf(false) }
@@ -666,15 +670,7 @@ class MainActivity : ComponentActivity() {
                                 isDrawerOpen = animation.source == LaunchSource.DRAWER
                                 if (!isDrawerOpen) {
                                     isSettingsOpen = false
-                                    isFavoritesConfigOpen = false
-                                    isColorConfigOpen = false
-                                    isSizeConfigOpen = false
-                                    isFontSelectionOpen = false
-                                    isEditConfigOpen = false
-                                    isIconConfigOpen = false
-                                    isWallpaperConfigOpen = false
-                                    isInfoOpen = false
-                                    selectedFolderForConfig = null
+                                    activeOverlay = ActiveOverlay.None
                                 }
                                 if (appCloseAnimActiveRef.value) {
                                     activeReturnAnimation = animation
@@ -1035,62 +1031,31 @@ class MainActivity : ComponentActivity() {
                     if (isDrawerOpen) {
                         isSettingsOpen = false
                         isSearchOpen = false
-                        isFavoritesConfigOpen = false
-                        isColorConfigOpen = false
-                        isSizeConfigOpen = false
-                        isFontSelectionOpen = false
-                        isEditConfigOpen = false
-                        isIconConfigOpen = false
-                        isUninstallAppsOpen = false
-                        isHiddenAppsOpen = false
-                        isAppLockOpen = false
-                        isWallpaperConfigOpen = false
-                        isInfoOpen = false
                         isHomeEditMode = false
-                        selectedFolderForConfig = null
+                        activeOverlay = ActiveOverlay.None
                     }
                 }
 
-                LaunchedEffect(
-                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isAnimationsConfigOpen, isGesturesConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
-                    isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
-                    isIconConfigOpen, isUninstallAppsOpen, isHiddenAppsOpen, isAppLockOpen, isWallpaperConfigOpen, isInfoOpen,
-                    selectedFolderForConfig, isSearchOpen, isHomeEditMode
-                ) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
-                        isColorConfigOpen || isAnimationsConfigOpen || isGesturesConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
-                        isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isAppLockOpen || isWallpaperConfigOpen ||
-                        isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
+                LaunchedEffect(isDrawerOpen, activeOverlay, isSearchOpen, isHomeEditMode) {
+                    val anyModalOpen = isDrawerOpen || activeOverlay != ActiveOverlay.None ||
+                        isSearchOpen || isHomeEditMode
                     backCallback.isEnabled = !anyModalOpen
                 }
 
                 BackHandler(
-                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isAnimationsConfigOpen || isGesturesConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
-                        isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
-                        isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isAppLockOpen || isWallpaperConfigOpen || isInfoOpen ||
-                        selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
+                    enabled = isDrawerOpen || activeOverlay != ActiveOverlay.None ||
+                        isSearchOpen || isHomeEditMode
                 ) {
+                    // Reihenfolge wie zuvor: Ordner-Konfiguration und die "inneren" Menüs
+                    // schließen vor dem Drawer, die Palette-Menüs danach.
                     when {
-                        selectedFolderForConfig != null -> selectedFolderForConfig = null
+                        activeOverlay is ActiveOverlay.FolderConfig -> activeOverlay = ActiveOverlay.None
                         isHomeEditMode -> isHomeEditMode = false
                         isSearchOpen -> isSearchOpen = false
-                        isFontSelectionOpen -> isFontSelectionOpen = false
-                        isWallpaperConfigOpen -> isWallpaperConfigOpen = false
-                        isUninstallAppsOpen -> isUninstallAppsOpen = false
-                        isHiddenAppsOpen -> isHiddenAppsOpen = false
-                        isAppLockOpen -> isAppLockOpen = false
-                        isIconConfigOpen -> isIconConfigOpen = false
+                        isFontSelectionOpen || isWallpaperConfigOpen || isUninstallAppsOpen ||
+                            isHiddenAppsOpen || isAppLockOpen || isIconConfigOpen -> activeOverlay = ActiveOverlay.None
                         isDrawerOpen -> isDrawerOpen = false
-                        isFavoritesConfigOpen -> isFavoritesConfigOpen = false
-                        isThemeMenuOpen -> isThemeMenuOpen = false
-                        isDesignMenuOpen -> isDesignMenuOpen = false
-                        isAnimationsConfigOpen -> isAnimationsConfigOpen = false
-                        isEdgeLightingConfigOpen -> isEdgeLightingConfigOpen = false
-                        isGesturesConfigOpen -> isGesturesConfigOpen = false
-                        isColorConfigOpen -> isColorConfigOpen = false
-                        isSizeConfigOpen -> isSizeConfigOpen = false
-                        isEditConfigOpen -> isEditConfigOpen = false
-                        isInfoOpen -> isInfoOpen = false
+                        activeOverlay != ActiveOverlay.None -> activeOverlay = ActiveOverlay.None
                     }
                 }
 
@@ -1187,7 +1152,7 @@ class MainActivity : ComponentActivity() {
                                     onUpdateFolders = { newFolders ->
                                         scope.launch { folderManager.saveFolders(newFolders) }
                                     },
-                                    onOpenFolderConfig = { folder -> selectedFolderForConfig = folder },
+                                    onOpenFolderConfig = { folder -> activeOverlay = ActiveOverlay.FolderConfig(folder) },
                                     onClose = { isDrawerOpen = false },
                                     onLaunchApp = { pkg, intent, bounds ->
                                         requestLauncherLaunch(
@@ -1221,11 +1186,11 @@ class MainActivity : ComponentActivity() {
                                 onGestureAction = { action, pkg -> dispatchGestureAction(action, pkg) },
                                 onToggleSettings = { isSettingsOpen = !isSettingsOpen },
                                 onToggleEditMode = { isHomeEditMode = !isHomeEditMode },
-                                onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
-                                onOpenColorConfig = { isColorConfigOpen = true },
-                                onOpenSizeConfig = { isSizeConfigOpen = true },
-                                onOpenSystemSettings = { isEditConfigOpen = true },
-                                onOpenInfo = { isInfoOpen = true },
+                                onOpenFavoritesConfig = { activeOverlay = ActiveOverlay.FavoritesConfig },
+                                onOpenColorConfig = { activeOverlay = ActiveOverlay.ColorConfig },
+                                onOpenSizeConfig = { activeOverlay = ActiveOverlay.SizeConfig },
+                                onOpenSystemSettings = { activeOverlay = ActiveOverlay.EditConfig },
+                                onOpenInfo = { activeOverlay = ActiveOverlay.Info },
                                 onSaveHomeLayout = { layout ->
                                     scope.launch { themeManager.setHomeLayout(layout) }
                                 },
@@ -1386,7 +1351,7 @@ class MainActivity : ComponentActivity() {
                         visible = isFavoritesConfigOpen,
                         customWallpaperUri = customWallpaperUri,
                         enableDragToClose = false,
-                        onClose = { isFavoritesConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         @Suppress("DEPRECATION")
                         FavoritesConfigMenu(
@@ -1406,9 +1371,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onConfirm = { newFavs ->
                                 scope.launch { favoritesManager.saveFavorites(newFavs) }
-                                isFavoritesConfigOpen = false
+                                activeOverlay = ActiveOverlay.None
                             },
-                            onClose = { isFavoritesConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
@@ -1416,7 +1381,7 @@ class MainActivity : ComponentActivity() {
                         visible = selectedFolderForConfig != null,
                         customWallpaperUri = customWallpaperUri,
                         enableDragToClose = false,
-                        onClose = { selectedFolderForConfig = null }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         val folderForConfig = selectedFolderForConfig ?: selectedFolderForConfigSnapshot
                         folderForConfig?.let { folder ->
@@ -1436,14 +1401,14 @@ class MainActivity : ComponentActivity() {
                                         folders + updatedFolder
                                     }
                                     scope.launch { folderManager.saveFolders(newFolders) }
-                                    selectedFolderForConfig = null
+                                    activeOverlay = ActiveOverlay.None
                                 },
                                 onDelete = { folderId ->
                                     val newFolders = folders.filter { it.id != folderId }
                                     scope.launch { folderManager.saveFolders(newFolders) }
-                                    selectedFolderForConfig = null
+                                    activeOverlay = ActiveOverlay.None
                                 },
-                                onClose = { selectedFolderForConfig = null }
+                                onClose = { activeOverlay = ActiveOverlay.None }
                             )
                         }
                     }
@@ -1451,7 +1416,7 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isColorConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isColorConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
@@ -1461,8 +1426,8 @@ class MainActivity : ComponentActivity() {
                             homeTextColor = homeTextColor,
                             onHomeTextColorChange = { scope.launch { themeManager.setHomeTextColor(it) } },
                             designStyle = designStyle,
-                            onOpenDesignMenu = { isDesignMenuOpen = true },
-                            onOpenThemeMenu = { isThemeMenuOpen = true },
+                            onOpenDesignMenu = { activeOverlay = ActiveOverlay.DesignMenu },
+                            onOpenThemeMenu = { activeOverlay = ActiveOverlay.ThemeMenu },
                             customBackgroundColor = customBackgroundColor,
                             onCustomBackgroundChange = { scope.launch { themeManager.setCustomBackgroundColor(it) } },
                             customMenuColor = customMenuColor,
@@ -1472,14 +1437,14 @@ class MainActivity : ComponentActivity() {
                             edgeLightingColor = edgeLightingColor,
                             onEdgeLightingColorChange = { scope.launch { themeManager.setEdgeLightingColor(it) } },
                             customWallpaperUri = customWallpaperUri,
-                            onClose = { isColorConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isThemeMenuOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isThemeMenuOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         ThemeSelectionMenu(
                             selectedTheme = currentTheme,
@@ -1487,14 +1452,14 @@ class MainActivity : ComponentActivity() {
                             isDarkTextEnabled = isDarkTextEnabled,
                             designStyle = designStyle,
                             customWallpaperUri = customWallpaperUri,
-                            onClose = { isThemeMenuOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isDesignMenuOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isDesignMenuOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         DesignStyleMenu(
                             currentStyle = designStyle,
@@ -1502,16 +1467,16 @@ class MainActivity : ComponentActivity() {
                             isDarkTextEnabled = isDarkTextEnabled,
                             onStyleSelected = { style ->
                                 scope.launch { themeManager.setDesignStyle(style) }
-                                isDesignMenuOpen = false
+                                activeOverlay = ActiveOverlay.None
                             },
-                            onClose = { isDesignMenuOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isSizeConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isSizeConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         SizeConfigMenu(
                             currentFontSize = currentFontSize,
@@ -1529,32 +1494,32 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             currentAppFont = currentAppFont,
-                            onOpenFontSelection = { isFontSelectionOpen = true },
+                            onOpenFontSelection = { activeOverlay = ActiveOverlay.FontSelection },
                             customWallpaperUri = customWallpaperUri,
-                            onClose = { isSizeConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isFontSelectionOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isFontSelectionOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         FontSelectionMenu(
                             currentAppFont = currentAppFont,
                             onAppFontSelected = { scope.launch { themeManager.setAppFont(it) } },
-                            onBack = { isFontSelectionOpen = false }
+                            onBack = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isEditConfigOpen && !isWallpaperCropOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isEditConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         EditConfigMenu(
                             onOpenHomeLayoutEdit = {
-                                isEditConfigOpen = false
+                                activeOverlay = ActiveOverlay.None
                                 isHomeEditMode = true
                             },
                             onResetHomeLayout = {
@@ -1567,14 +1532,13 @@ class MainActivity : ComponentActivity() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             },
-                            onOpenIconConfig = { isIconConfigOpen = true },
-                            onOpenUninstallApps = { isUninstallAppsOpen = true },
-                            onOpenHiddenApps = { isHiddenAppsOpen = true },
-                            onOpenAppLock = { isAppLockOpen = true },
+                            onOpenIconConfig = { activeOverlay = ActiveOverlay.IconConfig },
+                            onOpenUninstallApps = { activeOverlay = ActiveOverlay.UninstallApps },
+                            onOpenHiddenApps = { activeOverlay = ActiveOverlay.HiddenApps },
+                            onOpenAppLock = { activeOverlay = ActiveOverlay.AppLock },
                             onOpenDefaultLauncher = { requestDefaultLauncher() },
                             onChangeWallpaper = {
-                                isEditConfigOpen = false
-                                isWallpaperConfigOpen = false
+                                activeOverlay = ActiveOverlay.None
                                 wallpaperPickerLauncher.launch(
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                 )
@@ -1592,14 +1556,14 @@ class MainActivity : ComponentActivity() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             },
-                            onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
+                            onOpenWallpaperAdjust = { activeOverlay = ActiveOverlay.WallpaperConfig },
                             isCustomHomeLayoutSet =
                             abs(homeLayout.clock.x) > 0.5f || abs(homeLayout.clock.y) > 0.5f ||
                                 abs(homeLayout.date.x) > 0.5f || abs(homeLayout.date.y) > 0.5f ||
                                 abs(homeLayout.weather.x) > 0.5f || abs(homeLayout.weather.y) > 0.5f ||
                                 abs(homeLayout.favorites.x) > 0.5f || abs(homeLayout.favorites.y) > 0.5f,
                             isCustomWallpaperSet = customWallpaperUri != null,
-                            onOpenGesturesConfig = { isGesturesConfigOpen = true },
+                            onOpenGesturesConfig = { activeOverlay = ActiveOverlay.GesturesConfig },
                             isSmartSuggestionsEnabled = isSmartSuggestionsEnabled,
                             onSmartSuggestionsToggled = { enabled ->
                                 scope.launch { themeManager.setSmartSuggestionsEnabled(enabled) }
@@ -1608,7 +1572,7 @@ class MainActivity : ComponentActivity() {
                             onAnimationsToggled = { enabled ->
                                 scope.launch { themeManager.setAnimationsEnabled(enabled) }
                             },
-                            onOpenAnimationsConfig = { isAnimationsConfigOpen = true },
+                            onOpenAnimationsConfig = { activeOverlay = ActiveOverlay.AnimationsConfig },
                             isWeatherWidgetEnabled = isWeatherWidgetEnabled,
                             onWeatherWidgetToggled = { enabled ->
                                 scope.launch { themeManager.setWeatherWidgetEnabled(enabled) }
@@ -1630,7 +1594,7 @@ class MainActivity : ComponentActivity() {
                                 scope.launch { themeManager.setIslandAnimationStyle(style) }
                             },
                             isEdgeLightingEnabled = isEdgeLightingEnabled,
-                            onOpenEdgeLightingConfig = { isEdgeLightingConfigOpen = true },
+                            onOpenEdgeLightingConfig = { activeOverlay = ActiveOverlay.EdgeLightingConfig },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->
                                 scope.launch { themeManager.setAppAccessMode(mode) }
@@ -1662,7 +1626,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            onClose = { isEditConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
@@ -1671,7 +1635,7 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isAnimationsConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isAnimationsConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         AnimationsConfigMenu(
                             isAnimationsEnabled = isAnimationsEnabled,
@@ -1704,14 +1668,14 @@ class MainActivity : ComponentActivity() {
                             },
                             animationSpeed = animationSpeed,
                             onAnimationSpeedChanged = { scope.launch { themeManager.setAnimationSpeed(it) } },
-                            onClose = { isAnimationsConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isEdgeLightingConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isEdgeLightingConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         EdgeLightingConfigMenu(
                             isEnabled = isEdgeLightingEnabled,
@@ -1724,14 +1688,14 @@ class MainActivity : ComponentActivity() {
                             onLapsChange = { scope.launch { themeManager.setEdgeLightingLaps(it) } },
                             thickness = edgeLightingThickness,
                             onThicknessChange = { scope.launch { themeManager.setEdgeLightingThickness(it) } },
-                            onClose = { isEdgeLightingConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isGesturesConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isGesturesConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         GesturesConfigMenu(
                             apps = allApps,
@@ -1745,7 +1709,7 @@ class MainActivity : ComponentActivity() {
                             onDoubleShakeActionChange = { scope.launch { themeManager.setDoubleShakeAction(it) } },
                             shakeOpenAppPackage = shakeOpenAppPackage,
                             onShakeOpenAppPackageChange = { scope.launch { themeManager.setShakeOpenAppPackage(it) } },
-                            onClose = { isGesturesConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
@@ -1779,7 +1743,7 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isWallpaperConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isWallpaperConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         WallpaperConfigMenu(
                             blurLevel = wallpaperBlur,
@@ -1790,14 +1754,14 @@ class MainActivity : ComponentActivity() {
                             onZoomChange = { scope.launch { themeManager.setWallpaperZoom(it) } },
                             customWallpaperUri = customWallpaperUri,
                             homeScreenPreview = wallpaperHomePreview,
-                            onClose = { isWallpaperConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isIconConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isIconConfigOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         IconConfigMenu(
                             apps = allApps,
@@ -1820,26 +1784,26 @@ class MainActivity : ComponentActivity() {
                                     refreshAppList(pkg)
                                 }
                             },
-                            onClose = { isIconConfigOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isUninstallAppsOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isUninstallAppsOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         UninstallAppsMenu(
                             apps = allApps,
                             onRefreshApps = { pkg -> refreshAppList(pkg) },
-                            onClose = { isUninstallAppsOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isHiddenAppsOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isHiddenAppsOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         HiddenAppsMenu(
                             apps = allApps,
@@ -1848,14 +1812,14 @@ class MainActivity : ComponentActivity() {
                                 val newHidden = if (pkg in hiddenApps) hiddenApps - pkg else hiddenApps + pkg
                                 scope.launch { themeManager.setHiddenApps(newHidden) }
                             },
-                            onClose = { isHiddenAppsOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isAppLockOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isAppLockOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         AppLockMenu(
                             apps = allApps,
@@ -1875,17 +1839,17 @@ class MainActivity : ComponentActivity() {
                             onToggleBiometric = { enabled ->
                                 scope.launch { themeManager.setLockBiometricEnabled(enabled) }
                             },
-                            onClose = { isAppLockOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
                     MenuOverlay(
                         visible = isInfoOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isInfoOpen = false }
+                        onClose = { activeOverlay = ActiveOverlay.None }
                     ) {
                         InfoDialog(
-                            onClose = { isInfoOpen = false }
+                            onClose = { activeOverlay = ActiveOverlay.None }
                         )
                     }
 
