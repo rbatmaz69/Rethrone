@@ -141,6 +141,7 @@ import com.example.androidlauncher.ui.WallpaperCropScreen
 import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.ui.home.ActiveOverlay
 import com.example.androidlauncher.ui.home.HomeViewModel
+import com.example.androidlauncher.ui.home.rememberLaunchTransitionState
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
@@ -508,22 +509,20 @@ class MainActivity : ComponentActivity() {
                 val returnOverlayBrush: Brush? = null
 
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
-                var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
-                var pendingReturnAnimationStartedWallClockMs by remember { mutableStateOf(0L) }
-                var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
-                var returnIconPackage by remember { mutableStateOf<String?>(null) }
-                var searchButtonBounceToken by remember { mutableStateOf(0) }
-                // Eigener Trigger für den Rückkehr-Bounce, entkoppelt von
-                // activeReturnAnimation. Letzteres wird vom Schließen-Overlay nach
-                // ~260ms auf null gesetzt; würde der Bounce darauf gekeyt sein, würde
-                // die delay(270)-Coroutine ~10ms vor dem Feuern abgebrochen -> der
-                // Bounce käme nur „manchmal". Das Token steigt nur bei einer neuen
-                // Aktivierung, sodass die Coroutine zuverlässig zu Ende läuft.
-                var returnBounceToken by remember { mutableStateOf(0) }
-                var returnBounceTargetPackage by remember { mutableStateOf<String?>(null) }
-                // Beim Öffnen poppt das gedrückte Icon kurz, bevor das Panel es
-                // verdeckt – symmetrisch zum Rückkehr-Bounce.
-                var launchIconPackage by remember { mutableStateOf<String?>(null) }
+
+                // A2-Split: transiente Start-/Rückkehr-Animations-Zustände leben gebündelt
+                // im LaunchTransitionStateHolder (remember, bewusst kein ViewModel). Die
+                // lokalen Delegates halten die bestehenden Lese-/Schreib-Stellen stabil.
+                val launchTransitions = rememberLaunchTransitionState(searchLaunchOverlayColor)
+                var pendingReturnAnimation by launchTransitions::pendingReturnAnimation
+                var pendingReturnAnimationStartedWallClockMs by
+                    launchTransitions::pendingReturnAnimationStartedWallClockMs
+                var activeReturnAnimation by launchTransitions::activeReturnAnimation
+                var returnIconPackage by launchTransitions::returnIconPackage
+                var searchButtonBounceToken by launchTransitions::searchButtonBounceToken
+                var returnBounceToken by launchTransitions::returnBounceToken
+                var returnBounceTargetPackage by launchTransitions::returnBounceTargetPackage
+                var launchIconPackage by launchTransitions::launchIconPackage
                 val returnOverlayDurationMs = (260L / animationSpeed).toLong()
                 // Bounce erst nach Abschluss des Schließen-Panels (260ms), damit er nicht
                 // gegen das noch schrumpfende Panel läuft.
@@ -549,11 +548,11 @@ class MainActivity : ComponentActivity() {
                 }
                 shakeManager.onDoubleShake = { dispatchGestureAction(doubleShakeAction, shakeOpenAppPackage) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-                var isSearchLaunching by remember { mutableStateOf(false) }
-                var isAppLaunchAnimating by remember { mutableStateOf(false) }
-                var activeLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-                var activeLaunchBackground by remember { mutableStateOf(searchLaunchOverlayColor) }
-                var activeLaunchBackgroundBrush by remember { mutableStateOf<Brush?>(launchOverlayBrush) }
+                var isSearchLaunching by launchTransitions::isSearchLaunching
+                var isAppLaunchAnimating by launchTransitions::isAppLaunchAnimating
+                var activeLaunchBounds by launchTransitions::activeLaunchBounds
+                var activeLaunchBackground by launchTransitions::activeLaunchBackground
+                var activeLaunchBackgroundBrush by launchTransitions::activeLaunchBackgroundBrush
                 // Treibt das leichte Zurücktreten (Skalieren/Abdunkeln) des Homescreen-/Drawer-Inhalts,
                 // damit das Start-/Rückkehr-Panel nicht als lose Schicht über eingefrorenem Inhalt wirkt.
                 val contentRevealProgress = remember { Animatable(0f) }
