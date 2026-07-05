@@ -1,5 +1,6 @@
 package com.example.androidlauncher.ui
 
+import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,6 +41,8 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +59,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -63,8 +68,11 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.androidlauncher.MediaProgress
 import com.example.androidlauncher.data.IslandContent
 import com.example.androidlauncher.data.NotificationAction
+import com.example.androidlauncher.extrapolateMediaPositionMs
+import com.example.androidlauncher.formatMediaTime
 import com.example.androidlauncher.isPauseActionTitle
 import com.example.androidlauncher.isResumeActionTitle
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
@@ -73,6 +81,7 @@ import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.RethroneShapes
 import com.example.androidlauncher.ui.theme.RethroneSprings
+import kotlinx.coroutines.delay
 
 /**
  * Bündelt die aus dem App-Theme abgeleiteten Farben der Insel-Karte, damit die Unterkarten
@@ -126,6 +135,7 @@ fun IslandExpandedCard(
     onMediaPlayPause: () -> Unit = {},
     onMediaNext: () -> Unit = {},
     onMediaPrev: () -> Unit = {},
+    onMediaSeekTo: (Long) -> Unit = {},
     islandColor: Color = Color(0xFF0B0B0C)
 ) {
     val colors = rememberIslandCardColors(islandColor)
@@ -235,7 +245,8 @@ fun IslandExpandedCard(
                 Column {
                     when (c) {
                         is IslandContent.Notification -> NotificationCard(c, colors, onAction, onReply)
-                        is IslandContent.Media -> MediaCard(c, colors, onMediaPlayPause, onMediaNext, onMediaPrev)
+                        is IslandContent.Media ->
+                            MediaCard(c, colors, onMediaPlayPause, onMediaNext, onMediaPrev, onMediaSeekTo)
                         is IslandContent.Timer -> TimerCard(c, colors, onTimerControl)
                         is IslandContent.Battery -> SimpleCard(
                             if (c.charging) "Wird geladen" else "Netzteil getrennt",
@@ -470,17 +481,21 @@ private fun MediaCard(
     colors: IslandCardColors,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
-    onPrev: () -> Unit
+    onPrev: () -> Unit,
+    onSeekTo: (Long) -> Unit
 ) {
+    // Cover-Slot konstant halten: Beim Track-Wechsel kommt das neue Album-Bitmap
+    // asynchron (kurzzeitig null) nach. Würde das Bild bedingt gerendert, schrumpft
+    // und wächst die Karte – die Größen-Animation des umschließenden AnimatedContent
+    // staucht/clippt dann den Inhalt für ein paar Frames. Letztes Cover puffern und
+    // immer eine 56.dp-Box (Bild oder Platzhalter) zeichnen.
+    var lastArt by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    if (content.art != null) lastArt = content.art
+    val art = content.art ?: lastArt
+    // Album-Akzent: dominanter Farbton des Covers (1×1-Downscale), zur Lesbarkeit mit
+    // der Kartentextfarbe aufgehellt/abgedunkelt. Ohne Cover bleibt der Theme-Akzent.
+    val albumAccent = remember(art, colors) { art?.dominantColor()?.readableOn(colors) ?: colors.accent }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // Cover-Slot konstant halten: Beim Track-Wechsel kommt das neue Album-Bitmap
-        // asynchron (kurzzeitig null) nach. Würde das Bild bedingt gerendert, schrumpft
-        // und wächst die Karte – die Größen-Animation des umschließenden AnimatedContent
-        // staucht/clippt dann den Inhalt für ein paar Frames. Letztes Cover puffern und
-        // immer eine 56.dp-Box (Bild oder Platzhalter) zeichnen.
-        var lastArt by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-        if (content.art != null) lastArt = content.art
-        val art = content.art ?: lastArt
         val bmp = remember(art) { art?.asImageBitmap() }
         Box(
             modifier = Modifier
@@ -519,6 +534,15 @@ private fun MediaCard(
             }
         }
     }
+    content.progress?.let { progress ->
+        MediaSeekBar(
+            progress = progress,
+            isPlaying = content.isPlaying,
+            colors = colors,
+            accent = albumAccent,
+            onSeekTo = onSeekTo
+        )
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -531,10 +555,98 @@ private fun MediaCard(
             if (content.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
             colors,
             onPlayPause,
-            emphasized = true
+            emphasized = true,
+            accent = albumAccent
         )
         TransportButton(Icons.Rounded.SkipNext, colors, onNext)
     }
+}
+
+/**
+ * Seek-Leiste der Media-Karte (Island Media v2.4). Die angezeigte Position wird
+ * **clientseitig** aus dem letzten PlaybackState hochgerechnet
+ * ([extrapolateMediaPositionMs]) – getickt wird nur, solange die Karte offen ist
+ * und Wiedergabe läuft; die Session selbst wird nicht gepollt. Während des
+ * Ziehens gewinnt die Finger-Position; losgelassen wird via [onSeekTo] gesprungen.
+ */
+@Composable
+private fun MediaSeekBar(
+    progress: MediaProgress,
+    isPlaying: Boolean,
+    colors: IslandCardColors,
+    accent: Color,
+    onSeekTo: (Long) -> Unit
+) {
+    // Tick nur bei offener Karte + laufender Wiedergabe (Composable verlässt die
+    // Composition beim Schließen → Coroutine endet automatisch).
+    var nowElapsedMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(progress, isPlaying) {
+        nowElapsedMs = SystemClock.elapsedRealtime()
+        while (isPlaying) {
+            delay(500L)
+            nowElapsedMs = SystemClock.elapsedRealtime()
+        }
+    }
+    val livePositionMs = extrapolateMediaPositionMs(progress, isPlaying, nowElapsedMs)
+
+    // Während des Ziehens zeigt die Leiste die Finger-Position statt der Live-Zeit.
+    var dragPositionMs by remember { mutableStateOf<Long?>(null) }
+    val shownMs = dragPositionMs ?: livePositionMs
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Slider(
+            value = shownMs.toFloat(),
+            onValueChange = { dragPositionMs = it.toLong() },
+            onValueChangeFinished = {
+                dragPositionMs?.let(onSeekTo)
+                dragPositionMs = null
+            },
+            valueRange = 0f..progress.durationMs.toFloat(),
+            colors = SliderDefaults.colors(
+                thumbColor = accent,
+                activeTrackColor = accent,
+                inactiveTrackColor = colors.text.copy(alpha = 0.15f)
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = formatMediaTime(shownMs),
+                color = colors.subText,
+                style = MaterialTheme.typography.labelSmall
+            )
+            Text(
+                text = formatMediaTime(progress.durationMs),
+                color = colors.subText,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}
+
+/** Dominanter Farbton eines Covers via 1×1-Downscale (billig, ohne Palette-Abhängigkeit). */
+private fun android.graphics.Bitmap.dominantColor(): Color = try {
+    val pixel = android.graphics.Bitmap.createScaledBitmap(this, 1, 1, true).getPixel(0, 0)
+    Color(pixel)
+} catch (_: Exception) {
+    Color.Unspecified
+}
+
+/**
+ * Macht den Album-Akzent auf der Kartenfläche lesbar: zu dunkle/zu helle Töne werden
+ * Richtung Kartentextfarbe gemischt; `Unspecified` fällt auf den Theme-Akzent zurück.
+ */
+private fun Color.readableOn(colors: IslandCardColors): Color {
+    if (this == Color.Unspecified) return colors.accent
+    val cardIsDark = colors.surface.luminance() <= 0.5f
+    val tooDim = cardIsDark && luminance() < 0.25f
+    val tooBright = !cardIsDark && luminance() > 0.75f
+    return if (tooDim || tooBright) lerp(this, colors.text, 0.5f) else this
 }
 
 /**
@@ -547,13 +659,14 @@ private fun TransportButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     colors: IslandCardColors,
     onClick: () -> Unit,
-    emphasized: Boolean = false
+    emphasized: Boolean = false,
+    accent: Color = colors.accent
 ) {
     Box(
         modifier = Modifier
             .size(50.dp)
             .clip(CircleShape)
-            .then(if (emphasized) Modifier.background(colors.accent.copy(alpha = 0.16f)) else Modifier)
+            .then(if (emphasized) Modifier.background(accent.copy(alpha = 0.16f)) else Modifier)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -564,7 +677,7 @@ private fun TransportButton(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (emphasized) colors.accent else colors.text,
+            tint = if (emphasized) accent else colors.text,
             modifier = Modifier.size(32.dp)
         )
     }

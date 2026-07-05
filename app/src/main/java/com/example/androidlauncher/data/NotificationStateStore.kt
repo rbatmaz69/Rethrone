@@ -78,6 +78,11 @@ class NotificationStateStore {
     fun mediaPrevious() {
         transportControls?.skipToPrevious()
     }
+
+    /** Springt in der aktiven Wiedergabe an die gewünschte Position (Seek-Leiste der Karte). */
+    fun mediaSeekTo(positionMs: Long) {
+        transportControls?.seekTo(positionMs.coerceAtLeast(0L))
+    }
 }
 
 /**

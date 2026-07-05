@@ -37,11 +37,15 @@ data class TimerInfo(
 
 /**
  * Aktuelle Medienwiedergabe (aus der aktiven MediaSession) für die Dynamic Island.
+ *
+ * @param progress Wiedergabe-Fortschritt für die Seek-Leiste; `null`, wenn die
+ *        Session keine (plausible) Dauer/Position meldet.
  */
 data class MediaInfo(
     val title: String,
     val artist: String,
     val isPlaying: Boolean,
     val art: Bitmap?,
-    val packageName: String
+    val packageName: String,
+    val progress: MediaProgress? = null
 )

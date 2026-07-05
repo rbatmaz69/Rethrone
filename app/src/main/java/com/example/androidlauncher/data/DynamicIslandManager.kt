@@ -173,7 +173,9 @@ class DynamicIslandManager(
     /** Aktive Medienwiedergabe aus der MediaSession (oder `null`). */
     private val mediaFlow: Flow<IslandContent.Media?> =
         notifications.activeMedia.map { media ->
-            media?.let { IslandContent.Media(it.title, it.artist, it.isPlaying, it.art, it.packageName) }
+            media?.let {
+                IslandContent.Media(it.title, it.artist, it.isPlaying, it.art, it.packageName, it.progress)
+            }
         }
 
     /** Vom Nutzer gewählte „Haupt"-Aktivität (activityId) oder `null` = höchste Priorität. */
@@ -182,6 +184,7 @@ class DynamicIslandManager(
     fun mediaPlayPause() = notifications.mediaPlayPause()
     fun mediaNext() = notifications.mediaNext()
     fun mediaPrevious() = notifications.mediaPrevious()
+    fun mediaSeekTo(positionMs: Long) = notifications.mediaSeekTo(positionMs)
 
     /** Alle aktiven Aktivitäten, prioritätssortiert. */
     private val contentsFlow: Flow<List<IslandContent>> =
