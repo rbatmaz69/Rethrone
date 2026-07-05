@@ -12,6 +12,8 @@ import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.settings.AnimationSettings
 import com.example.androidlauncher.data.settings.GestureSettings
+import com.example.androidlauncher.data.settings.IslandAndEdgeSettings
+import com.example.androidlauncher.data.settings.PrivacySettings
 import com.example.androidlauncher.data.settings.WallpaperSettings
 import dagger.Module
 import dagger.Provides
@@ -91,4 +93,14 @@ object DataModule {
     @Singleton
     fun provideAnimationSettings(@ApplicationContext context: Context): AnimationSettings =
         AnimationSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideIslandAndEdgeSettings(@ApplicationContext context: Context): IslandAndEdgeSettings =
+        IslandAndEdgeSettings(context)
+
+    @Provides
+    @Singleton
+    fun providePrivacySettings(@ApplicationContext context: Context): PrivacySettings =
+        PrivacySettings(context)
 }

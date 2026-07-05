@@ -53,7 +53,7 @@ class LauncherAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceScope.launch {
-            entryPoint.themeManager().lockedApps.collectLatest { lockedAppsCache = it }
+            entryPoint.privacySettings().lockedApps.collectLatest { lockedAppsCache = it }
         }
         registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
     }

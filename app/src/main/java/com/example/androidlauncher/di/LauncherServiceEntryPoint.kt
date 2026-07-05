@@ -1,7 +1,7 @@
 package com.example.androidlauncher.di
 
 import com.example.androidlauncher.data.AppLockManager
-import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.data.settings.PrivacySettings
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -15,6 +15,6 @@ import dagger.hilt.components.SingletonComponent
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface LauncherServiceEntryPoint {
-    fun themeManager(): ThemeManager
+    fun privacySettings(): PrivacySettings
     fun appLockManager(): AppLockManager
 }

@@ -15,6 +15,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.androidlauncher.data.settings.AnimationSettings
 import com.example.androidlauncher.data.settings.GestureSettings
+import com.example.androidlauncher.data.settings.IslandAndEdgeSettings
+import com.example.androidlauncher.data.settings.PrivacySettings
 import com.example.androidlauncher.data.settings.WallpaperSettings
 import com.example.androidlauncher.data.settings.settingsDataStore
 import com.example.androidlauncher.ui.theme.ColorTheme
@@ -38,6 +40,8 @@ class ThemeManager(private val context: Context) {
     private val wallpaperSettings = WallpaperSettings(context)
     private val gestureSettings = GestureSettings(context)
     private val animationSettings = AnimationSettings(context)
+    private val islandAndEdgeSettings = IslandAndEdgeSettings(context)
+    private val privacySettings = PrivacySettings(context)
     companion object {
         private val THEME_KEY = stringPreferencesKey("selected_theme")
 
@@ -62,20 +66,6 @@ class ThemeManager(private val context: Context) {
         private val CUSTOM_BG_COLOR_KEY = intPreferencesKey("custom_bg_color")
         private val CUSTOM_MENU_COLOR_KEY = intPreferencesKey("custom_menu_color")
 
-        // Komma-separierte Paketnamen der ausgeblendeten Apps.
-        private val HIDDEN_APPS_KEY = stringPreferencesKey("hidden_apps")
-
-        // App-Sperre: Komma-separierte Paketnamen der gesperrten Apps (verschlüsselt).
-        private val LOCKED_APPS_KEY = stringPreferencesKey("locked_apps")
-
-        // Typ des Sperr-Geheimnisses: "pin", "pattern" oder "none".
-        private val LOCK_TYPE_KEY = stringPreferencesKey("lock_type")
-
-        // Gesalzener Hash des PIN/Musters (Format salt:hash, verschlüsselt). Nie das Geheimnis selbst.
-        private val LOCK_SECRET_KEY = stringPreferencesKey("lock_secret")
-
-        // Ob zusätzlich per Biometrie/Geräte-Credential entsperrt werden darf.
-        private val LOCK_BIOMETRIC_KEY = booleanPreferencesKey("lock_biometric_enabled")
         private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
         private val NOTIFICATION_DOTS_KEY = booleanPreferencesKey("notification_dots_enabled")
         private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
@@ -83,10 +73,9 @@ class ThemeManager(private val context: Context) {
         private val FAVORITES_BORDER_KEY = stringPreferencesKey("favorites_border_style")
         private val APP_FONT_KEY = stringPreferencesKey("app_font")
 
-        // Wallpaper-, Gesten- und Animations-Keys liegen jetzt in den extrahierten
-        // Stores unter data/settings/ (A1-Split, gleiche DataStore-Datei).
+        // Wallpaper-, Gesten-, Animations-, Island-/Edge- und Privatsphäre-Keys liegen
+        // jetzt in den extrahierten Stores unter data/settings/ (A1-Split, gleiche Datei).
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
-        private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
 
         // Wetter-Widget unter Uhr/Datum (Standard: an).
         private val WEATHER_WIDGET_KEY = booleanPreferencesKey("weather_widget_enabled")
@@ -96,38 +85,6 @@ class ThemeManager(private val context: Context) {
 
         // Kalender-/Datum-Widget (Standard: an).
         private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
-        private val DYNAMIC_ISLAND_KEY = booleanPreferencesKey("dynamic_island_enabled")
-        private val DYNAMIC_ISLAND_OFFSET_KEY = floatPreferencesKey("dynamic_island_offset")
-
-        // Einmalige Migration: Mit der cutout-basierten Auto-Zentrierung wechselt die vertikale
-        // Basis von statusBar/2 auf die echte Kamera-Mitte. Ein alter, gegen statusBar/2
-        // kompensierter Offset würde sonst doppelt wirken → bis der Nutzer den Offset erstmals
-        // neu setzt, alten Wert ignorieren (als 0 behandeln).
-        private val DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY = booleanPreferencesKey("dynamic_island_offset_migrated_v2")
-
-        // ARGB-Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
-        private val DYNAMIC_ISLAND_COLOR_KEY = intPreferencesKey("dynamic_island_color")
-
-        // Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
-        private val EDGE_LIGHTING_KEY = booleanPreferencesKey("edge_lighting_enabled")
-
-        // ARGB-Farbe des Edge Lightings. Default: Akzent-Blau.
-        private val EDGE_LIGHTING_COLOR_KEY = intPreferencesKey("edge_lighting_color")
-
-        // Edge-Lighting-Tempo (höher = schneller). Default: 1.0.
-        private val EDGE_LIGHTING_SPEED_KEY = floatPreferencesKey("edge_lighting_speed")
-
-        // Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1.
-        private val EDGE_LIGHTING_LAPS_KEY = intPreferencesKey("edge_lighting_laps")
-
-        // Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0.
-        private val EDGE_LIGHTING_THICKNESS_KEY = floatPreferencesKey("edge_lighting_thickness")
-
-        // Edge-Lighting-Stil (EdgeLightingStyle-Name). Default: SWEEP.
-        private val EDGE_LIGHTING_STYLE_KEY = stringPreferencesKey("edge_lighting_style")
-
-        // Insel-Öffnungs-/Schließstil (IslandAnimationStyle-Name). Default: FROM_NOTCH.
-        private val ISLAND_ANIMATION_STYLE_KEY = stringPreferencesKey("island_animation_style")
 
         // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
         private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
@@ -233,31 +190,12 @@ class ThemeManager(private val context: Context) {
     val customMenuColor: Flow<Color> = context.dataStore.data
         .map { Color(it[CUSTOM_MENU_COLOR_KEY] ?: 0xFFFFFFFF.toInt()) }
 
-    // Ausgeblendete Apps (Paketnamen). Werden überall aus der Anzeige gefiltert.
-    val hiddenApps: Flow<Set<String>> = context.dataStore.data
-        .map { prefs ->
-            // Wert ist verschlüsselt abgelegt; decryptOrLegacy migriert alten Klartext transparent.
-            val raw = CryptoManager.decryptOrLegacy(prefs[HIDDEN_APPS_KEY])
-            if (raw.isEmpty()) emptySet() else raw.split(",").filter { it.isNotEmpty() }.toSet()
-        }
-
-    // Gesperrte Apps (Paketnamen). Vor dem Öffnen muss authentifiziert werden.
-    val lockedApps: Flow<Set<String>> = context.dataStore.data
-        .map { prefs ->
-            val raw = CryptoManager.decryptOrLegacy(prefs[LOCKED_APPS_KEY])
-            if (raw.isEmpty()) emptySet() else raw.split(",").filter { it.isNotEmpty() }.toSet()
-        }
-
-    // Art des hinterlegten Sperr-Geheimnisses ("pin", "pattern", "none").
-    val lockType: Flow<String> = context.dataStore.data
-        .map { it[LOCK_TYPE_KEY] ?: "none" }
-
-    // Roh-Token des gespeicherten Geheimnisses (salt:hash, entschlüsselt). Leer = kein Code gesetzt.
-    val lockSecret: Flow<String> = context.dataStore.data
-        .map { CryptoManager.decryptOrLegacy(it[LOCK_SECRET_KEY]) }
-
-    val isLockBiometricEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[LOCK_BIOMETRIC_KEY] ?: false }
+    // A1-Split: Privatsphäre-Einstellungen liegen im PrivacySettings-Store.
+    val hiddenApps: Flow<Set<String>> = privacySettings.hiddenApps
+    val lockedApps: Flow<Set<String>> = privacySettings.lockedApps
+    val lockType: Flow<String> = privacySettings.lockType
+    val lockSecret: Flow<String> = privacySettings.lockSecret
+    val isLockBiometricEnabled: Flow<Boolean> = privacySettings.isLockBiometricEnabled
 
     val showFavoriteLabels: Flow<Boolean> = context.dataStore.data
         .map { it[SHOW_FAVORITE_LABELS_KEY] ?: false }
@@ -347,72 +285,17 @@ class ThemeManager(private val context: Context) {
     val isCalendarWidgetEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[CALENDAR_WIDGET_KEY] ?: true }
 
-    /**
-     * Observable flow für die Dynamic Island (Pille am oberen Rand). Default: an.
-     */
-    val isDynamicIslandEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[DYNAMIC_ISLAND_KEY] ?: true }
-
-    /**
-     * Manueller vertikaler Feinversatz der Dynamic Island in dp (−12..40). Default: 0.
-     * Seit der cutout-basierten Auto-Zentrierung nur noch optionale Feinjustierung. Alte
-     * (gegen statusBar/2 kompensierte) Werte werden einmalig ignoriert, bis der Nutzer den
-     * Offset über [setDynamicIslandOffset] erstmals selbst setzt (siehe MIGRATED_V2-Flag).
-     */
-    val dynamicIslandOffset: Flow<Float> = context.dataStore.data
-        .map { prefs ->
-            if (prefs[DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY] == true) {
-                prefs[DYNAMIC_ISLAND_OFFSET_KEY] ?: 0f
-            } else {
-                0f
-            }
-        }
-
-    /**
-     * Frei wählbare Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
-     */
-    val dynamicIslandColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[DYNAMIC_ISLAND_COLOR_KEY] ?: 0xFF0B0B0C.toInt()) }
-
-    /**
-     * Observable flow für das Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
-     */
-    val isEdgeLightingEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[EDGE_LIGHTING_KEY] ?: false }
-
-    /**
-     * Frei wählbare Farbe des Edge Lightings. Default: Akzent-Blau.
-     */
-    val edgeLightingColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[EDGE_LIGHTING_COLOR_KEY] ?: 0xFF0A84FF.toInt()) }
-
-    /** Edge-Lighting-Tempo (höher = schneller). Default: 1.0. */
-    val edgeLightingSpeed: Flow<Float> = context.dataStore.data
-        .map { (it[EDGE_LIGHTING_SPEED_KEY] ?: 1f).coerceIn(0.5f, 2f) }
-
-    /** Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1. */
-    val edgeLightingLaps: Flow<Int> = context.dataStore.data
-        .map { (it[EDGE_LIGHTING_LAPS_KEY] ?: 1).coerceIn(1, 5) }
-
-    /** Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0. */
-    val edgeLightingThickness: Flow<Float> = context.dataStore.data
-        .map { (it[EDGE_LIGHTING_THICKNESS_KEY] ?: 1f).coerceIn(0.5f, 2f) }
-
-    /** Edge-Lighting-Stil. Default: SWEEP. */
-    val edgeLightingStyle: Flow<EdgeLightingStyle> = context.dataStore.data
-        .map { prefs ->
-            prefs[EDGE_LIGHTING_STYLE_KEY]?.let {
-                runCatching { EdgeLightingStyle.valueOf(it) }.getOrNull()
-            } ?: EdgeLightingStyle.SWEEP
-        }
-
-    /** Insel-Öffnungs-/Schließstil. Default: FROM_NOTCH. */
-    val islandAnimationStyle: Flow<IslandAnimationStyle> = context.dataStore.data
-        .map { prefs ->
-            prefs[ISLAND_ANIMATION_STYLE_KEY]?.let {
-                runCatching { IslandAnimationStyle.valueOf(it) }.getOrNull()
-            } ?: IslandAnimationStyle.FROM_NOTCH
-        }
+    // A1-Split: Island-/Edge-Lighting-Einstellungen liegen im IslandAndEdgeSettings-Store.
+    val isDynamicIslandEnabled: Flow<Boolean> = islandAndEdgeSettings.isDynamicIslandEnabled
+    val dynamicIslandOffset: Flow<Float> = islandAndEdgeSettings.dynamicIslandOffset
+    val dynamicIslandColor: Flow<Color> = islandAndEdgeSettings.dynamicIslandColor
+    val isEdgeLightingEnabled: Flow<Boolean> = islandAndEdgeSettings.isEdgeLightingEnabled
+    val edgeLightingColor: Flow<Color> = islandAndEdgeSettings.edgeLightingColor
+    val edgeLightingSpeed: Flow<Float> = islandAndEdgeSettings.edgeLightingSpeed
+    val edgeLightingLaps: Flow<Int> = islandAndEdgeSettings.edgeLightingLaps
+    val edgeLightingThickness: Flow<Float> = islandAndEdgeSettings.edgeLightingThickness
+    val edgeLightingStyle: Flow<EdgeLightingStyle> = islandAndEdgeSettings.edgeLightingStyle
+    val islandAnimationStyle: Flow<IslandAnimationStyle> = islandAndEdgeSettings.islandAnimationStyle
 
     // A1-Split: Gesten-Einstellungen liegen im GestureSettings-Store.
     val isShakeGesturesEnabled: Flow<Boolean> = gestureSettings.isShakeGesturesEnabled
@@ -423,12 +306,9 @@ class ThemeManager(private val context: Context) {
 
     /**
      * Gewählte Art des App-Zugriffs. Default ist die Drawer-Liste (Niagara-Stil).
+     * A1-Split: liegt im PrivacySettings-Store.
      */
-    val appAccessMode: Flow<AppAccessMode> = context.dataStore.data
-        .map { preferences ->
-            val name = preferences[APP_ACCESS_MODE_KEY] ?: AppAccessMode.DRAWER_LIST.name
-            try { AppAccessMode.valueOf(name) } catch (e: IllegalArgumentException) { AppAccessMode.DRAWER_LIST }
-        }
+    val appAccessMode: Flow<AppAccessMode> = privacySettings.appAccessMode
 
     /**
      * Observable flow for intelligent search suggestions.
@@ -468,31 +348,17 @@ class ThemeManager(private val context: Context) {
     suspend fun setCustomMenuColor(
         color: Color
     ) { context.dataStore.edit { it[CUSTOM_MENU_COLOR_KEY] = color.toArgb() } }
-    suspend fun setHiddenApps(packages: Set<String>) {
-        context.dataStore.edit { it[HIDDEN_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) }
-    }
-    suspend fun setLockedApps(packages: Set<String>) {
-        context.dataStore.edit { it[LOCKED_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) }
-    }
+
+    // A1-Split: Privatsphäre-Setter delegieren an den PrivacySettings-Store.
+    suspend fun setHiddenApps(packages: Set<String>) = privacySettings.setHiddenApps(packages)
+    suspend fun setLockedApps(packages: Set<String>) = privacySettings.setLockedApps(packages)
 
     /** Speichert Typ ("pin"/"pattern") und gesalzenen Hash-Token des Geheimnisses. */
-    suspend fun setLockSecret(type: String, secretToken: String) {
-        context.dataStore.edit {
-            it[LOCK_TYPE_KEY] = type
-            it[LOCK_SECRET_KEY] = CryptoManager.encrypt(secretToken)
-        }
-    }
+    suspend fun setLockSecret(type: String, secretToken: String) = privacySettings.setLockSecret(type, secretToken)
 
     /** Entfernt den hinterlegten Code (Typ zurück auf "none"). */
-    suspend fun clearLockSecret() {
-        context.dataStore.edit {
-            it[LOCK_TYPE_KEY] = "none"
-            it.remove(LOCK_SECRET_KEY)
-        }
-    }
-    suspend fun setLockBiometricEnabled(
-        enabled: Boolean
-    ) { context.dataStore.edit { it[LOCK_BIOMETRIC_KEY] = enabled } }
+    suspend fun clearLockSecret() = privacySettings.clearLockSecret()
+    suspend fun setLockBiometricEnabled(enabled: Boolean) = privacySettings.setLockBiometricEnabled(enabled)
     suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
     suspend fun setNotificationDotsEnabled(
         enabled: Boolean
@@ -552,11 +418,7 @@ class ThemeManager(private val context: Context) {
     /**
      * Setzt die gewählte Art des App-Zugriffs.
      */
-    suspend fun setAppAccessMode(mode: AppAccessMode) {
-        context.dataStore.edit { preferences ->
-            preferences[APP_ACCESS_MODE_KEY] = mode.name
-        }
-    }
+    suspend fun setAppAccessMode(mode: AppAccessMode) = privacySettings.setAppAccessMode(mode)
 
     /**
      * Toggles intelligent search suggestions.
@@ -602,86 +464,16 @@ class ThemeManager(private val context: Context) {
         }
     }
 
-    /**
-     * Schaltet die Dynamic Island ein/aus.
-     */
-    suspend fun setDynamicIslandEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[DYNAMIC_ISLAND_KEY] = enabled
-        }
-    }
-
-    /**
-     * Setzt den vertikalen Feinversatz der Dynamic Island (auf −16..16 dp begrenzt).
-     */
-    suspend fun setDynamicIslandOffset(offsetDp: Float) {
-        context.dataStore.edit { preferences ->
-            preferences[DYNAMIC_ISLAND_OFFSET_KEY] = offsetDp.coerceIn(-12f, 40f)
-            // Erste bewusste Justierung schließt die Einmal-Migration ab → ab jetzt wird der
-            // gespeicherte Wert wieder verwendet.
-            preferences[DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY] = true
-        }
-    }
-
-    /**
-     * Setzt die frei wählbare Farbe der Dynamic Island (Pille + Karte).
-     */
-    suspend fun setDynamicIslandColor(color: Color) {
-        context.dataStore.edit { preferences ->
-            preferences[DYNAMIC_ISLAND_COLOR_KEY] = color.toArgb()
-        }
-    }
-
-    /**
-     * Schaltet das Edge Lighting (leuchtender Rand bei Benachrichtigungen) ein/aus.
-     */
-    suspend fun setEdgeLightingEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_KEY] = enabled
-        }
-    }
-
-    /**
-     * Setzt die frei wählbare Farbe des Edge Lightings.
-     */
-    suspend fun setEdgeLightingColor(color: Color) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_COLOR_KEY] = color.toArgb()
-        }
-    }
-
-    /** Setzt das Edge-Lighting-Tempo (0.5..2.0; höher = schneller). */
-    suspend fun setEdgeLightingSpeed(speed: Float) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_SPEED_KEY] = speed.coerceIn(0.5f, 2f)
-        }
-    }
-
-    /** Setzt die Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). */
-    suspend fun setEdgeLightingLaps(laps: Int) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_LAPS_KEY] = laps.coerceIn(1, 5)
-        }
-    }
-
-    /** Setzt die Edge-Lighting-Stärke (0.5..2.0; skaliert Strich-/Glow-Breite). */
-    suspend fun setEdgeLightingThickness(thickness: Float) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_THICKNESS_KEY] = thickness.coerceIn(0.5f, 2f)
-        }
-    }
-
-    /** Setzt den Edge-Lighting-Stil. */
-    suspend fun setEdgeLightingStyle(style: EdgeLightingStyle) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_STYLE_KEY] = style.name
-        }
-    }
-
-    /** Setzt den Insel-Öffnungs-/Schließstil. */
-    suspend fun setIslandAnimationStyle(style: IslandAnimationStyle) {
-        context.dataStore.edit { preferences ->
-            preferences[ISLAND_ANIMATION_STYLE_KEY] = style.name
-        }
-    }
+    // A1-Split: Island-/Edge-Lighting-Setter delegieren an den IslandAndEdgeSettings-Store.
+    suspend fun setDynamicIslandEnabled(enabled: Boolean) = islandAndEdgeSettings.setDynamicIslandEnabled(enabled)
+    suspend fun setDynamicIslandOffset(offsetDp: Float) = islandAndEdgeSettings.setDynamicIslandOffset(offsetDp)
+    suspend fun setDynamicIslandColor(color: Color) = islandAndEdgeSettings.setDynamicIslandColor(color)
+    suspend fun setEdgeLightingEnabled(enabled: Boolean) = islandAndEdgeSettings.setEdgeLightingEnabled(enabled)
+    suspend fun setEdgeLightingColor(color: Color) = islandAndEdgeSettings.setEdgeLightingColor(color)
+    suspend fun setEdgeLightingSpeed(speed: Float) = islandAndEdgeSettings.setEdgeLightingSpeed(speed)
+    suspend fun setEdgeLightingLaps(laps: Int) = islandAndEdgeSettings.setEdgeLightingLaps(laps)
+    suspend fun setEdgeLightingThickness(thickness: Float) = islandAndEdgeSettings.setEdgeLightingThickness(thickness)
+    suspend fun setEdgeLightingStyle(style: EdgeLightingStyle) = islandAndEdgeSettings.setEdgeLightingStyle(style)
+    suspend fun setIslandAnimationStyle(style: IslandAnimationStyle) =
+        islandAndEdgeSettings.setIslandAnimationStyle(style)
 }
