@@ -33,6 +33,9 @@ class AppLockActivity : FragmentActivity() {
     @javax.inject.Inject
     lateinit var themeManager: ThemeManager
 
+    @javax.inject.Inject
+    lateinit var appLockManager: AppLockManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -47,7 +50,7 @@ class AppLockActivity : FragmentActivity() {
 
         // Falls das Paket in dieser Sitzung bereits entsperrt ist, nicht erneut nach PIN
         // fragen (Absicherung gegen verbleibende Relaunch-Fälle).
-        if (AppLockManager.isUnlocked(targetPackage)) {
+        if (appLockManager.isUnlocked(targetPackage)) {
             finish()
             return
         }
@@ -113,7 +116,8 @@ class AppLockActivity : FragmentActivity() {
 
         val executor = ContextCompat.getMainExecutor(this)
         val prompt = BiometricPrompt(
-            this, executor,
+            this,
+            executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     unlockAndFinish(targetPackage)
@@ -132,7 +136,7 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun unlockAndFinish(targetPackage: String) {
-        AppLockManager.markUnlocked(targetPackage)
+        appLockManager.markUnlocked(targetPackage)
         finish()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)

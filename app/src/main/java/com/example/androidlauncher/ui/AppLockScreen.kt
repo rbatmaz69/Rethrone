@@ -155,7 +155,12 @@ fun AppLockScreen(
                 if (appIcon != null) {
                     Image(bitmap = appIcon, contentDescription = appLabel, modifier = Modifier.size(48.dp))
                 } else {
-                    Icon(Icons.Rounded.Lock, contentDescription = null, tint = textColor, modifier = Modifier.size(36.dp))
+                    Icon(
+                        Icons.Rounded.Lock,
+                        contentDescription = null,
+                        tint = textColor,
+                        modifier = Modifier.size(36.dp)
+                    )
                 }
             }
 

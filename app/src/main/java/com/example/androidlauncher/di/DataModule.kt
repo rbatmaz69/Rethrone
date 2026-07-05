@@ -2,13 +2,22 @@ package com.example.androidlauncher.di
 
 import android.content.Context
 import com.example.androidlauncher.LauncherShakeManager
+import com.example.androidlauncher.data.AppLockManager
 import com.example.androidlauncher.data.AppRepository
 import com.example.androidlauncher.data.DynamicIslandManager
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.IconManager
+import com.example.androidlauncher.data.NotificationStateStore
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.data.settings.AnimationSettings
+import com.example.androidlauncher.data.settings.AppearanceSettings
+import com.example.androidlauncher.data.settings.GestureSettings
+import com.example.androidlauncher.data.settings.HomeLayoutSettings
+import com.example.androidlauncher.data.settings.IslandAndEdgeSettings
+import com.example.androidlauncher.data.settings.PrivacySettings
+import com.example.androidlauncher.data.settings.WallpaperSettings
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -65,6 +74,52 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideDynamicIslandManager(@ApplicationContext context: Context): DynamicIslandManager =
-        DynamicIslandManager(context)
+    fun provideNotificationStateStore(): NotificationStateStore = NotificationStateStore()
+
+    @Provides
+    @Singleton
+    fun provideDynamicIslandManager(
+        @ApplicationContext context: Context,
+        notificationStateStore: NotificationStateStore,
+    ): DynamicIslandManager = DynamicIslandManager(context, notificationStateStore)
+
+    @Provides
+    @Singleton
+    fun provideAppLockManager(): AppLockManager = AppLockManager()
+
+    // A1-Split: domänen-spezifische Settings-Stores (teilen sich die "settings"-DataStore-Datei).
+    @Provides
+    @Singleton
+    fun provideWallpaperSettings(@ApplicationContext context: Context): WallpaperSettings =
+        WallpaperSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideGestureSettings(@ApplicationContext context: Context): GestureSettings =
+        GestureSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideAnimationSettings(@ApplicationContext context: Context): AnimationSettings =
+        AnimationSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideIslandAndEdgeSettings(@ApplicationContext context: Context): IslandAndEdgeSettings =
+        IslandAndEdgeSettings(context)
+
+    @Provides
+    @Singleton
+    fun providePrivacySettings(@ApplicationContext context: Context): PrivacySettings =
+        PrivacySettings(context)
+
+    @Provides
+    @Singleton
+    fun provideAppearanceSettings(@ApplicationContext context: Context): AppearanceSettings =
+        AppearanceSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideHomeLayoutSettings(@ApplicationContext context: Context): HomeLayoutSettings =
+        HomeLayoutSettings(context)
 }

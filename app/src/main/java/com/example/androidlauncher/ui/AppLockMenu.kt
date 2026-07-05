@@ -49,6 +49,7 @@ import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppLockManager
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.openAccessibilitySettings
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
@@ -351,9 +352,13 @@ private fun LockSecretSetup(
             }
             "pattern" -> {
                 Text(
-                    if (firstEntry == null) stringResource(
-                        R.string.lock_draw_pattern
-                    ) else stringResource(R.string.lock_confirm_pattern),
+                    if (firstEntry == null) {
+                        stringResource(
+                            R.string.lock_draw_pattern
+                        )
+                    } else {
+                        stringResource(R.string.lock_confirm_pattern)
+                    },
                     color = error?.let { Color(0xFFE0584F) } ?: mainTextColor,
                     fontSize = 16.sp
                 )
@@ -370,11 +375,11 @@ private fun LockSecretSetup(
                             minLength = 4,
                             tooShortMessage = minPointsMessage,
                             onFirst = {
-                                firstEntry = it;
+                                firstEntry = it
                                 error = null
                             },
                             onMismatch = {
-                                firstEntry = null;
+                                firstEntry = null
                                 error = patternMismatchMessage
                             },
                             onTooShort = { error = it },
@@ -388,9 +393,13 @@ private fun LockSecretSetup(
             }
             else -> { // "pin"
                 Text(
-                    if (firstEntry == null) stringResource(
-                        R.string.lock_enter_pin
-                    ) else stringResource(R.string.lock_confirm_pin),
+                    if (firstEntry == null) {
+                        stringResource(
+                            R.string.lock_enter_pin
+                        )
+                    } else {
+                        stringResource(R.string.lock_confirm_pin)
+                    },
                     color = mainTextColor,
                     fontSize = 16.sp
                 )
@@ -426,17 +435,17 @@ private fun LockSecretSetup(
                                 minLength = 4,
                                 tooShortMessage = minDigitsMessage,
                                 onFirst = {
-                                    firstEntry = it;
-                                    pin = "";
+                                    firstEntry = it
+                                    pin = ""
                                     error = null
                                 },
                                 onMismatch = {
-                                    firstEntry = null;
-                                    pin = "";
+                                    firstEntry = null
+                                    pin = ""
                                     error = pinMismatchMessage
                                 },
                                 onTooShort = {
-                                    pin = "";
+                                    pin = ""
                                     error = it
                                 },
                                 onMatch = { onConfirm("pin", it) }

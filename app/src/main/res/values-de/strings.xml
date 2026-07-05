@@ -213,6 +213,7 @@
     <string name="border_style_accent">Akzentfarbe</string>
     <string name="border_style_subtle">Dezent</string>
     <string name="favorites_app_titles">App-Titel</string>
+    <string name="favorites_notification_dots">Benachrichtigungs-Punkte</string>
     <string name="favorites_border">Umrandung</string>
 
     <!-- Animationen-Menü -->

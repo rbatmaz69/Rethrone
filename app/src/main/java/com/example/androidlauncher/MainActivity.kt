@@ -139,11 +139,11 @@ import com.example.androidlauncher.ui.UninstallAppsMenu
 import com.example.androidlauncher.ui.WallpaperConfigMenu
 import com.example.androidlauncher.ui.WallpaperCropScreen
 import com.example.androidlauncher.ui.expandNotifications
+import com.example.androidlauncher.ui.home.ActiveOverlay
+import com.example.androidlauncher.ui.home.HomeViewModel
+import com.example.androidlauncher.ui.home.rememberLaunchTransitionState
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
-import com.example.androidlauncher.ui.openDefaultLauncherSettings
-import com.example.androidlauncher.ui.sendNotificationReply
-import com.example.androidlauncher.ui.sendPendingIntent
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
@@ -274,6 +274,7 @@ class MainActivity : ComponentActivity() {
                 com.example.androidlauncher.data.CustomColorHolder.set(customBackgroundColor, customMenuColor)
             }
             val showFavoriteLabels by themeManager.showFavoriteLabels.collectAsState(initial = false)
+            val notificationDotsEnabled by themeManager.isNotificationDotsEnabled.collectAsState(initial = true)
             val hiddenApps by themeManager.hiddenApps.collectAsState(initial = emptySet())
             val lockedApps by themeManager.lockedApps.collectAsState(initial = emptySet())
             val lockType by themeManager.lockType.collectAsState(initial = "none")
@@ -349,11 +350,14 @@ class MainActivity : ComponentActivity() {
 
             var isWallpaperCropOpen by remember { mutableStateOf(false) }
             var pendingWallpaperUri by remember { mutableStateOf<Uri?>(null) }
-            var showUsageAccessPrompt by remember { mutableStateOf(false) }
-            var hasShownUsageAccessPrompt by remember { mutableStateOf(false) }
-            var pendingPermissionShakeAction by remember {
-                mutableStateOf<GestureAction?>(null)
-            }
+
+            // A2-Split: Navigations-/Overlay-Zustand lebt im HomeViewModel und
+            // überlebt damit Konfigurationswechsel. Abgeleitete Werte halten die
+            // bestehenden Lese-Stellen stabil.
+            val homeViewModel: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            val homeUi by homeViewModel.uiState.collectAsState()
+            val showUsageAccessPrompt = homeUi.showUsageAccessPrompt
+            val hasShownUsageAccessPrompt = homeUi.hasShownUsageAccessPrompt
 
             val wallpaperPickerLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.PickVisualMedia()
@@ -367,8 +371,7 @@ class MainActivity : ComponentActivity() {
             val cameraPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestPermission()
             ) { isGranted ->
-                val pendingAction = pendingPermissionShakeAction
-                pendingPermissionShakeAction = null
+                val pendingAction = homeViewModel.consumePendingPermissionShakeAction()
 
                 if (pendingAction != GestureAction.FLASHLIGHT) {
                     return@rememberLauncherForActivityResult
@@ -428,7 +431,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 override fun requestCameraPermission() {
-                    pendingPermissionShakeAction = GestureAction.FLASHLIGHT
+                    homeViewModel.setPendingPermissionShakeAction(GestureAction.FLASHLIGHT)
                     cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                 }
 
@@ -484,6 +487,7 @@ class MainActivity : ComponentActivity() {
                 iconColor = iconColor,
                 homeTextColor = homeTextColor,
                 showFavoriteLabels = showFavoriteLabels,
+                notificationDotsEnabled = notificationDotsEnabled,
                 designStyle = designStyle,
                 favoritesBorderStyle = favoritesBorderStyle,
                 appFont = currentAppFont,
@@ -505,40 +509,38 @@ class MainActivity : ComponentActivity() {
                 val returnOverlayBrush: Brush? = null
 
                 var rootSize by remember { mutableStateOf(IntSize.Zero) }
-                var pendingReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
-                var pendingReturnAnimationStartedWallClockMs by remember { mutableStateOf(0L) }
-                var activeReturnAnimation by remember { mutableStateOf<ReturnAnimation?>(null) }
-                var returnIconPackage by remember { mutableStateOf<String?>(null) }
-                var searchButtonBounceToken by remember { mutableStateOf(0) }
-                // Eigener Trigger für den Rückkehr-Bounce, entkoppelt von
-                // activeReturnAnimation. Letzteres wird vom Schließen-Overlay nach
-                // ~260ms auf null gesetzt; würde der Bounce darauf gekeyt sein, würde
-                // die delay(270)-Coroutine ~10ms vor dem Feuern abgebrochen -> der
-                // Bounce käme nur „manchmal". Das Token steigt nur bei einer neuen
-                // Aktivierung, sodass die Coroutine zuverlässig zu Ende läuft.
-                var returnBounceToken by remember { mutableStateOf(0) }
-                var returnBounceTargetPackage by remember { mutableStateOf<String?>(null) }
-                // Beim Öffnen poppt das gedrückte Icon kurz, bevor das Panel es
-                // verdeckt – symmetrisch zum Rückkehr-Bounce.
-                var launchIconPackage by remember { mutableStateOf<String?>(null) }
+
+                // A2-Split: transiente Start-/Rückkehr-Animations-Zustände leben gebündelt
+                // im LaunchTransitionStateHolder (remember, bewusst kein ViewModel). Die
+                // lokalen Delegates halten die bestehenden Lese-/Schreib-Stellen stabil.
+                val launchTransitions = rememberLaunchTransitionState(searchLaunchOverlayColor)
+                var pendingReturnAnimation by launchTransitions::pendingReturnAnimation
+                var pendingReturnAnimationStartedWallClockMs by
+                    launchTransitions::pendingReturnAnimationStartedWallClockMs
+                var activeReturnAnimation by launchTransitions::activeReturnAnimation
+                var returnIconPackage by launchTransitions::returnIconPackage
+                var searchButtonBounceToken by launchTransitions::searchButtonBounceToken
+                var returnBounceToken by launchTransitions::returnBounceToken
+                var returnBounceTargetPackage by launchTransitions::returnBounceTargetPackage
+                var launchIconPackage by launchTransitions::launchIconPackage
                 val returnOverlayDurationMs = (260L / animationSpeed).toLong()
                 // Bounce erst nach Abschluss des Schließen-Panels (260ms), damit er nicht
                 // gegen das noch schrumpfende Panel läuft.
                 val returnBounceDelayMs = (270L / animationSpeed).toLong()
-                var isDrawerOpen by remember { mutableStateOf(false) }
-                var isSettingsOpen by remember { mutableStateOf(false) }
-                var isSearchOpen by remember { mutableStateOf(false) }
+                val isDrawerOpen = homeUi.isDrawerOpen
+                val isSettingsOpen = homeUi.isSettingsOpen
+                val isSearchOpen = homeUi.isSearchOpen
                 var isSearchClosingState by remember { mutableStateOf(false) }
-                var isHomeEditMode by remember { mutableStateOf(false) }
+                val isHomeEditMode = homeUi.isHomeEditMode
 
                 // Zentraler Geste-Dispatch: Launcher-interne Aktionen setzen hier den
                 // UI-State, alles andere geht an runGestureAction (Geräte-/System-Aktionen).
                 fun dispatchGestureAction(action: GestureAction, appPackage: String?) {
                     when (action) {
-                        GestureAction.APP_DRAWER -> isDrawerOpen = true
+                        GestureAction.APP_DRAWER -> homeViewModel.setDrawerOpen(true)
                         GestureAction.SEARCH -> {
                             isSearchClosingState = false
-                            isSearchOpen = true
+                            homeViewModel.setSearchOpen(true)
                         }
                         GestureAction.NOTIFICATIONS -> expandNotifications(context)
                         else -> runGestureAction(action, appPackage)
@@ -546,11 +548,11 @@ class MainActivity : ComponentActivity() {
                 }
                 shakeManager.onDoubleShake = { dispatchGestureAction(doubleShakeAction, shakeOpenAppPackage) }
                 var homeSearchButtonBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-                var isSearchLaunching by remember { mutableStateOf(false) }
-                var isAppLaunchAnimating by remember { mutableStateOf(false) }
-                var activeLaunchBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-                var activeLaunchBackground by remember { mutableStateOf(searchLaunchOverlayColor) }
-                var activeLaunchBackgroundBrush by remember { mutableStateOf<Brush?>(launchOverlayBrush) }
+                var isSearchLaunching by launchTransitions::isSearchLaunching
+                var isAppLaunchAnimating by launchTransitions::isAppLaunchAnimating
+                var activeLaunchBounds by launchTransitions::activeLaunchBounds
+                var activeLaunchBackground by launchTransitions::activeLaunchBackground
+                var activeLaunchBackgroundBrush by launchTransitions::activeLaunchBackgroundBrush
                 // Treibt das leichte Zurücktreten (Skalieren/Abdunkeln) des Homescreen-/Drawer-Inhalts,
                 // damit das Start-/Rückkehr-Panel nicht als lose Schicht über eingefrorenem Inhalt wirkt.
                 val contentRevealProgress = remember { Animatable(0f) }
@@ -559,23 +561,27 @@ class MainActivity : ComponentActivity() {
                 // Kurzer Vorlauf, in dem nur das gedrückte Icon poppt, bevor das
                 // wachsende Panel es verdeckt.
                 val launchBounceLeadMs = (120L / animationSpeed).toLong()
-                var isFavoritesConfigOpen by remember { mutableStateOf(false) }
-                var isColorConfigOpen by remember { mutableStateOf(false) }
-                var isAnimationsConfigOpen by remember { mutableStateOf(false) }
-                var isEdgeLightingConfigOpen by remember { mutableStateOf(false) }
-                var isGesturesConfigOpen by remember { mutableStateOf(false) }
-                var isDesignMenuOpen by remember { mutableStateOf(false) }
-                var isThemeMenuOpen by remember { mutableStateOf(false) }
-                var isSizeConfigOpen by remember { mutableStateOf(false) }
-                var isFontSelectionOpen by remember { mutableStateOf(false) }
-                var isEditConfigOpen by remember { mutableStateOf(false) }
-                var isIconConfigOpen by remember { mutableStateOf(false) }
-                var isUninstallAppsOpen by remember { mutableStateOf(false) }
-                var isHiddenAppsOpen by remember { mutableStateOf(false) }
-                var isAppLockOpen by remember { mutableStateOf(false) }
-                var isWallpaperConfigOpen by remember { mutableStateOf(false) }
-                var isInfoOpen by remember { mutableStateOf(false) }
-                var selectedFolderForConfig by remember { mutableStateOf<FolderInfo?>(null) }
+                // A2-Split: genau EIN Overlay kann offen sein (sealed class statt 17 Booleans);
+                // der Zustand lebt im HomeViewModel. Die abgeleiteten Werte darunter halten
+                // die vielen Lese-Stellen stabil.
+                val activeOverlay = homeUi.activeOverlay
+                val isFavoritesConfigOpen = activeOverlay is ActiveOverlay.FavoritesConfig
+                val isColorConfigOpen = activeOverlay is ActiveOverlay.ColorConfig
+                val isAnimationsConfigOpen = activeOverlay is ActiveOverlay.AnimationsConfig
+                val isEdgeLightingConfigOpen = activeOverlay is ActiveOverlay.EdgeLightingConfig
+                val isGesturesConfigOpen = activeOverlay is ActiveOverlay.GesturesConfig
+                val isDesignMenuOpen = activeOverlay is ActiveOverlay.DesignMenu
+                val isThemeMenuOpen = activeOverlay is ActiveOverlay.ThemeMenu
+                val isSizeConfigOpen = activeOverlay is ActiveOverlay.SizeConfig
+                val isFontSelectionOpen = activeOverlay is ActiveOverlay.FontSelection
+                val isEditConfigOpen = activeOverlay is ActiveOverlay.EditConfig
+                val isIconConfigOpen = activeOverlay is ActiveOverlay.IconConfig
+                val isUninstallAppsOpen = activeOverlay is ActiveOverlay.UninstallApps
+                val isHiddenAppsOpen = activeOverlay is ActiveOverlay.HiddenApps
+                val isAppLockOpen = activeOverlay is ActiveOverlay.AppLock
+                val isWallpaperConfigOpen = activeOverlay is ActiveOverlay.WallpaperConfig
+                val isInfoOpen = activeOverlay is ActiveOverlay.Info
+                val selectedFolderForConfig = (activeOverlay as? ActiveOverlay.FolderConfig)?.folder
                 var selectedFolderForConfigSnapshot by remember { mutableStateOf<FolderInfo?>(null) }
                 val folderConfigExitHoldMs = 320L
                 var isLauncherResumed by remember { mutableStateOf(false) }
@@ -636,8 +642,7 @@ class MainActivity : ComponentActivity() {
                             )
 
                             if (!accessibilityEnabled && !usageAccessEnabled && storedOriginCount > 1 && !hasShownUsageAccessPrompt) {
-                                showUsageAccessPrompt = true
-                                hasShownUsageAccessPrompt = true
+                                homeViewModel.requestUsageAccessPromptOnce()
                                 Log.d(
                                     RETURN_TAG,
                                     "prompt usage access because multiple origins exist and no foreground tracking is available"
@@ -664,18 +669,11 @@ class MainActivity : ComponentActivity() {
                             )
 
                             selectedReturnAnimation?.let { animation ->
-                                isDrawerOpen = animation.source == LaunchSource.DRAWER
-                                if (!isDrawerOpen) {
-                                    isSettingsOpen = false
-                                    isFavoritesConfigOpen = false
-                                    isColorConfigOpen = false
-                                    isSizeConfigOpen = false
-                                    isFontSelectionOpen = false
-                                    isEditConfigOpen = false
-                                    isIconConfigOpen = false
-                                    isWallpaperConfigOpen = false
-                                    isInfoOpen = false
-                                    selectedFolderForConfig = null
+                                val viaDrawer = animation.source == LaunchSource.DRAWER
+                                homeViewModel.setDrawerOpen(viaDrawer)
+                                if (!viaDrawer) {
+                                    homeViewModel.setSettingsOpen(false)
+                                    homeViewModel.closeOverlay()
                                 }
                                 if (appCloseAnimActiveRef.value) {
                                     activeReturnAnimation = animation
@@ -930,7 +928,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     if (isSearchLaunching || isAppLaunchAnimating) return
                     isSearchLaunching = true
-                    isSearchOpen = false
+                    homeViewModel.setSearchOpen(false)
                     if (!webQuery.isNullOrBlank() && isSmartSuggestionsEnabled) {
                         scope.launch {
                             searchSuggestionsManager.recordWebSearch(webQuery)
@@ -1032,67 +1030,17 @@ class MainActivity : ComponentActivity() {
                     onDispose { context.unregisterReceiver(receiver) }
                 }
 
-                LaunchedEffect(isDrawerOpen) {
-                    if (isDrawerOpen) {
-                        isSettingsOpen = false
-                        isSearchOpen = false
-                        isFavoritesConfigOpen = false
-                        isColorConfigOpen = false
-                        isSizeConfigOpen = false
-                        isFontSelectionOpen = false
-                        isEditConfigOpen = false
-                        isIconConfigOpen = false
-                        isUninstallAppsOpen = false
-                        isHiddenAppsOpen = false
-                        isAppLockOpen = false
-                        isWallpaperConfigOpen = false
-                        isInfoOpen = false
-                        isHomeEditMode = false
-                        selectedFolderForConfig = null
-                    }
+                // Das frühere "Drawer öffnet → alles andere schließen" erledigt jetzt der
+                // Reducer in HomeViewModel.setDrawerOpen(true) deterministisch.
+
+                LaunchedEffect(homeUi.hasModalSurface) {
+                    backCallback.isEnabled = !homeUi.hasModalSurface
                 }
 
-                LaunchedEffect(
-                    isDrawerOpen, isFavoritesConfigOpen, isColorConfigOpen, isAnimationsConfigOpen, isGesturesConfigOpen, isDesignMenuOpen, isThemeMenuOpen,
-                    isSizeConfigOpen, isFontSelectionOpen, isEditConfigOpen,
-                    isIconConfigOpen, isUninstallAppsOpen, isHiddenAppsOpen, isAppLockOpen, isWallpaperConfigOpen, isInfoOpen,
-                    selectedFolderForConfig, isSearchOpen, isHomeEditMode
-                ) {
-                    val anyModalOpen = isDrawerOpen || isFavoritesConfigOpen ||
-                        isColorConfigOpen || isAnimationsConfigOpen || isGesturesConfigOpen || isDesignMenuOpen || isThemeMenuOpen || isSizeConfigOpen || isFontSelectionOpen ||
-                        isEditConfigOpen || isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isAppLockOpen || isWallpaperConfigOpen ||
-                        isInfoOpen || selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
-                    backCallback.isEnabled = !anyModalOpen
-                }
-
-                BackHandler(
-                    enabled = isDrawerOpen || isFavoritesConfigOpen || isColorConfigOpen || isAnimationsConfigOpen || isGesturesConfigOpen || isDesignMenuOpen || isThemeMenuOpen ||
-                        isSizeConfigOpen || isFontSelectionOpen || isEditConfigOpen ||
-                        isIconConfigOpen || isUninstallAppsOpen || isHiddenAppsOpen || isAppLockOpen || isWallpaperConfigOpen || isInfoOpen ||
-                        selectedFolderForConfig != null || isSearchOpen || isHomeEditMode
-                ) {
-                    when {
-                        selectedFolderForConfig != null -> selectedFolderForConfig = null
-                        isHomeEditMode -> isHomeEditMode = false
-                        isSearchOpen -> isSearchOpen = false
-                        isFontSelectionOpen -> isFontSelectionOpen = false
-                        isWallpaperConfigOpen -> isWallpaperConfigOpen = false
-                        isUninstallAppsOpen -> isUninstallAppsOpen = false
-                        isHiddenAppsOpen -> isHiddenAppsOpen = false
-                        isAppLockOpen -> isAppLockOpen = false
-                        isIconConfigOpen -> isIconConfigOpen = false
-                        isDrawerOpen -> isDrawerOpen = false
-                        isFavoritesConfigOpen -> isFavoritesConfigOpen = false
-                        isThemeMenuOpen -> isThemeMenuOpen = false
-                        isDesignMenuOpen -> isDesignMenuOpen = false
-                        isAnimationsConfigOpen -> isAnimationsConfigOpen = false
-                        isEdgeLightingConfigOpen -> isEdgeLightingConfigOpen = false
-                        isGesturesConfigOpen -> isGesturesConfigOpen = false
-                        isColorConfigOpen -> isColorConfigOpen = false
-                        isSizeConfigOpen -> isSizeConfigOpen = false
-                        isEditConfigOpen -> isEditConfigOpen = false
-                        isInfoOpen -> isInfoOpen = false
-                    }
+                BackHandler(enabled = homeUi.hasModalSurface) {
+                    // Prioritätsreihenfolge (Ordner → Edit-Modus → Suche → innere Menüs →
+                    // Drawer → restliche Overlays) lebt testbar im HomeViewModel.
+                    homeViewModel.onBack()
                 }
 
                 Box(
@@ -1160,7 +1108,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     isFavorite = { pkg -> pkg in favoritePackages },
-                                    onClose = { isDrawerOpen = false },
+                                    onClose = { homeViewModel.setDrawerOpen(false) },
                                     onLaunchApp = { pkg, intent, bounds ->
                                         requestLauncherLaunch(
                                             packageName = pkg,
@@ -1188,8 +1136,10 @@ class MainActivity : ComponentActivity() {
                                     onUpdateFolders = { newFolders ->
                                         scope.launch { folderManager.saveFolders(newFolders) }
                                     },
-                                    onOpenFolderConfig = { folder -> selectedFolderForConfig = folder },
-                                    onClose = { isDrawerOpen = false },
+                                    onOpenFolderConfig = { folder ->
+                                        homeViewModel.openOverlay(ActiveOverlay.FolderConfig(folder))
+                                    },
+                                    onClose = { homeViewModel.setDrawerOpen(false) },
                                     onLaunchApp = { pkg, intent, bounds ->
                                         requestLauncherLaunch(
                                             packageName = pkg,
@@ -1212,21 +1162,21 @@ class MainActivity : ComponentActivity() {
                                 isSearchOpen = isSearchOpen && !isSearchClosingState,
                                 isEditMode = isHomeEditMode,
                                 homeLayout = homeLayout,
-                                onOpenDrawer = { isDrawerOpen = true },
+                                onOpenDrawer = { homeViewModel.setDrawerOpen(true) },
                                 onOpenSearch = {
                                     isSearchClosingState = false
-                                    isSearchOpen = true
+                                    homeViewModel.setSearchOpen(true)
                                 },
                                 doubleTapAction = doubleTapAction,
                                 doubleTapAppPackage = doubleTapAppPackage,
                                 onGestureAction = { action, pkg -> dispatchGestureAction(action, pkg) },
-                                onToggleSettings = { isSettingsOpen = !isSettingsOpen },
-                                onToggleEditMode = { isHomeEditMode = !isHomeEditMode },
-                                onOpenFavoritesConfig = { isFavoritesConfigOpen = true },
-                                onOpenColorConfig = { isColorConfigOpen = true },
-                                onOpenSizeConfig = { isSizeConfigOpen = true },
-                                onOpenSystemSettings = { isEditConfigOpen = true },
-                                onOpenInfo = { isInfoOpen = true },
+                                onToggleSettings = { homeViewModel.toggleSettings() },
+                                onToggleEditMode = { homeViewModel.toggleHomeEditMode() },
+                                onOpenFavoritesConfig = { homeViewModel.openOverlay(ActiveOverlay.FavoritesConfig) },
+                                onOpenColorConfig = { homeViewModel.openOverlay(ActiveOverlay.ColorConfig) },
+                                onOpenSizeConfig = { homeViewModel.openOverlay(ActiveOverlay.SizeConfig) },
+                                onOpenSystemSettings = { homeViewModel.openOverlay(ActiveOverlay.EditConfig) },
+                                onOpenInfo = { homeViewModel.openOverlay(ActiveOverlay.Info) },
                                 onSaveHomeLayout = { layout ->
                                     scope.launch { themeManager.setHomeLayout(layout) }
                                 },
@@ -1387,7 +1337,7 @@ class MainActivity : ComponentActivity() {
                         visible = isFavoritesConfigOpen,
                         customWallpaperUri = customWallpaperUri,
                         enableDragToClose = false,
-                        onClose = { isFavoritesConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         @Suppress("DEPRECATION")
                         FavoritesConfigMenu(
@@ -1397,15 +1347,19 @@ class MainActivity : ComponentActivity() {
                             onShowLabelsToggled = { show ->
                                 scope.launch { themeManager.setShowFavoriteLabels(show) }
                             },
+                            notificationDotsEnabled = notificationDotsEnabled,
+                            onNotificationDotsToggled = { enabled ->
+                                scope.launch { themeManager.setNotificationDotsEnabled(enabled) }
+                            },
                             favoritesBorderStyle = favoritesBorderStyle,
                             onBorderStyleSelected = { style ->
                                 scope.launch { themeManager.setFavoritesBorderStyle(style) }
                             },
                             onConfirm = { newFavs ->
                                 scope.launch { favoritesManager.saveFavorites(newFavs) }
-                                isFavoritesConfigOpen = false
+                                homeViewModel.closeOverlay()
                             },
-                            onClose = { isFavoritesConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
@@ -1413,7 +1367,7 @@ class MainActivity : ComponentActivity() {
                         visible = selectedFolderForConfig != null,
                         customWallpaperUri = customWallpaperUri,
                         enableDragToClose = false,
-                        onClose = { selectedFolderForConfig = null }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         val folderForConfig = selectedFolderForConfig ?: selectedFolderForConfigSnapshot
                         folderForConfig?.let { folder ->
@@ -1433,14 +1387,14 @@ class MainActivity : ComponentActivity() {
                                         folders + updatedFolder
                                     }
                                     scope.launch { folderManager.saveFolders(newFolders) }
-                                    selectedFolderForConfig = null
+                                    homeViewModel.closeOverlay()
                                 },
                                 onDelete = { folderId ->
                                     val newFolders = folders.filter { it.id != folderId }
                                     scope.launch { folderManager.saveFolders(newFolders) }
-                                    selectedFolderForConfig = null
+                                    homeViewModel.closeOverlay()
                                 },
-                                onClose = { selectedFolderForConfig = null }
+                                onClose = { homeViewModel.closeOverlay() }
                             )
                         }
                     }
@@ -1448,7 +1402,7 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isColorConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isColorConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
@@ -1458,8 +1412,8 @@ class MainActivity : ComponentActivity() {
                             homeTextColor = homeTextColor,
                             onHomeTextColorChange = { scope.launch { themeManager.setHomeTextColor(it) } },
                             designStyle = designStyle,
-                            onOpenDesignMenu = { isDesignMenuOpen = true },
-                            onOpenThemeMenu = { isThemeMenuOpen = true },
+                            onOpenDesignMenu = { homeViewModel.openOverlay(ActiveOverlay.DesignMenu) },
+                            onOpenThemeMenu = { homeViewModel.openOverlay(ActiveOverlay.ThemeMenu) },
                             customBackgroundColor = customBackgroundColor,
                             onCustomBackgroundChange = { scope.launch { themeManager.setCustomBackgroundColor(it) } },
                             customMenuColor = customMenuColor,
@@ -1469,14 +1423,14 @@ class MainActivity : ComponentActivity() {
                             edgeLightingColor = edgeLightingColor,
                             onEdgeLightingColorChange = { scope.launch { themeManager.setEdgeLightingColor(it) } },
                             customWallpaperUri = customWallpaperUri,
-                            onClose = { isColorConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isThemeMenuOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isThemeMenuOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         ThemeSelectionMenu(
                             selectedTheme = currentTheme,
@@ -1484,14 +1438,14 @@ class MainActivity : ComponentActivity() {
                             isDarkTextEnabled = isDarkTextEnabled,
                             designStyle = designStyle,
                             customWallpaperUri = customWallpaperUri,
-                            onClose = { isThemeMenuOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isDesignMenuOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isDesignMenuOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         DesignStyleMenu(
                             currentStyle = designStyle,
@@ -1499,16 +1453,16 @@ class MainActivity : ComponentActivity() {
                             isDarkTextEnabled = isDarkTextEnabled,
                             onStyleSelected = { style ->
                                 scope.launch { themeManager.setDesignStyle(style) }
-                                isDesignMenuOpen = false
+                                homeViewModel.closeOverlay()
                             },
-                            onClose = { isDesignMenuOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isSizeConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isSizeConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         SizeConfigMenu(
                             currentFontSize = currentFontSize,
@@ -1518,37 +1472,41 @@ class MainActivity : ComponentActivity() {
                             currentIconSize = currentIconSize,
                             onIconSizeSelected = { scope.launch { themeManager.setIconSize(it.size) } },
                             currentFavoriteSpacing = currentFavoriteSpacing,
-                            onFavoriteSpacingSelected = { scope.launch { themeManager.setFavoriteSpacing(
-                                it.spacing
-                            ) } },
+                            onFavoriteSpacingSelected = {
+                                scope.launch {
+                                    themeManager.setFavoriteSpacing(
+                                        it.spacing
+                                    )
+                                }
+                            },
                             currentAppFont = currentAppFont,
-                            onOpenFontSelection = { isFontSelectionOpen = true },
+                            onOpenFontSelection = { homeViewModel.openOverlay(ActiveOverlay.FontSelection) },
                             customWallpaperUri = customWallpaperUri,
-                            onClose = { isSizeConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isFontSelectionOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isFontSelectionOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         FontSelectionMenu(
                             currentAppFont = currentAppFont,
                             onAppFontSelected = { scope.launch { themeManager.setAppFont(it) } },
-                            onBack = { isFontSelectionOpen = false }
+                            onBack = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isEditConfigOpen && !isWallpaperCropOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isEditConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         EditConfigMenu(
                             onOpenHomeLayoutEdit = {
-                                isEditConfigOpen = false
-                                isHomeEditMode = true
+                                homeViewModel.closeOverlay()
+                                homeViewModel.setHomeEditMode(true)
                             },
                             onResetHomeLayout = {
                                 scope.launch {
@@ -1560,14 +1518,13 @@ class MainActivity : ComponentActivity() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             },
-                            onOpenIconConfig = { isIconConfigOpen = true },
-                            onOpenUninstallApps = { isUninstallAppsOpen = true },
-                            onOpenHiddenApps = { isHiddenAppsOpen = true },
-                            onOpenAppLock = { isAppLockOpen = true },
+                            onOpenIconConfig = { homeViewModel.openOverlay(ActiveOverlay.IconConfig) },
+                            onOpenUninstallApps = { homeViewModel.openOverlay(ActiveOverlay.UninstallApps) },
+                            onOpenHiddenApps = { homeViewModel.openOverlay(ActiveOverlay.HiddenApps) },
+                            onOpenAppLock = { homeViewModel.openOverlay(ActiveOverlay.AppLock) },
                             onOpenDefaultLauncher = { requestDefaultLauncher() },
                             onChangeWallpaper = {
-                                isEditConfigOpen = false
-                                isWallpaperConfigOpen = false
+                                homeViewModel.closeOverlay()
                                 wallpaperPickerLauncher.launch(
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                 )
@@ -1585,14 +1542,14 @@ class MainActivity : ComponentActivity() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             },
-                            onOpenWallpaperAdjust = { isWallpaperConfigOpen = true },
+                            onOpenWallpaperAdjust = { homeViewModel.openOverlay(ActiveOverlay.WallpaperConfig) },
                             isCustomHomeLayoutSet =
                             abs(homeLayout.clock.x) > 0.5f || abs(homeLayout.clock.y) > 0.5f ||
                                 abs(homeLayout.date.x) > 0.5f || abs(homeLayout.date.y) > 0.5f ||
                                 abs(homeLayout.weather.x) > 0.5f || abs(homeLayout.weather.y) > 0.5f ||
                                 abs(homeLayout.favorites.x) > 0.5f || abs(homeLayout.favorites.y) > 0.5f,
                             isCustomWallpaperSet = customWallpaperUri != null,
-                            onOpenGesturesConfig = { isGesturesConfigOpen = true },
+                            onOpenGesturesConfig = { homeViewModel.openOverlay(ActiveOverlay.GesturesConfig) },
                             isSmartSuggestionsEnabled = isSmartSuggestionsEnabled,
                             onSmartSuggestionsToggled = { enabled ->
                                 scope.launch { themeManager.setSmartSuggestionsEnabled(enabled) }
@@ -1601,7 +1558,7 @@ class MainActivity : ComponentActivity() {
                             onAnimationsToggled = { enabled ->
                                 scope.launch { themeManager.setAnimationsEnabled(enabled) }
                             },
-                            onOpenAnimationsConfig = { isAnimationsConfigOpen = true },
+                            onOpenAnimationsConfig = { homeViewModel.openOverlay(ActiveOverlay.AnimationsConfig) },
                             isWeatherWidgetEnabled = isWeatherWidgetEnabled,
                             onWeatherWidgetToggled = { enabled ->
                                 scope.launch { themeManager.setWeatherWidgetEnabled(enabled) }
@@ -1623,7 +1580,7 @@ class MainActivity : ComponentActivity() {
                                 scope.launch { themeManager.setIslandAnimationStyle(style) }
                             },
                             isEdgeLightingEnabled = isEdgeLightingEnabled,
-                            onOpenEdgeLightingConfig = { isEdgeLightingConfigOpen = true },
+                            onOpenEdgeLightingConfig = { homeViewModel.openOverlay(ActiveOverlay.EdgeLightingConfig) },
                             appAccessMode = appAccessMode,
                             onAppAccessModeChange = { mode ->
                                 scope.launch { themeManager.setAppAccessMode(mode) }
@@ -1655,7 +1612,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            onClose = { isEditConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
@@ -1664,35 +1621,47 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isAnimationsConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isAnimationsConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         AnimationsConfigMenu(
                             isAnimationsEnabled = isAnimationsEnabled,
                             onAnimationsToggled = { scope.launch { themeManager.setAnimationsEnabled(it) } },
                             isAppOpenAnimationEnabled = isAppOpenAnimationEnabled,
-                            onAppOpenAnimationToggled = { scope.launch { themeManager.setAppOpenAnimationEnabled(
-                                it
-                            ) } },
+                            onAppOpenAnimationToggled = {
+                                scope.launch {
+                                    themeManager.setAppOpenAnimationEnabled(
+                                        it
+                                    )
+                                }
+                            },
                             isAppCloseAnimationEnabled = isAppCloseAnimationEnabled,
-                            onAppCloseAnimationToggled = { scope.launch { themeManager.setAppCloseAnimationEnabled(
-                                it
-                            ) } },
+                            onAppCloseAnimationToggled = {
+                                scope.launch {
+                                    themeManager.setAppCloseAnimationEnabled(
+                                        it
+                                    )
+                                }
+                            },
                             isMenuAnimationEnabled = isMenuAnimationEnabled,
                             onMenuAnimationToggled = { scope.launch { themeManager.setMenuAnimationEnabled(it) } },
                             isFavoritesAnimationEnabled = isFavoritesAnimationEnabled,
-                            onFavoritesAnimationToggled = { scope.launch { themeManager.setFavoritesAnimationEnabled(
-                                it
-                            ) } },
+                            onFavoritesAnimationToggled = {
+                                scope.launch {
+                                    themeManager.setFavoritesAnimationEnabled(
+                                        it
+                                    )
+                                }
+                            },
                             animationSpeed = animationSpeed,
                             onAnimationSpeedChanged = { scope.launch { themeManager.setAnimationSpeed(it) } },
-                            onClose = { isAnimationsConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isEdgeLightingConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isEdgeLightingConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         EdgeLightingConfigMenu(
                             isEnabled = isEdgeLightingEnabled,
@@ -1705,14 +1674,14 @@ class MainActivity : ComponentActivity() {
                             onLapsChange = { scope.launch { themeManager.setEdgeLightingLaps(it) } },
                             thickness = edgeLightingThickness,
                             onThicknessChange = { scope.launch { themeManager.setEdgeLightingThickness(it) } },
-                            onClose = { isEdgeLightingConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isGesturesConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isGesturesConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         GesturesConfigMenu(
                             apps = allApps,
@@ -1726,7 +1695,7 @@ class MainActivity : ComponentActivity() {
                             onDoubleShakeActionChange = { scope.launch { themeManager.setDoubleShakeAction(it) } },
                             shakeOpenAppPackage = shakeOpenAppPackage,
                             onShakeOpenAppPackageChange = { scope.launch { themeManager.setShakeOpenAppPackage(it) } },
-                            onClose = { isGesturesConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
@@ -1760,7 +1729,7 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isWallpaperConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isWallpaperConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         WallpaperConfigMenu(
                             blurLevel = wallpaperBlur,
@@ -1771,14 +1740,14 @@ class MainActivity : ComponentActivity() {
                             onZoomChange = { scope.launch { themeManager.setWallpaperZoom(it) } },
                             customWallpaperUri = customWallpaperUri,
                             homeScreenPreview = wallpaperHomePreview,
-                            onClose = { isWallpaperConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isIconConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isIconConfigOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         IconConfigMenu(
                             apps = allApps,
@@ -1801,26 +1770,26 @@ class MainActivity : ComponentActivity() {
                                     refreshAppList(pkg)
                                 }
                             },
-                            onClose = { isIconConfigOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isUninstallAppsOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isUninstallAppsOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         UninstallAppsMenu(
                             apps = allApps,
                             onRefreshApps = { pkg -> refreshAppList(pkg) },
-                            onClose = { isUninstallAppsOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isHiddenAppsOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isHiddenAppsOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         HiddenAppsMenu(
                             apps = allApps,
@@ -1829,14 +1798,14 @@ class MainActivity : ComponentActivity() {
                                 val newHidden = if (pkg in hiddenApps) hiddenApps - pkg else hiddenApps + pkg
                                 scope.launch { themeManager.setHiddenApps(newHidden) }
                             },
-                            onClose = { isHiddenAppsOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isAppLockOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isAppLockOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         AppLockMenu(
                             apps = allApps,
@@ -1856,17 +1825,17 @@ class MainActivity : ComponentActivity() {
                             onToggleBiometric = { enabled ->
                                 scope.launch { themeManager.setLockBiometricEnabled(enabled) }
                             },
-                            onClose = { isAppLockOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
                     MenuOverlay(
                         visible = isInfoOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { isInfoOpen = false }
+                        onClose = { homeViewModel.closeOverlay() }
                     ) {
                         InfoDialog(
-                            onClose = { isInfoOpen = false }
+                            onClose = { homeViewModel.closeOverlay() }
                         )
                     }
 
@@ -1877,7 +1846,7 @@ class MainActivity : ComponentActivity() {
                                 .pointerInput(Unit) {
                                     detectTapGestures {
                                         isSearchClosingState = false
-                                        isSearchOpen = false
+                                        homeViewModel.setSearchOpen(false)
                                     }
                                 }
                         ) {
@@ -1885,7 +1854,7 @@ class MainActivity : ComponentActivity() {
                                 apps = allApps,
                                 onClose = {
                                     isSearchClosingState = false
-                                    isSearchOpen = false
+                                    homeViewModel.setSearchOpen(false)
                                 },
                                 onClosingStart = {
                                     isSearchClosingState = true
@@ -1962,21 +1931,21 @@ class MainActivity : ComponentActivity() {
 
                     if (showUsageAccessPrompt) {
                         AlertDialog(
-                            onDismissRequest = { showUsageAccessPrompt = false },
+                            onDismissRequest = { homeViewModel.dismissUsageAccessPrompt() },
                             title = { Text(stringResource(R.string.usage_access_title)) },
                             text = {
                                 Text(stringResource(R.string.usage_access_description))
                             },
                             confirmButton = {
                                 TextButton(onClick = {
-                                    showUsageAccessPrompt = false
+                                    homeViewModel.dismissUsageAccessPrompt()
                                     ForegroundAppResolver.openUsageAccessSettings(context)
                                 }) {
                                     Text(stringResource(R.string.open))
                                 }
                             },
                             dismissButton = {
-                                TextButton(onClick = { showUsageAccessPrompt = false }) {
+                                TextButton(onClick = { homeViewModel.dismissUsageAccessPrompt() }) {
                                     Text(stringResource(R.string.later))
                                 }
                             }

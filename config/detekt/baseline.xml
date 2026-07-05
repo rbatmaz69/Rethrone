@@ -2,14 +2,6 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>ArgumentListWrapping:AppDrawer.kt$(folders, folder.id, folderSelectionApp!!.packageName)</ID>
-    <ID>ArgumentListWrapping:AppLockActivity.kt$AppLockActivity$( this, executor, object : BiometricPrompt.AuthenticationCallback() { override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) { unlockAndFinish(targetPackage) } } )</ID>
-    <ID>ArgumentListWrapping:AppLockScreen.kt$(36.dp)</ID>
-    <ID>ArgumentListWrapping:AppLockScreen.kt$(Icons.Rounded.Lock, contentDescription = null, tint = textColor, modifier = Modifier.size(36.dp))</ID>
-    <ID>ArgumentListWrapping:HomeScreen.kt$(rect, framePadding(target) + editSelectionHitPaddingPx)</ID>
-    <ID>ArgumentListWrapping:SizeConfigMenu.kt$(R.string.font_label)</ID>
-    <ID>ArgumentListWrapping:SizeConfigMenu.kt$(bottom = 8.dp)</ID>
-    <ID>ArgumentListWrapping:SizeConfigMenu.kt$(text = stringResource(R.string.font_label), color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))</ID>
     <ID>CyclomaticComplexMethod:AppDrawer.kt$internal fun calculateFolderOverlayLayoutSpec( screenWidthDp: Int, screenHeightDp: Int, iconSize: IconSize ): FolderOverlayLayoutSpec</ID>
     <ID>CyclomaticComplexMethod:IconFallbackModels.kt$IconQualityEvaluator$fun evaluate( mask: IconAlphaMask, packageName: String, label: String, explicitRule: AutoIconRule? = null ): AutoIconFallback</ID>
     <ID>CyclomaticComplexMethod:MainActivity.kt$MainActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
@@ -62,47 +54,12 @@
     <ID>MaxLineLength:MainActivity.kt$MainActivity$isIconConfigOpen</ID>
     <ID>MaxLineLength:ReturnAnimationGate.kt$ReturnAnimationGate$val</ID>
     <ID>MaxLineLength:ReturnOriginStore.kt$ReturnOriginStore$"save launched=$launchedPackageName source=${animation.source} target=${animation.packageName} bounds=${animation.bounds != null}"</ID>
-    <ID>MaxLineLength:SizeConfigMenu.kt$Text(text = stringResource(R.string.font_label), color = secondaryTextColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))</ID>
-    <ID>MaxLineLength:Utils.kt$LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED</ID>
     <ID>MemberNameEqualsClassName:LiquidGlass.kt$LiquidGlass$fun Modifier.liquidGlass( shape: Shape, isDarkText: Boolean, borderWidth: Dp = 1.2.dp ): Modifier</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$0f</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$&lt;no name provided&gt;$return Offset( x = available.x, y = 0f )</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$Color( 0xFF0F172A )</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$Color.White</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$haptic.performHapticFeedback( HapticFeedbackType.LongPress )</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$haptic.performHapticFeedback( HapticFeedbackType.TextHandleMove )</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$it</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$it.copy( appPackageNames = newList )</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$mainTextColor</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$mainTextColor.copy( alpha = 0.3f )</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$null</ID>
-    <ID>MultiLineIfElse:AppDrawer.kt$view.performHapticFeedback( HapticFeedbackConstants.LONG_PRESS )</ID>
-    <ID>MultiLineIfElse:AppLockMenu.kt$stringResource( R.string.lock_draw_pattern )</ID>
-    <ID>MultiLineIfElse:AppLockMenu.kt$stringResource( R.string.lock_enter_pin )</ID>
-    <ID>MultiLineIfElse:AppLockMenu.kt$stringResource(R.string.lock_confirm_pattern)</ID>
-    <ID>MultiLineIfElse:AppLockMenu.kt$stringResource(R.string.lock_confirm_pin)</ID>
-    <ID>MultiLineIfElse:LiquidGlass.kt$LiquidGlass$Color.Black.copy( alpha = 0.1f )</ID>
-    <ID>MultiLineIfElse:LiquidGlass.kt$LiquidGlass$Color.Black.copy( alpha = 0.9f )</ID>
-    <ID>MultiLineIfElse:LiquidGlass.kt$LiquidGlass$Color.White.copy(alpha = 0.1f)</ID>
-    <ID>MultiLineIfElse:LiquidGlass.kt$LiquidGlass$Color.White.copy(alpha = 0.9f)</ID>
-    <ID>NoSemicolons:AnimationsConfigMenu.kt$;</ID>
-    <ID>NoSemicolons:AppDrawer.kt$;</ID>
-    <ID>NoSemicolons:AppLockMenu.kt$;</ID>
-    <ID>NoSemicolons:ColorConfigMenu.kt$;</ID>
-    <ID>NoSemicolons:ColorWheelPicker.kt$;</ID>
-    <ID>NoSemicolons:DynamicIsland.kt$;</ID>
-    <ID>NoSemicolons:EditConfigMenu.kt$;</ID>
-    <ID>NoSemicolons:GesturesConfigMenu.kt$;</ID>
-    <ID>NoSemicolons:HomeAppScrubber.kt$;</ID>
-    <ID>NoSemicolons:NiagaraAppDrawer.kt$;</ID>
-    <ID>NoSemicolons:SizeConfigMenu.kt$;</ID>
-    <ID>NoSemicolons:ThemeManager.kt$ThemeManager$;</ID>
     <ID>PrintStackTrace:FolderSerializer.kt$FolderSerializer$e</ID>
     <ID>PrintStackTrace:WallpaperCropScreen.kt$e</ID>
-    <ID>PropertyWrapping:HomeScreen.kt$val hitRect = expandRect(rect, framePadding(target) + editSelectionHitPaddingPx)</ID>
     <ID>ReturnCount:IconFallbackModels.kt$IconQualityEvaluator$fun evaluate( mask: IconAlphaMask, packageName: String, label: String, explicitRule: AutoIconRule? = null ): AutoIconFallback</ID>
     <ID>ReturnCount:ReturnAnimationGate.kt$ReturnAnimationGate$fun resolve( pendingReturnAnimation: ReturnAnimation?, pendingLaunchStartedAtMs: Long, storedAnimations: Map&lt;String, ReturnAnimation&gt;, observations: List&lt;ForegroundAppObservation&gt; ): ReturnAnimationGateDecision</ID>
-    <ID>ReturnCount:Utils.kt$&lt;no name provided&gt;$override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset</ID>
+    <ID>ReturnCount:SwipeAndBounce.kt$&lt;no name provided&gt;$override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset</ID>
     <ID>SwallowedException:AppDrawer.kt$e: CancellationException</ID>
     <ID>SwallowedException:AppDrawerViewModel.kt$AppDrawerViewModel$e: Exception</ID>
     <ID>SwallowedException:HybridSearch.kt$e: CancellationException</ID>
@@ -117,7 +74,6 @@
     <ID>TooManyFunctions:LauncherLogic.kt$LauncherLogic</ID>
     <ID>TooManyFunctions:OnboardingFlow.kt$com.example.androidlauncher.ui.onboarding.OnboardingFlow.kt</ID>
     <ID>TooManyFunctions:ThemeManager.kt$ThemeManager</ID>
-    <ID>TooManyFunctions:Utils.kt$com.example.androidlauncher.ui.Utils.kt</ID>
     <ID>UnusedParameter:AppDrawer.kt$currentFolderId: String? = null</ID>
     <ID>UnusedParameter:AppLockMenu.kt$onClearSecret: () -&gt; Unit</ID>
     <ID>UnusedParameter:ColorConfigMenu.kt$customWallpaperUri: String? = null</ID>
@@ -138,15 +94,5 @@
     <ID>UnusedPrivateProperty:SystemWallpaperView.kt$val wallpaperManager = WallpaperManager.getInstance(context)</ID>
     <ID>UnusedPrivateProperty:ThemeManagerTest.kt$ThemeManagerTest$private lateinit var context: Context</ID>
     <ID>UnusedPrivateProperty:ThemeManagerTest.kt$ThemeManagerTest$private lateinit var testFile: File</ID>
-    <ID>Wrapping:AppShortcutsMenu.kt$(</ID>
-    <ID>Wrapping:AppShortcutsMenu.kt$(with(density) { 16.dp.toPx() }, screenWidthPx - menuWidthPx - with(density) { 16.dp.toPx() })</ID>
-    <ID>Wrapping:MainActivity.kt$MainActivity$scope.launch { themeManager.setAppCloseAnimationEnabled( it ) }</ID>
-    <ID>Wrapping:MainActivity.kt$MainActivity$scope.launch { themeManager.setAppOpenAnimationEnabled( it ) }</ID>
-    <ID>Wrapping:MainActivity.kt$MainActivity$scope.launch { themeManager.setFavoriteSpacing( it.spacing ) }</ID>
-    <ID>Wrapping:MainActivity.kt$MainActivity$scope.launch { themeManager.setFavoritesAnimationEnabled( it ) }</ID>
-    <ID>Wrapping:MainActivity.kt$MainActivity$themeManager.setAppCloseAnimationEnabled( it )</ID>
-    <ID>Wrapping:MainActivity.kt$MainActivity$themeManager.setAppOpenAnimationEnabled( it )</ID>
-    <ID>Wrapping:MainActivity.kt$MainActivity$themeManager.setFavoriteSpacing( it.spacing )</ID>
-    <ID>Wrapping:MainActivity.kt$MainActivity$themeManager.setFavoritesAnimationEnabled( it )</ID>
   </CurrentIssues>
 </SmellBaseline>

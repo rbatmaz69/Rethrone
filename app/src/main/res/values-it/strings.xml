@@ -198,6 +198,7 @@
     <string name="border_style_accent">Colore d\'accento</string>
     <string name="border_style_subtle">Sottile</string>
     <string name="favorites_app_titles">Titoli delle app</string>
+    <string name="favorites_notification_dots">Punti di notifica</string>
     <string name="favorites_border">Bordo</string>
 
     <!-- Menu Animazioni -->

@@ -85,6 +85,8 @@ import kotlinx.coroutines.delay
  * @param initialFavoritePackages Aktuelle Favoritenliste.
  * @param showFavoriteLabels Ob Labels unter Favoriten angezeigt werden.
  * @param onShowLabelsToggled Callback zum Umschalten der Label-Anzeige.
+ * @param notificationDotsEnabled Ob Benachrichtigungs-Dots auf App-Icons angezeigt werden.
+ * @param onNotificationDotsToggled Callback zum Umschalten der Dot-Anzeige.
  * @param onConfirm Callback mit der neuen Favoritenliste bei Bestätigung.
  * @param onClose Callback zum Schließen des Menüs.
  */
@@ -94,6 +96,8 @@ fun FavoritesConfigMenu(
     initialFavoritePackages: List<String>,
     showFavoriteLabels: Boolean,
     onShowLabelsToggled: (Boolean) -> Unit,
+    notificationDotsEnabled: Boolean,
+    onNotificationDotsToggled: (Boolean) -> Unit,
     favoritesBorderStyle: FavoritesBorderStyle,
     onBorderStyleSelected: (FavoritesBorderStyle) -> Unit,
     onConfirm: (List<String>) -> Unit,
@@ -177,6 +181,22 @@ fun FavoritesConfigMenu(
                         }
                     }
                 }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Benachrichtigungs-Dots auf App-Icons (Favoriten + App-Drawer)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(stringResource(R.string.favorites_notification_dots), color = grayTone, fontSize = 14.sp)
+            Switch(
+                checked = notificationDotsEnabled,
+                onCheckedChange = onNotificationDotsToggled,
+                colors = LiquidGlass.switchColors(isDarkTextEnabled, designStyle.isGlassLike)
             )
         }
 

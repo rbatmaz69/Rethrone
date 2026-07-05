@@ -38,19 +38,38 @@ class AppRepository(private val context: Context) {
      * Leert den Icon-Cache, sobald die eigene App neu installiert/aktualisiert
      * wurde. So werden nach einem App-Update (z.B. geändertes Launcher-Icon)
      * keine veralteten Icon-Bitmaps mehr aus dem Cache geladen.
+     *
+     * Der Build-Token liegt als Marker-Datei direkt im Cache-Verzeichnis –
+     * dieselbe Speicherstrategie wie der Cache selbst (statt SharedPreferences).
      */
     suspend fun invalidateCacheOnAppUpdate() = withContext(Dispatchers.IO) {
         try {
             val pkgInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+
+            @Suppress("DEPRECATION")
             val token = "${pkgInfo.versionCode}:${pkgInfo.lastUpdateTime}"
-            val prefs = context.getSharedPreferences("icon_cache_meta", Context.MODE_PRIVATE)
-            if (prefs.getString("app_build_token", null) != token) {
+            val tokenFile = File(iconCacheDir, BUILD_TOKEN_FILE)
+            val storedToken = if (tokenFile.exists()) tokenFile.readText() else migrateLegacyBuildToken()
+            if (storedToken != token) {
                 iconCacheDir.listFiles()?.forEach { it.delete() }
-                prefs.edit().putString("app_build_token", token).apply()
             }
+            // Immer schreiben, damit auch nach der Legacy-Migration (Prefs bereits
+            // geleert) der Token beim nächsten Start aus der Datei gelesen wird.
+            tokenFile.writeText(token)
         } catch (_: Exception) {
             // Fehler hier sind unkritisch – im Zweifel bleibt der Cache bestehen.
         }
+    }
+
+    /**
+     * Liest den Token einmalig aus den früher genutzten SharedPreferences und
+     * räumt sie auf, damit bestehende Installationen nicht unnötig den Cache leeren.
+     */
+    private fun migrateLegacyBuildToken(): String? {
+        val prefs = context.getSharedPreferences(LEGACY_META_PREFS, Context.MODE_PRIVATE)
+        val legacy = prefs.getString(LEGACY_TOKEN_KEY, null) ?: return null
+        prefs.edit().clear().apply()
+        return legacy
     }
 
     /**
@@ -238,5 +257,12 @@ class AppRepository(private val context: Context) {
 
     companion object {
         private const val ICON_SIZE = 144
+
+        // Marker-Datei im Icon-Cache; kollidiert nicht mit "$packageName.png"-Icons.
+        private const val BUILD_TOKEN_FILE = ".build_token"
+
+        // Frühere Ablage des Tokens – nur noch für die einmalige Migration gelesen.
+        private const val LEGACY_META_PREFS = "icon_cache_meta"
+        private const val LEGACY_TOKEN_KEY = "app_build_token"
     }
 }

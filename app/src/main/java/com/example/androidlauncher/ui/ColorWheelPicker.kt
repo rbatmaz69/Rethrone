@@ -194,8 +194,8 @@ fun ColorWheelPicker(
                         .pointerInput(swatch) {
                             detectTapGestures {
                                 val hsv = swatch.toHsv()
-                                hue = hsv[0];
-                                sat = hsv[1];
+                                hue = hsv[0]
+                                sat = hsv[1]
                                 value = hsv[2]
                                 onColorChange(swatch)
                             }

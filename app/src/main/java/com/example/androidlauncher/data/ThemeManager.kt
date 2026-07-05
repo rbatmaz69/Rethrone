@@ -1,904 +1,178 @@
 package com.example.androidlauncher.data
 
 import android.content.Context
-import android.database.ContentObserver
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import com.example.androidlauncher.data.settings.AnimationSettings
+import com.example.androidlauncher.data.settings.AppearanceSettings
+import com.example.androidlauncher.data.settings.GestureSettings
+import com.example.androidlauncher.data.settings.HomeLayoutSettings
+import com.example.androidlauncher.data.settings.IslandAndEdgeSettings
+import com.example.androidlauncher.data.settings.PrivacySettings
+import com.example.androidlauncher.data.settings.WallpaperSettings
 import com.example.androidlauncher.ui.theme.ColorTheme
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-
-// DataStore for saving general app settings
-private val Context.dataStore by preferencesDataStore(name = "settings")
 
 /**
- * Manages application themes and visual settings using DataStore and System Settings.
+ * Fassade über die domänen-spezifischen Settings-Stores unter `data/settings/`
+ * (A1-Split abgeschlossen). Alle Keys und ihre Logik liegen in den Stores; diese
+ * Klasse delegiert nur noch, damit die vielen bestehenden Aufrufstellen
+ * unverändert bleiben. Neue Features sollten direkt den passenden Store
+ * injizieren (siehe `DataModule`) statt diese Fassade zu erweitern.
  */
-class ThemeManager(private val context: Context) {
-    companion object {
-        private val THEME_KEY = stringPreferencesKey("selected_theme")
-
-        // Neue stufenlose numerische Keys.
-        private val FONT_SIZE_SCALE_KEY = floatPreferencesKey("font_size_scale")
-        private val FONT_WEIGHT_VALUE_KEY = intPreferencesKey("font_weight_value")
-        private val ICON_SIZE_DP_KEY = floatPreferencesKey("icon_size_dp")
-        private val FAVORITE_SPACING_DP_KEY = floatPreferencesKey("favorite_spacing_dp")
-
-        // Alte String-Keys (Enum-Namen) – nur noch zur einmaligen Migration gelesen.
-        private val LEGACY_FONT_SIZE_KEY = stringPreferencesKey("font_size")
-        private val LEGACY_FONT_WEIGHT_KEY = stringPreferencesKey("font_weight")
-        private val LEGACY_ICON_SIZE_KEY = stringPreferencesKey("icon_size")
-        private val LEGACY_FAVORITE_SPACING_KEY = stringPreferencesKey("favorite_icon_spacing")
-        private val DARK_TEXT_KEY = booleanPreferencesKey("dark_text_enabled")
-
-        // ARGB-Werte für frei wählbare Icon-/Schriftfarbe (Default Weiß).
-        private val ICON_COLOR_KEY = intPreferencesKey("icon_color")
-        private val HOME_TEXT_COLOR_KEY = intPreferencesKey("home_text_color")
-
-        // ARGB-Flächenfarben für das CUSTOM-Theme ("Eigene Farbe").
-        private val CUSTOM_BG_COLOR_KEY = intPreferencesKey("custom_bg_color")
-        private val CUSTOM_MENU_COLOR_KEY = intPreferencesKey("custom_menu_color")
-
-        // Komma-separierte Paketnamen der ausgeblendeten Apps.
-        private val HIDDEN_APPS_KEY = stringPreferencesKey("hidden_apps")
-
-        // App-Sperre: Komma-separierte Paketnamen der gesperrten Apps (verschlüsselt).
-        private val LOCKED_APPS_KEY = stringPreferencesKey("locked_apps")
-
-        // Typ des Sperr-Geheimnisses: "pin", "pattern" oder "none".
-        private val LOCK_TYPE_KEY = stringPreferencesKey("lock_type")
-
-        // Gesalzener Hash des PIN/Musters (Format salt:hash, verschlüsselt). Nie das Geheimnis selbst.
-        private val LOCK_SECRET_KEY = stringPreferencesKey("lock_secret")
-
-        // Ob zusätzlich per Biometrie/Geräte-Credential entsperrt werden darf.
-        private val LOCK_BIOMETRIC_KEY = booleanPreferencesKey("lock_biometric_enabled")
-        private val SHOW_FAVORITE_LABELS_KEY = booleanPreferencesKey("show_favorite_labels")
-        private val LIQUID_GLASS_KEY = booleanPreferencesKey("liquid_glass_enabled")
-        private val DESIGN_STYLE_KEY = stringPreferencesKey("design_style")
-        private val FAVORITES_BORDER_KEY = stringPreferencesKey("favorites_border_style")
-        private val APP_FONT_KEY = stringPreferencesKey("app_font")
-        private val CUSTOM_WALLPAPER_KEY = stringPreferencesKey("custom_wallpaper_uri")
-        private val WALLPAPER_BLUR_KEY = floatPreferencesKey("wallpaper_blur")
-        private val WALLPAPER_DIM_KEY = floatPreferencesKey("wallpaper_dim")
-        private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
-        private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
-        private val DOUBLE_SHAKE_ACTION_KEY = stringPreferencesKey("double_shake_action")
-
-        // Paketname der App, die bei GestureAction.OPEN_APP (Schütteln) gestartet wird.
-        private val SHAKE_OPEN_APP_PACKAGE_KEY = stringPreferencesKey("shake_open_app_package")
-
-        // Doppeltipp-Geste auf dem Startbildschirm.
-        private val DOUBLE_TAP_ACTION_KEY = stringPreferencesKey("double_tap_action")
-        private val DOUBLE_TAP_APP_PACKAGE_KEY = stringPreferencesKey("double_tap_app_package")
-        private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
-        private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
-        private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
-
-        // Einzelne Animationsarten (greifen nur, wenn der Master oben aktiv ist; Standard: an).
-        private val ANIMATION_APP_OPEN_KEY = booleanPreferencesKey("animation_app_open")
-        private val ANIMATION_APP_CLOSE_KEY = booleanPreferencesKey("animation_app_close")
-        private val ANIMATION_MENUS_KEY = booleanPreferencesKey("animation_menus")
-        private val ANIMATION_FAVORITES_KEY = booleanPreferencesKey("animation_favorites")
-
-        // Globaler Tempo-Faktor für alle Animationen (1.0 = normal, 2.0 = doppelt so schnell,
-        // 0.5 = halbes Tempo). Standard: 1.0.
-        private val ANIMATION_SPEED_KEY = floatPreferencesKey("animation_speed")
-        private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
-
-        // Wetter-Widget unter Uhr/Datum (Standard: an).
-        private val WEATHER_WIDGET_KEY = booleanPreferencesKey("weather_widget_enabled")
-
-        // Uhr-Widget (Standard: an).
-        private val CLOCK_WIDGET_KEY = booleanPreferencesKey("clock_widget_enabled")
-
-        // Kalender-/Datum-Widget (Standard: an).
-        private val CALENDAR_WIDGET_KEY = booleanPreferencesKey("calendar_widget_enabled")
-        private val DYNAMIC_ISLAND_KEY = booleanPreferencesKey("dynamic_island_enabled")
-        private val DYNAMIC_ISLAND_OFFSET_KEY = floatPreferencesKey("dynamic_island_offset")
-
-        // Einmalige Migration: Mit der cutout-basierten Auto-Zentrierung wechselt die vertikale
-        // Basis von statusBar/2 auf die echte Kamera-Mitte. Ein alter, gegen statusBar/2
-        // kompensierter Offset würde sonst doppelt wirken → bis der Nutzer den Offset erstmals
-        // neu setzt, alten Wert ignorieren (als 0 behandeln).
-        private val DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY = booleanPreferencesKey("dynamic_island_offset_migrated_v2")
-
-        // ARGB-Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
-        private val DYNAMIC_ISLAND_COLOR_KEY = intPreferencesKey("dynamic_island_color")
-
-        // Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
-        private val EDGE_LIGHTING_KEY = booleanPreferencesKey("edge_lighting_enabled")
-
-        // ARGB-Farbe des Edge Lightings. Default: Akzent-Blau.
-        private val EDGE_LIGHTING_COLOR_KEY = intPreferencesKey("edge_lighting_color")
-
-        // Edge-Lighting-Tempo (höher = schneller). Default: 1.0.
-        private val EDGE_LIGHTING_SPEED_KEY = floatPreferencesKey("edge_lighting_speed")
-
-        // Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1.
-        private val EDGE_LIGHTING_LAPS_KEY = intPreferencesKey("edge_lighting_laps")
-
-        // Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0.
-        private val EDGE_LIGHTING_THICKNESS_KEY = floatPreferencesKey("edge_lighting_thickness")
-
-        // Edge-Lighting-Stil (EdgeLightingStyle-Name). Default: SWEEP.
-        private val EDGE_LIGHTING_STYLE_KEY = stringPreferencesKey("edge_lighting_style")
-
-        // Insel-Öffnungs-/Schließstil (IslandAnimationStyle-Name). Default: FROM_NOTCH.
-        private val ISLAND_ANIMATION_STYLE_KEY = stringPreferencesKey("island_animation_style")
-
-        // Ob das Erststart-Onboarding bereits abgeschlossen wurde (Standard: false).
-        private val ONBOARDING_COMPLETED_KEY = booleanPreferencesKey("onboarding_completed")
-
-        // Offset for UI elements (Relative to default position)
-        // Uhr, Datum, Wetter und Favoriten sind unabhängig auf X/Y verschiebbar.
-        // (clock/favorites nutzen die alten Keys weiter – kompatibel zu bereits gespeicherten Layouts.)
-        private val FAVORITES_OFFSET_X_KEY = floatPreferencesKey("favorites_offset_x")
-        private val FAVORITES_OFFSET_Y_KEY = floatPreferencesKey("favorites_offset_y")
-        private val CLOCK_OFFSET_X_KEY = floatPreferencesKey("clock_offset_x")
-        private val CLOCK_OFFSET_Y_KEY = floatPreferencesKey("clock_offset_y")
-        private val DATE_OFFSET_X_KEY = floatPreferencesKey("date_offset_x")
-        private val DATE_OFFSET_Y_KEY = floatPreferencesKey("date_offset_y")
-        private val WEATHER_OFFSET_X_KEY = floatPreferencesKey("weather_offset_x")
-        private val WEATHER_OFFSET_Y_KEY = floatPreferencesKey("weather_offset_y")
-    }
-
-    val selectedTheme: Flow<ColorTheme> = context.dataStore.data
-        .map { preferences ->
-            // Standard: warmes Theme "Tulpe" (Amber-Verlauf + schwarze Tulpen-Silhouette) für Neuinstallationen.
-            val themeName = preferences[THEME_KEY] ?: ColorTheme.SOFT_SAND.name
-            try { ColorTheme.valueOf(themeName) } catch (e: IllegalArgumentException) { ColorTheme.SOFT_SAND }
-        }
-
-    // ── Sanfte Migration alter Enum-Namen (String) auf die neuen numerischen Werte ──
-    private fun legacyFontSizeScale(name: String?): Float? = when (name) {
-        "SMALL" -> 0.85f;
-        "STANDARD" -> 1.0f;
-        "LARGE" -> 1.2f;
-        else -> null
-    }
-    private fun legacyFontWeightValue(name: String?): Int? = when (name) {
-        "LIGHT" -> 300;
-        "NORMAL" -> 400;
-        "BOLD" -> 700;
-        else -> null
-    }
-    private fun legacyIconSizeDp(name: String?): Float? = when (name) {
-        "SMALL" -> 40f;
-        "STANDARD" -> 48f;
-        "LARGE" -> 56f;
-        else -> null
-    }
-    private fun legacyFavoriteSpacingDp(name: String?): Float? = when (name) {
-        "ENG" -> 4f;
-        "KOMPAKT" -> 8f;
-        "STANDARD" -> 12f;
-        "LOCKER" -> 20f;
-        "WEIT" -> 28f;
-        else -> null
-    }
-
-    val selectedFontSize: Flow<FontSize> = context.dataStore.data
-        .map { preferences ->
-            val scale = preferences[FONT_SIZE_SCALE_KEY]
-                ?: legacyFontSizeScale(preferences[LEGACY_FONT_SIZE_KEY])
-                ?: FontSize.STANDARD.scale
-            FontSize.of(scale)
-        }
-
-    val selectedFontWeight: Flow<FontWeightLevel> = context.dataStore.data
-        .map { preferences ->
-            val value = preferences[FONT_WEIGHT_VALUE_KEY]
-                ?: legacyFontWeightValue(preferences[LEGACY_FONT_WEIGHT_KEY])
-                ?: FontWeightLevel.NORMAL.weightValue
-            FontWeightLevel.of(value)
-        }
-
-    val selectedIconSize: Flow<IconSize> = context.dataStore.data
-        .map { preferences ->
-            val sizeDp = preferences[ICON_SIZE_DP_KEY]
-                ?: legacyIconSizeDp(preferences[LEGACY_ICON_SIZE_KEY])
-                ?: IconSize.STANDARD.size.value
-            IconSize.of(sizeDp.dp)
-        }
-
-    val selectedFavoriteSpacing: Flow<FavoriteSpacing> = context.dataStore.data
-        .map { preferences ->
-            val spacingDp = preferences[FAVORITE_SPACING_DP_KEY]
-                ?: legacyFavoriteSpacingDp(preferences[LEGACY_FAVORITE_SPACING_KEY])
-                ?: FavoriteSpacing.STANDARD.spacing.value
-            FavoriteSpacing.of(spacingDp.dp)
-        }
-
-    // Standard: dunkler Text – passend zum hellen Default-Theme "Tagespapier".
-    val isDarkTextEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[DARK_TEXT_KEY] ?: true }
-
-    // Frei wählbare Iconfarbe (gilt überall). Default: warmes Karamell-Braun,
-    // passend zum sonnigen Standard-Theme "Tulpe" (Lucide-Fallback-Glyphen lesbar).
-    val iconColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[ICON_COLOR_KEY] ?: 0xFF513A14.toInt()) }
-
-    // Frei wählbare Schriftfarbe – nur Startbildschirm. Default: warmes Karamell-Braun,
-    // damit Uhr/Datum über dem hellen oberen Bereich des Tulpe-Verlaufs gut lesbar sind.
-    val homeTextColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[HOME_TEXT_COLOR_KEY] ?: 0xFF513A14.toInt()) }
-
-    // CUSTOM-Theme: frei wählbare Flächenfarben (Default: helles Warmweiß).
-    val customBackgroundColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[CUSTOM_BG_COLOR_KEY] ?: 0xFFF4EEE2.toInt()) }
-
-    val customMenuColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[CUSTOM_MENU_COLOR_KEY] ?: 0xFFFFFFFF.toInt()) }
-
-    // Ausgeblendete Apps (Paketnamen). Werden überall aus der Anzeige gefiltert.
-    val hiddenApps: Flow<Set<String>> = context.dataStore.data
-        .map { prefs ->
-            // Wert ist verschlüsselt abgelegt; decryptOrLegacy migriert alten Klartext transparent.
-            val raw = CryptoManager.decryptOrLegacy(prefs[HIDDEN_APPS_KEY])
-            if (raw.isEmpty()) emptySet() else raw.split(",").filter { it.isNotEmpty() }.toSet()
-        }
-
-    // Gesperrte Apps (Paketnamen). Vor dem Öffnen muss authentifiziert werden.
-    val lockedApps: Flow<Set<String>> = context.dataStore.data
-        .map { prefs ->
-            val raw = CryptoManager.decryptOrLegacy(prefs[LOCKED_APPS_KEY])
-            if (raw.isEmpty()) emptySet() else raw.split(",").filter { it.isNotEmpty() }.toSet()
-        }
-
-    // Art des hinterlegten Sperr-Geheimnisses ("pin", "pattern", "none").
-    val lockType: Flow<String> = context.dataStore.data
-        .map { it[LOCK_TYPE_KEY] ?: "none" }
-
-    // Roh-Token des gespeicherten Geheimnisses (salt:hash, entschlüsselt). Leer = kein Code gesetzt.
-    val lockSecret: Flow<String> = context.dataStore.data
-        .map { CryptoManager.decryptOrLegacy(it[LOCK_SECRET_KEY]) }
-
-    val isLockBiometricEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[LOCK_BIOMETRIC_KEY] ?: false }
-
-    val showFavoriteLabels: Flow<Boolean> = context.dataStore.data
-        .map { it[SHOW_FAVORITE_LABELS_KEY] ?: false }
-
-    val isLiquidGlassEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[LIQUID_GLASS_KEY] ?: true }
-
-    /**
-     * Gewählter Oberflächen-Stil. Migriert automatisch aus dem alten
-     * `liquid_glass_enabled`-Boolean, falls noch kein `design_style` gesetzt ist
-     * (true → GLASS, false → FLAT).
-     */
-    val designStyle: Flow<DesignStyle> = context.dataStore.data
-        .map { preferences ->
-            val stored = preferences[DESIGN_STYLE_KEY]
-            if (stored != null) {
-                DesignStyle.fromKey(stored)
-            } else {
-                // Neuinstallation → "Standard" (FLAT); Legacy-Glas-Nutzer behalten GLASS.
-                when (preferences[LIQUID_GLASS_KEY]) {
-                    true -> DesignStyle.GLASS
-                    else -> DesignStyle.FLAT
-                }
-            }
-        }
-
-    /** Gewählte Umrandung der Favoriten-Box (Standard: keine). */
-    val favoritesBorderStyle: Flow<FavoritesBorderStyle> = context.dataStore.data
-        .map { FavoritesBorderStyle.fromKey(it[FAVORITES_BORDER_KEY]) }
-
-    val selectedAppFont: Flow<AppFont> = context.dataStore.data
-        .map { preferences ->
-            val fontName = preferences[APP_FONT_KEY] ?: AppFont.SYSTEM_DEFAULT.name
-            try { AppFont.valueOf(fontName) } catch (e: IllegalArgumentException) { AppFont.SYSTEM_DEFAULT }
-        }
-
-    val customWallpaperUri: Flow<String?> = context.dataStore.data
-        .map { it[CUSTOM_WALLPAPER_KEY] }
-
-    val wallpaperBlur: Flow<Float> = context.dataStore.data
-        .map { it[WALLPAPER_BLUR_KEY] ?: 0f }
-
-    val wallpaperDim: Flow<Float> = context.dataStore.data
-        .map { it[WALLPAPER_DIM_KEY] ?: 0.1f }
-
-    val wallpaperZoom: Flow<Float> = context.dataStore.data
-        .map { it[WALLPAPER_ZOOM_KEY] ?: 1.0f }
-
-    // Positionen aller unabhängig verschiebbaren Startbildschirm-Elemente.
-    val homeLayout: Flow<HomeLayout> = context.dataStore.data
-        .map { prefs ->
-            HomeLayout(
-                clock = Offset(prefs[CLOCK_OFFSET_X_KEY] ?: 0f, prefs[CLOCK_OFFSET_Y_KEY] ?: 0f),
-                date = Offset(prefs[DATE_OFFSET_X_KEY] ?: 0f, prefs[DATE_OFFSET_Y_KEY] ?: 0f),
-                weather = Offset(prefs[WEATHER_OFFSET_X_KEY] ?: 0f, prefs[WEATHER_OFFSET_Y_KEY] ?: 0f),
-                favorites = Offset(prefs[FAVORITES_OFFSET_X_KEY] ?: 0f, prefs[FAVORITES_OFFSET_Y_KEY] ?: 0f),
-            )
-        }
-
-    /**
-     * Observable flow, ob das Erststart-Onboarding bereits abgeschlossen wurde. Default: false.
-     */
-    val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data
-        .map { it[ONBOARDING_COMPLETED_KEY] ?: false }
-
-    /**
-     * Observable flow for animations toggle.
-     */
-    val isAnimationsEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATIONS_ENABLED_KEY] ?: true }
-
-    /**
-     * Observable flow für die App-Öffnen-Animation (Aufzieh-Effekt). Default: an.
-     */
-    val isAppOpenAnimationEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATION_APP_OPEN_KEY] ?: true }
-
-    /**
-     * Observable flow für die App-Schließen-/Rückkehr-Animation (Schrumpfen + Bounce). Default: an.
-     */
-    val isAppCloseAnimationEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATION_APP_CLOSE_KEY] ?: true }
-
-    /**
-     * Observable flow für Menü-/Einstellungsmenü-Animationen. Default: an.
-     */
-    val isMenuAnimationEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATION_MENUS_KEY] ?: true }
-
-    /**
-     * Observable flow für die Favoriten-Leisten-Animation (Vergrößern beim Rüberfahren). Default: an.
-     */
-    val isFavoritesAnimationEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATION_FAVORITES_KEY] ?: true }
-
-    /**
-     * Globaler Tempo-Faktor für Animationen (0.5×–2×). Default: 1×.
-     */
-    val animationSpeed: Flow<Float> = context.dataStore.data
-        .map { (it[ANIMATION_SPEED_KEY] ?: 1f).coerceIn(0.5f, 2f) }
-
-    /**
-     * Observable flow für das Wetter-Widget (Symbol + Temperatur unter der Uhr). Default: an.
-     */
-    val isWeatherWidgetEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[WEATHER_WIDGET_KEY] ?: true }
-
-    /**
-     * Observable flow für das Uhr-Widget. Default: an.
-     */
-    val isClockWidgetEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[CLOCK_WIDGET_KEY] ?: true }
-
-    /**
-     * Observable flow für das Kalender-/Datum-Widget. Default: an.
-     */
-    val isCalendarWidgetEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[CALENDAR_WIDGET_KEY] ?: true }
-
-    /**
-     * Observable flow für die Dynamic Island (Pille am oberen Rand). Default: an.
-     */
-    val isDynamicIslandEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[DYNAMIC_ISLAND_KEY] ?: true }
-
-    /**
-     * Manueller vertikaler Feinversatz der Dynamic Island in dp (−12..40). Default: 0.
-     * Seit der cutout-basierten Auto-Zentrierung nur noch optionale Feinjustierung. Alte
-     * (gegen statusBar/2 kompensierte) Werte werden einmalig ignoriert, bis der Nutzer den
-     * Offset über [setDynamicIslandOffset] erstmals selbst setzt (siehe MIGRATED_V2-Flag).
-     */
-    val dynamicIslandOffset: Flow<Float> = context.dataStore.data
-        .map { prefs ->
-            if (prefs[DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY] == true) {
-                prefs[DYNAMIC_ISLAND_OFFSET_KEY] ?: 0f
-            } else {
-                0f
-            }
-        }
-
-    /**
-     * Frei wählbare Farbe der Dynamic Island (Pille + geöffnete Karte). Default: nahezu Schwarz.
-     */
-    val dynamicIslandColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[DYNAMIC_ISLAND_COLOR_KEY] ?: 0xFF0B0B0C.toInt()) }
-
-    /**
-     * Observable flow für das Edge Lighting (leuchtender Rand bei Benachrichtigungen). Default: aus.
-     */
-    val isEdgeLightingEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[EDGE_LIGHTING_KEY] ?: false }
-
-    /**
-     * Frei wählbare Farbe des Edge Lightings. Default: Akzent-Blau.
-     */
-    val edgeLightingColor: Flow<Color> = context.dataStore.data
-        .map { Color(it[EDGE_LIGHTING_COLOR_KEY] ?: 0xFF0A84FF.toInt()) }
-
-    /** Edge-Lighting-Tempo (höher = schneller). Default: 1.0. */
-    val edgeLightingSpeed: Flow<Float> = context.dataStore.data
-        .map { (it[EDGE_LIGHTING_SPEED_KEY] ?: 1f).coerceIn(0.5f, 2f) }
-
-    /** Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). Default: 1. */
-    val edgeLightingLaps: Flow<Int> = context.dataStore.data
-        .map { (it[EDGE_LIGHTING_LAPS_KEY] ?: 1).coerceIn(1, 5) }
-
-    /** Edge-Lighting-Stärke (skaliert Strich-/Glow-Breite). Default: 1.0. */
-    val edgeLightingThickness: Flow<Float> = context.dataStore.data
-        .map { (it[EDGE_LIGHTING_THICKNESS_KEY] ?: 1f).coerceIn(0.5f, 2f) }
-
-    /** Edge-Lighting-Stil. Default: SWEEP. */
-    val edgeLightingStyle: Flow<EdgeLightingStyle> = context.dataStore.data
-        .map { prefs ->
-            prefs[EDGE_LIGHTING_STYLE_KEY]?.let {
-                runCatching { EdgeLightingStyle.valueOf(it) }.getOrNull()
-            } ?: EdgeLightingStyle.SWEEP
-        }
-
-    /** Insel-Öffnungs-/Schließstil. Default: FROM_NOTCH. */
-    val islandAnimationStyle: Flow<IslandAnimationStyle> = context.dataStore.data
-        .map { prefs ->
-            prefs[ISLAND_ANIMATION_STYLE_KEY]?.let {
-                runCatching { IslandAnimationStyle.valueOf(it) }.getOrNull()
-            } ?: IslandAnimationStyle.FROM_NOTCH
-        }
-
-    /**
-     * Observable flow for shake gesture toggle.
-     */
-    val isShakeGesturesEnabled: Flow<Boolean> = context.dataStore.data
-        .map { preferences ->
-            preferences[SHAKE_GESTURES_KEY] ?: true
-        }
-
-    /**
-     * Aktion für doppeltes Schütteln (einzige Shake-Geste). Default Taschenlampe.
-     */
-    val doubleShakeAction: Flow<GestureAction> = context.dataStore.data
-        .map { preferences ->
-            val name = preferences[DOUBLE_SHAKE_ACTION_KEY] ?: GestureAction.FLASHLIGHT.name
-            try { GestureAction.valueOf(name) } catch (e: IllegalArgumentException) { GestureAction.FLASHLIGHT }
-        }
-
-    /**
-     * Paketname der App, die bei [GestureAction.OPEN_APP] (Schütteln) gestartet wird (null, wenn keine gewählt).
-     */
-    val shakeOpenAppPackage: Flow<String?> = context.dataStore.data
-        .map { preferences ->
-            CryptoManager.decryptOrLegacy(
-                preferences[SHAKE_OPEN_APP_PACKAGE_KEY]
-            ).takeIf { it.isNotBlank() }
-        }
-
-    /**
-     * Aktion für die Doppeltipp-Geste auf dem Startbildschirm. Default: Bildschirm sperren
-     * (entspricht dem bisherigen, fest verdrahteten Verhalten).
-     */
-    val doubleTapAction: Flow<GestureAction> = context.dataStore.data
-        .map { preferences ->
-            val name = preferences[DOUBLE_TAP_ACTION_KEY] ?: GestureAction.LOCK_SCREEN.name
-            try { GestureAction.valueOf(name) } catch (e: IllegalArgumentException) { GestureAction.LOCK_SCREEN }
-        }
-
-    /**
-     * Paketname der App, die bei [GestureAction.OPEN_APP] (Doppeltippen) gestartet wird (null, wenn keine gewählt).
-     */
-    val doubleTapAppPackage: Flow<String?> = context.dataStore.data
-        .map { preferences ->
-            CryptoManager.decryptOrLegacy(
-                preferences[DOUBLE_TAP_APP_PACKAGE_KEY]
-            ).takeIf { it.isNotBlank() }
-        }
-
-    /**
-     * Gewählte Art des App-Zugriffs. Default ist die Drawer-Liste (Niagara-Stil).
-     */
-    val appAccessMode: Flow<AppAccessMode> = context.dataStore.data
-        .map { preferences ->
-            val name = preferences[APP_ACCESS_MODE_KEY] ?: AppAccessMode.DRAWER_LIST.name
-            try { AppAccessMode.valueOf(name) } catch (e: IllegalArgumentException) { AppAccessMode.DRAWER_LIST }
-        }
-
-    /**
-     * Observable flow for intelligent search suggestions.
-     */
-    val isSmartSuggestionsEnabled: Flow<Boolean> = context.dataStore.data
-        .map { preferences ->
-            preferences[SMART_SUGGESTIONS_KEY] ?: true
-        }
-
-    /**
-     * Observable flow for haptic feedback toggle.
-     * Synchronized with system setting HAPTIC_FEEDBACK_ENABLED using a ContentObserver.
-     */
-    val isHapticFeedbackEnabled: Flow<Boolean> = callbackFlow {
-        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) {
-                val enabled = Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0
-                trySend(enabled)
-            }
-        }
-        context.contentResolver.registerContentObserver(
-            Settings.System.getUriFor(Settings.System.HAPTIC_FEEDBACK_ENABLED),
-            false,
-            observer
-        )
-        // Send initial value
-        val initial = Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0
-        trySend(initial)
-
-        awaitClose {
-            context.contentResolver.unregisterContentObserver(observer)
-        }
-    }.distinctUntilChanged()
-
-    suspend fun setTheme(theme: ColorTheme) { context.dataStore.edit { it[THEME_KEY] = theme.name } }
-    suspend fun setFontSize(scale: Float) {
-        context.dataStore.edit { it[FONT_SIZE_SCALE_KEY] = scale.coerceIn(FontSize.MIN, FontSize.MAX) }
-    }
-    suspend fun setFontWeight(value: Int) {
-        context.dataStore.edit { it[FONT_WEIGHT_VALUE_KEY] = value.coerceIn(FontWeightLevel.MIN, FontWeightLevel.MAX) }
-    }
-    suspend fun setIconSize(size: Dp) {
-        context.dataStore.edit { it[ICON_SIZE_DP_KEY] = size.coerceIn(IconSize.MIN, IconSize.MAX).value }
-    }
-    suspend fun setFavoriteSpacing(spacing: Dp) {
-        context.dataStore.edit {
-            it[FAVORITE_SPACING_DP_KEY] = spacing.coerceIn(FavoriteSpacing.MIN, FavoriteSpacing.MAX).value
-        }
-    }
-    suspend fun setDarkTextEnabled(enabled: Boolean) { context.dataStore.edit { it[DARK_TEXT_KEY] = enabled } }
-    suspend fun setIconColor(color: Color) { context.dataStore.edit { it[ICON_COLOR_KEY] = color.toArgb() } }
-    suspend fun setHomeTextColor(color: Color) { context.dataStore.edit { it[HOME_TEXT_COLOR_KEY] = color.toArgb() } }
-    suspend fun setCustomBackgroundColor(color: Color) {
-        context.dataStore.edit { it[CUSTOM_BG_COLOR_KEY] = color.toArgb() }
-    }
-    suspend fun setCustomMenuColor(
-        color: Color
-    ) { context.dataStore.edit { it[CUSTOM_MENU_COLOR_KEY] = color.toArgb() } }
-    suspend fun setHiddenApps(packages: Set<String>) {
-        context.dataStore.edit { it[HIDDEN_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) }
-    }
-    suspend fun setLockedApps(packages: Set<String>) {
-        context.dataStore.edit { it[LOCKED_APPS_KEY] = CryptoManager.encrypt(packages.joinToString(",")) }
-    }
+class ThemeManager(context: Context) {
+
+    // Alle Stores teilen sich dieselbe DataStore-Datei "settings" – keine Migration nötig.
+    private val appearanceSettings = AppearanceSettings(context)
+    private val homeLayoutSettings = HomeLayoutSettings(context)
+    private val wallpaperSettings = WallpaperSettings(context)
+    private val gestureSettings = GestureSettings(context)
+    private val animationSettings = AnimationSettings(context)
+    private val islandAndEdgeSettings = IslandAndEdgeSettings(context)
+    private val privacySettings = PrivacySettings(context)
+
+    // ── Erscheinungsbild (AppearanceSettings) ────────────────────────
+    val selectedTheme: Flow<ColorTheme> = appearanceSettings.selectedTheme
+    val selectedFontSize: Flow<FontSize> = appearanceSettings.selectedFontSize
+    val selectedFontWeight: Flow<FontWeightLevel> = appearanceSettings.selectedFontWeight
+    val selectedIconSize: Flow<IconSize> = appearanceSettings.selectedIconSize
+    val selectedFavoriteSpacing: Flow<FavoriteSpacing> = appearanceSettings.selectedFavoriteSpacing
+    val isDarkTextEnabled: Flow<Boolean> = appearanceSettings.isDarkTextEnabled
+    val iconColor: Flow<Color> = appearanceSettings.iconColor
+    val homeTextColor: Flow<Color> = appearanceSettings.homeTextColor
+    val customBackgroundColor: Flow<Color> = appearanceSettings.customBackgroundColor
+    val customMenuColor: Flow<Color> = appearanceSettings.customMenuColor
+    val isLiquidGlassEnabled: Flow<Boolean> = appearanceSettings.isLiquidGlassEnabled
+    val designStyle: Flow<DesignStyle> = appearanceSettings.designStyle
+    val selectedAppFont: Flow<AppFont> = appearanceSettings.selectedAppFont
+
+    // ── Privatsphäre (PrivacySettings) ───────────────────────────────
+    val hiddenApps: Flow<Set<String>> = privacySettings.hiddenApps
+    val lockedApps: Flow<Set<String>> = privacySettings.lockedApps
+    val lockType: Flow<String> = privacySettings.lockType
+    val lockSecret: Flow<String> = privacySettings.lockSecret
+    val isLockBiometricEnabled: Flow<Boolean> = privacySettings.isLockBiometricEnabled
+    val appAccessMode: Flow<AppAccessMode> = privacySettings.appAccessMode
+
+    // ── Startbildschirm (HomeLayoutSettings) ─────────────────────────
+    val showFavoriteLabels: Flow<Boolean> = homeLayoutSettings.showFavoriteLabels
+    val isNotificationDotsEnabled: Flow<Boolean> = homeLayoutSettings.isNotificationDotsEnabled
+    val favoritesBorderStyle: Flow<FavoritesBorderStyle> = homeLayoutSettings.favoritesBorderStyle
+    val isSmartSuggestionsEnabled: Flow<Boolean> = homeLayoutSettings.isSmartSuggestionsEnabled
+    val isWeatherWidgetEnabled: Flow<Boolean> = homeLayoutSettings.isWeatherWidgetEnabled
+    val isClockWidgetEnabled: Flow<Boolean> = homeLayoutSettings.isClockWidgetEnabled
+    val isCalendarWidgetEnabled: Flow<Boolean> = homeLayoutSettings.isCalendarWidgetEnabled
+    val isOnboardingCompleted: Flow<Boolean> = homeLayoutSettings.isOnboardingCompleted
+    val homeLayout: Flow<HomeLayout> = homeLayoutSettings.homeLayout
+
+    // ── Wallpaper (WallpaperSettings) ────────────────────────────────
+    val customWallpaperUri: Flow<String?> = wallpaperSettings.customWallpaperUri
+    val wallpaperBlur: Flow<Float> = wallpaperSettings.wallpaperBlur
+    val wallpaperDim: Flow<Float> = wallpaperSettings.wallpaperDim
+    val wallpaperZoom: Flow<Float> = wallpaperSettings.wallpaperZoom
+
+    // ── Animationen (AnimationSettings) ──────────────────────────────
+    val isAnimationsEnabled: Flow<Boolean> = animationSettings.isAnimationsEnabled
+    val isAppOpenAnimationEnabled: Flow<Boolean> = animationSettings.isAppOpenAnimationEnabled
+    val isAppCloseAnimationEnabled: Flow<Boolean> = animationSettings.isAppCloseAnimationEnabled
+    val isMenuAnimationEnabled: Flow<Boolean> = animationSettings.isMenuAnimationEnabled
+    val isFavoritesAnimationEnabled: Flow<Boolean> = animationSettings.isFavoritesAnimationEnabled
+    val animationSpeed: Flow<Float> = animationSettings.animationSpeed
+
+    // ── Dynamic Island & Edge Lighting (IslandAndEdgeSettings) ───────
+    val isDynamicIslandEnabled: Flow<Boolean> = islandAndEdgeSettings.isDynamicIslandEnabled
+    val dynamicIslandOffset: Flow<Float> = islandAndEdgeSettings.dynamicIslandOffset
+    val dynamicIslandColor: Flow<Color> = islandAndEdgeSettings.dynamicIslandColor
+    val isEdgeLightingEnabled: Flow<Boolean> = islandAndEdgeSettings.isEdgeLightingEnabled
+    val edgeLightingColor: Flow<Color> = islandAndEdgeSettings.edgeLightingColor
+    val edgeLightingSpeed: Flow<Float> = islandAndEdgeSettings.edgeLightingSpeed
+    val edgeLightingLaps: Flow<Int> = islandAndEdgeSettings.edgeLightingLaps
+    val edgeLightingThickness: Flow<Float> = islandAndEdgeSettings.edgeLightingThickness
+    val edgeLightingStyle: Flow<EdgeLightingStyle> = islandAndEdgeSettings.edgeLightingStyle
+    val islandAnimationStyle: Flow<IslandAnimationStyle> = islandAndEdgeSettings.islandAnimationStyle
+
+    // ── Gesten & Haptik (GestureSettings) ────────────────────────────
+    val isShakeGesturesEnabled: Flow<Boolean> = gestureSettings.isShakeGesturesEnabled
+    val doubleShakeAction: Flow<GestureAction> = gestureSettings.doubleShakeAction
+    val shakeOpenAppPackage: Flow<String?> = gestureSettings.shakeOpenAppPackage
+    val doubleTapAction: Flow<GestureAction> = gestureSettings.doubleTapAction
+    val doubleTapAppPackage: Flow<String?> = gestureSettings.doubleTapAppPackage
+    val isHapticFeedbackEnabled: Flow<Boolean> = gestureSettings.isHapticFeedbackEnabled
+
+    // ── Setter: Erscheinungsbild ─────────────────────────────────────
+    suspend fun setTheme(theme: ColorTheme) = appearanceSettings.setTheme(theme)
+    suspend fun setFontSize(scale: Float) = appearanceSettings.setFontSize(scale)
+    suspend fun setFontWeight(value: Int) = appearanceSettings.setFontWeight(value)
+    suspend fun setIconSize(size: Dp) = appearanceSettings.setIconSize(size)
+    suspend fun setFavoriteSpacing(spacing: Dp) = appearanceSettings.setFavoriteSpacing(spacing)
+    suspend fun setDarkTextEnabled(enabled: Boolean) = appearanceSettings.setDarkTextEnabled(enabled)
+    suspend fun setIconColor(color: Color) = appearanceSettings.setIconColor(color)
+    suspend fun setHomeTextColor(color: Color) = appearanceSettings.setHomeTextColor(color)
+    suspend fun setCustomBackgroundColor(color: Color) = appearanceSettings.setCustomBackgroundColor(color)
+    suspend fun setCustomMenuColor(color: Color) = appearanceSettings.setCustomMenuColor(color)
+    suspend fun setLiquidGlassEnabled(enabled: Boolean) = appearanceSettings.setLiquidGlassEnabled(enabled)
+    suspend fun setDesignStyle(style: DesignStyle) = appearanceSettings.setDesignStyle(style)
+    suspend fun setAppFont(font: AppFont) = appearanceSettings.setAppFont(font)
+
+    // ── Setter: Privatsphäre ─────────────────────────────────────────
+    suspend fun setHiddenApps(packages: Set<String>) = privacySettings.setHiddenApps(packages)
+    suspend fun setLockedApps(packages: Set<String>) = privacySettings.setLockedApps(packages)
 
     /** Speichert Typ ("pin"/"pattern") und gesalzenen Hash-Token des Geheimnisses. */
-    suspend fun setLockSecret(type: String, secretToken: String) {
-        context.dataStore.edit {
-            it[LOCK_TYPE_KEY] = type
-            it[LOCK_SECRET_KEY] = CryptoManager.encrypt(secretToken)
-        }
-    }
+    suspend fun setLockSecret(type: String, secretToken: String) = privacySettings.setLockSecret(type, secretToken)
 
     /** Entfernt den hinterlegten Code (Typ zurück auf "none"). */
-    suspend fun clearLockSecret() {
-        context.dataStore.edit {
-            it[LOCK_TYPE_KEY] = "none"
-            it.remove(LOCK_SECRET_KEY)
-        }
-    }
-    suspend fun setLockBiometricEnabled(
-        enabled: Boolean
-    ) { context.dataStore.edit { it[LOCK_BIOMETRIC_KEY] = enabled } }
-    suspend fun setShowFavoriteLabels(show: Boolean) { context.dataStore.edit { it[SHOW_FAVORITE_LABELS_KEY] = show } }
-    suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[LIQUID_GLASS_KEY] = enabled } }
-    suspend fun setDesignStyle(style: DesignStyle) {
-        context.dataStore.edit {
-            it[DESIGN_STYLE_KEY] = style.name
-            // Legacy-Boolean konsistent halten, falls anderer Code es noch liest.
-            it[LIQUID_GLASS_KEY] = style.isGlassLike
-        }
-    }
-    suspend fun setFavoritesBorderStyle(style: FavoritesBorderStyle) {
-        context.dataStore.edit { it[FAVORITES_BORDER_KEY] = style.name }
-    }
-    suspend fun setAppFont(font: AppFont) { context.dataStore.edit { it[APP_FONT_KEY] = font.name } }
-    suspend fun setCustomWallpaperUri(uri: String?) {
-        context.dataStore.edit {
-            if (uri == null) {
-                it.remove(
-                    CUSTOM_WALLPAPER_KEY
-                )
-            } else {
-                it[CUSTOM_WALLPAPER_KEY] = uri
-            }
-        }
-    }
-    suspend fun setWallpaperBlur(blur: Float) { context.dataStore.edit { it[WALLPAPER_BLUR_KEY] = blur } }
-    suspend fun setWallpaperDim(dim: Float) { context.dataStore.edit { it[WALLPAPER_DIM_KEY] = dim } }
-    suspend fun setWallpaperZoom(zoom: Float) { context.dataStore.edit { it[WALLPAPER_ZOOM_KEY] = zoom } }
+    suspend fun clearLockSecret() = privacySettings.clearLockSecret()
+    suspend fun setLockBiometricEnabled(enabled: Boolean) = privacySettings.setLockBiometricEnabled(enabled)
+    suspend fun setAppAccessMode(mode: AppAccessMode) = privacySettings.setAppAccessMode(mode)
 
-    // Persistiert die Positionen aller verschiebbaren Startbildschirm-Elemente.
-    suspend fun setHomeLayout(layout: HomeLayout) {
-        context.dataStore.edit {
-            it[CLOCK_OFFSET_X_KEY] = layout.clock.x
-            it[CLOCK_OFFSET_Y_KEY] = layout.clock.y
-            it[DATE_OFFSET_X_KEY] = layout.date.x
-            it[DATE_OFFSET_Y_KEY] = layout.date.y
-            it[WEATHER_OFFSET_X_KEY] = layout.weather.x
-            it[WEATHER_OFFSET_Y_KEY] = layout.weather.y
-            it[FAVORITES_OFFSET_X_KEY] = layout.favorites.x
-            it[FAVORITES_OFFSET_Y_KEY] = layout.favorites.y
-        }
-    }
+    // ── Setter: Startbildschirm ──────────────────────────────────────
+    suspend fun setShowFavoriteLabels(show: Boolean) = homeLayoutSettings.setShowFavoriteLabels(show)
+    suspend fun setNotificationDotsEnabled(enabled: Boolean) = homeLayoutSettings.setNotificationDotsEnabled(enabled)
+    suspend fun setFavoritesBorderStyle(style: FavoritesBorderStyle) =
+        homeLayoutSettings.setFavoritesBorderStyle(style)
+    suspend fun setSmartSuggestionsEnabled(enabled: Boolean) = homeLayoutSettings.setSmartSuggestionsEnabled(enabled)
+    suspend fun setWeatherWidgetEnabled(enabled: Boolean) = homeLayoutSettings.setWeatherWidgetEnabled(enabled)
+    suspend fun setClockWidgetEnabled(enabled: Boolean) = homeLayoutSettings.setClockWidgetEnabled(enabled)
+    suspend fun setCalendarWidgetEnabled(enabled: Boolean) = homeLayoutSettings.setCalendarWidgetEnabled(enabled)
+    suspend fun setOnboardingCompleted(completed: Boolean) = homeLayoutSettings.setOnboardingCompleted(completed)
+    suspend fun setHomeLayout(layout: HomeLayout) = homeLayoutSettings.setHomeLayout(layout)
 
-    /**
-     * Toggles haptic feedback both internally and in system settings if permission is granted.
-     */
-    suspend fun setHapticFeedbackEnabled(enabled: Boolean) {
-        // Try to update system setting
-        try {
-            if (Settings.System.canWrite(context)) {
-                Settings.System.putInt(
-                    context.contentResolver,
-                    Settings.System.HAPTIC_FEEDBACK_ENABLED,
-                    if (enabled) 1 else 0
-                )
-            }
-        } catch (e: Exception) {
-            // Permission might be missing
-        }
+    // ── Setter: Wallpaper ────────────────────────────────────────────
+    suspend fun setCustomWallpaperUri(uri: String?) = wallpaperSettings.setCustomWallpaperUri(uri)
+    suspend fun setWallpaperBlur(blur: Float) = wallpaperSettings.setWallpaperBlur(blur)
+    suspend fun setWallpaperDim(dim: Float) = wallpaperSettings.setWallpaperDim(dim)
+    suspend fun setWallpaperZoom(zoom: Float) = wallpaperSettings.setWallpaperZoom(zoom)
 
-        // Also update internally to stay consistent
-        context.dataStore.edit { it[HAPTIC_FEEDBACK_KEY] = enabled }
-    }
+    // ── Setter: Animationen ──────────────────────────────────────────
+    suspend fun setAnimationsEnabled(enabled: Boolean) = animationSettings.setAnimationsEnabled(enabled)
+    suspend fun setAppOpenAnimationEnabled(enabled: Boolean) = animationSettings.setAppOpenAnimationEnabled(enabled)
+    suspend fun setAppCloseAnimationEnabled(enabled: Boolean) = animationSettings.setAppCloseAnimationEnabled(enabled)
+    suspend fun setMenuAnimationEnabled(enabled: Boolean) = animationSettings.setMenuAnimationEnabled(enabled)
+    suspend fun setFavoritesAnimationEnabled(enabled: Boolean) =
+        animationSettings.setFavoritesAnimationEnabled(enabled)
+    suspend fun setAnimationSpeed(speed: Float) = animationSettings.setAnimationSpeed(speed)
 
-    /**
-     * Markiert das Erststart-Onboarding als abgeschlossen (oder setzt es zurück).
-     */
-    suspend fun setOnboardingCompleted(completed: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ONBOARDING_COMPLETED_KEY] = completed
-        }
-    }
+    // ── Setter: Dynamic Island & Edge Lighting ───────────────────────
+    suspend fun setDynamicIslandEnabled(enabled: Boolean) = islandAndEdgeSettings.setDynamicIslandEnabled(enabled)
+    suspend fun setDynamicIslandOffset(offsetDp: Float) = islandAndEdgeSettings.setDynamicIslandOffset(offsetDp)
+    suspend fun setDynamicIslandColor(color: Color) = islandAndEdgeSettings.setDynamicIslandColor(color)
+    suspend fun setEdgeLightingEnabled(enabled: Boolean) = islandAndEdgeSettings.setEdgeLightingEnabled(enabled)
+    suspend fun setEdgeLightingColor(color: Color) = islandAndEdgeSettings.setEdgeLightingColor(color)
+    suspend fun setEdgeLightingSpeed(speed: Float) = islandAndEdgeSettings.setEdgeLightingSpeed(speed)
+    suspend fun setEdgeLightingLaps(laps: Int) = islandAndEdgeSettings.setEdgeLightingLaps(laps)
+    suspend fun setEdgeLightingThickness(thickness: Float) = islandAndEdgeSettings.setEdgeLightingThickness(thickness)
+    suspend fun setEdgeLightingStyle(style: EdgeLightingStyle) = islandAndEdgeSettings.setEdgeLightingStyle(style)
+    suspend fun setIslandAnimationStyle(style: IslandAnimationStyle) =
+        islandAndEdgeSettings.setIslandAnimationStyle(style)
 
-    /**
-     * Toggles shake gestures.
-     */
-    suspend fun setShakeGesturesEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[SHAKE_GESTURES_KEY] = enabled
-        }
-    }
+    // ── Setter: Gesten & Haptik ──────────────────────────────────────
+    suspend fun setShakeGesturesEnabled(enabled: Boolean) = gestureSettings.setShakeGesturesEnabled(enabled)
+    suspend fun setDoubleShakeAction(action: GestureAction) = gestureSettings.setDoubleShakeAction(action)
+    suspend fun setShakeOpenAppPackage(packageName: String?) = gestureSettings.setShakeOpenAppPackage(packageName)
+    suspend fun setDoubleTapAction(action: GestureAction) = gestureSettings.setDoubleTapAction(action)
+    suspend fun setDoubleTapAppPackage(packageName: String?) = gestureSettings.setDoubleTapAppPackage(packageName)
 
-    /**
-     * Setzt die Aktion für doppeltes Schütteln.
-     */
-    suspend fun setDoubleShakeAction(action: GestureAction) {
-        context.dataStore.edit { preferences ->
-            preferences[DOUBLE_SHAKE_ACTION_KEY] = action.name
-        }
-    }
-
-    /**
-     * Setzt das Paket der App, die bei [GestureAction.OPEN_APP] (Schütteln) gestartet wird (null löscht die Wahl).
-     */
-    suspend fun setShakeOpenAppPackage(packageName: String?) {
-        context.dataStore.edit { preferences ->
-            if (packageName.isNullOrBlank()) {
-                preferences.remove(SHAKE_OPEN_APP_PACKAGE_KEY)
-            } else {
-                preferences[SHAKE_OPEN_APP_PACKAGE_KEY] = CryptoManager.encrypt(packageName)
-            }
-        }
-    }
-
-    /**
-     * Setzt die Aktion für die Doppeltipp-Geste.
-     */
-    suspend fun setDoubleTapAction(action: GestureAction) {
-        context.dataStore.edit { preferences ->
-            preferences[DOUBLE_TAP_ACTION_KEY] = action.name
-        }
-    }
-
-    /**
-     * Setzt das Paket der App, die bei [GestureAction.OPEN_APP] (Doppeltippen) gestartet wird (null löscht die Wahl).
-     */
-    suspend fun setDoubleTapAppPackage(packageName: String?) {
-        context.dataStore.edit { preferences ->
-            if (packageName.isNullOrBlank()) {
-                preferences.remove(DOUBLE_TAP_APP_PACKAGE_KEY)
-            } else {
-                preferences[DOUBLE_TAP_APP_PACKAGE_KEY] = CryptoManager.encrypt(packageName)
-            }
-        }
-    }
-
-    /**
-     * Setzt die gewählte Art des App-Zugriffs.
-     */
-    suspend fun setAppAccessMode(mode: AppAccessMode) {
-        context.dataStore.edit { preferences ->
-            preferences[APP_ACCESS_MODE_KEY] = mode.name
-        }
-    }
-
-    /**
-     * Toggles intelligent search suggestions.
-     */
-    suspend fun setSmartSuggestionsEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[SMART_SUGGESTIONS_KEY] = enabled
-        }
-    }
-
-    /**
-     * Toggles animations.
-     */
-    suspend fun setAnimationsEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATIONS_ENABLED_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet die App-Öffnen-Animation ein/aus.
-     */
-    suspend fun setAppOpenAnimationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_APP_OPEN_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet die App-Schließen-/Rückkehr-Animation ein/aus.
-     */
-    suspend fun setAppCloseAnimationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_APP_CLOSE_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet Menü-/Einstellungsmenü-Animationen ein/aus.
-     */
-    suspend fun setMenuAnimationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_MENUS_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet die Favoriten-Leisten-Animation (Vergrößern beim Rüberfahren) ein/aus.
-     */
-    suspend fun setFavoritesAnimationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_FAVORITES_KEY] = enabled
-        }
-    }
-
-    /**
-     * Setzt den globalen Animations-Tempo-Faktor (auf 0.5×–2× begrenzt).
-     */
-    suspend fun setAnimationSpeed(speed: Float) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_SPEED_KEY] = speed.coerceIn(0.5f, 2f)
-        }
-    }
-
-    /**
-     * Schaltet das Wetter-Widget ein/aus.
-     */
-    suspend fun setWeatherWidgetEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[WEATHER_WIDGET_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet das Uhr-Widget ein/aus.
-     */
-    suspend fun setClockWidgetEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[CLOCK_WIDGET_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet das Kalender-/Datum-Widget ein/aus.
-     */
-    suspend fun setCalendarWidgetEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[CALENDAR_WIDGET_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet die Dynamic Island ein/aus.
-     */
-    suspend fun setDynamicIslandEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[DYNAMIC_ISLAND_KEY] = enabled
-        }
-    }
-
-    /**
-     * Setzt den vertikalen Feinversatz der Dynamic Island (auf −16..16 dp begrenzt).
-     */
-    suspend fun setDynamicIslandOffset(offsetDp: Float) {
-        context.dataStore.edit { preferences ->
-            preferences[DYNAMIC_ISLAND_OFFSET_KEY] = offsetDp.coerceIn(-12f, 40f)
-            // Erste bewusste Justierung schließt die Einmal-Migration ab → ab jetzt wird der
-            // gespeicherte Wert wieder verwendet.
-            preferences[DYNAMIC_ISLAND_OFFSET_MIGRATED_V2_KEY] = true
-        }
-    }
-
-    /**
-     * Setzt die frei wählbare Farbe der Dynamic Island (Pille + Karte).
-     */
-    suspend fun setDynamicIslandColor(color: Color) {
-        context.dataStore.edit { preferences ->
-            preferences[DYNAMIC_ISLAND_COLOR_KEY] = color.toArgb()
-        }
-    }
-
-    /**
-     * Schaltet das Edge Lighting (leuchtender Rand bei Benachrichtigungen) ein/aus.
-     */
-    suspend fun setEdgeLightingEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_KEY] = enabled
-        }
-    }
-
-    /**
-     * Setzt die frei wählbare Farbe des Edge Lightings.
-     */
-    suspend fun setEdgeLightingColor(color: Color) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_COLOR_KEY] = color.toArgb()
-        }
-    }
-
-    /** Setzt das Edge-Lighting-Tempo (0.5..2.0; höher = schneller). */
-    suspend fun setEdgeLightingSpeed(speed: Float) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_SPEED_KEY] = speed.coerceIn(0.5f, 2f)
-        }
-    }
-
-    /** Setzt die Edge-Lighting-Durchläufe pro Benachrichtigung (1..5). */
-    suspend fun setEdgeLightingLaps(laps: Int) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_LAPS_KEY] = laps.coerceIn(1, 5)
-        }
-    }
-
-    /** Setzt die Edge-Lighting-Stärke (0.5..2.0; skaliert Strich-/Glow-Breite). */
-    suspend fun setEdgeLightingThickness(thickness: Float) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_THICKNESS_KEY] = thickness.coerceIn(0.5f, 2f)
-        }
-    }
-
-    /** Setzt den Edge-Lighting-Stil. */
-    suspend fun setEdgeLightingStyle(style: EdgeLightingStyle) {
-        context.dataStore.edit { preferences ->
-            preferences[EDGE_LIGHTING_STYLE_KEY] = style.name
-        }
-    }
-
-    /** Setzt den Insel-Öffnungs-/Schließstil. */
-    suspend fun setIslandAnimationStyle(style: IslandAnimationStyle) {
-        context.dataStore.edit { preferences ->
-            preferences[ISLAND_ANIMATION_STYLE_KEY] = style.name
-        }
-    }
+    /** Toggles haptic feedback both internally and in system settings if permission is granted. */
+    suspend fun setHapticFeedbackEnabled(enabled: Boolean) = gestureSettings.setHapticFeedbackEnabled(enabled)
 }

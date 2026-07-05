@@ -213,6 +213,7 @@
     <string name="border_style_accent">Accent color</string>
     <string name="border_style_subtle">Subtle</string>
     <string name="favorites_app_titles">App titles</string>
+    <string name="favorites_notification_dots">Notification dots</string>
     <string name="favorites_border">Border</string>
 
     <!-- Animations menu -->

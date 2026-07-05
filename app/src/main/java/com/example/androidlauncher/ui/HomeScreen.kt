@@ -69,6 +69,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Sun
 import com.example.androidlauncher.FavoritesEntranceTracker
@@ -80,6 +81,7 @@ import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.WeatherData
 import com.example.androidlauncher.data.WeatherRepository
+import com.example.androidlauncher.launchShortcut
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
 import kotlinx.coroutines.delay
@@ -571,7 +573,10 @@ fun HomeScreen(
                                             val rect = neutralBounds[target]?.let {
                                                 translateRect(it, offsets[target]?.x ?: 0f, offsets[target]?.y ?: 0f)
                                             } ?: return@any false
-                                            val hitRect = expandRect(rect, framePadding(target) + editSelectionHitPaddingPx)
+                                            val hitRect = expandRect(
+                                                rect,
+                                                framePadding(target) + editSelectionHitPaddingPx
+                                            )
                                             rectContains(hitRect, tapOffset)
                                         }
                                         val hitEditControls = editControlsBounds?.let { rectContains(it, tapOffset) } == true
@@ -1466,27 +1471,30 @@ fun WeatherRow(isPreview: Boolean = false) {
 
     // Startwert aus dem prozessweiten Cache: zeigt beim Zurückkehren aus dem App-Drawer
     // sofort den letzten Wert, statt kurz zu verschwinden.
+    val lifecycleOwner = LocalLifecycleOwner.current
     val weather by produceState<WeatherData?>(initialValue = WeatherRepository.cached, isPreview) {
         if (isPreview) return@produceState
         val repo = WeatherRepository(context)
         val refreshIntervalMs = 30 * 60_000L
-        while (true) {
-            val cacheFresh = WeatherRepository.cached != null &&
-                WeatherRepository.cacheAgeMs < refreshIntervalMs
-            if (cacheFresh) {
-                // Cache noch aktuell – übernehmen, kein erneuter Netzwerkabruf.
-                value = WeatherRepository.cached
-            } else {
-                // GPS nur, falls die Berechtigung ohnehin erteilt ist; sonst grobe Position
-                // über die IP-Adresse (ohne Standortdienst/Berechtigung).
-                val location = repo.awaitLocation() ?: repo.ipLocation()
-                if (location != null) {
-                    repo.fetch(location.first, location.second)?.let { value = it }
+        // Nur bei sichtbarem Launcher abrufen: im Hintergrund pausiert der Loop und
+        // prüft beim nächsten ON_START zuerst die Drossel (WeatherRepository.shouldRefresh).
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                if (WeatherRepository.shouldRefresh(refreshIntervalMs)) {
+                    // GPS nur, falls die Berechtigung ohnehin erteilt ist; sonst grobe Position
+                    // über die IP-Adresse (ohne Standortdienst/Berechtigung).
+                    val location = repo.awaitLocation() ?: repo.ipLocation()
+                    if (location != null) {
+                        repo.fetch(location.first, location.second)?.let { value = it }
+                    }
+                } else {
+                    // Cache noch aktuell – übernehmen, kein erneuter Netzwerkabruf.
+                    value = WeatherRepository.cached
                 }
+                // Schneller erneut versuchen, solange noch keine Daten vorliegen,
+                // sonst regulär alle 30 Minuten aktualisieren.
+                delay(if (value == null) 20_000L else refreshIntervalMs)
             }
-            // Schneller erneut versuchen, solange noch keine Daten vorliegen,
-            // sonst regulär alle 30 Minuten aktualisieren.
-            delay(if (value == null) 20_000L else refreshIntervalMs)
         }
     }
 
