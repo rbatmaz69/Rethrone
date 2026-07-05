@@ -1,22 +1,16 @@
 package com.example.androidlauncher.ui
 
-import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
-import android.provider.AlarmClock
-import android.provider.CalendarContract
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,8 +25,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,9 +33,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -56,11 +46,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -69,25 +54,17 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
-import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Sun
-import com.example.androidlauncher.FavoritesEntranceTracker
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
-import com.example.androidlauncher.data.WeatherData
-import com.example.androidlauncher.data.WeatherRepository
 import com.example.androidlauncher.launchShortcut
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
 import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -148,25 +125,17 @@ fun HomeScreen(
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
 
     // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
-    // Live-Offsets, Neutralpositionen und Haptik-Zeitstempel je verschiebbarem Element.
-    val offsets = remember {
-        mutableStateMapOf(
-            HomeEditTarget.CLOCK to homeLayout.clock,
-            HomeEditTarget.DATE to homeLayout.date,
-            HomeEditTarget.WEATHER to homeLayout.weather,
-            HomeEditTarget.FAVORITES to homeLayout.favorites
-        )
-    }
-    val neutralBounds = remember { mutableStateMapOf<HomeEditTarget, Rect>() }
-    val lastBlockedHapticMs = remember { mutableStateMapOf<HomeEditTarget, Long>() }
+    // A6-Split: gebündelt im HomeDragStateHolder; die Delegates/Aliase darunter
+    // halten die bestehenden Lese-/Schreib-Stellen im Composable stabil.
+    val dragState = rememberHomeDragState(homeLayout)
+    val offsets = dragState.offsets
+    val neutralBounds = dragState.neutralBounds
+    val lastBlockedHapticMs = dragState.lastBlockedHapticMs
 
     // Hält die Live-Offsets außerhalb des Edit-Modus an der gespeicherten Position;
     // beim Betreten des Edit-Modus werden sie 1:1 daraus geseedet, Abbrechen revertiert.
     LaunchedEffect(homeLayout, isEditMode) {
-        offsets[HomeEditTarget.CLOCK] = homeLayout.clock
-        offsets[HomeEditTarget.DATE] = homeLayout.date
-        offsets[HomeEditTarget.WEATHER] = homeLayout.weather
-        offsets[HomeEditTarget.FAVORITES] = homeLayout.favorites
+        dragState.seedFrom(homeLayout)
     }
 
     // Tickt die Uhrzeit für die getrennten Uhr-/Datums-Elemente.
@@ -193,10 +162,10 @@ fun HomeScreen(
         onDispose { clockLifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    var searchButtonBounds by remember { mutableStateOf<Rect?>(null) }
-    var settingsButtonBounds by remember { mutableStateOf<Rect?>(null) }
-    var editControlsBounds by remember { mutableStateOf<Rect?>(null) }
-    var collisionHapticWasTriggered by remember { mutableStateOf(false) }
+    var searchButtonBounds by dragState::searchButtonBounds
+    var settingsButtonBounds by dragState::settingsButtonBounds
+    var editControlsBounds by dragState::editControlsBounds
+    var collisionHapticWasTriggered by dragState::collisionHapticWasTriggered
 
     val favoritesFramePaddingPx = with(density) { 10.dp.toPx() }
     val navCollisionPaddingPx = favoritesFramePaddingPx
@@ -211,8 +180,8 @@ fun HomeScreen(
     val blockedDragHapticMinDeltaPx = 0.25f
     val clockTopLimitPx = with(density) { 32.dp.toPx() }
 
-    var selectedEditTarget by remember { mutableStateOf<HomeEditTarget?>(null) }
-    var isEditTargetUserPinned by remember { mutableStateOf(false) }
+    var selectedEditTarget by dragState::selectedEditTarget
+    var isEditTargetUserPinned by dragState::isEditTargetUserPinned
     var selectedShortcutApp by remember { mutableStateOf<AppInfo?>(null) }
     var shortcutMenuBounds by remember { mutableStateOf<Rect?>(null) }
 
@@ -893,14 +862,7 @@ fun HomeScreen(
                         icon = Icons.Rounded.Check,
                         onClick = {
                             updateCollisionFeedback(false)
-                            onSaveHomeLayout(
-                                HomeLayout(
-                                    clock = offsets[HomeEditTarget.CLOCK] ?: Offset.Zero,
-                                    date = offsets[HomeEditTarget.DATE] ?: Offset.Zero,
-                                    weather = offsets[HomeEditTarget.WEATHER] ?: Offset.Zero,
-                                    favorites = offsets[HomeEditTarget.FAVORITES] ?: Offset.Zero
-                                )
-                            )
+                            onSaveHomeLayout(dragState.toHomeLayout())
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.position_saved),
@@ -1098,535 +1060,6 @@ fun HomeScreen(
                 returnIconPackage = returnIconPackage,
                 modifier = Modifier.zIndex(2500f)
             )
-        }
-    }
-}
-
-@Composable
-private fun EditControlButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-    tint: Color,
-    sizeDp: androidx.compose.ui.unit.Dp = 56.dp,
-    containerColor: Color = Color.Transparent,
-    testTag: String? = null
-) {
-    val intSrc = remember { MutableInteractionSource() }
-    val designStyle = LocalDesignStyle.current
-    val isDarkTextEnabled = LocalDarkTextEnabled.current
-    val surfaceAccent = LocalColorTheme.current.menuSurfaceColor(isDarkTextEnabled)
-
-    Box(
-        modifier = Modifier
-            .size(sizeDp)
-            .then(
-                if (containerColor == Color.Transparent) {
-                    Modifier.designSurface(designStyle, CircleShape, isDarkTextEnabled, surfaceAccent, fillAlpha = 0.1f)
-                } else {
-                    Modifier.background(containerColor, CircleShape)
-                }
-            )
-            .clip(CircleShape)
-            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
-            .bounceClick(intSrc)
-            .clickable(interactionSource = intSrc, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
-    }
-}
-
-@Composable
-private fun FavoriteItem(
-    app: AppInfo,
-    showLabels: Boolean,
-    fontSize: Float,
-    mainTextColor: Color,
-    returnIconPackage: String?,
-    index: Int = 0,
-    isHovered: Boolean = false,
-    onBoundsChanged: (Rect) -> Unit = {},
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onShortcutRequested: (AppInfo, Rect?) -> Unit,
-    isPreview: Boolean = false
-) {
-    val context = LocalContext.current
-    val intSrc = remember { MutableInteractionSource() }
-    // Hervorhebung beim Rüberfahren: nur Vergrößerung, kein Hintergrund.
-    // Abschaltbar über die Animationseinstellungen (Favoriten-Leiste).
-    val favoritesAnimationEnabled = LocalFavoritesAnimationEnabled.current
-    val hoverScale by animateFloatAsState(
-        targetValue = if (isHovered && favoritesAnimationEnabled) 1.12f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "FavHoverScale"
-    )
-    val bounceScale by animateFloatAsState(
-        targetValue = if (!LocalAppCloseAnimationEnabled.current) 1f else if (returnIconPackage == app.packageName) 1.2f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "HomeReturnBounce"
-    )
-    val itemBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
-    val iconBounds = remember(app.packageName) { mutableStateOf<Rect?>(null) }
-    // Icon-Größe ist (anders als die Icon-Position) unabhängig von der Swipe-Verschiebung
-    // und dient als stabiler Anker für das Shortcut-Menü.
-    var iconSize by remember(app.packageName) { mutableStateOf(IntSize.Zero) }
-
-    var horizontalOffset by remember { mutableFloatStateOf(0f) }
-    val animatedOffset by animateFloatAsState(
-        targetValue = if (!LocalAnimationsEnabled.current) 0f else horizontalOffset,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "SwipeOffset"
-    )
-
-    // Material-3-Expressive: gestaffelter Eingang der Favoriten (federndes Aufpoppen),
-    // einmalig pro Prozess-Lebenszeit beim ersten Erscheinen. Läuft NICHT erneut beim
-    // Zurückkommen aus dem App-Drawer (HomeScreen wird dann neu komponiert).
-    // Respektiert die Favoriten-Animationseinstellung.
-    val playEntrance = favoritesAnimationEnabled && !isPreview &&
-        !FavoritesEntranceTracker.hasAppeared(app.packageName)
-    val appear = remember(app.packageName) { Animatable(if (playEntrance) 0f else 1f) }
-    LaunchedEffect(app.packageName, favoritesAnimationEnabled) {
-        if (playEntrance) {
-            appear.snapTo(0f)
-            delay((index.coerceAtMost(8) * 40).toLong())
-            appear.animateTo(1f, RethroneSprings.spatial())
-            FavoritesEntranceTracker.markAppeared(app.packageName)
-        } else {
-            appear.snapTo(1f)
-        }
-    }
-
-    Surface(
-        color = Color.Transparent,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .onGloballyPositioned { coordinates ->
-                val b = coordinates.boundsInRoot()
-                itemBounds.value = b
-                onBoundsChanged(b)
-            }
-            .graphicsLayer {
-                translationX = animatedOffset
-                // Eingang (0.9 → 1.0) mit Hover-Scale kombiniert.
-                val entranceScale = 0.9f + 0.1f * appear.value
-                scaleX = hoverScale * entranceScale
-                scaleY = hoverScale * entranceScale
-                alpha = appear.value
-                // Linksbündig vergrößern, damit das Icon nicht zur Seite wandert.
-                transformOrigin = TransformOrigin(0f, 0.5f)
-            }
-            .then(
-                if (!isPreview) {
-                    Modifier
-                        .pointerInput(app.packageName) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    if (horizontalOffset > 150f) {
-                                        // Stabilen Anker nur fürs Icon bauen: Position aus dem
-                                        // (unverschobenen) itemBounds, Breite/Höhe aus der Icon-Größe.
-                                        // So verdeckt das Menü das Logo nicht – egal ob Labels an sind.
-                                        val ib = itemBounds.value
-                                        val anchor = if (ib != null && iconSize.width > 0) {
-                                            Rect(
-                                                left = ib.left,
-                                                top = ib.center.y - iconSize.height / 2f,
-                                                right = ib.left + iconSize.width,
-                                                bottom = ib.center.y + iconSize.height / 2f
-                                            )
-                                        } else {
-                                            ib
-                                        }
-                                        onShortcutRequested(app, anchor)
-                                    }
-                                    horizontalOffset = 0f
-                                },
-                                onDragCancel = { horizontalOffset = 0f },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    horizontalOffset = (horizontalOffset + dragAmount).coerceIn(0f, 300f)
-                                }
-                            )
-                        }
-                        .bounceClick(intSrc)
-                        .clickable(interactionSource = intSrc, indication = null) {
-                            val targetBounds = iconBounds.value ?: itemBounds.value
-                            onAppLaunchForReturn(app.packageName, targetBounds)
-                        }
-                } else {
-                    Modifier
-                }
-            )
-    ) {
-        Row(
-            // Nur vertikaler Innenabstand, damit die Icons links bündig mit Uhr/Datum stehen.
-            modifier = Modifier.padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .graphicsLayer {
-                        scaleX = bounceScale
-                        scaleY = bounceScale
-                    }
-                    .onGloballyPositioned {
-                        iconBounds.value = it.boundsInRoot()
-                        iconSize = it.size
-                    }
-            ) {
-                AppIconView(app, showBadge = true)
-            }
-            if (showLabels) {
-                Text(
-                    text = app.label,
-                    color = mainTextColor,
-                    fontSize = 18.sp * fontSize,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@SuppressLint("WrongConstant")
-internal fun expandNotifications(context: Context) {
-    try {
-        val statusBarService = context.getSystemService("statusbar")
-        val statusBarManager = Class.forName("android.app.StatusBarManager")
-        val method = statusBarManager.getMethod("expandNotificationsPanel")
-        method.invoke(statusBarService)
-    } catch (_: Exception) {
-    }
-}
-
-/**
- * Großes Uhrzeit-Element (eigenständig verschiebbar). [time] wird vom Aufrufer getickt.
- */
-@Composable
-fun ClockText(
-    time: java.util.Date,
-    isPreview: Boolean,
-    returnIconPackage: String?,
-    onAppLaunchForReturn: (String, Rect?) -> Unit
-) {
-    val context = LocalContext.current
-    val fontSize = LocalFontSize.current
-    val appFontWeight = LocalFontWeight.current
-    val mainTextColor = LocalHomeTextColor.current
-
-    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val intSrcTime = remember { MutableInteractionSource() }
-    val clockBounds = remember { mutableStateOf<Rect?>(null) }
-    var clockPackage by remember { mutableStateOf<String?>(null) }
-
-    val bounceScaleTime by animateFloatAsState(
-        targetValue = if (!LocalAppCloseAnimationEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == clockPackage) 1.08f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "ClockReturnBounce"
-    )
-
-    // Material-3-Expressive: Minutenwechsel per kurzem Crossfade statt hartem Swap.
-    val animationsEnabled = LocalAnimationsEnabled.current
-    Crossfade(
-        targetState = timeFormat.format(time),
-        animationSpec = tween(if (animationsEnabled) 220 else 0),
-        label = "clockCrossfade",
-        modifier = Modifier
-            .onGloballyPositioned { clockBounds.value = it.boundsInRoot() }
-            .graphicsLayer {
-                scaleX = bounceScaleTime
-                scaleY = bounceScaleTime
-            }
-            .clip(RoundedCornerShape(8.dp))
-            .then(
-                if (!isPreview) {
-                    Modifier
-                        .bounceClick(intSrcTime)
-                        .clickable(interactionSource = intSrcTime, indication = null) {
-                            launchClockApp(context, clockBounds.value, onAppLaunchForReturn) { clockPackage = it }
-                        }
-                } else {
-                    Modifier
-                }
-            )
-    ) { timeStr ->
-        Text(
-            text = timeStr,
-            // Seitliches/vertikales Polster INNERHALB des Clips, damit Glyphen-Überhänge
-            // (kursive/dekorative Fonts, negatives letterSpacing) nicht abgeschnitten werden.
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            fontSize = 72.sp * fontSize.scale,
-            fontWeight = appFontWeight.weight,
-            letterSpacing = (-2).sp,
-            lineHeight = 72.sp * fontSize.scale,
-            // Entfernt das zusätzliche Font-Padding (enger Rahmen), behält aber die gewählte
-            // App-Schriftart bei, indem auf den aktuellen LocalTextStyle gemergt wird.
-            // Trim.Both passt die Box an die echten Glyphen an → hohe/dekorative Schriften
-            // werden NICHT vom Clip abgeschnitten.
-            style = LocalTextStyle.current.merge(
-                TextStyle(
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    lineHeightStyle = LineHeightStyle(
-                        alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.Both
-                    )
-                )
-            ),
-            color = mainTextColor
-        )
-    }
-}
-
-/**
- * Datums-Element (eigenständig verschiebbar). [time] wird vom Aufrufer getickt.
- */
-@Composable
-fun DateText(
-    time: java.util.Date,
-    isPreview: Boolean,
-    returnIconPackage: String?,
-    onAppLaunchForReturn: (String, Rect?) -> Unit
-) {
-    val context = LocalContext.current
-    val fontSize = LocalFontSize.current
-    val appFontWeight = LocalFontWeight.current
-    val mainTextColor = LocalHomeTextColor.current
-
-    val dateFormat = remember { SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault()) }
-    val intSrcDate = remember { MutableInteractionSource() }
-    val calendarBounds = remember { mutableStateOf<Rect?>(null) }
-    var calendarPackage by remember { mutableStateOf<String?>(null) }
-
-    val bounceScaleDate by animateFloatAsState(
-        targetValue = if (!LocalAppCloseAnimationEnabled.current) 1f else if (returnIconPackage != null && returnIconPackage == calendarPackage) 1.08f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "CalendarReturnBounce"
-    )
-
-    // Material-3-Expressive: Datumswechsel (zur Mitternacht) per Crossfade.
-    val animationsEnabled = LocalAnimationsEnabled.current
-    Crossfade(
-        targetState = dateFormat.format(time),
-        animationSpec = tween(if (animationsEnabled) 300 else 0),
-        label = "dateCrossfade",
-        modifier = Modifier
-            .onGloballyPositioned { calendarBounds.value = it.boundsInRoot() }
-            .graphicsLayer {
-                scaleX = bounceScaleDate
-                scaleY = bounceScaleDate
-            }
-            .clip(RoundedCornerShape(8.dp))
-            .then(
-                if (!isPreview) {
-                    Modifier
-                        .bounceClick(intSrcDate)
-                        .clickable(interactionSource = intSrcDate, indication = null) {
-                            launchCalendarApp(
-                                context,
-                                calendarBounds.value,
-                                onAppLaunchForReturn
-                            ) { calendarPackage = it }
-                        }
-                } else {
-                    Modifier
-                }
-            )
-            .padding(horizontal = 4.dp, vertical = 2.dp)
-    ) { dateStr ->
-        Text(
-            text = dateStr,
-            fontSize = 18.sp * fontSize.scale,
-            fontWeight = appFontWeight.weight,
-            lineHeight = 18.sp * fontSize.scale,
-            // Trim.Both passt die Box an die echten Glyphen an (kein Abschneiden).
-            style = LocalTextStyle.current.merge(
-                TextStyle(
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    lineHeightStyle = LineHeightStyle(
-                        alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.Both
-                    )
-                )
-            ),
-            color = mainTextColor.copy(alpha = 0.7f)
-        )
-    }
-}
-
-/**
- * Schmale Wetterzeile unter Uhr/Datum: ein Symbol plus aktuelle Temperatur.
- *
- * Holt den groben Standort über [WeatherRepository] und ruft das Wetter von Open-Meteo ab.
- * Solange kein Standort/keine Daten vorliegen (z. B. Berechtigung noch nicht erteilt),
- * wird in kurzen Abständen erneut versucht; danach im 30-Minuten-Takt aktualisiert.
- * Im Vorschau-/Edit-Modus wird ein statischer Platzhalter gezeigt (kein Netzwerkzugriff).
- */
-@Composable
-fun WeatherRow(isPreview: Boolean = false) {
-    val context = LocalContext.current
-    val fontSize = LocalFontSize.current
-    val appFontWeight = LocalFontWeight.current
-    val mainTextColor = LocalHomeTextColor.current
-
-    // Startwert aus dem prozessweiten Cache: zeigt beim Zurückkehren aus dem App-Drawer
-    // sofort den letzten Wert, statt kurz zu verschwinden.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val weather by produceState<WeatherData?>(initialValue = WeatherRepository.cached, isPreview) {
-        if (isPreview) return@produceState
-        val repo = WeatherRepository(context)
-        val refreshIntervalMs = 30 * 60_000L
-        // Nur bei sichtbarem Launcher abrufen: im Hintergrund pausiert der Loop und
-        // prüft beim nächsten ON_START zuerst die Drossel (WeatherRepository.shouldRefresh).
-        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) {
-                if (WeatherRepository.shouldRefresh(refreshIntervalMs)) {
-                    // GPS nur, falls die Berechtigung ohnehin erteilt ist; sonst grobe Position
-                    // über die IP-Adresse (ohne Standortdienst/Berechtigung).
-                    val location = repo.awaitLocation() ?: repo.ipLocation()
-                    if (location != null) {
-                        repo.fetch(location.first, location.second)?.let { value = it }
-                    }
-                } else {
-                    // Cache noch aktuell – übernehmen, kein erneuter Netzwerkabruf.
-                    value = WeatherRepository.cached
-                }
-                // Schneller erneut versuchen, solange noch keine Daten vorliegen,
-                // sonst regulär alle 30 Minuten aktualisieren.
-                delay(if (value == null) 20_000L else refreshIntervalMs)
-            }
-        }
-    }
-
-    val icon: ImageVector
-    val temperatureText: String
-    if (isPreview) {
-        icon = Lucide.Sun
-        temperatureText = "21°"
-    } else {
-        val data = weather ?: return
-        icon = WeatherRepository.iconFor(data.weatherCode)
-        temperatureText = "${data.temperatureC}°"
-    }
-
-    // Material-3-Expressive: Wetterwert wechselt per Crossfade statt hartem Swap.
-    val animationsEnabled = LocalAnimationsEnabled.current
-    Crossfade(
-        targetState = icon to temperatureText,
-        animationSpec = tween(if (animationsEnabled) 300 else 0),
-        label = "weatherCrossfade",
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-    ) { (stateIcon, stateTemp) ->
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = stateIcon,
-                contentDescription = null,
-                tint = mainTextColor.copy(alpha = 0.7f),
-                modifier = Modifier.size(18.dp * fontSize.scale)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = stateTemp,
-                fontSize = 18.sp * fontSize.scale,
-                fontWeight = appFontWeight.weight,
-                color = mainTextColor.copy(alpha = 0.7f)
-            )
-        }
-    }
-}
-
-private fun launchClockApp(
-    context: Context,
-    bounds: Rect?,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onPackageFound: (String) -> Unit
-) {
-    val pm = context.packageManager
-    // Bekannte Uhr-Pakete + Auswahl liegen framework-frei in LauncherLogic (unit-getestet).
-    var foundPkg: String? = com.example.androidlauncher.LauncherLogic.firstLaunchablePackage(
-        com.example.androidlauncher.LauncherLogic.KNOWN_CLOCK_PACKAGES
-    ) { pkg -> pm.getLaunchIntentForPackage(pkg) != null }
-
-    if (foundPkg == null) {
-        try {
-            val stdIntent = Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_CLOCK")
-            val res = pm.resolveActivity(stdIntent, 0)
-            if (res != null) foundPkg = res.activityInfo.packageName
-        } catch (_: Exception) {
-        }
-    }
-    if (foundPkg == null) {
-        try {
-            val alarmIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
-            val res = pm.resolveActivity(alarmIntent, 0)
-            if (res != null) foundPkg = res.activityInfo.packageName
-        } catch (_: Exception) {
-        }
-    }
-
-    if (foundPkg != null) {
-        onPackageFound(foundPkg)
-        val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
-        if (launchIntent != null) {
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-            onAppLaunchForReturn(foundPkg, bounds)
-            return
-        }
-    }
-
-    try {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory("android.intent.category.APP_CLOCK")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        context.startActivity(intent)
-    } catch (_: Exception) {
-        Toast.makeText(context, context.getString(R.string.clock_app_not_found), Toast.LENGTH_SHORT).show()
-    }
-}
-
-private fun launchCalendarApp(
-    context: Context,
-    bounds: Rect?,
-    onAppLaunchForReturn: (String, Rect?) -> Unit,
-    onPackageFound: (String) -> Unit
-) {
-    val pm = context.packageManager
-    var calendarIntent = Intent(Intent.ACTION_VIEW).apply {
-        data = CalendarContract.CONTENT_URI.buildUpon()
-            .appendPath("time")
-            .appendPath(System.currentTimeMillis().toString())
-            .build()
-    }
-    val res = pm.resolveActivity(calendarIntent, 0)
-    if (res == null) {
-        calendarIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
-    }
-
-    val foundPkg = pm.resolveActivity(calendarIntent, 0)?.activityInfo?.packageName
-    if (foundPkg != null) {
-        onPackageFound(foundPkg)
-        val launchIntent = pm.getLaunchIntentForPackage(foundPkg)
-        if (launchIntent != null) {
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-            onAppLaunchForReturn(foundPkg, bounds)
-        } else {
-            calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-            onAppLaunchForReturn(foundPkg, bounds)
-        }
-        return
-    }
-
-    try {
-        calendarIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(calendarIntent)
-    } catch (_: Exception) {
-        val selectorIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        try {
-            context.startActivity(selectorIntent)
-        } catch (_: Exception) {
         }
     }
 }

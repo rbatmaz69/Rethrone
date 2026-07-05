@@ -161,6 +161,11 @@ kover {
                 // Neue extrahierte UI-Dateien
                 classes("com.example.androidlauncher.ui.HomeScreenKt")
                 classes("com.example.androidlauncher.ui.HomeScreenKt\$*")
+                // A6-Split aus HomeScreen.kt (reine Composables; HomeDragStateHolder ist getestet)
+                classes("com.example.androidlauncher.ui.HomeWidgetsKt")
+                classes("com.example.androidlauncher.ui.HomeWidgetsKt\$*")
+                classes("com.example.androidlauncher.ui.FavoriteItemKt")
+                classes("com.example.androidlauncher.ui.FavoriteItemKt\$*")
                 classes("com.example.androidlauncher.ui.FavoritesConfigMenuKt")
                 classes("com.example.androidlauncher.ui.FavoritesConfigMenuKt\$*")
                 classes("com.example.androidlauncher.ui.SystemWallpaperViewKt")

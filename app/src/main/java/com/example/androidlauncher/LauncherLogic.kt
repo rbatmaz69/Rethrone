@@ -499,4 +499,51 @@ object LauncherLogic {
         activeNotificationPackages: Set<String>,
         dotsEnabled: Boolean,
     ): Boolean = dotsEnabled && packageName in activeNotificationPackages
+
+    // ── Ordner-Grid (3×3-Pager im App-Drawer) – A6-Split aus AppDrawer.kt ──
+
+    /** Spalten/Zeilen des Ordner-Grids und Apps pro Seite. */
+    const val FOLDER_GRID_COLUMNS = 3
+    const val FOLDER_GRID_ROWS = 3
+    const val FOLDER_ITEMS_PER_PAGE = FOLDER_GRID_COLUMNS * FOLDER_GRID_ROWS
+
+    /** Anzahl der Pager-Seiten für [appCount] Apps (mindestens eine). */
+    fun folderPageCount(appCount: Int): Int =
+        maxOf(1, (appCount + FOLDER_ITEMS_PER_PAGE - 1) / FOLDER_ITEMS_PER_PAGE)
+
+    /**
+     * Globaler Slot-Index (über alle Seiten) unter einer Berührung im 3×3-Grid der
+     * Seite [currentPage], oder `null` bei ungültiger Grid-Größe. Der Slot kann
+     * hinter dem letzten belegten Eintrag liegen – Begrenzung übernimmt der Aufrufer.
+     */
+    fun folderGridSlotAt(
+        touchX: Float,
+        touchY: Float,
+        gridWidthPx: Int,
+        gridHeightPx: Int,
+        currentPage: Int,
+    ): Int? {
+        if (gridWidthPx <= 0 || gridHeightPx <= 0) return null
+        val cellW = gridWidthPx / FOLDER_GRID_COLUMNS.toFloat()
+        val cellH = gridHeightPx / FOLDER_GRID_ROWS.toFloat()
+        val col = (touchX / cellW).toInt().coerceIn(0, FOLDER_GRID_COLUMNS - 1)
+        val row = (touchY / cellH).toInt().coerceIn(0, FOLDER_GRID_ROWS - 1)
+        return currentPage * FOLDER_ITEMS_PER_PAGE + row * FOLDER_GRID_COLUMNS + col
+    }
+
+    /**
+     * Verschiebt [pkg] innerhalb der Ordner-Liste an [targetIdx] (auf gültige Indizes
+     * begrenzt). Liefert `null`, wenn das Paket fehlt oder sich nichts ändert –
+     * dann muss der Aufrufer weder persistieren noch Haptik auslösen.
+     */
+    fun moveFolderApp(packages: List<String>, pkg: String, targetIdx: Int): List<String>? {
+        val fromIdx = packages.indexOf(pkg)
+        if (fromIdx == -1 || packages.isEmpty()) return null
+        val clampedTarget = targetIdx.coerceIn(0, packages.size - 1)
+        if (clampedTarget == fromIdx) return null
+        return packages.toMutableList().apply {
+            removeAt(fromIdx)
+            add(clampedTarget, pkg)
+        }
+    }
 }
