@@ -1,35 +1,43 @@
 package com.example.androidlauncher.data
 
 import android.content.Context
-import android.database.ContentObserver
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import com.example.androidlauncher.data.settings.AnimationSettings
+import com.example.androidlauncher.data.settings.GestureSettings
+import com.example.androidlauncher.data.settings.WallpaperSettings
+import com.example.androidlauncher.data.settings.settingsDataStore
 import com.example.androidlauncher.ui.theme.ColorTheme
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-// DataStore for saving general app settings
-private val Context.dataStore by preferencesDataStore(name = "settings")
+// Geteiltes DataStore-Delegate (Datei "settings") – siehe data/settings/SettingsDataStore.kt.
+// Lokaler Alias, damit die bestehenden Zugriffe im ThemeManager unverändert bleiben.
+private val Context.dataStore: DataStore<Preferences> get() = settingsDataStore
 
 /**
  * Manages application themes and visual settings using DataStore and System Settings.
+ *
+ * Wird schrittweise in domänen-spezifische Stores unter `data/settings/` zerlegt
+ * (A1-Split); für bereits extrahierte Gruppen (Wallpaper, Gesten, Animationen)
+ * delegiert diese Fassade nur noch, damit die Aufrufstellen unverändert bleiben.
  */
 class ThemeManager(private val context: Context) {
+
+    // A1-Split: extrahierte Stores; teilen sich die DataStore-Datei mit dieser Fassade.
+    private val wallpaperSettings = WallpaperSettings(context)
+    private val gestureSettings = GestureSettings(context)
+    private val animationSettings = AnimationSettings(context)
     companion object {
         private val THEME_KEY = stringPreferencesKey("selected_theme")
 
@@ -74,32 +82,10 @@ class ThemeManager(private val context: Context) {
         private val DESIGN_STYLE_KEY = stringPreferencesKey("design_style")
         private val FAVORITES_BORDER_KEY = stringPreferencesKey("favorites_border_style")
         private val APP_FONT_KEY = stringPreferencesKey("app_font")
-        private val CUSTOM_WALLPAPER_KEY = stringPreferencesKey("custom_wallpaper_uri")
-        private val WALLPAPER_BLUR_KEY = floatPreferencesKey("wallpaper_blur")
-        private val WALLPAPER_DIM_KEY = floatPreferencesKey("wallpaper_dim")
-        private val WALLPAPER_ZOOM_KEY = floatPreferencesKey("wallpaper_zoom")
-        private val SHAKE_GESTURES_KEY = booleanPreferencesKey("shake_gestures_enabled")
-        private val DOUBLE_SHAKE_ACTION_KEY = stringPreferencesKey("double_shake_action")
 
-        // Paketname der App, die bei GestureAction.OPEN_APP (Schütteln) gestartet wird.
-        private val SHAKE_OPEN_APP_PACKAGE_KEY = stringPreferencesKey("shake_open_app_package")
-
-        // Doppeltipp-Geste auf dem Startbildschirm.
-        private val DOUBLE_TAP_ACTION_KEY = stringPreferencesKey("double_tap_action")
-        private val DOUBLE_TAP_APP_PACKAGE_KEY = stringPreferencesKey("double_tap_app_package")
+        // Wallpaper-, Gesten- und Animations-Keys liegen jetzt in den extrahierten
+        // Stores unter data/settings/ (A1-Split, gleiche DataStore-Datei).
         private val SMART_SUGGESTIONS_KEY = booleanPreferencesKey("smart_search_enabled")
-        private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
-        private val ANIMATIONS_ENABLED_KEY = booleanPreferencesKey("animations_enabled")
-
-        // Einzelne Animationsarten (greifen nur, wenn der Master oben aktiv ist; Standard: an).
-        private val ANIMATION_APP_OPEN_KEY = booleanPreferencesKey("animation_app_open")
-        private val ANIMATION_APP_CLOSE_KEY = booleanPreferencesKey("animation_app_close")
-        private val ANIMATION_MENUS_KEY = booleanPreferencesKey("animation_menus")
-        private val ANIMATION_FAVORITES_KEY = booleanPreferencesKey("animation_favorites")
-
-        // Globaler Tempo-Faktor für alle Animationen (1.0 = normal, 2.0 = doppelt so schnell,
-        // 0.5 = halbes Tempo). Standard: 1.0.
-        private val ANIMATION_SPEED_KEY = floatPreferencesKey("animation_speed")
         private val APP_ACCESS_MODE_KEY = stringPreferencesKey("app_access_mode")
 
         // Wetter-Widget unter Uhr/Datum (Standard: an).
@@ -312,17 +298,11 @@ class ThemeManager(private val context: Context) {
             try { AppFont.valueOf(fontName) } catch (e: IllegalArgumentException) { AppFont.SYSTEM_DEFAULT }
         }
 
-    val customWallpaperUri: Flow<String?> = context.dataStore.data
-        .map { it[CUSTOM_WALLPAPER_KEY] }
-
-    val wallpaperBlur: Flow<Float> = context.dataStore.data
-        .map { it[WALLPAPER_BLUR_KEY] ?: 0f }
-
-    val wallpaperDim: Flow<Float> = context.dataStore.data
-        .map { it[WALLPAPER_DIM_KEY] ?: 0.1f }
-
-    val wallpaperZoom: Flow<Float> = context.dataStore.data
-        .map { it[WALLPAPER_ZOOM_KEY] ?: 1.0f }
+    // A1-Split: Wallpaper-Einstellungen liegen im WallpaperSettings-Store.
+    val customWallpaperUri: Flow<String?> = wallpaperSettings.customWallpaperUri
+    val wallpaperBlur: Flow<Float> = wallpaperSettings.wallpaperBlur
+    val wallpaperDim: Flow<Float> = wallpaperSettings.wallpaperDim
+    val wallpaperZoom: Flow<Float> = wallpaperSettings.wallpaperZoom
 
     // Positionen aller unabhängig verschiebbaren Startbildschirm-Elemente.
     val homeLayout: Flow<HomeLayout> = context.dataStore.data
@@ -341,41 +321,13 @@ class ThemeManager(private val context: Context) {
     val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data
         .map { it[ONBOARDING_COMPLETED_KEY] ?: false }
 
-    /**
-     * Observable flow for animations toggle.
-     */
-    val isAnimationsEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATIONS_ENABLED_KEY] ?: true }
-
-    /**
-     * Observable flow für die App-Öffnen-Animation (Aufzieh-Effekt). Default: an.
-     */
-    val isAppOpenAnimationEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATION_APP_OPEN_KEY] ?: true }
-
-    /**
-     * Observable flow für die App-Schließen-/Rückkehr-Animation (Schrumpfen + Bounce). Default: an.
-     */
-    val isAppCloseAnimationEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATION_APP_CLOSE_KEY] ?: true }
-
-    /**
-     * Observable flow für Menü-/Einstellungsmenü-Animationen. Default: an.
-     */
-    val isMenuAnimationEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATION_MENUS_KEY] ?: true }
-
-    /**
-     * Observable flow für die Favoriten-Leisten-Animation (Vergrößern beim Rüberfahren). Default: an.
-     */
-    val isFavoritesAnimationEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[ANIMATION_FAVORITES_KEY] ?: true }
-
-    /**
-     * Globaler Tempo-Faktor für Animationen (0.5×–2×). Default: 1×.
-     */
-    val animationSpeed: Flow<Float> = context.dataStore.data
-        .map { (it[ANIMATION_SPEED_KEY] ?: 1f).coerceIn(0.5f, 2f) }
+    // A1-Split: Animations-Einstellungen liegen im AnimationSettings-Store.
+    val isAnimationsEnabled: Flow<Boolean> = animationSettings.isAnimationsEnabled
+    val isAppOpenAnimationEnabled: Flow<Boolean> = animationSettings.isAppOpenAnimationEnabled
+    val isAppCloseAnimationEnabled: Flow<Boolean> = animationSettings.isAppCloseAnimationEnabled
+    val isMenuAnimationEnabled: Flow<Boolean> = animationSettings.isMenuAnimationEnabled
+    val isFavoritesAnimationEnabled: Flow<Boolean> = animationSettings.isFavoritesAnimationEnabled
+    val animationSpeed: Flow<Float> = animationSettings.animationSpeed
 
     /**
      * Observable flow für das Wetter-Widget (Symbol + Temperatur unter der Uhr). Default: an.
@@ -462,52 +414,12 @@ class ThemeManager(private val context: Context) {
             } ?: IslandAnimationStyle.FROM_NOTCH
         }
 
-    /**
-     * Observable flow for shake gesture toggle.
-     */
-    val isShakeGesturesEnabled: Flow<Boolean> = context.dataStore.data
-        .map { preferences ->
-            preferences[SHAKE_GESTURES_KEY] ?: true
-        }
-
-    /**
-     * Aktion für doppeltes Schütteln (einzige Shake-Geste). Default Taschenlampe.
-     */
-    val doubleShakeAction: Flow<GestureAction> = context.dataStore.data
-        .map { preferences ->
-            val name = preferences[DOUBLE_SHAKE_ACTION_KEY] ?: GestureAction.FLASHLIGHT.name
-            try { GestureAction.valueOf(name) } catch (e: IllegalArgumentException) { GestureAction.FLASHLIGHT }
-        }
-
-    /**
-     * Paketname der App, die bei [GestureAction.OPEN_APP] (Schütteln) gestartet wird (null, wenn keine gewählt).
-     */
-    val shakeOpenAppPackage: Flow<String?> = context.dataStore.data
-        .map { preferences ->
-            CryptoManager.decryptOrLegacy(
-                preferences[SHAKE_OPEN_APP_PACKAGE_KEY]
-            ).takeIf { it.isNotBlank() }
-        }
-
-    /**
-     * Aktion für die Doppeltipp-Geste auf dem Startbildschirm. Default: Bildschirm sperren
-     * (entspricht dem bisherigen, fest verdrahteten Verhalten).
-     */
-    val doubleTapAction: Flow<GestureAction> = context.dataStore.data
-        .map { preferences ->
-            val name = preferences[DOUBLE_TAP_ACTION_KEY] ?: GestureAction.LOCK_SCREEN.name
-            try { GestureAction.valueOf(name) } catch (e: IllegalArgumentException) { GestureAction.LOCK_SCREEN }
-        }
-
-    /**
-     * Paketname der App, die bei [GestureAction.OPEN_APP] (Doppeltippen) gestartet wird (null, wenn keine gewählt).
-     */
-    val doubleTapAppPackage: Flow<String?> = context.dataStore.data
-        .map { preferences ->
-            CryptoManager.decryptOrLegacy(
-                preferences[DOUBLE_TAP_APP_PACKAGE_KEY]
-            ).takeIf { it.isNotBlank() }
-        }
+    // A1-Split: Gesten-Einstellungen liegen im GestureSettings-Store.
+    val isShakeGesturesEnabled: Flow<Boolean> = gestureSettings.isShakeGesturesEnabled
+    val doubleShakeAction: Flow<GestureAction> = gestureSettings.doubleShakeAction
+    val shakeOpenAppPackage: Flow<String?> = gestureSettings.shakeOpenAppPackage
+    val doubleTapAction: Flow<GestureAction> = gestureSettings.doubleTapAction
+    val doubleTapAppPackage: Flow<String?> = gestureSettings.doubleTapAppPackage
 
     /**
      * Gewählte Art des App-Zugriffs. Default ist die Drawer-Liste (Niagara-Stil).
@@ -527,29 +439,10 @@ class ThemeManager(private val context: Context) {
         }
 
     /**
-     * Observable flow for haptic feedback toggle.
-     * Synchronized with system setting HAPTIC_FEEDBACK_ENABLED using a ContentObserver.
+     * Observable flow for haptic feedback toggle (mit System-Setting synchronisiert).
+     * A1-Split: Implementierung liegt im GestureSettings-Store.
      */
-    val isHapticFeedbackEnabled: Flow<Boolean> = callbackFlow {
-        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) {
-                val enabled = Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0
-                trySend(enabled)
-            }
-        }
-        context.contentResolver.registerContentObserver(
-            Settings.System.getUriFor(Settings.System.HAPTIC_FEEDBACK_ENABLED),
-            false,
-            observer
-        )
-        // Send initial value
-        val initial = Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0
-        trySend(initial)
-
-        awaitClose {
-            context.contentResolver.unregisterContentObserver(observer)
-        }
-    }.distinctUntilChanged()
+    val isHapticFeedbackEnabled: Flow<Boolean> = gestureSettings.isHapticFeedbackEnabled
 
     suspend fun setTheme(theme: ColorTheme) { context.dataStore.edit { it[THEME_KEY] = theme.name } }
     suspend fun setFontSize(scale: Float) {
@@ -616,20 +509,10 @@ class ThemeManager(private val context: Context) {
         context.dataStore.edit { it[FAVORITES_BORDER_KEY] = style.name }
     }
     suspend fun setAppFont(font: AppFont) { context.dataStore.edit { it[APP_FONT_KEY] = font.name } }
-    suspend fun setCustomWallpaperUri(uri: String?) {
-        context.dataStore.edit {
-            if (uri == null) {
-                it.remove(
-                    CUSTOM_WALLPAPER_KEY
-                )
-            } else {
-                it[CUSTOM_WALLPAPER_KEY] = uri
-            }
-        }
-    }
-    suspend fun setWallpaperBlur(blur: Float) { context.dataStore.edit { it[WALLPAPER_BLUR_KEY] = blur } }
-    suspend fun setWallpaperDim(dim: Float) { context.dataStore.edit { it[WALLPAPER_DIM_KEY] = dim } }
-    suspend fun setWallpaperZoom(zoom: Float) { context.dataStore.edit { it[WALLPAPER_ZOOM_KEY] = zoom } }
+    suspend fun setCustomWallpaperUri(uri: String?) = wallpaperSettings.setCustomWallpaperUri(uri)
+    suspend fun setWallpaperBlur(blur: Float) = wallpaperSettings.setWallpaperBlur(blur)
+    suspend fun setWallpaperDim(dim: Float) = wallpaperSettings.setWallpaperDim(dim)
+    suspend fun setWallpaperZoom(zoom: Float) = wallpaperSettings.setWallpaperZoom(zoom)
 
     // Persistiert die Positionen aller verschiebbaren Startbildschirm-Elemente.
     suspend fun setHomeLayout(layout: HomeLayout) {
@@ -648,23 +531,7 @@ class ThemeManager(private val context: Context) {
     /**
      * Toggles haptic feedback both internally and in system settings if permission is granted.
      */
-    suspend fun setHapticFeedbackEnabled(enabled: Boolean) {
-        // Try to update system setting
-        try {
-            if (Settings.System.canWrite(context)) {
-                Settings.System.putInt(
-                    context.contentResolver,
-                    Settings.System.HAPTIC_FEEDBACK_ENABLED,
-                    if (enabled) 1 else 0
-                )
-            }
-        } catch (e: Exception) {
-            // Permission might be missing
-        }
-
-        // Also update internally to stay consistent
-        context.dataStore.edit { it[HAPTIC_FEEDBACK_KEY] = enabled }
-    }
+    suspend fun setHapticFeedbackEnabled(enabled: Boolean) = gestureSettings.setHapticFeedbackEnabled(enabled)
 
     /**
      * Markiert das Erststart-Onboarding als abgeschlossen (oder setzt es zurück).
@@ -675,58 +542,12 @@ class ThemeManager(private val context: Context) {
         }
     }
 
-    /**
-     * Toggles shake gestures.
-     */
-    suspend fun setShakeGesturesEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[SHAKE_GESTURES_KEY] = enabled
-        }
-    }
-
-    /**
-     * Setzt die Aktion für doppeltes Schütteln.
-     */
-    suspend fun setDoubleShakeAction(action: GestureAction) {
-        context.dataStore.edit { preferences ->
-            preferences[DOUBLE_SHAKE_ACTION_KEY] = action.name
-        }
-    }
-
-    /**
-     * Setzt das Paket der App, die bei [GestureAction.OPEN_APP] (Schütteln) gestartet wird (null löscht die Wahl).
-     */
-    suspend fun setShakeOpenAppPackage(packageName: String?) {
-        context.dataStore.edit { preferences ->
-            if (packageName.isNullOrBlank()) {
-                preferences.remove(SHAKE_OPEN_APP_PACKAGE_KEY)
-            } else {
-                preferences[SHAKE_OPEN_APP_PACKAGE_KEY] = CryptoManager.encrypt(packageName)
-            }
-        }
-    }
-
-    /**
-     * Setzt die Aktion für die Doppeltipp-Geste.
-     */
-    suspend fun setDoubleTapAction(action: GestureAction) {
-        context.dataStore.edit { preferences ->
-            preferences[DOUBLE_TAP_ACTION_KEY] = action.name
-        }
-    }
-
-    /**
-     * Setzt das Paket der App, die bei [GestureAction.OPEN_APP] (Doppeltippen) gestartet wird (null löscht die Wahl).
-     */
-    suspend fun setDoubleTapAppPackage(packageName: String?) {
-        context.dataStore.edit { preferences ->
-            if (packageName.isNullOrBlank()) {
-                preferences.remove(DOUBLE_TAP_APP_PACKAGE_KEY)
-            } else {
-                preferences[DOUBLE_TAP_APP_PACKAGE_KEY] = CryptoManager.encrypt(packageName)
-            }
-        }
-    }
+    // A1-Split: Gesten-Setter delegieren an den GestureSettings-Store.
+    suspend fun setShakeGesturesEnabled(enabled: Boolean) = gestureSettings.setShakeGesturesEnabled(enabled)
+    suspend fun setDoubleShakeAction(action: GestureAction) = gestureSettings.setDoubleShakeAction(action)
+    suspend fun setShakeOpenAppPackage(packageName: String?) = gestureSettings.setShakeOpenAppPackage(packageName)
+    suspend fun setDoubleTapAction(action: GestureAction) = gestureSettings.setDoubleTapAction(action)
+    suspend fun setDoubleTapAppPackage(packageName: String?) = gestureSettings.setDoubleTapAppPackage(packageName)
 
     /**
      * Setzt die gewählte Art des App-Zugriffs.
@@ -746,59 +567,13 @@ class ThemeManager(private val context: Context) {
         }
     }
 
-    /**
-     * Toggles animations.
-     */
-    suspend fun setAnimationsEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATIONS_ENABLED_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet die App-Öffnen-Animation ein/aus.
-     */
-    suspend fun setAppOpenAnimationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_APP_OPEN_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet die App-Schließen-/Rückkehr-Animation ein/aus.
-     */
-    suspend fun setAppCloseAnimationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_APP_CLOSE_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet Menü-/Einstellungsmenü-Animationen ein/aus.
-     */
-    suspend fun setMenuAnimationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_MENUS_KEY] = enabled
-        }
-    }
-
-    /**
-     * Schaltet die Favoriten-Leisten-Animation (Vergrößern beim Rüberfahren) ein/aus.
-     */
-    suspend fun setFavoritesAnimationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_FAVORITES_KEY] = enabled
-        }
-    }
-
-    /**
-     * Setzt den globalen Animations-Tempo-Faktor (auf 0.5×–2× begrenzt).
-     */
-    suspend fun setAnimationSpeed(speed: Float) {
-        context.dataStore.edit { preferences ->
-            preferences[ANIMATION_SPEED_KEY] = speed.coerceIn(0.5f, 2f)
-        }
-    }
+    // A1-Split: Animations-Setter delegieren an den AnimationSettings-Store.
+    suspend fun setAnimationsEnabled(enabled: Boolean) = animationSettings.setAnimationsEnabled(enabled)
+    suspend fun setAppOpenAnimationEnabled(enabled: Boolean) = animationSettings.setAppOpenAnimationEnabled(enabled)
+    suspend fun setAppCloseAnimationEnabled(enabled: Boolean) = animationSettings.setAppCloseAnimationEnabled(enabled)
+    suspend fun setMenuAnimationEnabled(enabled: Boolean) = animationSettings.setMenuAnimationEnabled(enabled)
+    suspend fun setFavoritesAnimationEnabled(enabled: Boolean) = animationSettings.setFavoritesAnimationEnabled(enabled)
+    suspend fun setAnimationSpeed(speed: Float) = animationSettings.setAnimationSpeed(speed)
 
     /**
      * Schaltet das Wetter-Widget ein/aus.

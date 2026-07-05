@@ -10,6 +10,9 @@ import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.data.settings.AnimationSettings
+import com.example.androidlauncher.data.settings.GestureSettings
+import com.example.androidlauncher.data.settings.WallpaperSettings
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -72,4 +75,20 @@ object DataModule {
     @Provides
     @Singleton
     fun provideAppLockManager(): AppLockManager = AppLockManager()
+
+    // A1-Split: domänen-spezifische Settings-Stores (teilen sich die "settings"-DataStore-Datei).
+    @Provides
+    @Singleton
+    fun provideWallpaperSettings(@ApplicationContext context: Context): WallpaperSettings =
+        WallpaperSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideGestureSettings(@ApplicationContext context: Context): GestureSettings =
+        GestureSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideAnimationSettings(@ApplicationContext context: Context): AnimationSettings =
+        AnimationSettings(context)
 }
