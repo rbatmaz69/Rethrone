@@ -8,6 +8,7 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import com.example.androidlauncher.MediaInfo
+import com.example.androidlauncher.MediaProgress
 
 /**
  * Beobachtet die aktiven MediaSessions und meldet die relevante Wiedergabe als
@@ -115,7 +116,8 @@ class MediaSessionMonitor(
         // Buffering/Skip als „spielend" werten: beim Track-Wechsel durchläuft der Player
         // kurz diese Zustände. Würden sie als Pause gelten, flackerte `isPlaying` und die
         // Insel-Reihenfolge (spielend vs. pausiert) würde springen.
-        val playbackState = active.playbackState?.state
+        val state = active.playbackState
+        val playbackState = state?.state
         val isPlaying = playbackState == PlaybackState.STATE_PLAYING ||
             playbackState == PlaybackState.STATE_BUFFERING ||
             playbackState == PlaybackState.STATE_SKIPPING_TO_NEXT ||
@@ -126,9 +128,29 @@ class MediaSessionMonitor(
                 artist = artist,
                 isPlaying = isPlaying,
                 art = art,
-                packageName = active.packageName ?: ""
+                packageName = active.packageName ?: "",
+                progress = toMediaProgress(state, md)
             ),
             active.transportControls
+        )
+    }
+
+    /**
+     * Baut den Seek-Fortschritt aus PlaybackState + Metadata. `null`, wenn die Session
+     * keine plausible Dauer/Position meldet (dann zeigt die Karte keine Seek-Leiste).
+     */
+    private fun toMediaProgress(state: PlaybackState?, metadata: MediaMetadata?): MediaProgress? {
+        if (state == null) return null
+        val durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+        val positionMs = state.position
+        if (durationMs <= 0L || positionMs < 0L) return null
+        return MediaProgress(
+            positionMs = positionMs.coerceAtMost(durationMs),
+            durationMs = durationMs,
+            // 0 (z. B. bei Pause von manchen Playern gemeldet) als Normal-Tempo werten,
+            // damit die Extrapolation nach dem Fortsetzen nicht stehen bleibt.
+            playbackSpeed = state.playbackSpeed.takeIf { it > 0f } ?: 1f,
+            positionUpdatedAtElapsedMs = state.lastPositionUpdateTime,
         )
     }
 }

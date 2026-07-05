@@ -2,6 +2,7 @@ package com.example.androidlauncher.data
 
 import android.app.PendingIntent
 import android.graphics.Bitmap
+import com.example.androidlauncher.MediaProgress
 
 /**
  * Eine einzelne Aktion einer Benachrichtigung (z. B. „Antworten", „Markieren"),
@@ -35,7 +36,9 @@ sealed interface IslandContent {
         val artist: String,
         val isPlaying: Boolean,
         val art: Bitmap? = null,
-        val packageName: String = ""
+        val packageName: String = "",
+        /** Fortschritt für die Seek-Leiste der Karte (`null` = keine Dauer bekannt). */
+        val progress: MediaProgress? = null
     ) : IslandContent
 
     /**

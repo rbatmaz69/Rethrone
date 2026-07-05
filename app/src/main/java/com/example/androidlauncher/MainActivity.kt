@@ -1327,6 +1327,7 @@ class MainActivity : ComponentActivity() {
                                     onMediaPlayPause = { dynamicIslandManager.mediaPlayPause() },
                                     onMediaNext = { dynamicIslandManager.mediaNext() },
                                     onMediaPrev = { dynamicIslandManager.mediaPrevious() },
+                                    onMediaSeekTo = { positionMs -> dynamicIslandManager.mediaSeekTo(positionMs) },
                                     islandColor = dynamicIslandColor
                                 )
                             }

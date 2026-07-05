@@ -31,19 +31,34 @@ class MediaSessionMonitorTest {
         onMediaChanged = { media, controls -> received += media to controls },
     )
 
+    /** Gestubbter Wiedergabe-Fortschritt für [controller]. */
+    private data class ProgressStub(
+        val positionMs: Long = -1L,
+        val durationMs: Long = 0L,
+        val speed: Float = 0f,
+        val updatedAtMs: Long = 0L,
+    )
+
     private fun controller(
         state: Int,
         title: String = "Song",
         artist: String = "Artist",
         pkg: String = "com.music",
         token: MediaSession.Token = mockk(),
+        progress: ProgressStub = ProgressStub(),
     ): MediaController = mockk(relaxed = true) {
-        every { playbackState } returns mockk { every { this@mockk.state } returns state }
+        every { playbackState } returns mockk(relaxed = true) {
+            every { this@mockk.state } returns state
+            every { position } returns progress.positionMs
+            every { playbackSpeed } returns progress.speed
+            every { lastPositionUpdateTime } returns progress.updatedAtMs
+        }
         every { sessionToken } returns token
         every { packageName } returns pkg
         every { metadata } returns mockk(relaxed = true) {
             every { getString(MediaMetadata.METADATA_KEY_TITLE) } returns title
             every { getString(MediaMetadata.METADATA_KEY_ARTIST) } returns artist
+            every { getLong(MediaMetadata.METADATA_KEY_DURATION) } returns progress.durationMs
             every { getBitmap(any()) } returns null
         }
     }
@@ -83,6 +98,53 @@ class MediaSessionMonitorTest {
         val media = received.last().first
         assertEquals("Podcast", media?.title)
         assertEquals(false, media?.isPlaying)
+    }
+
+    @Test
+    fun `progress is mapped from playback state and metadata duration`() {
+        val playing = controller(
+            PlaybackState.STATE_PLAYING,
+            progress = ProgressStub(positionMs = 42_000L, durationMs = 180_000L, speed = 1.5f, updatedAtMs = 99_000L),
+        )
+        every { msm.getActiveSessions(any()) } returns listOf(playing)
+
+        monitor.recomputeMedia()
+
+        val progress = received.last().first?.progress
+        assertEquals(42_000L, progress?.positionMs)
+        assertEquals(180_000L, progress?.durationMs)
+        assertEquals(1.5f, progress?.playbackSpeed)
+        assertEquals(99_000L, progress?.positionUpdatedAtElapsedMs)
+    }
+
+    @Test
+    fun `missing duration or position yields no progress`() {
+        // Session ohne Dauer (z. B. Livestream) → keine Seek-Leiste.
+        val noDuration =
+            controller(PlaybackState.STATE_PLAYING, progress = ProgressStub(positionMs = 10_000L, durationMs = 0L))
+        every { msm.getActiveSessions(any()) } returns listOf(noDuration)
+        monitor.recomputeMedia()
+        assertNull(received.last().first?.progress)
+
+        // Unbekannte Position → ebenfalls keine Seek-Leiste.
+        val noPosition =
+            controller(PlaybackState.STATE_PLAYING, progress = ProgressStub(positionMs = -1L, durationMs = 180_000L))
+        every { msm.getActiveSessions(any()) } returns listOf(noPosition)
+        monitor.recomputeMedia()
+        assertNull(received.last().first?.progress)
+    }
+
+    @Test
+    fun `zero playback speed falls back to normal tempo`() {
+        val paused = controller(
+            PlaybackState.STATE_PLAYING,
+            progress = ProgressStub(positionMs = 1_000L, durationMs = 60_000L, speed = 0f),
+        )
+        every { msm.getActiveSessions(any()) } returns listOf(paused)
+
+        monitor.recomputeMedia()
+
+        assertEquals(1f, received.last().first?.progress?.playbackSpeed)
     }
 
     @Test
