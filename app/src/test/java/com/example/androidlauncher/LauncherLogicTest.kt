@@ -836,4 +836,48 @@ class LauncherLogicTest {
             )
         )
     }
+
+    // --- Ordner-Grid (3×3-Pager) ---
+
+    @Test
+    fun `folderPageCount rounds up and never drops below one page`() {
+        assertEquals(1, LauncherLogic.folderPageCount(0))
+        assertEquals(1, LauncherLogic.folderPageCount(9))
+        assertEquals(2, LauncherLogic.folderPageCount(10))
+        assertEquals(3, LauncherLogic.folderPageCount(19))
+    }
+
+    @Test
+    fun `folderGridSlotAt maps touch to cell and page offset`() {
+        // 300×300-Grid → Zellen à 100×100; Mitte der mittleren Zelle = Slot 4.
+        assertEquals(4, LauncherLogic.folderGridSlotAt(150f, 150f, 300, 300, currentPage = 0))
+        // Gleiche Zelle auf Seite 2 → +9 Slots.
+        assertEquals(13, LauncherLogic.folderGridSlotAt(150f, 150f, 300, 300, currentPage = 1))
+        // Berührung außerhalb wird auf die Randzelle begrenzt (unten rechts = Slot 8).
+        assertEquals(8, LauncherLogic.folderGridSlotAt(999f, 999f, 300, 300, currentPage = 0))
+    }
+
+    @Test
+    fun `folderGridSlotAt returns null for an unmeasured grid`() {
+        assertNull(LauncherLogic.folderGridSlotAt(10f, 10f, 0, 300, currentPage = 0))
+        assertNull(LauncherLogic.folderGridSlotAt(10f, 10f, 300, 0, currentPage = 0))
+    }
+
+    @Test
+    fun `moveFolderApp reorders and clamps the target index`() {
+        val packages = listOf("a", "b", "c", "d")
+
+        assertEquals(listOf("b", "c", "a", "d"), LauncherLogic.moveFolderApp(packages, "a", 2))
+        // Ziel hinter dem Listenende wird auf den letzten Platz begrenzt.
+        assertEquals(listOf("b", "c", "d", "a"), LauncherLogic.moveFolderApp(packages, "a", 99))
+    }
+
+    @Test
+    fun `moveFolderApp returns null when nothing changes or the app is missing`() {
+        val packages = listOf("a", "b", "c")
+
+        assertNull(LauncherLogic.moveFolderApp(packages, "b", 1))
+        assertNull(LauncherLogic.moveFolderApp(packages, "zz", 0))
+        assertNull(LauncherLogic.moveFolderApp(emptyList(), "a", 0))
+    }
 }

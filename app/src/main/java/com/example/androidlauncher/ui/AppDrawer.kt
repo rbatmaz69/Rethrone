@@ -671,8 +671,8 @@ fun AppDrawer(
                             ) { currentActiveFolder.appPackageNames.mapNotNull { pkg -> apps.find { it.packageName == pkg } } }
                             val currentFolderApps by rememberUpdatedState(folderApps)
 
-                            val itemsPerPage = 9
-                            val pages = max(1, (folderApps.size + itemsPerPage - 1) / itemsPerPage)
+                            val itemsPerPage = LauncherLogic.FOLDER_ITEMS_PER_PAGE
+                            val pages = LauncherLogic.folderPageCount(folderApps.size)
                             val pagerState = rememberPagerState(pageCount = { pages })
 
                             LaunchedEffect(draggingItemPkg) {
@@ -712,37 +712,33 @@ fun AppDrawer(
 
                                 fun performReorder(currentTouch: Offset, currentPage: Int) {
                                     val pkg = draggingItemPkg ?: return
-                                    val fromIdx = currentFolderState.appPackageNames.indexOf(pkg)
-                                    if (fromIdx == -1 || gridAreaSize.width <= 0 || gridAreaSize.height <= 0) return
-                                    val cellW = gridAreaSize.width / 3f
-                                    val cellH = gridAreaSize.height / 3f
-                                    val col = (currentTouch.x / cellW).toInt().coerceIn(0, 2)
-                                    val row = (currentTouch.y / cellH).toInt().coerceIn(0, 2)
-                                    val targetIdxInPage = row * 3 + col
-                                    val targetIdx = (currentPage * itemsPerPage + targetIdxInPage).coerceIn(
-                                        0,
-                                        currentFolderState.appPackageNames.size - 1
-                                    )
-                                    if (targetIdx != fromIdx) {
-                                        val newList = currentFolderState.appPackageNames.toMutableList()
-                                        newList.removeAt(fromIdx)
-                                        newList.add(targetIdx, pkg)
-                                        onUpdateFolders(
-                                            currentFoldersState.map {
-                                                if (it.id == currentFolderState.id) {
-                                                    it.copy(
-                                                        appPackageNames = newList
-                                                    )
-                                                } else {
-                                                    it
-                                                }
+                                    // Treffer- und Umsortier-Logik liegt framework-frei in LauncherLogic
+                                    // (unit-getestet); hier bleiben nur Persistenz + Haptik.
+                                    val targetIdx = LauncherLogic.folderGridSlotAt(
+                                        touchX = currentTouch.x,
+                                        touchY = currentTouch.y,
+                                        gridWidthPx = gridAreaSize.width,
+                                        gridHeightPx = gridAreaSize.height,
+                                        currentPage = currentPage,
+                                    ) ?: return
+                                    val newList = LauncherLogic.moveFolderApp(
+                                        packages = currentFolderState.appPackageNames,
+                                        pkg = pkg,
+                                        targetIdx = targetIdx,
+                                    ) ?: return
+                                    onUpdateFolders(
+                                        currentFoldersState.map {
+                                            if (it.id == currentFolderState.id) {
+                                                it.copy(appPackageNames = newList)
+                                            } else {
+                                                it
                                             }
-                                        )
-                                        if (hapticEnabled) {
-                                            haptic.performHapticFeedback(
-                                                HapticFeedbackType.TextHandleMove
-                                            )
                                         }
+                                    )
+                                    if (hapticEnabled) {
+                                        haptic.performHapticFeedback(
+                                            HapticFeedbackType.TextHandleMove
+                                        )
                                     }
                                 }
 
@@ -785,10 +781,13 @@ fun AppDrawer(
                                                 onDragStart = { offset ->
                                                     val cellW = gridAreaSize.width / 3f
                                                     val cellH = gridAreaSize.height / 3f
-                                                    val col = (offset.x / cellW).toInt().coerceIn(0, 2)
-                                                    val row = (offset.y / cellH).toInt().coerceIn(0, 2)
-                                                    val idxInPage = row * 3 + col
-                                                    val globalIdx = pagerState.currentPage * itemsPerPage + idxInPage
+                                                    val globalIdx = LauncherLogic.folderGridSlotAt(
+                                                        touchX = offset.x,
+                                                        touchY = offset.y,
+                                                        gridWidthPx = gridAreaSize.width,
+                                                        gridHeightPx = gridAreaSize.height,
+                                                        currentPage = pagerState.currentPage,
+                                                    ) ?: return@detectDragGesturesAfterLongPress
                                                     val currentApps = currentFolderApps
                                                     if (globalIdx < currentApps.size) {
                                                         appDrawerVm.onDragStart(
