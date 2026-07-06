@@ -1,5 +1,6 @@
 package com.example.androidlauncher.ui
 
+import android.appwidget.AppWidgetHostView
 import android.content.Intent
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
@@ -60,6 +61,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
+import com.example.androidlauncher.data.HostedWidget
 import com.example.androidlauncher.launchShortcut
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
@@ -68,11 +70,19 @@ import java.util.Calendar
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-internal enum class HomeEditTarget {
-    CLOCK,
-    DATE,
-    WEATHER,
-    FAVORITES
+/**
+ * Verschiebbares Element auf dem Startbildschirm. Sealed statt Enum, damit gehostete
+ * System-Widgets (B1) mit ihrer dynamischen ID als gleichberechtigte Drag-Targets
+ * durch dieselbe Mechanik (Offsets, Clamping, Hit-Test, Edit-Rahmen) laufen.
+ */
+internal sealed interface HomeEditTarget {
+    data object Clock : HomeEditTarget
+    data object Date : HomeEditTarget
+    data object Weather : HomeEditTarget
+    data object Favorites : HomeEditTarget
+
+    /** Gehostetes System-Widget, identifiziert über seine AppWidget-ID. */
+    data class Widget(val appWidgetId: Int) : HomeEditTarget
 }
 
 /**
@@ -104,7 +114,12 @@ fun HomeScreen(
     returnIconPackage: String?,
     searchButtonBounceToken: Int = 0,
     onSearchButtonBoundsChanged: (Rect?) -> Unit = {},
-    isPreview: Boolean = false
+    isPreview: Boolean = false,
+    // B1: gehostete System-Widgets als frei verschiebbare Home-Objekte.
+    hostedWidgets: List<HostedWidget> = emptyList(),
+    widgetViewProvider: (Int) -> AppWidgetHostView? = { null },
+    onSaveWidgetOffsets: (Map<Int, Offset>) -> Unit = {},
+    onRemoveWidget: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
@@ -127,15 +142,15 @@ fun HomeScreen(
     // --- Bearbeitungs-States (Lokal für Live-Vorschau) ---
     // A6-Split: gebündelt im HomeDragStateHolder; die Delegates/Aliase darunter
     // halten die bestehenden Lese-/Schreib-Stellen im Composable stabil.
-    val dragState = rememberHomeDragState(homeLayout)
+    val dragState = rememberHomeDragState(homeLayout, hostedWidgets)
     val offsets = dragState.offsets
     val neutralBounds = dragState.neutralBounds
     val lastBlockedHapticMs = dragState.lastBlockedHapticMs
 
     // Hält die Live-Offsets außerhalb des Edit-Modus an der gespeicherten Position;
     // beim Betreten des Edit-Modus werden sie 1:1 daraus geseedet, Abbrechen revertiert.
-    LaunchedEffect(homeLayout, isEditMode) {
-        dragState.seedFrom(homeLayout)
+    LaunchedEffect(homeLayout, hostedWidgets, isEditMode) {
+        dragState.seedFrom(homeLayout, hostedWidgets)
     }
 
     // Tickt die Uhrzeit für die getrennten Uhr-/Datums-Elemente.
@@ -194,7 +209,7 @@ fun HomeScreen(
     // Sammel-Padding je Element: Favoriten behalten ihren Rahmenabstand, Text-Elemente
     // (Uhr/Datum/Wetter) liegen im Neutralzustand bündig gestapelt → kein Inter-Padding.
     fun framePadding(target: HomeEditTarget): Float =
-        if (target == HomeEditTarget.FAVORITES) favoritesFramePaddingPx else 0f
+        if (target == HomeEditTarget.Favorites) favoritesFramePaddingPx else 0f
 
     fun baseRect(target: HomeEditTarget, o: Offset): Rect? =
         neutralBounds[target]?.let { translateRect(it, o.x, o.y) }
@@ -204,7 +219,7 @@ fun HomeScreen(
 
     fun clampOffset(target: HomeEditTarget, x: Float, y: Float): Offset {
         val bounds = neutralBounds[target] ?: return Offset(x, y)
-        val topLimit = if (target == HomeEditTarget.CLOCK) clockTopLimitPx else 0f
+        val topLimit = if (target == HomeEditTarget.Clock) clockTopLimitPx else 0f
         // Reine Clamping-Mathematik liegt in HomeGeometry.kt (unit-getestet); die
         // target->bounds/topLimit-Aufloesung bleibt hier (haengt am neutralBounds-State).
         return clampOffsetToBounds(
@@ -360,10 +375,19 @@ fun HomeScreen(
     }
 
     fun testTagFor(target: HomeEditTarget): String = when (target) {
-        HomeEditTarget.CLOCK -> "home_edit_target_clock"
-        HomeEditTarget.DATE -> "home_edit_target_date"
-        HomeEditTarget.WEATHER -> "home_edit_target_weather"
-        HomeEditTarget.FAVORITES -> "home_edit_target_favorites"
+        HomeEditTarget.Clock -> "home_edit_target_clock"
+        HomeEditTarget.Date -> "home_edit_target_date"
+        HomeEditTarget.Weather -> "home_edit_target_weather"
+        HomeEditTarget.Favorites -> "home_edit_target_favorites"
+        is HomeEditTarget.Widget -> "home_edit_target_widget_${target.appWidgetId}"
+    }
+
+    // Wackel-Richtung im Edit-Modus: benachbarte Elemente rotieren gegenläufig
+    // (früher `ordinal % 2`; Widgets alternieren über ihre AppWidget-ID).
+    fun wiggleSign(target: HomeEditTarget): Float = when (target) {
+        HomeEditTarget.Clock, HomeEditTarget.Weather -> 1f
+        HomeEditTarget.Date, HomeEditTarget.Favorites -> -1f
+        is HomeEditTarget.Widget -> if (target.appWidgetId % 2 == 0) 1f else -1f
     }
 
     // Material-3-Expressive: dezentes „Jiggle" der bewegbaren Home-Elemente im Edit-Modus,
@@ -405,7 +429,7 @@ fun HomeScreen(
                         scaleX = 1.04f
                         scaleY = 1.04f
                     } else if (showFrame) {
-                        rotationZ = editWiggleAngle * if (target.ordinal % 2 == 0) 1f else -1f
+                        rotationZ = editWiggleAngle * wiggleSign(target)
                     }
                 }
             }
@@ -538,7 +562,8 @@ fun HomeScreen(
                             detectTapGestures(
                                 onTap = { tapOffset ->
                                     if (isEditMode && selectedEditTarget != null) {
-                                        val hitTarget = HomeEditTarget.entries.any { target ->
+                                        // Alle gemessenen Targets (eingebaute + Widgets) prüfen.
+                                        val hitTarget = neutralBounds.keys.toList().any { target ->
                                             val rect = neutralBounds[target]?.let {
                                                 translateRect(it, offsets[target]?.x ?: 0f, offsets[target]?.y ?: 0f)
                                             } ?: return@any false
@@ -596,8 +621,8 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .wrapContentWidth(Alignment.Start)
-                            .targetLayout(HomeEditTarget.CLOCK)
-                            .targetEditModifier(HomeEditTarget.CLOCK)
+                            .targetLayout(HomeEditTarget.Clock)
+                            .targetEditModifier(HomeEditTarget.Clock)
                     ) {
                         ClockText(
                             time = currentTime,
@@ -618,8 +643,8 @@ fun HomeScreen(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(top = dateTopAnchor)
-                        .targetLayout(HomeEditTarget.DATE)
-                        .targetEditModifier(HomeEditTarget.DATE)
+                        .targetLayout(HomeEditTarget.Date)
+                        .targetEditModifier(HomeEditTarget.Date)
                 ) {
                     DateText(
                         time = currentTime,
@@ -638,10 +663,59 @@ fun HomeScreen(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(top = 30.dp)
-                        .targetLayout(HomeEditTarget.WEATHER)
-                        .targetEditModifier(HomeEditTarget.WEATHER)
+                        .targetLayout(HomeEditTarget.Weather)
+                        .targetEditModifier(HomeEditTarget.Weather)
                 ) {
                     WeatherRow(isPreview = isPreview || isEditMode)
+                }
+            }
+
+            // 5. Gehostete System-Widgets (B1): frei verschiebbar wie die eingebauten
+            // Elemente. Natürliche Ankerposition unterhalb der Uhr-Zone, pro Widget leicht
+            // gestaffelt, damit neu hinzugefügte nicht exakt übereinander liegen.
+            hostedWidgets.forEachIndexed { index, widget ->
+                key(widget.appWidgetId) {
+                    val widgetTarget = HomeEditTarget.Widget(widget.appWidgetId)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = 160.dp + (index * 24).dp)
+                            .targetLayout(widgetTarget)
+                            .targetEditModifier(widgetTarget)
+                    ) {
+                        HostedWidgetView(
+                            widget = widget,
+                            hostView = if (isPreview) null else widgetViewProvider(widget.appWidgetId),
+                            isEditMode = isEditMode,
+                        )
+                        // Entfernen-Badge am ausgewählten Widget (nur im Edit-Modus).
+                        if (isEditMode && selectedEditTarget == widgetTarget) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .zIndex(10f)
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .designSurface(
+                                        designStyle,
+                                        CircleShape,
+                                        isDarkTextEnabled,
+                                        surfaceAccent,
+                                        fillAlpha = 0.5f
+                                    )
+                                    .clickable { onRemoveWidget(widget.appWidgetId) }
+                                    .testTag("home_widget_remove_${widget.appWidgetId}"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = stringResource(R.string.cd_remove_widget),
+                                    tint = mainTextColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -655,8 +729,8 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .wrapContentWidth(Alignment.Start)
-                        .targetLayout(HomeEditTarget.FAVORITES)
-                        .targetEditModifier(HomeEditTarget.FAVORITES)
+                        .targetLayout(HomeEditTarget.Favorites)
+                        .targetEditModifier(HomeEditTarget.Favorites)
                 ) {
                     // Optionale Umrandung der Favoriten-Box (reiner Umriss, innen transparent).
                     val favoritesBorderColor = when (LocalFavoritesBorderStyle.current) {
@@ -843,11 +917,8 @@ fun HomeScreen(
                     EditControlButton(
                         icon = Icons.Rounded.Close,
                         onClick = {
-                            // Abbrechen: Live-Offsets auf gespeicherten Stand zurücksetzen.
-                            offsets[HomeEditTarget.CLOCK] = homeLayout.clock
-                            offsets[HomeEditTarget.DATE] = homeLayout.date
-                            offsets[HomeEditTarget.WEATHER] = homeLayout.weather
-                            offsets[HomeEditTarget.FAVORITES] = homeLayout.favorites
+                            // Abbrechen: Live-Offsets (inkl. Widgets) auf gespeicherten Stand zurücksetzen.
+                            dragState.seedFrom(homeLayout, hostedWidgets)
                             selectedEditTarget = null
                             isEditTargetUserPinned = false
                             updateCollisionFeedback(false)
@@ -863,6 +934,7 @@ fun HomeScreen(
                         onClick = {
                             updateCollisionFeedback(false)
                             onSaveHomeLayout(dragState.toHomeLayout())
+                            onSaveWidgetOffsets(dragState.toWidgetOffsets())
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.position_saved),

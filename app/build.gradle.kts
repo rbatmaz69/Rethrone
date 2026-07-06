@@ -188,9 +188,12 @@ kover {
                 classes("com.example.androidlauncher.ui.HybridSearchKt\$*")
                 classes("com.example.androidlauncher.ui.InfoDialogKt")
                 classes("com.example.androidlauncher.ui.InfoDialogKt\$*")
-                // B1: Widget-Picker (reines Composable; Datenschicht ist getestet)
+                // B1: Widget-Picker + Host-View-Wrapper (reine Composables; Datenschicht ist getestet)
                 classes("com.example.androidlauncher.ui.WidgetPickerSheetKt")
                 classes("com.example.androidlauncher.ui.WidgetPickerSheetKt\$*")
+                classes("com.example.androidlauncher.ui.HostedWidgetViewKt")
+                classes("com.example.androidlauncher.ui.HostedWidgetViewKt\$*")
+                classes("com.example.androidlauncher.ui.BlockableFrameLayout")
                 // Hinweis: data.AppRepository, data.IconManager und data.FavoritesManager sind
                 // bewusst NICHT mehr ausgeschlossen – fuer sie existieren Unit-Tests
                 // (AppRepositoryTest, IconManagerTest, FavoritesManagerTest), die jetzt ehrlich
