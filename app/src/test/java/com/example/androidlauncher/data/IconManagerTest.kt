@@ -55,6 +55,27 @@ class IconManagerTest {
     }
 
     @Test
+    fun `selectedIconPack roundtrips and clears`() = testScope.runTest {
+        assertNull(manager.selectedIconPack.first())
+
+        manager.setSelectedIconPack("com.pack.a")
+        assertEquals("com.pack.a", manager.selectedIconPack.first())
+
+        manager.setSelectedIconPack(null)
+        assertNull(manager.selectedIconPack.first())
+    }
+
+    @Test
+    fun `selected icon pack never leaks into customIcons`() = testScope.runTest {
+        manager.setSelectedIconPack("com.pack.a")
+        manager.setCustomIcon("com.pkg.a", "camera")
+
+        val icons = manager.customIcons.first()
+
+        assertEquals(mapOf("com.pkg.a" to "camera"), icons)
+    }
+
+    @Test
     fun `setCustomIcon with null removes the mapping`() = testScope.runTest {
         manager.setCustomIcon("com.pkg.a", "camera")
         manager.setCustomIcon("com.pkg.a", null)

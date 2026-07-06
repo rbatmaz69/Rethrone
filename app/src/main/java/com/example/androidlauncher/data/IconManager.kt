@@ -11,6 +11,11 @@ private val Context.iconDataStore by preferencesDataStore(name = "icon_mappings"
 private const val AUTO_FALLBACK_PREFIX = "auto_fallback__"
 private const val AUTO_RULE_PREFIX = "auto_rule__"
 
+// Reserved-Key für das global gewählte Icon-Pack (B4) – kollidiert nicht mit
+// Package-Namen (doppelte Unterstriche sind in Package-Namen unüblich, und der
+// Key wird aus customIcons herausgefiltert).
+private val ICON_PACK_KEY = androidx.datastore.preferences.core.stringPreferencesKey("setting__icon_pack")
+
 /**
  * Manages custom app icons mapping.
  * packageName -> lucideIconName
@@ -27,11 +32,28 @@ class IconManager(
         .map { preferences ->
             preferences.asMap()
                 .filterKeys {
-                    !it.name.startsWith(AUTO_FALLBACK_PREFIX) && !it.name.startsWith(AUTO_RULE_PREFIX)
+                    !it.name.startsWith(AUTO_FALLBACK_PREFIX) &&
+                        !it.name.startsWith(AUTO_RULE_PREFIX) &&
+                        it.name != ICON_PACK_KEY.name
                 }
                 .mapKeys { it.key.name }
                 .mapValues { it.value as String }
         }
+
+    /** Global gewähltes Icon-Pack (Package-Name) oder `null` für System-Icons (B4). */
+    val selectedIconPack: Flow<String?> = dataStore.data
+        .map { it[ICON_PACK_KEY] }
+
+    /** Setzt oder entfernt (`null`) das global gewählte Icon-Pack. */
+    suspend fun setSelectedIconPack(packPackage: String?) {
+        dataStore.edit { preferences ->
+            if (packPackage != null) {
+                preferences[ICON_PACK_KEY] = packPackage
+            } else {
+                preferences.remove(ICON_PACK_KEY)
+            }
+        }
+    }
 
     /**
      * Returns a flow of the automatic fallback analysis results.

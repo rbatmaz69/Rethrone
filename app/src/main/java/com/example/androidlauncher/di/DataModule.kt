@@ -8,6 +8,7 @@ import com.example.androidlauncher.data.DynamicIslandManager
 import com.example.androidlauncher.data.FavoritesManager
 import com.example.androidlauncher.data.FolderManager
 import com.example.androidlauncher.data.IconManager
+import com.example.androidlauncher.data.IconPackRepository
 import com.example.androidlauncher.data.NotificationStateStore
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
@@ -60,8 +61,15 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideAppRepository(@ApplicationContext context: Context): AppRepository =
-        AppRepository(context)
+    fun provideIconPackRepository(@ApplicationContext context: Context): IconPackRepository =
+        IconPackRepository(context)
+
+    @Provides
+    @Singleton
+    fun provideAppRepository(
+        @ApplicationContext context: Context,
+        iconPackRepository: IconPackRepository,
+    ): AppRepository = AppRepository(context, iconPackRepository)
 
     @Provides
     @Singleton

@@ -299,6 +299,8 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation("org.json:json:20231013")
+    // B4: echter XmlPullParser für JVM-Tests des appfilter-Parsers (android.util.Xml ist gestubbt).
+    testImplementation(libs.kxml2)
 
     // Formatting-Ruleset (ktlint-Wrapper) fuer Detekt – siehe config/detekt/detekt.yml.
     detektPlugins(libs.detekt.formatting)
