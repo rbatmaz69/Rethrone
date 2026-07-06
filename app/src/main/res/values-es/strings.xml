@@ -121,6 +121,10 @@
     <string name="weather_widget_desc">Muestra un icono y la temperatura bajo el reloj</string>
     <string name="app_access_label">Acceso a apps</string>
     <string name="edit_home_layout">Personalizar el diseño de inicio</string>
+    <string name="add_widget">Añadir widget</string>
+    <string name="widget_picker_title">Widgets</string>
+    <string name="widget_picker_empty">No se encontraron widgets</string>
+    <string name="widget_bind_failed">No se pudo añadir el widget</string>
     <string name="edit_app_icons">Personalizar iconos de apps</string>
     <string name="change_wallpaper">Cambiar fondo de pantalla</string>
     <string name="adjust_wallpaper">Ajustar fondo de pantalla</string>

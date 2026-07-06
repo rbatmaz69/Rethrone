@@ -102,6 +102,7 @@ fun EditConfigMenu(
         homeViewModel.closeOverlay()
         homeViewModel.setHomeEditMode(true)
     }
+    val onOpenWidgetPicker = { homeViewModel.openOverlay(ActiveOverlay.WidgetPicker) }
     val onOpenIconConfig = { homeViewModel.openOverlay(ActiveOverlay.IconConfig) }
     val onOpenUninstallApps = { homeViewModel.openOverlay(ActiveOverlay.UninstallApps) }
     val onOpenHiddenApps = { homeViewModel.openOverlay(ActiveOverlay.HiddenApps) }
@@ -392,6 +393,19 @@ fun EditConfigMenu(
                             )
                         }
                     }
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.LayoutGrid,
+                    label = stringResource(R.string.add_widget),
+                    onClick = onOpenWidgetPicker,
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "add_widget_item"
                 )
             }
 

@@ -1,5 +1,6 @@
 package com.example.androidlauncher.data
 
+import android.app.Activity
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -73,6 +74,18 @@ class WidgetHostManager(
 
     fun providerInfo(appWidgetId: Int): AppWidgetProviderInfo? =
         runCatching { appWidgetManager.getAppWidgetInfo(appWidgetId) }.getOrNull()
+
+    /**
+     * Startet die Configure-Activity des Providers ueber den Host – die einzige auf
+     * Android 12+ zulaessige Variante fuer nicht-exportierte Configure-Activities
+     * (der Host vergibt eine temporaere Start-Berechtigung). `false` bei Startfehlern
+     * (ActivityNotFound/SecurityException), der Aufrufer bricht den Flow dann ab.
+     */
+    fun startConfigureActivity(activity: Activity, appWidgetId: Int, requestCode: Int): Boolean =
+        runCatching {
+            host.startAppWidgetConfigureActivityForResult(activity, appWidgetId, 0, requestCode, null)
+            true
+        }.getOrDefault(false)
 
     /**
      * Liefert die (gecachte) Host-View fuer ein gebundenes Widget oder `null`,

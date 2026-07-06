@@ -131,6 +131,24 @@ class WidgetHostManagerTest {
     }
 
     @Test
+    fun `startConfigureActivity reports launch failures as false`() {
+        val activity = mockk<android.app.Activity>()
+        every {
+            host.startAppWidgetConfigureActivityForResult(activity, 7, 0, 99, null)
+        } throws SecurityException("not exported")
+
+        assertFalse(manager.startConfigureActivity(activity, 7, requestCode = 99))
+    }
+
+    @Test
+    fun `startConfigureActivity returns true when host launches`() {
+        val activity = mockk<android.app.Activity>()
+        every { host.startAppWidgetConfigureActivityForResult(activity, 7, 0, 99, null) } just Runs
+
+        assertTrue(manager.startConfigureActivity(activity, 7, requestCode = 99))
+    }
+
+    @Test
     fun `createView returns null when provider info is missing`() {
         every { appWidgetManager.getAppWidgetInfo(9) } returns null
 

@@ -3,6 +3,8 @@ package com.example.androidlauncher
 import android.Manifest
 import android.app.ActivityManager
 import android.app.role.RoleManager
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -25,6 +27,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -73,6 +76,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
@@ -82,6 +86,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppFont
@@ -99,13 +104,20 @@ import com.example.androidlauncher.data.FontSize
 import com.example.androidlauncher.data.FontWeightLevel
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
+import com.example.androidlauncher.data.HostedWidget
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.IconQualityEvaluator
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.IslandContent
+import com.example.androidlauncher.data.PendingWidgetBind
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.data.WidgetBindFlow
+import com.example.androidlauncher.data.WidgetBindStep
+import com.example.androidlauncher.data.WidgetHostManager
+import com.example.androidlauncher.data.WidgetSizeDp
+import com.example.androidlauncher.data.defaultWidgetSizeDp
 import com.example.androidlauncher.gesture.GestureActionEffects
 import com.example.androidlauncher.gesture.GestureActionHandler
 import com.example.androidlauncher.ui.AnimationsConfigMenu
@@ -137,6 +149,7 @@ import com.example.androidlauncher.ui.ThemeSelectionMenu
 import com.example.androidlauncher.ui.UninstallAppsMenu
 import com.example.androidlauncher.ui.WallpaperConfigMenu
 import com.example.androidlauncher.ui.WallpaperCropScreen
+import com.example.androidlauncher.ui.WidgetPickerSheet
 import com.example.androidlauncher.ui.expandNotifications
 import com.example.androidlauncher.ui.home.ActiveOverlay
 import com.example.androidlauncher.ui.home.EditConfigActions
@@ -174,6 +187,14 @@ class MainActivity : ComponentActivity() {
         // Begrenzter vertikaler Verschiebebereich der Dynamic Island (dp) im Layout-Edit-Modus.
         private const val DYNAMIC_ISLAND_MIN_OFFSET_DP = -12f
         private const val DYNAMIC_ISLAND_MAX_OFFSET_DP = 40f
+
+        // B1: Request-Code der Widget-Configure-Activity. Muss über den deprecated
+        // onActivityResult-Pfad laufen – startAppWidgetConfigureActivityForResult hat
+        // keinen ActivityResult-Contract (Launcher3 macht dasselbe).
+        private const val REQUEST_CONFIGURE_WIDGET = 4201
+
+        // Fallback, falls beim Commit keine berechnete Widget-Größe mehr vorliegt.
+        private val FALLBACK_WIDGET_SIZE = WidgetSizeDp(widthDp = 180, heightDp = 110)
     }
 
     // Von Hilt bereitgestellte Datenschicht-Singletons (siehe di/DataModule).
@@ -200,6 +221,19 @@ class MainActivity : ComponentActivity() {
 
     @javax.inject.Inject
     lateinit var dynamicIslandManager: com.example.androidlauncher.data.DynamicIslandManager
+
+    @javax.inject.Inject
+    lateinit var widgetHostManager: WidgetHostManager
+
+    // B1: laufender Widget-Bind-Flow. Übersteht bewusst keinen Prozess-Tod –
+    // geleakte Widget-IDs räumt cleanupOrphans beim nächsten Start ab.
+    private var pendingWidgetBind: PendingWidgetBind? = null
+    private var pendingWidgetSize: WidgetSizeDp? = null
+
+    // Gleiche Instanz wie hiltViewModel() in setContent (gemeinsamer ViewModelStore der
+    // Activity) – als Feld, damit der Widget-Bind-Commit außerhalb der Composition
+    // (onActivityResult-Pfad) in den Edit-Modus wechseln kann.
+    private val activityHomeViewModel: HomeViewModel by viewModels()
 
     private lateinit var backCallback: OnBackPressedCallback
     private var lastDefaultLauncherPackage: String? = null
@@ -470,6 +504,51 @@ class MainActivity : ComponentActivity() {
                 openDefaultLauncherSettings(context)
             }
 
+            // B1: System-Consent-Dialog für das Widget-Binden (ACTION_APPWIDGET_BIND).
+            val appWidgetBindLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                pendingWidgetBind?.let { pending ->
+                    handleWidgetBindStep(
+                        WidgetBindFlow.afterBindPermission(pending, granted = result.resultCode == RESULT_OK)
+                    )
+                }
+            }
+
+            val configuration = LocalConfiguration.current
+
+            // Startet den Bind-Flow für ein im Picker gewähltes Widget; die Schrittfolge
+            // entscheidet die pure State-Machine WidgetBindFlow.
+            fun startWidgetBind(info: AppWidgetProviderInfo) {
+                val appWidgetId = widgetHostManager.allocateWidgetId()
+                val pending = PendingWidgetBind(
+                    appWidgetId = appWidgetId,
+                    provider = info.provider.flattenToString(),
+                    needsConfigure = info.configure != null,
+                )
+                pendingWidgetBind = pending
+                pendingWidgetSize = defaultWidgetSizeDp(
+                    targetCellWidth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) info.targetCellWidth else 0,
+                    targetCellHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) info.targetCellHeight else 0,
+                    minWidthDp = info.minWidth,
+                    minHeightDp = info.minHeight,
+                    screenWidthDp = configuration.screenWidthDp,
+                    screenHeightDp = configuration.screenHeightDp,
+                )
+                homeViewModel.closeOverlay()
+                val bound = widgetHostManager.bindIfAllowed(appWidgetId, info.provider)
+                when (val step = WidgetBindFlow.afterAllocate(pending, bound)) {
+                    is WidgetBindStep.RequestBindPermission -> runCatching {
+                        appWidgetBindLauncher.launch(
+                            Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
+                                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+                        )
+                    }.onFailure { abortWidgetBind(appWidgetId, showError = true) }
+                    else -> handleWidgetBindStep(step)
+                }
+            }
+
             // Geräte-/System-Aktionen einer Geste werden an den testbaren GestureActionHandler
             // delegiert. Launcher-interne Aktionen (App-Drawer/Suche/Benachrichtigungen) setzen
             // UI-State und werden weiterhin im inneren dispatchGestureAction behandelt.
@@ -581,6 +660,7 @@ class MainActivity : ComponentActivity() {
                 val isAppLockOpen = activeOverlay is ActiveOverlay.AppLock
                 val isWallpaperConfigOpen = activeOverlay is ActiveOverlay.WallpaperConfig
                 val isInfoOpen = activeOverlay is ActiveOverlay.Info
+                val isWidgetPickerOpen = activeOverlay is ActiveOverlay.WidgetPicker
                 val selectedFolderForConfig = (activeOverlay as? ActiveOverlay.FolderConfig)?.folder
                 var selectedFolderForConfigSnapshot by remember { mutableStateOf<FolderInfo?>(null) }
                 val folderConfigExitHoldMs = 320L
@@ -697,6 +777,27 @@ class MainActivity : ComponentActivity() {
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+
+                // B1: Widget-Host lauscht zwischen ON_START und ON_STOP auf RemoteViews-Updates
+                // (Updates unter Dialogen laufen weiter; verpasste spielt das Framework nach).
+                // Orphan-Cleanup nur ohne laufenden Bind-Flow – die Rückkehr aus Bind-/Configure-
+                // Dialogen durchläuft ON_START, bevor onActivityResult eintrifft.
+                DisposableEffect(lifecycleOwner) {
+                    val widgetHostObserver = LifecycleEventObserver { _, event ->
+                        when (event) {
+                            Lifecycle.Event.ON_START -> {
+                                widgetHostManager.startListening()
+                                if (pendingWidgetBind == null) {
+                                    lifecycleScope.launch { widgetHostManager.cleanupOrphans() }
+                                }
+                            }
+                            Lifecycle.Event.ON_STOP -> widgetHostManager.stopListening()
+                            else -> Unit
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(widgetHostObserver)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(widgetHostObserver) }
                 }
 
                 DisposableEffect(isLauncherResumed, isShakeGesturesEnabled) {
@@ -1521,6 +1622,19 @@ class MainActivity : ComponentActivity() {
                         EditConfigMenu(actions = editConfigActions)
                     }
 
+                    // B1: Widget-Auswahl – nach dem Edit-Menü komponiert, damit sie darüber
+                    // liegt (öffnet aus dessen "Widget hinzufügen"-Eintrag).
+                    MenuOverlay(
+                        visible = isWidgetPickerOpen,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { homeViewModel.closeOverlay() }
+                    ) {
+                        WidgetPickerSheet(
+                            onWidgetChosen = { startWidgetBind(it) },
+                            onClose = { homeViewModel.closeOverlay() }
+                        )
+                    }
+
                     // Untermenü der Animationen – nach dem Edit-Menü komponiert, damit es
                     // darüber liegt (das Edit-Menü bleibt geöffnet im Hintergrund).
                     MenuOverlay(
@@ -1874,6 +1988,66 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Führt den nächsten Schritt des Widget-Bind-Flows aus (B1, Entscheidungen:
+     * [WidgetBindFlow]). `RequestBindPermission` wird hier bewusst nicht behandelt –
+     * der Schritt kann nur direkt nach `afterAllocate` auftreten und braucht den
+     * Compose-ActivityResult-Launcher (siehe `startWidgetBind` in setContent).
+     */
+    private fun handleWidgetBindStep(step: WidgetBindStep) {
+        when (step) {
+            is WidgetBindStep.RequestBindPermission -> Unit
+            is WidgetBindStep.LaunchConfigure -> {
+                val started = widgetHostManager.startConfigureActivity(
+                    this,
+                    step.pending.appWidgetId,
+                    REQUEST_CONFIGURE_WIDGET
+                )
+                if (!started) abortWidgetBind(step.pending.appWidgetId, showError = true)
+            }
+            is WidgetBindStep.Commit -> commitWidgetBind(step.pending)
+            is WidgetBindStep.Abort -> abortWidgetBind(step.appWidgetId)
+        }
+    }
+
+    /** Persistiert das fertig gebundene Widget und wechselt zum Positionieren in den Edit-Modus. */
+    private fun commitWidgetBind(pending: PendingWidgetBind) {
+        val size = pendingWidgetSize ?: FALLBACK_WIDGET_SIZE
+        pendingWidgetBind = null
+        pendingWidgetSize = null
+        lifecycleScope.launch {
+            widgetHostManager.addWidget(
+                HostedWidget(
+                    appWidgetId = pending.appWidgetId,
+                    provider = pending.provider,
+                    widthDp = size.widthDp,
+                    heightDp = size.heightDp,
+                )
+            )
+            activityHomeViewModel.setHomeEditMode(true)
+        }
+    }
+
+    /** Bricht den Bind-Flow ab und gibt die allokierte Widget-ID wieder frei. */
+    private fun abortWidgetBind(appWidgetId: Int, showError: Boolean = false) {
+        pendingWidgetBind = null
+        pendingWidgetSize = null
+        widgetHostManager.deleteWidgetId(appWidgetId)
+        if (showError) {
+            Toast.makeText(this, getString(R.string.widget_bind_failed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CONFIGURE_WIDGET) {
+            val pending = pendingWidgetBind ?: return
+            handleWidgetBindStep(WidgetBindFlow.afterConfigure(pending, resultOk = resultCode == RESULT_OK))
         }
     }
 
