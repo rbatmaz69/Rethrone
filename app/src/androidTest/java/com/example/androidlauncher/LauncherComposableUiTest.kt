@@ -176,5 +176,7 @@ class LauncherComposableUiTest {
     private object NoopEditConfigActions : EditConfigActions {
         override fun openDefaultLauncherPrompt() = Unit
         override fun pickWallpaper() = Unit
+        override fun exportBackup() = Unit
+        override fun importBackup() = Unit
     }
 }

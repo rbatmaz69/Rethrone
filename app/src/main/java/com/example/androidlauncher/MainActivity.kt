@@ -117,6 +117,8 @@ import com.example.androidlauncher.data.WidgetBindFlow
 import com.example.androidlauncher.data.WidgetBindStep
 import com.example.androidlauncher.data.WidgetHostManager
 import com.example.androidlauncher.data.WidgetSizeDp
+import com.example.androidlauncher.data.backup.BackupSerializer
+import com.example.androidlauncher.data.backup.RestoreResult
 import com.example.androidlauncher.data.defaultWidgetSizeDp
 import com.example.androidlauncher.gesture.GestureActionEffects
 import com.example.androidlauncher.gesture.GestureActionHandler
@@ -228,6 +230,9 @@ class MainActivity : ComponentActivity() {
 
     @javax.inject.Inject
     lateinit var iconPackRepository: com.example.androidlauncher.data.IconPackRepository
+
+    @javax.inject.Inject
+    lateinit var backupManager: com.example.androidlauncher.data.backup.BackupManager
 
     // B1: laufender Widget-Bind-Flow. Übersteht bewusst keinen Prozess-Tod –
     // geleakte Widget-IDs räumt cleanupOrphans beim nächsten Start ab.
@@ -411,6 +416,20 @@ class MainActivity : ComponentActivity() {
                     pendingWallpaperUri = sourceUri
                     isWallpaperCropOpen = true
                 }
+            }
+
+            // B5: SAF-Dialoge für Backup-Export/-Import; die eigentliche Arbeit
+            // (Streams + BackupManager) übernehmen die Activity-Helfer auf Dispatchers.IO.
+            val backupExportLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.CreateDocument("application/json")
+            ) { uri: Uri? ->
+                uri?.let { exportBackupTo(it) }
+            }
+
+            val backupImportLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument()
+            ) { uri: Uri? ->
+                uri?.let { importBackupFrom(it) }
             }
 
             val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -1658,6 +1677,16 @@ class MainActivity : ComponentActivity() {
                                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                     )
                                 }
+
+                                override fun exportBackup() {
+                                    backupExportLauncher.launch(suggestedBackupFileName())
+                                }
+
+                                override fun importBackup() {
+                                    backupImportLauncher.launch(
+                                        arrayOf("application/json", "application/octet-stream")
+                                    )
+                                }
                             }
                         }
                         EditConfigMenu(actions = editConfigActions)
@@ -2089,6 +2118,52 @@ class MainActivity : ComponentActivity() {
         widgetHostManager.deleteWidgetId(appWidgetId)
         if (showError) {
             Toast.makeText(this, getString(R.string.widget_bind_failed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** Vorschlags-Dateiname für den SAF-Dialog, z. B. `rethrone-backup-20260706.json`. */
+    private fun suggestedBackupFileName(): String {
+        val date = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+        return "rethrone-backup-$date.json"
+    }
+
+    /** B5: schreibt den aktuellen Konfigurations-Snapshot als JSON an die gewählte URI. */
+    private fun exportBackupTo(uri: Uri) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                val snapshot = backupManager.createSnapshot(BuildConfig.VERSION_CODE.toLong())
+                val json = BackupSerializer.serialize(snapshot)
+                contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(json.toByteArray(Charsets.UTF_8))
+                } ?: error("OutputStream konnte nicht geöffnet werden")
+            }
+            withContext(Dispatchers.Main) {
+                val messageRes = if (result.isSuccess) {
+                    R.string.backup_export_success
+                } else {
+                    R.string.backup_export_error
+                }
+                Toast.makeText(this@MainActivity, getString(messageRes), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /** B5: liest und validiert eine Backup-Datei und spielt sie ein (Overwrite-all). */
+    private fun importBackupFrom(uri: Uri) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val messageRes = runCatching {
+                val json = contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.readBytes().toString(Charsets.UTF_8)
+                } ?: return@runCatching R.string.backup_import_error
+                val snapshot = BackupSerializer.parse(json) ?: return@runCatching R.string.backup_import_error
+                when (backupManager.restore(snapshot)) {
+                    RestoreResult.APPLIED -> R.string.backup_import_success
+                    RestoreResult.UNSUPPORTED_VERSION -> R.string.backup_import_unsupported
+                }
+            }.getOrDefault(R.string.backup_import_error)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@MainActivity, getString(messageRes), Toast.LENGTH_LONG).show()
+            }
         }
     }
 
