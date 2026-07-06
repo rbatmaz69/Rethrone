@@ -7,7 +7,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-private val Context.iconDataStore by preferencesDataStore(name = "icon_mappings")
+// `internal` statt `private`: der BackupManager (B5) erfasst diese DataStore-Datei mit.
+internal val Context.iconDataStore by preferencesDataStore(name = "icon_mappings")
 private const val AUTO_FALLBACK_PREFIX = "auto_fallback__"
 private const val AUTO_RULE_PREFIX = "auto_rule__"
 
