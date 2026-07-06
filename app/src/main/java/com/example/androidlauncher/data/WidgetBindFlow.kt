@@ -88,14 +88,14 @@ data class WidgetSizeDp(val widthDp: Int, val heightDp: Int)
 private const val WIDGET_CELL_SIZE_DP = 70
 
 /** Untergrenzen, damit auch "0dp"-Provider-Angaben ein greifbares Widget ergeben. */
-private const val MIN_WIDGET_WIDTH_DP = 110
-private const val MIN_WIDGET_HEIGHT_DP = 40
+internal const val MIN_WIDGET_WIDTH_DP = 110
+internal const val MIN_WIDGET_HEIGHT_DP = 40
 
 /** Seitenrand, den ein Widget in der Breite nie ueberdecken darf. */
-private const val SCREEN_EDGE_MARGIN_DP = 48
+internal const val SCREEN_EDGE_MARGIN_DP = 48
 
 /** Hoehen-Kappung, damit ein einzelnes Widget nicht den ganzen Screen einnimmt. */
-private const val MAX_HEIGHT_SCREEN_FRACTION = 0.6f
+internal const val MAX_HEIGHT_SCREEN_FRACTION = 0.6f
 
 /**
  * Default-Groesse beim Binden (MVP ohne Resize): bevorzugt die Zell-Angaben des Providers

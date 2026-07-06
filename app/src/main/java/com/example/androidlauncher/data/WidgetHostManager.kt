@@ -115,11 +115,20 @@ class WidgetHostManager(
 
     /** Persistiert neue Edit-Mode-Offsets (ein atomarer Write fuer alle Widgets). */
     suspend fun updateOffsets(offsets: Map<Int, Offset>) {
-        if (offsets.isEmpty()) return
+        updateWidgetPlacement(offsets, emptyMap())
+    }
+
+    /**
+     * Persistiert Offsets und Groessen aus dem Edit-Modus in einem einzigen
+     * atomaren Write (B1-PR4: der Speichern-Knopf committet beides gemeinsam).
+     */
+    suspend fun updateWidgetPlacement(offsets: Map<Int, Offset>, sizes: Map<Int, WidgetSizeDp>) {
+        if (offsets.isEmpty() && sizes.isEmpty()) return
         val updated = settings.hostedWidgets.first().map { widget ->
-            offsets[widget.appWidgetId]
-                ?.let { widget.copy(offsetX = it.x, offsetY = it.y) }
-                ?: widget
+            var result = widget
+            offsets[widget.appWidgetId]?.let { result = result.copy(offsetX = it.x, offsetY = it.y) }
+            sizes[widget.appWidgetId]?.let { result = result.copy(widthDp = it.widthDp, heightDp = it.heightDp) }
+            result
         }
         settings.setHostedWidgets(updated)
     }

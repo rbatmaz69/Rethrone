@@ -113,6 +113,26 @@ class WidgetHostManagerTest {
     }
 
     @Test
+    fun `updateWidgetPlacement writes offsets and sizes atomically per widget`() = testScope.runTest {
+        manager.addWidget(widget(1))
+        manager.addWidget(widget(2))
+        manager.addWidget(widget(3))
+
+        manager.updateWidgetPlacement(
+            offsets = mapOf(1 to Offset(15f, -25f)),
+            sizes = mapOf(1 to WidgetSizeDp(widthDp = 250, heightDp = 140), 2 to WidgetSizeDp(180, 90)),
+        )
+
+        val result = manager.widgets.first()
+        assertEquals(
+            widget(1).copy(offsetX = 15f, offsetY = -25f, widthDp = 250, heightDp = 140),
+            result.first { it.appWidgetId == 1 },
+        )
+        assertEquals(widget(2).copy(widthDp = 180, heightDp = 90), result.first { it.appWidgetId == 2 })
+        assertEquals(widget(3), result.first { it.appWidgetId == 3 })
+    }
+
+    @Test
     fun `cleanupOrphans deletes leaked ids and prunes uninstalled providers`() = testScope.runTest {
         every { host.deleteAppWidgetId(any()) } just Runs
         // Persistiert: 1 (Provider vorhanden) und 2 (Provider deinstalliert); im Host geleakt: 3.
