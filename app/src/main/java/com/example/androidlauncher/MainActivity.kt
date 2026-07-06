@@ -168,6 +168,7 @@ import com.example.androidlauncher.ui.theme.RethroneSprings
 import com.example.androidlauncher.ui.theme.seedRevision
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -224,6 +225,9 @@ class MainActivity : ComponentActivity() {
 
     @javax.inject.Inject
     lateinit var widgetHostManager: WidgetHostManager
+
+    @javax.inject.Inject
+    lateinit var iconPackRepository: com.example.androidlauncher.data.IconPackRepository
 
     // B1: laufender Widget-Bind-Flow. Übersteht bewusst keinen Prozess-Tod –
     // geleakte Widget-IDs räumt cleanupOrphans beim nächsten Start ab.
@@ -383,6 +387,10 @@ class MainActivity : ComponentActivity() {
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
             val autoIconFallbacks by iconManager.autoIconFallbacks.collectAsState(initial = emptyMap())
             val autoIconRules by iconManager.autoIconRules.collectAsState(initial = emptyMap())
+
+            // B4: global gewähltes Icon-Pack (nur für die Anzeige; refreshAppList liest
+            // den Wert autoritativ direkt aus dem Store).
+            val selectedIconPack by iconManager.selectedIconPack.collectAsState(initial = null)
             val favoritePackages by favoritesManager.favorites.collectAsState(initial = emptyList())
 
             var isWallpaperCropOpen by remember { mutableStateOf(false) }
@@ -870,6 +878,9 @@ class MainActivity : ComponentActivity() {
 
                 fun refreshAppList(targetPackageName: String? = null) {
                     scope.launch {
+                        // B4: gewähltes Icon-Pack direkt aus dem Store lesen (kein Race mit
+                        // dem asynchronen collectAsState nach einem Pack-Wechsel).
+                        val currentIconPack = iconManager.selectedIconPack.first()
                         appRepository.cleanupLegacyCache()
                         appRepository.invalidateCacheOnAppUpdate()
                         val basicList = appRepository.getInstalledApps()
@@ -895,7 +906,10 @@ class MainActivity : ComponentActivity() {
                         if (targetPackageName != null) {
                             val targetIndex = appSnapshot.indexOfFirst { it.packageName == targetPackageName }
                             if (targetIndex >= 0) {
-                                appRepository.loadResolvedIcon(appSnapshot[targetIndex])?.let { resolvedIcon ->
+                                appRepository.loadResolvedIcon(
+                                    appSnapshot[targetIndex],
+                                    currentIconPack
+                                )?.let { resolvedIcon ->
                                     val snapshotApp = appSnapshot[targetIndex]
                                     val fallback = resolvedIcon.autoFallback
                                     if (autoIconFallbacks[snapshotApp.packageName] != fallback) {
@@ -916,7 +930,8 @@ class MainActivity : ComponentActivity() {
 
                         appRepository.loadIconsWithPriority(
                             apps = appSnapshot,
-                            favoritePackages = favoritePackages
+                            favoritePackages = favoritePackages,
+                            iconPack = currentIconPack
                         ) { idx, resolvedIcon ->
                             val snapshotApp = appSnapshot.getOrNull(idx) ?: return@loadIconsWithPriority
                             val fallback = resolvedIcon.autoFallback
@@ -1110,7 +1125,22 @@ class MainActivity : ComponentActivity() {
                                 Intent.ACTION_PACKAGE_REMOVED,
                                 Intent.ACTION_PACKAGE_REPLACED -> {
                                     val packageName = intent.data?.schemeSpecificPart
+                                    val isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
                                     scope.launch {
+                                        // B4: betrifft der Broadcast das gewählte Icon-Pack, alle
+                                        // Icons neu aufbauen; bei echter Deinstallation (nicht dem
+                                        // REMOVED-Teil eines Updates) Auswahl auf System-Icons zurück.
+                                        val selectedPack = iconManager.selectedIconPack.first()
+                                        if (!packageName.isNullOrBlank() && packageName == selectedPack) {
+                                            if (intent.action == Intent.ACTION_PACKAGE_REMOVED && !isReplacing) {
+                                                iconManager.setSelectedIconPack(null)
+                                            }
+                                            iconPackRepository.invalidate(packageName)
+                                            appRepository.clearIconCache()
+                                            delay(800)
+                                            refreshAppList()
+                                            return@launch
+                                        }
                                         if (!packageName.isNullOrBlank()) {
                                             appRepository.clearIconCache(packageName)
                                             iconManager.invalidatePackage(packageName)
@@ -1800,7 +1830,17 @@ class MainActivity : ComponentActivity() {
                                     refreshAppList(pkg)
                                 }
                             },
-                            onClose = { homeViewModel.closeOverlay() }
+                            onClose = { homeViewModel.closeOverlay() },
+                            selectedIconPack = selectedIconPack,
+                            loadIconPacks = { iconPackRepository.installedIconPacks() },
+                            onIconPackSelected = { packPkg ->
+                                scope.launch {
+                                    iconManager.setSelectedIconPack(packPkg)
+                                    iconPackRepository.invalidate()
+                                    appRepository.clearIconCache()
+                                    refreshAppList()
+                                }
+                            }
                         )
                     }
 

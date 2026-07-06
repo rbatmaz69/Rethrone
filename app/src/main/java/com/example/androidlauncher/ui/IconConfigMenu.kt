@@ -45,6 +45,7 @@ import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.data.DesignStyle
+import com.example.androidlauncher.data.IconPack
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.LocalAnimationsEnabled
 import com.example.androidlauncher.ui.theme.LocalColorTheme
@@ -78,7 +79,11 @@ fun IconConfigMenu(
     onIconSelected: (String, String?) -> Unit,
     onAutoRuleSelected: (String, AutoIconRuleMode?) -> Unit,
     onReanalyzeRequested: (String) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    // B4: global gewähltes Icon-Pack (null = System-Icons) + lazy geladene Pack-Liste.
+    selectedIconPack: String? = null,
+    loadIconPacks: suspend () -> List<IconPack> = { emptyList() },
+    onIconPackSelected: (String?) -> Unit = {}
 ) {
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val designStyle = LocalDesignStyle.current
@@ -94,6 +99,14 @@ fun IconConfigMenu(
 
     var selectedAppForActions by remember { mutableStateOf<AppInfo?>(null) }
     var selectedAppForPicker by remember { mutableStateOf<AppInfo?>(null) }
+    var isIconPackPickerOpen by remember { mutableStateOf(false) }
+
+    // Label des gewählten Packs für die Sektions-Zeile (Fallback: Package-Name).
+    val selectedIconPackLabel by produceState(initialValue = selectedIconPack, selectedIconPack) {
+        value = selectedIconPack?.let { pack ->
+            loadIconPacks().firstOrNull { it.packageName == pack }?.label ?: pack
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -139,6 +152,55 @@ fun IconConfigMenu(
                 leadingIconTint = mainTextColor.copy(alpha = 0.4f),
                 leadingIconSize = 20.dp
             )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // B4: globales Icon-Pack – Sektions-Zeile über der App-Liste.
+        val packRowModifier = Modifier.designSurface(
+            designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
+            fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+            borderWidth = 1.dp, borderStartAlpha = 0.2f, borderEndAlpha = 0.05f
+        )
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("icon_pack_row")
+                .clip(RoundedCornerShape(20.dp))
+                .then(packRowModifier)
+                .clickable { isIconPackPickerOpen = true },
+            color = Color.Transparent
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Lucide.Package,
+                    contentDescription = null,
+                    tint = mainTextColor,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.icon_pack_section_title),
+                        color = mainTextColor,
+                        fontSize = 16.sp,
+                        fontWeight = fontWeight.weight
+                    )
+                    Text(
+                        selectedIconPackLabel ?: stringResource(R.string.icon_pack_system_default),
+                        color = secondaryTextColor,
+                        fontSize = 12.sp
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.customize),
+                    color = mainTextColor.copy(alpha = 0.72f),
+                    fontSize = 12.sp
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -260,6 +322,163 @@ fun IconConfigMenu(
             surfaceAccent = surfaceAccent,
             isDarkTextEnabled = isDarkTextEnabled
         )
+    }
+
+    if (isIconPackPickerOpen) {
+        IconPackPickerDialog(
+            selectedIconPack = selectedIconPack,
+            loadIconPacks = loadIconPacks,
+            onIconPackSelected = { pack ->
+                onIconPackSelected(pack)
+                isIconPackPickerOpen = false
+            },
+            onDismiss = { isIconPackPickerOpen = false },
+            designStyle = designStyle,
+            surfaceAccent = surfaceAccent,
+            isDarkTextEnabled = isDarkTextEnabled
+        )
+    }
+}
+
+/**
+ * Auswahl-Sheet für das globale Icon-Pack (B4): listet "System-Icons" plus alle
+ * installierten Packs (ADW-/Nova-Konvention); die aktive Auswahl ist markiert.
+ */
+@Composable
+private fun IconPackPickerDialog(
+    selectedIconPack: String?,
+    loadIconPacks: suspend () -> List<IconPack>,
+    onIconPackSelected: (String?) -> Unit,
+    onDismiss: () -> Unit,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
+    isDarkTextEnabled: Boolean
+) {
+    val colorTheme = LocalColorTheme.current
+    val fontWeight = LocalFontWeight.current
+    val mainTextColor = LiquidGlass.mainTextColor(isDarkTextEnabled)
+    val secondaryTextColor = LiquidGlass.secondaryTextColor(isDarkTextEnabled)
+    val menuSurfaceColor = remember(colorTheme, isDarkTextEnabled, colorTheme.seedRevision()) {
+        colorTheme.menuSurfaceColor(isDarkTextEnabled)
+    }
+    val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp, bottomStart = 26.dp, bottomEnd = 26.dp)
+    val scrimColor = Color.Black.copy(alpha = if (isDarkTextEnabled) 0.24f else 0.42f)
+
+    // Packs off-main laden; null = noch am Laden.
+    val packs by produceState<List<IconPack>?>(initialValue = null) {
+        value = loadIconPacks()
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(scrimColor)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onDismiss() }
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+        ) {
+            val configuration = LocalConfiguration.current
+            val maxSheetHeight = remember(configuration.screenHeightDp) {
+                (configuration.screenHeightDp.dp * 0.7f)
+            }
+
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .fillMaxWidth()
+                    .widthIn(max = 460.dp)
+                    .heightIn(max = maxSheetHeight)
+                    .testTag("icon_pack_picker_dialog")
+                    .clip(shape)
+                    .designSurface(
+                        style = designStyle,
+                        shape = shape,
+                        isDarkText = isDarkTextEnabled,
+                        accent = surfaceAccent,
+                        fillAlpha = 0.08f
+                    )
+                    .clickable(enabled = false) {},
+                color = menuSurfaceColor.copy(alpha = if (designStyle.isGlassLike) 0.84f else 0.96f),
+                shape = shape,
+                shadowElevation = 28.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 16.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .size(width = 42.dp, height = 4.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(mainTextColor.copy(alpha = 0.18f))
+                    )
+
+                    Text(
+                        stringResource(R.string.icon_pack_pick_title),
+                        color = mainTextColor,
+                        fontSize = 20.sp,
+                        fontWeight = fontWeight.weight
+                    )
+
+                    when {
+                        packs == null -> Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = mainTextColor.copy(alpha = 0.6f))
+                        }
+
+                        else -> {
+                            IconActionButton(
+                                icon = Lucide.Smartphone,
+                                title = stringResource(R.string.icon_pack_system_default),
+                                subtitle = stringResource(R.string.icon_pack_system_default_sub),
+                                testTag = "icon_pack_option_system",
+                                onClick = { onIconPackSelected(null) },
+                                isSelected = selectedIconPack == null,
+                                designStyle = designStyle,
+                                surfaceAccent = surfaceAccent,
+                                isDarkTextEnabled = isDarkTextEnabled
+                            )
+                            packs.orEmpty().forEach { pack ->
+                                IconActionButton(
+                                    icon = Lucide.Package,
+                                    title = pack.label,
+                                    subtitle = pack.packageName,
+                                    testTag = "icon_pack_option_${pack.packageName}",
+                                    onClick = { onIconPackSelected(pack.packageName) },
+                                    isSelected = selectedIconPack == pack.packageName,
+                                    designStyle = designStyle,
+                                    surfaceAccent = surfaceAccent,
+                                    isDarkTextEnabled = isDarkTextEnabled
+                                )
+                            }
+                            if (packs.orEmpty().isEmpty()) {
+                                Text(
+                                    stringResource(R.string.icon_pack_none_installed),
+                                    color = secondaryTextColor,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

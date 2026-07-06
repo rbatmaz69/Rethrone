@@ -141,6 +141,11 @@
     <string name="widget_picker_empty">No widgets found</string>
     <string name="widget_bind_failed">Widget could not be added</string>
     <string name="cd_remove_widget">Remove widget</string>
+    <string name="icon_pack_section_title">Icon pack</string>
+    <string name="icon_pack_system_default">System icons</string>
+    <string name="icon_pack_system_default_sub">Default app icons without a pack</string>
+    <string name="icon_pack_pick_title">Choose icon pack</string>
+    <string name="icon_pack_none_installed">No icon packs installed. Install one from an app store to use it here.</string>
     <string name="edit_app_icons">Customize app icons</string>
     <string name="change_wallpaper">Change wallpaper</string>
     <string name="adjust_wallpaper">Adjust wallpaper</string>
