@@ -17,6 +17,7 @@ kover = "0.9.8"
 ucrop = "2.2.8"
 biometric = "1.1.0"
 turbine = "1.1.0"
+kxml2 = "2.3.0"
 hilt = "2.57.1"
 ksp = "2.2.10-2.0.2"
 hiltNavigationCompose = "1.2.0"
@@ -43,6 +44,7 @@ lucide-icons = { group = "com.composables", name = "icons-lucide", version.ref =
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+kxml2 = { group = "net.sf.kxml", name = "kxml2", version.ref = "kxml2" }
 detekt-formatting = { group = "io.gitlab.arturbosch.detekt", name = "detekt-formatting", version.ref = "detekt" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 ucrop = { group = "com.github.yalantis", name = "ucrop", version.ref = "ucrop" }

@@ -8,6 +8,8 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import io.mockk.Runs
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -191,6 +193,80 @@ class AppRepositoryTest {
         assertTrue(cachedIcon.exists())
         assertEquals("2:1000", File(iconDir, ".build_token").readText())
         verify { editor.clear() }
+        filesDir.deleteRecursively()
+    }
+
+    // --- B4: Icon-Pack-Integration ---
+
+    /** Context+PM-Mock mit leerem Icon-Cache-Verzeichnis für die Pack-Tests. */
+    private fun mockContextForIconPack(filesDir: File): Pair<Context, PackageManager> {
+        val context = mockk<Context>()
+        val packageManager = mockk<PackageManager>()
+        every { context.filesDir } returns filesDir
+        every { context.packageManager } returns packageManager
+        every { packageManager.getLaunchIntentForPackage(any()) } returns null
+        return context to packageManager
+    }
+
+    @Test
+    fun loadResolvedIcon_prefersPackIconAndSkipsQualityEvaluation() = runTest {
+        val filesDir = createTempDir()
+        val (context, packageManager) = mockContextForIconPack(filesDir)
+        val iconPacks = mockk<IconPackRepository>()
+        coEvery { iconPacks.hasPackIcon("com.pack.a", "com.app.a", null) } returns true
+        coEvery {
+            iconPacks.loadIconBitmap("com.pack.a", "com.app.a", null, any())
+        } returns mockk(relaxed = true)
+
+        val repository = AppRepository(context, iconPacks)
+        val resolved = repository.loadResolvedIcon(
+            AppInfo(label = "App A", packageName = "com.app.a", launchIntent = null),
+            iconPack = "com.pack.a",
+        )
+
+        // Pack-Grafik wird genutzt und die Qualitäts-Heuristik übersprungen (keep-original).
+        assertEquals(AutoIconFallbackType.ORIGINAL, resolved?.autoFallback?.type)
+        assertEquals("icon_pack", resolved?.autoFallback?.reason)
+        // System-Icon-Pfad wurde nie betreten.
+        verify(exactly = 0) { packageManager.getApplicationInfo(any<String>(), any<Int>()) }
+        filesDir.deleteRecursively()
+    }
+
+    @Test
+    fun loadResolvedIcon_fallsBackToSystemWhenPackHasNoIcon() = runTest {
+        val filesDir = createTempDir()
+        val (context, packageManager) = mockContextForIconPack(filesDir)
+        every { packageManager.getApplicationInfo("com.app.a", 0) } throws
+            PackageManager.NameNotFoundException()
+        val iconPacks = mockk<IconPackRepository>()
+        coEvery { iconPacks.hasPackIcon(any(), any(), any()) } returns false
+        coEvery { iconPacks.loadIconBitmap(any(), any(), any(), any()) } returns null
+
+        val repository = AppRepository(context, iconPacks)
+        val resolved = repository.loadResolvedIcon(
+            AppInfo(label = "App A", packageName = "com.app.a", launchIntent = null),
+            iconPack = "com.pack.a",
+        )
+
+        // Pack liefert nichts → System-Pfad wird versucht (schlägt im JVM-Test kontrolliert fehl).
+        assertEquals(null, resolved)
+        verify { packageManager.getApplicationInfo("com.app.a", 0) }
+        filesDir.deleteRecursively()
+    }
+
+    @Test
+    fun loadIcon_withoutIconPackNeverTouchesThePackRepository() = runTest {
+        val filesDir = createTempDir()
+        val (context, packageManager) = mockContextForIconPack(filesDir)
+        every { packageManager.getApplicationInfo("com.app.a", 0) } throws
+            PackageManager.NameNotFoundException()
+        val iconPacks = mockk<IconPackRepository>()
+
+        val repository = AppRepository(context, iconPacks)
+        repository.loadIcon("com.app.a")
+
+        coVerify(exactly = 0) { iconPacks.loadIconBitmap(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { iconPacks.hasPackIcon(any(), any(), any()) }
         filesDir.deleteRecursively()
     }
 

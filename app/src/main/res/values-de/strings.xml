@@ -141,6 +141,11 @@
     <string name="widget_picker_empty">Keine Widgets gefunden</string>
     <string name="widget_bind_failed">Widget konnte nicht hinzugefügt werden</string>
     <string name="cd_remove_widget">Widget entfernen</string>
+    <string name="icon_pack_section_title">Icon-Pack</string>
+    <string name="icon_pack_system_default">System-Icons</string>
+    <string name="icon_pack_system_default_sub">Standard-App-Icons ohne Pack</string>
+    <string name="icon_pack_pick_title">Icon-Pack wählen</string>
+    <string name="icon_pack_none_installed">Keine Icon-Packs installiert. Installiere eines aus einem App-Store, um es hier zu nutzen.</string>
     <string name="edit_app_icons">App-Icons anpassen</string>
     <string name="change_wallpaper">Wallpaper ändern</string>
     <string name="adjust_wallpaper">Hintergrund anpassen</string>

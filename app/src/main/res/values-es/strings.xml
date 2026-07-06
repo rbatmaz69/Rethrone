@@ -126,6 +126,11 @@
     <string name="widget_picker_empty">No se encontraron widgets</string>
     <string name="widget_bind_failed">No se pudo añadir el widget</string>
     <string name="cd_remove_widget">Quitar el widget</string>
+    <string name="icon_pack_section_title">Paquete de iconos</string>
+    <string name="icon_pack_system_default">Iconos del sistema</string>
+    <string name="icon_pack_system_default_sub">Iconos de apps por defecto, sin paquete</string>
+    <string name="icon_pack_pick_title">Elegir paquete de iconos</string>
+    <string name="icon_pack_none_installed">No hay paquetes de iconos instalados. Instala uno desde una tienda de apps.</string>
     <string name="edit_app_icons">Personalizar iconos de apps</string>
     <string name="change_wallpaper">Cambiar fondo de pantalla</string>
     <string name="adjust_wallpaper">Ajustar fondo de pantalla</string>

@@ -27,7 +27,12 @@ import java.io.FileOutputStream
  * Durch die Auslagerung aus der Activity wird die Logik testbar
  * und die Activity schlanker.
  */
-class AppRepository(private val context: Context) {
+class AppRepository(
+    private val context: Context,
+    // B4: optional, damit UI-Adhoc-Instanzen (UninstallAppsMenu) und Tests ohne
+    // Icon-Pack-Unterstützung weiter funktionieren.
+    private val iconPackRepository: IconPackRepository? = null,
+) {
 
     /** Cache-Verzeichnis für App-Icons im permanenten Speicher. */
     private val iconCacheDir: File by lazy {
@@ -133,26 +138,36 @@ class AppRepository(private val context: Context) {
 
     /**
      * Lädt ein einzelnes App-Icon – zuerst aus dem Datei-Cache,
-     * bei Cache-Miss vom PackageManager.
+     * bei Cache-Miss vom PackageManager (bzw. bei gesetztem [iconPack] aus dem Pack).
      */
-    suspend fun loadIcon(packageName: String): ImageBitmap? {
-        val bitmap = loadBitmap(packageName) ?: return null
+    suspend fun loadIcon(packageName: String, iconPack: String? = null): ImageBitmap? {
+        val bitmap = loadBitmap(packageName, iconPack) ?: return null
         return bitmap.toPreparedImageBitmap()
     }
 
     /**
      * Lädt ein einzelnes App-Icon und berechnet die automatische Fallback-Entscheidung.
+     *
+     * Hat das gewählte Icon-Pack ein Mapping für die App, wird die Qualitäts-Heuristik
+     * bewusst übersprungen (keep-original) – Pack-Grafiken sollen nie durch den
+     * Initialen-Fallback ersetzt werden.
      */
-    suspend fun loadResolvedIcon(app: AppInfo): LoadedAppIcon? {
-        val bitmap = loadBitmap(app.packageName) ?: return null
+    suspend fun loadResolvedIcon(app: AppInfo, iconPack: String? = null): LoadedAppIcon? {
+        val usesPackIcon = iconPack != null &&
+            iconPackRepository?.hasPackIcon(iconPack, app.packageName, launchComponentFlat(app.packageName)) == true
+        val bitmap = loadBitmap(app.packageName, iconPack) ?: return null
         return LoadedAppIcon(
             imageBitmap = bitmap.toPreparedImageBitmap(),
-            autoFallback = IconQualityEvaluator.evaluate(
-                bitmap = bitmap,
-                packageName = app.packageName,
-                label = app.label,
-                explicitRule = app.autoIconRule
-            )
+            autoFallback = if (usesPackIcon) {
+                AutoIconFallback(type = AutoIconFallbackType.ORIGINAL, reason = "icon_pack")
+            } else {
+                IconQualityEvaluator.evaluate(
+                    bitmap = bitmap,
+                    packageName = app.packageName,
+                    label = app.label,
+                    explicitRule = app.autoIconRule
+                )
+            }
         )
     }
 
@@ -162,6 +177,7 @@ class AppRepository(private val context: Context) {
     suspend fun loadIconsWithPriority(
         apps: List<AppInfo>,
         favoritePackages: List<String>,
+        iconPack: String? = null,
         onIconLoaded: suspend (Int, LoadedAppIcon) -> Unit
     ) {
         val favSet = favoritePackages.toSet()
@@ -170,7 +186,7 @@ class AppRepository(private val context: Context) {
         sortedIndices.forEachIndexed { loopIdx, appIdx ->
             if (appIdx >= apps.size) return@forEachIndexed
             val app = apps[appIdx]
-            val resolvedIcon = loadResolvedIcon(app)
+            val resolvedIcon = loadResolvedIcon(app, iconPack)
             if (resolvedIcon != null) {
                 onIconLoaded(appIdx, resolvedIcon)
             }
@@ -194,11 +210,16 @@ class AppRepository(private val context: Context) {
 
     // ── Private Hilfsmethoden ────────────────────────────────────────
 
-    private suspend fun loadBitmap(packageName: String): Bitmap? {
+    private suspend fun loadBitmap(packageName: String, iconPack: String? = null): Bitmap? {
         val cached = loadBitmapFromCache(packageName)
         if (cached != null) return cached
-        return loadBitmapFromSystem(packageName)
+        return loadBitmapFromSystem(packageName, iconPack)
     }
+
+    /** Geflattete Launch-Activity-Component einer App (für das appfilter-Lookup). */
+    private fun launchComponentFlat(packageName: String): String? = runCatching {
+        context.packageManager.getLaunchIntentForPackage(packageName)?.component?.flattenToString()
+    }.getOrNull()
 
     private suspend fun loadBitmapFromCache(packageName: String): Bitmap? =
         withContext(Dispatchers.IO) {
@@ -211,23 +232,38 @@ class AppRepository(private val context: Context) {
             }
         }
 
-    private suspend fun loadBitmapFromSystem(packageName: String): Bitmap? =
+    private suspend fun loadBitmapFromSystem(packageName: String, iconPack: String? = null): Bitmap? =
         withContext(Dispatchers.IO) {
             try {
-                val pm = context.packageManager
-                val info = pm.getApplicationInfo(packageName, 0)
-                val icon = info.loadIcon(pm)
-
-                val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
-                    icon.foreground ?: icon
+                // B4: bei gewähltem Icon-Pack zuerst dessen Grafik versuchen; null → normaler
+                // System-Icon-Pfad (Per-App-Fallback). Beide Quellen landen in derselben
+                // "{pkg}.png"-Cache-Datei – sicher, weil ein Pack-Wechsel den Cache komplett leert.
+                val packBitmap = if (iconPack != null) {
+                    iconPackRepository?.loadIconBitmap(
+                        packPackage = iconPack,
+                        packageName = packageName,
+                        componentFlat = launchComponentFlat(packageName),
+                        sizePx = ICON_SIZE,
+                    )
                 } else {
-                    icon
+                    null
                 }
 
-                val bitmap = createBitmap(ICON_SIZE, ICON_SIZE)
-                bitmap.applyCanvas {
-                    foregroundDrawable.setBounds(0, 0, ICON_SIZE, ICON_SIZE)
-                    foregroundDrawable.draw(this)
+                val bitmap = packBitmap ?: run {
+                    val pm = context.packageManager
+                    val info = pm.getApplicationInfo(packageName, 0)
+                    val icon = info.loadIcon(pm)
+
+                    val foregroundDrawable = if (icon is AdaptiveIconDrawable) {
+                        icon.foreground ?: icon
+                    } else {
+                        icon
+                    }
+
+                    createBitmap(ICON_SIZE, ICON_SIZE).applyCanvas {
+                        foregroundDrawable.setBounds(0, 0, ICON_SIZE, ICON_SIZE)
+                        foregroundDrawable.draw(this)
+                    }
                 }
 
                 try {
