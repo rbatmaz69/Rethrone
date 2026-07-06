@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.HostedWidget
+import com.example.androidlauncher.data.WidgetSizeDp
 
 /**
  * Bündelt die transienten Zustände des Edit-Modus auf dem Startbildschirm
@@ -39,6 +40,11 @@ internal class HomeDragStateHolder(
         initialWidgets.forEach {
             put(HomeEditTarget.Widget(it.appWidgetId), Offset(it.offsetX, it.offsetY))
         }
+    }
+
+    /** Live-Größen der gehosteten Widgets während des Resize-Drags (B1-PR4). */
+    val widgetSizes = mutableStateMapOf<Int, WidgetSizeDp>().apply {
+        initialWidgets.forEach { put(it.appWidgetId, WidgetSizeDp(it.widthDp, it.heightDp)) }
     }
 
     /** Neutralposition (Bounds ohne Offset) je Element – Basis der Kollisionsprüfung. */
@@ -79,6 +85,7 @@ internal class HomeDragStateHolder(
                 offsets.remove(stale)
                 neutralBounds.remove(stale)
                 lastBlockedHapticMs.remove(stale)
+                widgetSizes.remove(stale.appWidgetId)
                 if (selectedEditTarget == stale) {
                     selectedEditTarget = null
                     isEditTargetUserPinned = false
@@ -86,6 +93,7 @@ internal class HomeDragStateHolder(
             }
         widgets.forEach {
             offsets[HomeEditTarget.Widget(it.appWidgetId)] = Offset(it.offsetX, it.offsetY)
+            widgetSizes[it.appWidgetId] = WidgetSizeDp(it.widthDp, it.heightDp)
         }
     }
 
@@ -103,6 +111,9 @@ internal class HomeDragStateHolder(
             (target as? HomeEditTarget.Widget)?.let { it.appWidgetId to offset }
         }
         .toMap()
+
+    /** Aktuelle Live-Größen der gehosteten Widgets (Speichern-Knopf, B1-PR4). */
+    fun toWidgetSizes(): Map<Int, WidgetSizeDp> = widgetSizes.toMap()
 }
 
 /** Merkt sich den Holder über Recompositions hinweg (nicht über Config-Wechsel). */

@@ -3,6 +3,7 @@ package com.example.androidlauncher.ui
 import androidx.compose.ui.geometry.Offset
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.HostedWidget
+import com.example.androidlauncher.data.WidgetSizeDp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -100,5 +101,31 @@ class HomeDragStateHolderTest {
 
         assertTrue(holder.offsets.containsKey(HomeEditTarget.Widget(5)))
         assertEquals(mapOf(5 to Offset(3f, 4f)), holder.toWidgetOffsets())
+    }
+
+    // --- B1-PR4: Live-Größen beim Resize ---
+
+    @Test
+    fun `widget sizes seed from persisted entries and roundtrip`() {
+        val holder = HomeDragStateHolder(HomeLayout(), listOf(widget(7)))
+
+        assertEquals(mapOf(7 to WidgetSizeDp(200, 100)), holder.toWidgetSizes())
+
+        holder.widgetSizes[7] = WidgetSizeDp(260, 140)
+        assertEquals(mapOf(7 to WidgetSizeDp(260, 140)), holder.toWidgetSizes())
+
+        // Abbrechen: seedFrom revertiert auch die Live-Größen.
+        holder.seedFrom(HomeLayout(), listOf(widget(7)))
+        assertEquals(mapOf(7 to WidgetSizeDp(200, 100)), holder.toWidgetSizes())
+    }
+
+    @Test
+    fun `removed widgets drop their size entries too`() {
+        val holder = HomeDragStateHolder(HomeLayout(), listOf(widget(1), widget(2)))
+
+        holder.seedFrom(HomeLayout(), listOf(widget(1)))
+
+        assertEquals(mapOf(1 to WidgetSizeDp(200, 100)), holder.toWidgetSizes())
+        assertFalse(holder.widgetSizes.containsKey(2))
     }
 }

@@ -141,6 +141,7 @@
     <string name="widget_picker_empty">No widgets found</string>
     <string name="widget_bind_failed">Widget could not be added</string>
     <string name="cd_remove_widget">Remove widget</string>
+    <string name="cd_resize_widget">Resize widget</string>
     <string name="icon_pack_section_title">Icon pack</string>
     <string name="icon_pack_system_default">System icons</string>
     <string name="icon_pack_system_default_sub">Default app icons without a pack</string>

@@ -120,6 +120,7 @@ import com.example.androidlauncher.data.WidgetSizeDp
 import com.example.androidlauncher.data.backup.BackupSerializer
 import com.example.androidlauncher.data.backup.RestoreResult
 import com.example.androidlauncher.data.defaultWidgetSizeDp
+import com.example.androidlauncher.data.resolveResizeLimits
 import com.example.androidlauncher.gesture.GestureActionEffects
 import com.example.androidlauncher.gesture.GestureActionHandler
 import com.example.androidlauncher.ui.AnimationsConfigMenu
@@ -1350,11 +1351,47 @@ class MainActivity : ComponentActivity() {
                                 },
                                 hostedWidgets = hostedWidgets,
                                 widgetViewProvider = { id -> widgetHostManager.createView(id) },
-                                onSaveWidgetOffsets = { widgetOffsets ->
-                                    scope.launch { widgetHostManager.updateOffsets(widgetOffsets) }
+                                onSaveWidgetLayout = { widgetOffsets, widgetSizes ->
+                                    scope.launch {
+                                        widgetHostManager.updateWidgetPlacement(widgetOffsets, widgetSizes)
+                                    }
                                 },
                                 onRemoveWidget = { id ->
                                     scope.launch { widgetHostManager.removeWidget(id) }
+                                },
+                                // B1-PR4: Resize-Grenzen aus den Provider-Angaben; maxResize*
+                                // gibt es erst ab API 31 (0 = vom Provider nicht begrenzt).
+                                widgetResizeLimits = { id ->
+                                    widgetHostManager.providerInfo(id)?.let { info ->
+                                        val current = hostedWidgets.firstOrNull { it.appWidgetId == id }
+                                        resolveResizeLimits(
+                                            resizeMode = info.resizeMode,
+                                            minResizeWidthDp = if (info.minResizeWidth > 0) {
+                                                info.minResizeWidth
+                                            } else {
+                                                info.minWidth
+                                            },
+                                            minResizeHeightDp = if (info.minResizeHeight > 0) {
+                                                info.minResizeHeight
+                                            } else {
+                                                info.minHeight
+                                            },
+                                            maxResizeWidthDp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                info.maxResizeWidth
+                                            } else {
+                                                0
+                                            },
+                                            maxResizeHeightDp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                info.maxResizeHeight
+                                            } else {
+                                                0
+                                            },
+                                            currentWidthDp = current?.widthDp ?: 0,
+                                            currentHeightDp = current?.heightDp ?: 0,
+                                            screenWidthDp = configuration.screenWidthDp,
+                                            screenHeightDp = configuration.screenHeightDp,
+                                        )
+                                    }
                                 }
                             )
                         }

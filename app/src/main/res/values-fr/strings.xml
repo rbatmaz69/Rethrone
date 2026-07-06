@@ -126,6 +126,7 @@
     <string name="widget_picker_empty">Aucun widget trouvé</string>
     <string name="widget_bind_failed">Impossible d\'ajouter le widget</string>
     <string name="cd_remove_widget">Retirer le widget</string>
+    <string name="cd_resize_widget">Redimensionner le widget</string>
     <string name="icon_pack_section_title">Pack d\'icônes</string>
     <string name="icon_pack_system_default">Icônes système</string>
     <string name="icon_pack_system_default_sub">Icônes d\'apps par défaut, sans pack</string>
