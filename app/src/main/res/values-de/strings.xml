@@ -136,6 +136,10 @@
     <string name="edge_thickness_label">Stärke: %1$s×</string>
     <string name="app_access_label">App-Zugriff</string>
     <string name="edit_home_layout">Startbildschirm-Layout anpassen</string>
+    <string name="add_widget">Widget hinzufügen</string>
+    <string name="widget_picker_title">Widgets</string>
+    <string name="widget_picker_empty">Keine Widgets gefunden</string>
+    <string name="widget_bind_failed">Widget konnte nicht hinzugefügt werden</string>
     <string name="edit_app_icons">App-Icons anpassen</string>
     <string name="change_wallpaper">Wallpaper ändern</string>
     <string name="adjust_wallpaper">Hintergrund anpassen</string>

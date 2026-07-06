@@ -105,6 +105,17 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `back closes the widget picker before the drawer`() {
+        // Der Widget-Picker ist ein inneres Menü (öffnet aus dem Einstellungs-Menü heraus).
+        vm.setDrawerOpen(true)
+        vm.openOverlay(ActiveOverlay.WidgetPicker)
+
+        vm.onBack()
+        assertEquals(ActiveOverlay.None, state.activeOverlay)
+        assertTrue(state.isDrawerOpen)
+    }
+
+    @Test
     fun `back on empty state changes nothing and modal detection matches`() {
         assertFalse(state.hasModalSurface)
         vm.onBack()

@@ -33,6 +33,9 @@ sealed interface ActiveOverlay {
     data object WallpaperConfig : ActiveOverlay
     data object Info : ActiveOverlay
 
+    /** Auswahl eines System-Widgets für den Startbildschirm (B1, AppWidgetHost). */
+    data object WidgetPicker : ActiveOverlay
+
     /** Konfiguration eines konkreten Ordners (früher `selectedFolderForConfig`). */
     data class FolderConfig(val folder: FolderInfo) : ActiveOverlay
 }

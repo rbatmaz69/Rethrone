@@ -145,6 +145,7 @@ class HomeViewModel @Inject constructor() : ViewModel() {
             ActiveOverlay.HiddenApps,
             ActiveOverlay.AppLock,
             ActiveOverlay.IconConfig,
+            ActiveOverlay.WidgetPicker,
         )
     }
 }

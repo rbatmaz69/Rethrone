@@ -136,6 +136,10 @@
     <string name="edge_thickness_label">Thickness: %1$s×</string>
     <string name="app_access_label">App access</string>
     <string name="edit_home_layout">Customize home screen layout</string>
+    <string name="add_widget">Add widget</string>
+    <string name="widget_picker_title">Widgets</string>
+    <string name="widget_picker_empty">No widgets found</string>
+    <string name="widget_bind_failed">Widget could not be added</string>
     <string name="edit_app_icons">Customize app icons</string>
     <string name="change_wallpaper">Change wallpaper</string>
     <string name="adjust_wallpaper">Adjust wallpaper</string>
