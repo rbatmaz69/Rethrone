@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.HomeLayout
+import com.example.androidlauncher.data.HostedWidget
+import com.example.androidlauncher.data.WidgetSerializer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -50,6 +52,10 @@ class HomeLayoutSettings(private val dataStore: DataStore<Preferences>) {
         private val DATE_OFFSET_Y_KEY = floatPreferencesKey("date_offset_y")
         private val WEATHER_OFFSET_X_KEY = floatPreferencesKey("weather_offset_x")
         private val WEATHER_OFFSET_Y_KEY = floatPreferencesKey("weather_offset_y")
+
+        // Gehostete System-Widgets (B1) als JSON-Liste – variable Laenge passt nicht
+        // zu festen Float-Key-Paaren, daher ein einzelner String-Key.
+        private val HOSTED_WIDGETS_KEY = stringPreferencesKey("hosted_widgets")
     }
 
     val showFavoriteLabels: Flow<Boolean> = dataStore.data
@@ -82,6 +88,10 @@ class HomeLayoutSettings(private val dataStore: DataStore<Preferences>) {
     /** Ob das Erststart-Onboarding bereits abgeschlossen wurde. Default: false. */
     val isOnboardingCompleted: Flow<Boolean> = dataStore.data
         .map { it[ONBOARDING_COMPLETED_KEY] ?: false }
+
+    /** Gehostete System-Widgets (AppWidgetHost, B1); korrupte Daten ergeben eine leere Liste. */
+    val hostedWidgets: Flow<List<HostedWidget>> = dataStore.data
+        .map { WidgetSerializer.parseWidgets(it[HOSTED_WIDGETS_KEY] ?: "[]") }
 
     // Positionen aller unabhängig verschiebbaren Startbildschirm-Elemente.
     val homeLayout: Flow<HomeLayout> = dataStore.data
@@ -125,6 +135,11 @@ class HomeLayoutSettings(private val dataStore: DataStore<Preferences>) {
     /** Markiert das Erststart-Onboarding als abgeschlossen (oder setzt es zurück). */
     suspend fun setOnboardingCompleted(completed: Boolean) {
         dataStore.edit { it[ONBOARDING_COMPLETED_KEY] = completed }
+    }
+
+    /** Ersetzt den kompletten Bestand gehosteter Widgets (ein atomarer Write). */
+    suspend fun setHostedWidgets(widgets: List<HostedWidget>) {
+        dataStore.edit { it[HOSTED_WIDGETS_KEY] = WidgetSerializer.serializeWidgets(widgets) }
     }
 
     // Persistiert die Positionen aller verschiebbaren Startbildschirm-Elemente.

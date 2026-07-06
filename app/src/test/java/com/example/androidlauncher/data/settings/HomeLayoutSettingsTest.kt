@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.HomeLayout
+import com.example.androidlauncher.data.HostedWidget
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
@@ -78,6 +79,19 @@ class HomeLayoutSettingsTest {
         assertFalse(settings.isCalendarWidgetEnabled.first())
         assertFalse(settings.isSmartSuggestionsEnabled.first())
         assertTrue(settings.isOnboardingCompleted.first())
+    }
+
+    @Test
+    fun `hosted widgets default to empty and roundtrip`() = testScope.runTest {
+        assertTrue(settings.hostedWidgets.first().isEmpty())
+
+        val widgets = listOf(
+            HostedWidget(appWidgetId = 1, provider = "a/b", widthDp = 200, heightDp = 100, offsetX = 4f, offsetY = -6f),
+            HostedWidget(appWidgetId = 2, provider = "c/d", widthDp = 110, heightDp = 40),
+        )
+        settings.setHostedWidgets(widgets)
+
+        assertEquals(widgets, settings.hostedWidgets.first())
     }
 
     @Test

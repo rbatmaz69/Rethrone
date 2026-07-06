@@ -11,6 +11,7 @@ import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.NotificationStateStore
 import com.example.androidlauncher.data.SearchSuggestionsManager
 import com.example.androidlauncher.data.ThemeManager
+import com.example.androidlauncher.data.WidgetHostManager
 import com.example.androidlauncher.data.settings.AnimationSettings
 import com.example.androidlauncher.data.settings.AppearanceSettings
 import com.example.androidlauncher.data.settings.GestureSettings
@@ -122,4 +123,11 @@ object DataModule {
     @Singleton
     fun provideHomeLayoutSettings(@ApplicationContext context: Context): HomeLayoutSettings =
         HomeLayoutSettings(context)
+
+    @Provides
+    @Singleton
+    fun provideWidgetHostManager(
+        @ApplicationContext context: Context,
+        homeLayoutSettings: HomeLayoutSettings,
+    ): WidgetHostManager = WidgetHostManager(context, homeLayoutSettings)
 }
