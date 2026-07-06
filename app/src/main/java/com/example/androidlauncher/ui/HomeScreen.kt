@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
@@ -62,6 +63,9 @@ import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.HostedWidget
+import com.example.androidlauncher.data.WidgetResizeLimits
+import com.example.androidlauncher.data.WidgetSizeDp
+import com.example.androidlauncher.data.applyResizeDrag
 import com.example.androidlauncher.launchShortcut
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
@@ -118,8 +122,10 @@ fun HomeScreen(
     // B1: gehostete System-Widgets als frei verschiebbare Home-Objekte.
     hostedWidgets: List<HostedWidget> = emptyList(),
     widgetViewProvider: (Int) -> AppWidgetHostView? = { null },
-    onSaveWidgetOffsets: (Map<Int, Offset>) -> Unit = {},
-    onRemoveWidget: (Int) -> Unit = {}
+    onSaveWidgetLayout: (Map<Int, Offset>, Map<Int, WidgetSizeDp>) -> Unit = { _, _ -> },
+    onRemoveWidget: (Int) -> Unit = {},
+    // B1-PR4: Resize-Grenzen je Widget (null = unbekannt/kein Resize, z. B. Preview).
+    widgetResizeLimits: (Int) -> WidgetResizeLimits? = { null }
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
@@ -683,11 +689,78 @@ fun HomeScreen(
                             .targetLayout(widgetTarget)
                             .targetEditModifier(widgetTarget)
                     ) {
+                        // Live-Größe aus dem Drag-State (Resize-Vorschau); Fallback: persistiert.
+                        val liveSize = dragState.widgetSizes[widget.appWidgetId]
                         HostedWidgetView(
-                            widget = widget,
+                            widget = liveSize
+                                ?.let { widget.copy(widthDp = it.widthDp, heightDp = it.heightDp) }
+                                ?: widget,
                             hostView = if (isPreview) null else widgetViewProvider(widget.appWidgetId),
                             isEditMode = isEditMode,
                         )
+                        // Resize-Handle (Ecke unten rechts) am ausgewählten Widget – nur wenn
+                        // der Provider Resize erlaubt (B1-PR4). Gesperrte Achsen sind in den
+                        // Limits über min == max abgebildet, der Drag dort ist ein No-Op.
+                        if (isEditMode && selectedEditTarget == widgetTarget) {
+                            val resizable = remember(widgetTarget) {
+                                widgetResizeLimits(widget.appWidgetId)?.isResizable == true
+                            }
+                            if (resizable) {
+                                var resizeStartSize by remember { mutableStateOf<WidgetSizeDp?>(null) }
+                                var resizeLimits by remember { mutableStateOf<WidgetResizeLimits?>(null) }
+                                var resizeTotalDrag by remember { mutableStateOf(Offset.Zero) }
+                                // Vorab gefangen: im PointerInputScope würde `density` die
+                                // Scope-Property (Float) statt des äußeren LocalDensity treffen.
+                                val densityFactor = density.density
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .zIndex(10f)
+                                        .size(28.dp)
+                                        .clip(CircleShape)
+                                        .designSurface(
+                                            designStyle,
+                                            CircleShape,
+                                            isDarkTextEnabled,
+                                            surfaceAccent,
+                                            fillAlpha = 0.5f
+                                        )
+                                        .pointerInput(widgetTarget) {
+                                            detectDragGestures(
+                                                onDragStart = {
+                                                    resizeStartSize =
+                                                        dragState.widgetSizes[widget.appWidgetId]
+                                                            ?: WidgetSizeDp(widget.widthDp, widget.heightDp)
+                                                    resizeLimits = widgetResizeLimits(widget.appWidgetId)
+                                                    resizeTotalDrag = Offset.Zero
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    resizeTotalDrag += dragAmount
+                                                    val start = resizeStartSize ?: return@detectDragGestures
+                                                    val limits = resizeLimits ?: return@detectDragGestures
+                                                    dragState.widgetSizes[widget.appWidgetId] =
+                                                        applyResizeDrag(
+                                                            startSize = start,
+                                                            totalDragXDp = resizeTotalDrag.x / densityFactor,
+                                                            totalDragYDp = resizeTotalDrag.y / densityFactor,
+                                                            limits = limits,
+                                                        )
+                                                }
+                                            )
+                                        }
+                                        .testTag("home_widget_resize_${widget.appWidgetId}"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.OpenInFull,
+                                        contentDescription = stringResource(R.string.cd_resize_widget),
+                                        tint = mainTextColor,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
                         // Entfernen-Badge am ausgewählten Widget (nur im Edit-Modus).
                         if (isEditMode && selectedEditTarget == widgetTarget) {
                             Box(
@@ -934,7 +1007,7 @@ fun HomeScreen(
                         onClick = {
                             updateCollisionFeedback(false)
                             onSaveHomeLayout(dragState.toHomeLayout())
-                            onSaveWidgetOffsets(dragState.toWidgetOffsets())
+                            onSaveWidgetLayout(dragState.toWidgetOffsets(), dragState.toWidgetSizes())
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.position_saved),
