@@ -43,6 +43,7 @@ import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.Clock
 import com.composables.icons.lucide.CloudSun
+import com.composables.icons.lucide.Download
 import com.composables.icons.lucide.Flashlight
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.House
@@ -59,6 +60,7 @@ import com.composables.icons.lucide.Shield
 import com.composables.icons.lucide.Smartphone
 import com.composables.icons.lucide.Sparkles
 import com.composables.icons.lucide.Trash2
+import com.composables.icons.lucide.Upload
 import com.example.androidlauncher.ForegroundAppResolver
 import com.example.androidlauncher.LauncherAccessibilityService
 import com.example.androidlauncher.LauncherLogic
@@ -542,6 +544,50 @@ fun EditConfigMenu(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled
+                )
+            }
+
+            item {
+                EditSectionHeader(
+                    title = stringResource(R.string.section_backup),
+                    mainTextColor = mainTextColor
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.Download,
+                    label = stringResource(R.string.backup_export),
+                    onClick = { actions.exportBackup() },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "backup_export_item"
+                )
+            }
+
+            item {
+                EditMenuItem(
+                    icon = Lucide.Upload,
+                    label = stringResource(R.string.backup_import),
+                    onClick = { actions.importBackup() },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "backup_import_item"
+                )
+            }
+
+            // Klartext-Hinweis: Exporte enthalten u. a. die Liste der ausgeblendeten
+            // Apps unverschlüsselt (gerätegebundener Ciphertext wäre im Backup nutzlos).
+            item {
+                Text(
+                    text = stringResource(R.string.backup_plaintext_hint),
+                    fontSize = 12.sp,
+                    color = mainTextColor.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
             }
 

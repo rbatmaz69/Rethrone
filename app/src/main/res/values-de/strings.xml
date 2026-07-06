@@ -155,6 +155,15 @@
     <string name="smart_suggestions">Intelligente Suchvorschläge</string>
     <string name="smart_suggestions_desc">Lernt aus App-Starts und Websuchen. Alles bleibt lokal auf dem Gerät.</string>
     <string name="clear_search_history">Suchverlauf löschen</string>
+    <string name="section_backup">Backup</string>
+    <string name="backup_export">Einstellungen exportieren</string>
+    <string name="backup_import">Einstellungen importieren</string>
+    <string name="backup_plaintext_hint">Die Backup-Datei enthält deine Konfiguration im Klartext, auch die ausgeblendeten Apps. App-Sperre und PIN werden nie exportiert.</string>
+    <string name="backup_export_success">Backup gespeichert</string>
+    <string name="backup_export_error">Backup fehlgeschlagen</string>
+    <string name="backup_import_success">Backup wiederhergestellt</string>
+    <string name="backup_import_error">Datei konnte nicht gelesen werden</string>
+    <string name="backup_import_unsupported">Backup stammt aus einer neueren App-Version</string>
     <string name="default_launcher">Standard-Launcher</string>
     <string name="notifications_label">Benachrichtigung</string>
     <string name="accessibility_label">Bedienungshilfen</string>

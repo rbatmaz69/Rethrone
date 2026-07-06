@@ -29,6 +29,12 @@ interface EditConfigActions {
 
     /** Öffnet den Foto-Picker für ein eigenes Wallpaper (Ergebnis → Crop-Flow der Activity). */
     fun pickWallpaper()
+
+    /** Öffnet den SAF-Dialog zum Speichern einer Backup-Datei (B5). */
+    fun exportBackup()
+
+    /** Öffnet den SAF-Dialog zum Einlesen einer Backup-Datei (B5). */
+    fun importBackup()
 }
 
 /**

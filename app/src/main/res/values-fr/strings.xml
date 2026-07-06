@@ -140,6 +140,15 @@
     <string name="smart_suggestions">Suggestions de recherche intelligentes</string>
     <string name="smart_suggestions_desc">Apprend des lancements d\'apps et des recherches web. Tout reste local sur l\'appareil.</string>
     <string name="clear_search_history">Effacer l\'historique de recherche</string>
+    <string name="section_backup">Sauvegarde</string>
+    <string name="backup_export">Exporter les réglages</string>
+    <string name="backup_import">Importer les réglages</string>
+    <string name="backup_plaintext_hint">Le fichier de sauvegarde contient votre configuration en clair, y compris les apps masquées. Le verrouillage d\'apps et le code PIN ne sont jamais exportés.</string>
+    <string name="backup_export_success">Sauvegarde enregistrée</string>
+    <string name="backup_export_error">Échec de la sauvegarde</string>
+    <string name="backup_import_success">Sauvegarde restaurée</string>
+    <string name="backup_import_error">Impossible de lire le fichier</string>
+    <string name="backup_import_unsupported">La sauvegarde provient d\'une version plus récente de l\'app</string>
     <string name="default_launcher">Lanceur par défaut</string>
     <string name="notifications_label">Notifications</string>
     <string name="accessibility_label">Accessibilité</string>
