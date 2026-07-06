@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import com.example.androidlauncher.data.HomeLayout
+import com.example.androidlauncher.data.HostedWidget
 
 /**
  * Bündelt die transienten Zustände des Edit-Modus auf dem Startbildschirm
@@ -18,17 +19,27 @@ import com.example.androidlauncher.data.HomeLayout
  * `remember`-basiert – der persistierte Stand lebt in `HomeLayoutSettings`,
  * dieser Holder hält nur die Live-Vorschau während des Bearbeitens.
  * Geometrie-Entscheidungen bleiben framework-frei in `HomeGeometry.kt`.
+ *
+ * Neben den vier eingebauten Elementen verwaltet der Holder auch die Offsets
+ * gehosteter System-Widgets (B1) – gleiche Drag-Mechanik, dynamische Targets.
  */
 @Stable
-internal class HomeDragStateHolder(initialLayout: HomeLayout) {
+internal class HomeDragStateHolder(
+    initialLayout: HomeLayout,
+    initialWidgets: List<HostedWidget> = emptyList(),
+) {
 
     /** Live-Offsets je Element; im Edit-Modus folgt das Element dem Finger. */
     val offsets = mutableStateMapOf(
-        HomeEditTarget.CLOCK to initialLayout.clock,
-        HomeEditTarget.DATE to initialLayout.date,
-        HomeEditTarget.WEATHER to initialLayout.weather,
-        HomeEditTarget.FAVORITES to initialLayout.favorites,
-    )
+        HomeEditTarget.Clock to initialLayout.clock,
+        HomeEditTarget.Date to initialLayout.date,
+        HomeEditTarget.Weather to initialLayout.weather,
+        HomeEditTarget.Favorites to initialLayout.favorites,
+    ).apply {
+        initialWidgets.forEach {
+            put(HomeEditTarget.Widget(it.appWidgetId), Offset(it.offsetX, it.offsetY))
+        }
+    }
 
     /** Neutralposition (Bounds ohne Offset) je Element – Basis der Kollisionsprüfung. */
     val neutralBounds = mutableStateMapOf<HomeEditTarget, Rect>()
@@ -50,26 +61,53 @@ internal class HomeDragStateHolder(initialLayout: HomeLayout) {
     var isEditTargetUserPinned by mutableStateOf(false)
 
     /**
-     * Seedet die Live-Offsets aus dem persistierten Layout – beim Betreten des
+     * Seedet die Live-Offsets aus dem persistierten Stand – beim Betreten des
      * Edit-Modus 1:1 übernehmen, Abbrechen revertiert damit automatisch.
+     * Widget-Einträge werden synchronisiert: entfernte Widgets verschwinden
+     * mitsamt Buchführung (und ggf. Auswahl) aus dem Holder.
      */
-    fun seedFrom(layout: HomeLayout) {
-        offsets[HomeEditTarget.CLOCK] = layout.clock
-        offsets[HomeEditTarget.DATE] = layout.date
-        offsets[HomeEditTarget.WEATHER] = layout.weather
-        offsets[HomeEditTarget.FAVORITES] = layout.favorites
+    fun seedFrom(layout: HomeLayout, widgets: List<HostedWidget> = emptyList()) {
+        offsets[HomeEditTarget.Clock] = layout.clock
+        offsets[HomeEditTarget.Date] = layout.date
+        offsets[HomeEditTarget.Weather] = layout.weather
+        offsets[HomeEditTarget.Favorites] = layout.favorites
+
+        val widgetTargets = widgets.map { HomeEditTarget.Widget(it.appWidgetId) }.toSet()
+        offsets.keys.filterIsInstance<HomeEditTarget.Widget>()
+            .filterNot { it in widgetTargets }
+            .forEach { stale ->
+                offsets.remove(stale)
+                neutralBounds.remove(stale)
+                lastBlockedHapticMs.remove(stale)
+                if (selectedEditTarget == stale) {
+                    selectedEditTarget = null
+                    isEditTargetUserPinned = false
+                }
+            }
+        widgets.forEach {
+            offsets[HomeEditTarget.Widget(it.appWidgetId)] = Offset(it.offsetX, it.offsetY)
+        }
     }
 
     /** Aktuelle Live-Offsets als persistierbares [HomeLayout] (Speichern-Knopf). */
     fun toHomeLayout(): HomeLayout = HomeLayout(
-        clock = offsets[HomeEditTarget.CLOCK] ?: Offset.Zero,
-        date = offsets[HomeEditTarget.DATE] ?: Offset.Zero,
-        weather = offsets[HomeEditTarget.WEATHER] ?: Offset.Zero,
-        favorites = offsets[HomeEditTarget.FAVORITES] ?: Offset.Zero,
+        clock = offsets[HomeEditTarget.Clock] ?: Offset.Zero,
+        date = offsets[HomeEditTarget.Date] ?: Offset.Zero,
+        weather = offsets[HomeEditTarget.Weather] ?: Offset.Zero,
+        favorites = offsets[HomeEditTarget.Favorites] ?: Offset.Zero,
     )
+
+    /** Aktuelle Live-Offsets der gehosteten Widgets, keyed per appWidgetId (Speichern-Knopf). */
+    fun toWidgetOffsets(): Map<Int, Offset> = offsets.entries
+        .mapNotNull { (target, offset) ->
+            (target as? HomeEditTarget.Widget)?.let { it.appWidgetId to offset }
+        }
+        .toMap()
 }
 
 /** Merkt sich den Holder über Recompositions hinweg (nicht über Config-Wechsel). */
 @Composable
-internal fun rememberHomeDragState(initialLayout: HomeLayout): HomeDragStateHolder =
-    remember { HomeDragStateHolder(initialLayout) }
+internal fun rememberHomeDragState(
+    initialLayout: HomeLayout,
+    initialWidgets: List<HostedWidget> = emptyList(),
+): HomeDragStateHolder = remember { HomeDragStateHolder(initialLayout, initialWidgets) }

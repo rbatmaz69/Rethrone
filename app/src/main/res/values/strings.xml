@@ -140,6 +140,7 @@
     <string name="widget_picker_title">Widgets</string>
     <string name="widget_picker_empty">No widgets found</string>
     <string name="widget_bind_failed">Widget could not be added</string>
+    <string name="cd_remove_widget">Remove widget</string>
     <string name="edit_app_icons">Customize app icons</string>
     <string name="change_wallpaper">Change wallpaper</string>
     <string name="adjust_wallpaper">Adjust wallpaper</string>

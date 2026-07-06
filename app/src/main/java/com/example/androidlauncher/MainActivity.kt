@@ -376,6 +376,9 @@ class MainActivity : ComponentActivity() {
             // Positionen der unabhängig verschiebbaren Startbildschirm-Elemente.
             val homeLayout by themeManager.homeLayout.collectAsState(initial = HomeLayout())
 
+            // B1: platzierte System-Widgets (AppWidgetHost).
+            val hostedWidgets by widgetHostManager.widgets.collectAsState(initial = emptyList())
+
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
             val autoIconFallbacks by iconManager.autoIconFallbacks.collectAsState(initial = emptyMap())
@@ -1295,6 +1298,14 @@ class MainActivity : ComponentActivity() {
                                 searchButtonBounceToken = searchButtonBounceToken,
                                 onSearchButtonBoundsChanged = { bounds ->
                                     homeSearchButtonBounds = bounds
+                                },
+                                hostedWidgets = hostedWidgets,
+                                widgetViewProvider = { id -> widgetHostManager.createView(id) },
+                                onSaveWidgetOffsets = { widgetOffsets ->
+                                    scope.launch { widgetHostManager.updateOffsets(widgetOffsets) }
+                                },
+                                onRemoveWidget = { id ->
+                                    scope.launch { widgetHostManager.removeWidget(id) }
                                 }
                             )
                         }

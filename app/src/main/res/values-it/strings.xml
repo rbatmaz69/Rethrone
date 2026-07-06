@@ -125,6 +125,7 @@
     <string name="widget_picker_title">Widget</string>
     <string name="widget_picker_empty">Nessun widget trovato</string>
     <string name="widget_bind_failed">Impossibile aggiungere il widget</string>
+    <string name="cd_remove_widget">Rimuovi widget</string>
     <string name="edit_app_icons">Personalizza le icone delle app</string>
     <string name="change_wallpaper">Cambia sfondo</string>
     <string name="adjust_wallpaper">Regola lo sfondo</string>
