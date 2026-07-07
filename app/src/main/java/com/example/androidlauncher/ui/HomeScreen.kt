@@ -929,8 +929,19 @@ fun HomeScreen(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Rounded.Add, contentDescription = null, tint = mainTextColor)
+                                Icon(
+                                    Icons.Rounded.Add,
+                                    contentDescription = stringResource(R.string.cd_add_favorites),
+                                    tint = mainTextColor
+                                )
                             }
+                            // U2: kleiner Hinweis unter dem "+", was der Kreis tut.
+                            Text(
+                                text = stringResource(R.string.favorites_empty_hint),
+                                color = mainTextColor.copy(alpha = 0.6f),
+                                fontSize = 13.sp,
+                                modifier = Modifier.testTag("favorites_empty_hint")
+                            )
                         } else {
                             favorites.forEachIndexed { index, app ->
                                 FavoriteItem(
@@ -1000,7 +1011,8 @@ fun HomeScreen(
                         },
                         sizeDp = 56.dp,
                         tint = mainTextColor.copy(alpha = 0.6f),
-                        testTag = "home_edit_cancel"
+                        testTag = "home_edit_cancel",
+                        contentDescription = stringResource(R.string.cd_cancel)
                     )
 
                     EditControlButton(
@@ -1019,7 +1031,8 @@ fun HomeScreen(
                         sizeDp = 56.dp,
                         containerColor = mainTextColor,
                         tint = if (isDarkTextEnabled) Color.White else Color(0xFF0F172A),
-                        testTag = "home_edit_save"
+                        testTag = "home_edit_save",
+                        contentDescription = stringResource(R.string.cd_save)
                     )
                 }
             }
@@ -1174,7 +1187,9 @@ fun HomeScreen(
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.rotate(rotation)) {
                             Icon(
                                 imageVector = if (isSettingsOpen) Icons.Rounded.Close else Icons.Rounded.Settings,
-                                contentDescription = null,
+                                contentDescription = stringResource(
+                                    if (isSettingsOpen) R.string.cd_close else R.string.cd_open_settings
+                                ),
                                 tint = mainTextColor,
                                 modifier = Modifier.size(if (isSettingsOpen) 32.dp else 28.dp)
                             )

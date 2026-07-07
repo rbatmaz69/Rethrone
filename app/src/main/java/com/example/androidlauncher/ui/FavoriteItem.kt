@@ -49,7 +49,8 @@ internal fun EditControlButton(
     tint: Color,
     sizeDp: androidx.compose.ui.unit.Dp = 56.dp,
     containerColor: Color = Color.Transparent,
-    testTag: String? = null
+    testTag: String? = null,
+    contentDescription: String? = null
 ) {
     val intSrc = remember { MutableInteractionSource() }
     val designStyle = LocalDesignStyle.current
@@ -72,7 +73,7 @@ internal fun EditControlButton(
             .clickable(interactionSource = intSrc, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+        Icon(imageVector = icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(24.dp))
     }
 }
 

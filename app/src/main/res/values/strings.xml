@@ -79,6 +79,11 @@
 
     <!-- Content descriptions (accessibility) -->
     <string name="cd_close">Close</string>
+    <string name="cd_cancel">Cancel</string>
+    <string name="cd_move_up">Move up</string>
+    <string name="cd_move_down">Move down</string>
+    <string name="cd_open_settings">Open menu</string>
+    <string name="cd_add_favorites">Add favorites</string>
     <string name="cd_back">Back</string>
     <string name="cd_search">Search</string>
     <string name="cd_clear">Clear</string>
@@ -435,4 +440,6 @@
     <string name="onboarding_gesture_shake_desc">Shake your phone for a quick action like the flashlight.</string>
     <string name="onboarding_finish_title">You\'re all set</string>
     <string name="onboarding_finish_desc">Enjoy your new home screen. Everything can be changed anytime in the settings.</string>
+    <string name="drawer_search_no_results">No apps found</string>
+    <string name="favorites_empty_hint">Add favorites</string>
 </resources>

@@ -79,6 +79,11 @@
 
     <!-- Descrizioni del contenuto (accessibilità) -->
     <string name="cd_close">Chiudi</string>
+    <string name="cd_cancel">Annulla</string>
+    <string name="cd_move_up">Sposta in alto</string>
+    <string name="cd_move_down">Sposta in basso</string>
+    <string name="cd_open_settings">Apri il menu</string>
+    <string name="cd_add_favorites">Aggiungi preferiti</string>
     <string name="cd_back">Indietro</string>
     <string name="cd_search">Cerca</string>
     <string name="cd_clear">Cancella</string>
@@ -420,4 +425,6 @@
     <string name="onboarding_gesture_shake_desc">Scuoti il telefono per un\'azione rapida come la torcia.</string>
     <string name="onboarding_finish_title">Tutto pronto</string>
     <string name="onboarding_finish_desc">Goditi la tua nuova schermata Home. Puoi cambiare tutto quando vuoi nelle impostazioni.</string>
+    <string name="drawer_search_no_results">Nessuna app trovata</string>
+    <string name="favorites_empty_hint">Aggiungi preferiti</string>
 </resources>

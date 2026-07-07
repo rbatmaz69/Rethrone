@@ -143,7 +143,7 @@ fun FavoritesConfigMenu(
                 )
             }
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = mainTextColor)
             }
         }
 
@@ -442,14 +442,14 @@ private fun FavoriteOrderItem(
             IconButton(onClick = onMoveUp, enabled = index > 0) {
                 Icon(
                     Icons.Rounded.KeyboardArrowUp,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_move_up),
                     tint = if (index > 0) grayTone else mainTextColor
                 )
             }
             IconButton(onClick = onMoveDown, enabled = index < totalCount - 1) {
                 Icon(
                     Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_move_down),
                     tint = if (index < totalCount - 1) grayTone else mainTextColor
                 )
             }

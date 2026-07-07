@@ -94,7 +94,11 @@ fun ColorConfigMenu(
                     color = mainTextColor
                 )
                 IconButton(onClick = onClose) {
-                    Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.cd_close),
+                        tint = mainTextColor
+                    )
                 }
             }
 
@@ -373,7 +377,11 @@ fun ThemeSelectionMenu(
                     color = mainTextColor
                 )
                 IconButton(onClick = onClose) {
-                    Icon(imageVector = Icons.Rounded.Close, contentDescription = null, tint = mainTextColor)
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.cd_close),
+                        tint = mainTextColor
+                    )
                 }
             }
 

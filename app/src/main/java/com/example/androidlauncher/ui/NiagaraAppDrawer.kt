@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -245,6 +246,21 @@ fun NiagaraAppDrawer(
                         state = listState,
                         contentPadding = PaddingValues(end = if (isSearching) 0.dp else 24.dp, bottom = 32.dp)
                     ) {
+                        // U2: Leerer Zustand, wenn die Suche nichts findet.
+                        if (isSearching && visibleApps.isEmpty()) {
+                            item(contentType = "empty") {
+                                Text(
+                                    text = stringResource(R.string.drawer_search_no_results),
+                                    color = mainTextColor.copy(alpha = 0.6f),
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 32.dp)
+                                        .testTag("niagara_search_no_results")
+                                )
+                            }
+                        }
                         if (isSearching) {
                             items(items = visibleApps, key = { it.packageName }, contentType = { "app" }) { app ->
                                 NiagaraAppRow(

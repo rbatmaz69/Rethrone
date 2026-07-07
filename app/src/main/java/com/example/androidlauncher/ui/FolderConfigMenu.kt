@@ -144,9 +144,13 @@ fun FolderConfigMenu(
                         tint = Color.Red.copy(alpha = 0.8f)
                     )
                 }
-                IconButton(
-                    onClick = onClose
-                ) { Icon(Icons.Rounded.Close, contentDescription = null, tint = mainTextColor) }
+                IconButton(onClick = onClose) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.cd_close),
+                        tint = mainTextColor
+                    )
+                }
             }
         }
 
