@@ -46,5 +46,9 @@ object BackupSpec {
         "hidden_apps",
         "shake_open_app_package",
         "double_tap_app_package",
+        "swipe_up_app_package",
+        "swipe_down_app_package",
+        "swipe_left_app_package",
+        "swipe_right_app_package",
     )
 }
