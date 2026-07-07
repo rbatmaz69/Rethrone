@@ -132,6 +132,10 @@
     <string name="widget_bind_failed">No se pudo añadir el widget</string>
     <string name="cd_remove_widget">Quitar el widget</string>
     <string name="cd_resize_widget">Cambiar tamaño del widget</string>
+    <string name="cd_resize_widget_horizontal">Cambiar el ancho del widget</string>
+    <string name="cd_resize_widget_vertical">Cambiar la altura del widget</string>
+    <string name="widget_pending_removal">Se quitará al guardar</string>
+    <string name="undo_remove_widget">Deshacer</string>
     <string name="icon_pack_section_title">Paquete de iconos</string>
     <string name="icon_pack_system_default">Iconos del sistema</string>
     <string name="icon_pack_system_default_sub">Iconos de apps por defecto, sin paquete</string>

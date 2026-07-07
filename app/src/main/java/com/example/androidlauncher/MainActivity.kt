@@ -1359,13 +1359,12 @@ class MainActivity : ComponentActivity() {
                                 },
                                 hostedWidgets = hostedWidgets,
                                 widgetViewProvider = { id -> widgetHostManager.createView(id) },
-                                onSaveWidgetLayout = { widgetOffsets, widgetSizes ->
+                                // U3: Entfernen laeuft ueber denselben Save-Commit (removedIds)
+                                // statt sofort zu loeschen – Abbrechen/Rueckgaengig bleibt moeglich.
+                                onSaveWidgetLayout = { widgetOffsets, widgetSizes, removedIds ->
                                     scope.launch {
-                                        widgetHostManager.updateWidgetPlacement(widgetOffsets, widgetSizes)
+                                        widgetHostManager.updateWidgetPlacement(widgetOffsets, widgetSizes, removedIds)
                                     }
-                                },
-                                onRemoveWidget = { id ->
-                                    scope.launch { widgetHostManager.removeWidget(id) }
                                 },
                                 // B1-PR4: Resize-Grenzen aus den Provider-Angaben; maxResize*
                                 // gibt es erst ab API 31 (0 = vom Provider nicht begrenzt).

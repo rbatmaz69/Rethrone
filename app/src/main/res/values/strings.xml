@@ -147,6 +147,11 @@
     <string name="widget_bind_failed">Widget could not be added</string>
     <string name="cd_remove_widget">Remove widget</string>
     <string name="cd_resize_widget">Resize widget</string>
+    <string name="cd_resize_widget_horizontal">Resize widget width</string>
+    <string name="cd_resize_widget_vertical">Resize widget height</string>
+    <string name="widget_size_label" translatable="false">%1$d × %2$d dp</string>
+    <string name="widget_pending_removal">Removed when you save</string>
+    <string name="undo_remove_widget">Undo</string>
     <string name="icon_pack_section_title">Icon pack</string>
     <string name="icon_pack_system_default">System icons</string>
     <string name="icon_pack_system_default_sub">Default app icons without a pack</string>

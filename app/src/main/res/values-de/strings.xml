@@ -147,6 +147,10 @@
     <string name="widget_bind_failed">Widget konnte nicht hinzugefügt werden</string>
     <string name="cd_remove_widget">Widget entfernen</string>
     <string name="cd_resize_widget">Widget-Größe ändern</string>
+    <string name="cd_resize_widget_horizontal">Widget-Breite ändern</string>
+    <string name="cd_resize_widget_vertical">Widget-Höhe ändern</string>
+    <string name="widget_pending_removal">Wird beim Speichern entfernt</string>
+    <string name="undo_remove_widget">Rückgängig</string>
     <string name="icon_pack_section_title">Icon-Pack</string>
     <string name="icon_pack_system_default">System-Icons</string>
     <string name="icon_pack_system_default_sub">Standard-App-Icons ohne Pack</string>

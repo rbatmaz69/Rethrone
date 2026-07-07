@@ -24,6 +24,8 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
@@ -65,7 +67,7 @@ import com.example.androidlauncher.data.HostedWidget
 import com.example.androidlauncher.data.SwipeGestureConfig
 import com.example.androidlauncher.data.WidgetResizeLimits
 import com.example.androidlauncher.data.WidgetSizeDp
-import com.example.androidlauncher.data.applyResizeDrag
+import com.example.androidlauncher.data.resolveResizeDrag
 import com.example.androidlauncher.gesture.SwipeDirectionResolver
 import com.example.androidlauncher.launchShortcut
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
@@ -125,8 +127,9 @@ fun HomeScreen(
     // B1: gehostete System-Widgets als frei verschiebbare Home-Objekte.
     hostedWidgets: List<HostedWidget> = emptyList(),
     widgetViewProvider: (Int) -> AppWidgetHostView? = { null },
-    onSaveWidgetLayout: (Map<Int, Offset>, Map<Int, WidgetSizeDp>) -> Unit = { _, _ -> },
-    onRemoveWidget: (Int) -> Unit = {},
+    // U3: dritter Parameter = zum Entfernen vorgemerkte Widget-IDs; das Entfernen
+    // laeuft damit ueber denselben Speichern-Commit wie Offsets und Groessen.
+    onSaveWidgetLayout: (Map<Int, Offset>, Map<Int, WidgetSizeDp>, Set<Int>) -> Unit = { _, _, _ -> },
     // B1-PR4: Resize-Grenzen je Widget (null = unbekannt/kein Resize, z. B. Preview).
     widgetResizeLimits: (Int) -> WidgetResizeLimits? = { null }
 ) {
@@ -140,7 +143,9 @@ fun HomeScreen(
     val surfaceAccent = colorTheme.menuSurfaceColor(isDarkTextEnabled)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val appHaptics = rememberAppHaptics()
     val animationsEnabled = LocalAnimationsEnabled.current
+    val animationSpeed = LocalAnimationSpeed.current
     val menuAnimationsEnabled = LocalMenuAnimationEnabled.current
     val density = androidx.compose.ui.platform.LocalDensity.current
 
@@ -683,111 +688,176 @@ fun HomeScreen(
             hostedWidgets.forEachIndexed { index, widget ->
                 key(widget.appWidgetId) {
                     val widgetTarget = HomeEditTarget.Widget(widget.appWidgetId)
+                    val isPendingRemoval = dragState.isWidgetPendingRemoval(widget.appWidgetId)
+                    // Limits einmal pro Edit-Session cachen (U3): `widgetResizeLimits` fragt
+                    // providerInfo ab (System-Call) – nicht bei jedem Drag-Start wiederholen.
+                    val resizeLimits = if (isEditMode) {
+                        remember(widget.appWidgetId) { widgetResizeLimits(widget.appWidgetId) }
+                    } else {
+                        null
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(top = 160.dp + (index * 24).dp)
                             .targetLayout(widgetTarget)
-                            .targetEditModifier(widgetTarget)
+                            // Vorgemerkte Widgets sind eingefroren: kein Wiggle, kein Drag,
+                            // keine Auswahl – nur die Rueckgaengig-Pille reagiert.
+                            .then(if (isPendingRemoval) Modifier else Modifier.targetEditModifier(widgetTarget))
                     ) {
                         // Live-Größe aus dem Drag-State (Resize-Vorschau); Fallback: persistiert.
                         val liveSize = dragState.widgetSizes[widget.appWidgetId]
-                        HostedWidgetView(
-                            widget = liveSize
-                                ?.let { widget.copy(widthDp = it.widthDp, heightDp = it.heightDp) }
-                                ?: widget,
-                            hostView = if (isPreview) null else widgetViewProvider(widget.appWidgetId),
-                            isEditMode = isEditMode,
+                        // Geister-Zustand (U3): vorgemerkte Widgets bleiben komponiert (die
+                        // Host-View behaelt ihren internen Zustand fuers Rueckgaengig), nur abgeblendet.
+                        val ghostAlpha by animateFloatAsState(
+                            targetValue = if (isPendingRemoval) 0.35f else 1f,
+                            animationSpec = if (animationsEnabled) RethroneSprings.effects(animationSpeed) else snap(),
+                            label = "widgetGhostAlpha"
                         )
-                        // Resize-Handle (Ecke unten rechts) am ausgewählten Widget – nur wenn
-                        // der Provider Resize erlaubt (B1-PR4). Gesperrte Achsen sind in den
-                        // Limits über min == max abgebildet, der Drag dort ist ein No-Op.
-                        if (isEditMode && selectedEditTarget == widgetTarget) {
-                            val resizable = remember(widgetTarget) {
-                                widgetResizeLimits(widget.appWidgetId)?.isResizable == true
-                            }
-                            if (resizable) {
+                        Box(modifier = Modifier.graphicsLayer { alpha = ghostAlpha }) {
+                            HostedWidgetView(
+                                widget = liveSize
+                                    ?.let { widget.copy(widthDp = it.widthDp, heightDp = it.heightDp) }
+                                    ?: widget,
+                                hostView = if (isPreview) null else widgetViewProvider(widget.appWidgetId),
+                                isEditMode = isEditMode,
+                            )
+                        }
+                        if (isPendingRemoval) {
+                            WidgetPendingRemovalOverlay(
+                                onUndo = {
+                                    appHaptics.tap()
+                                    dragState.undoWidgetRemoval(widget.appWidgetId)
+                                },
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .zIndex(11f),
+                                undoTestTag = "home_widget_undo_${widget.appWidgetId}"
+                            )
+                        }
+                        if (isEditMode && selectedEditTarget == widgetTarget && !isPendingRemoval) {
+                            // Resize-Handle (Ecke unten rechts) – nur wenn der Provider Resize
+                            // erlaubt (B1-PR4). Gesperrte Achsen sind in den Limits über
+                            // min == max abgebildet, der Drag dort ist ein No-Op; das Icon
+                            // zeigt den Achsen-Modus an (U3).
+                            if (resizeLimits != null && resizeLimits.isResizable) {
+                                val widthResizable = resizeLimits.maxWidthDp > resizeLimits.minWidthDp
+                                val heightResizable = resizeLimits.maxHeightDp > resizeLimits.minHeightDp
                                 var resizeStartSize by remember { mutableStateOf<WidgetSizeDp?>(null) }
-                                var resizeLimits by remember { mutableStateOf<WidgetResizeLimits?>(null) }
                                 var resizeTotalDrag by remember { mutableStateOf(Offset.Zero) }
+                                var isResizing by remember { mutableStateOf(false) }
+                                var resizeClamped by remember { mutableStateOf(false) }
+                                var lastResizeTickMs by remember { mutableLongStateOf(0L) }
+                                var lastTickedSize by remember { mutableStateOf<WidgetSizeDp?>(null) }
                                 // Vorab gefangen: im PointerInputScope würde `density` die
                                 // Scope-Property (Float) statt des äußeren LocalDensity treffen.
                                 val densityFactor = density.density
-                                Box(
+                                WidgetEditHandle(
+                                    icon = when {
+                                        widthResizable && heightResizable -> Icons.Rounded.OpenInFull
+                                        widthResizable -> Icons.Rounded.SwapHoriz
+                                        else -> Icons.Rounded.SwapVert
+                                    },
+                                    contentDescription = stringResource(
+                                        when {
+                                            widthResizable && heightResizable -> R.string.cd_resize_widget
+                                            widthResizable -> R.string.cd_resize_widget_horizontal
+                                            else -> R.string.cd_resize_widget_vertical
+                                        }
+                                    ),
                                     modifier = Modifier
+                                        // Ragt über die Ecke hinaus: verdeckt weniger Widget-Inhalt,
+                                        // das 48.dp-Ziel bleibt trotzdem gut treffbar.
                                         .align(Alignment.BottomEnd)
+                                        .offset(x = 10.dp, y = 10.dp)
                                         .zIndex(10f)
-                                        .size(28.dp)
-                                        .clip(CircleShape)
-                                        .designSurface(
-                                            designStyle,
-                                            CircleShape,
-                                            isDarkTextEnabled,
-                                            surfaceAccent,
-                                            fillAlpha = 0.5f
-                                        )
                                         .pointerInput(widgetTarget) {
                                             detectDragGestures(
                                                 onDragStart = {
                                                     resizeStartSize =
                                                         dragState.widgetSizes[widget.appWidgetId]
                                                             ?: WidgetSizeDp(widget.widthDp, widget.heightDp)
-                                                    resizeLimits = widgetResizeLimits(widget.appWidgetId)
                                                     resizeTotalDrag = Offset.Zero
+                                                    lastTickedSize = null
+                                                    isResizing = true
+                                                    appHaptics.select()
+                                                },
+                                                onDragEnd = {
+                                                    isResizing = false
+                                                    resizeClamped = false
+                                                },
+                                                onDragCancel = {
+                                                    isResizing = false
+                                                    resizeClamped = false
                                                 },
                                                 onDrag = { change, dragAmount ->
                                                     change.consume()
                                                     resizeTotalDrag += dragAmount
                                                     val start = resizeStartSize ?: return@detectDragGestures
-                                                    val limits = resizeLimits ?: return@detectDragGestures
-                                                    dragState.widgetSizes[widget.appWidgetId] =
-                                                        applyResizeDrag(
-                                                            startSize = start,
-                                                            totalDragXDp = resizeTotalDrag.x / densityFactor,
-                                                            totalDragYDp = resizeTotalDrag.y / densityFactor,
-                                                            limits = limits,
-                                                        )
+                                                    val result = resolveResizeDrag(
+                                                        startSize = start,
+                                                        totalDragXDp = resizeTotalDrag.x / densityFactor,
+                                                        totalDragYDp = resizeTotalDrag.y / densityFactor,
+                                                        limits = resizeLimits,
+                                                    )
+                                                    dragState.widgetSizes[widget.appWidgetId] = result.size
+                                                    // Haptik (U3): deutlicher Impuls beim Erreichen
+                                                    // eines Limits, sonst gedrosseltes Ticken je
+                                                    // Groessenaenderung.
+                                                    val clampedNow = result.clampedWidth || result.clampedHeight
+                                                    if (clampedNow && !resizeClamped) {
+                                                        appHaptics.confirm()
+                                                    }
+                                                    resizeClamped = clampedNow
+                                                    val now = SystemClock.uptimeMillis()
+                                                    if (result.size != lastTickedSize &&
+                                                        now - lastResizeTickMs >= blockedDragHapticMinIntervalMs
+                                                    ) {
+                                                        appHaptics.select()
+                                                        lastResizeTickMs = now
+                                                        lastTickedSize = result.size
+                                                    }
                                                 }
                                             )
                                         }
                                         .testTag("home_widget_resize_${widget.appWidgetId}"),
-                                    contentAlignment = Alignment.Center
+                                )
+                                // Live-Groessen-Chip (U3): zeigt „B × H dp" waehrend des Drags,
+                                // pulsiert am Min/Max-Anschlag.
+                                AnimatedVisibility(
+                                    visible = isResizing,
+                                    enter = rememberMenuEnter(animationsEnabled, fromBottom = false),
+                                    exit = rememberMenuExit(animationsEnabled, toBottom = false),
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .offset(y = (-40).dp)
+                                        .zIndex(12f)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.OpenInFull,
-                                        contentDescription = stringResource(R.string.cd_resize_widget),
-                                        tint = mainTextColor,
-                                        modifier = Modifier.size(14.dp)
+                                    val chipSize = dragState.widgetSizes[widget.appWidgetId]
+                                    WidgetSizeChip(
+                                        widthDp = chipSize?.widthDp ?: widget.widthDp,
+                                        heightDp = chipSize?.heightDp ?: widget.heightDp,
+                                        clamped = resizeClamped,
+                                        modifier = Modifier.testTag("home_widget_size_label_${widget.appWidgetId}")
                                     )
                                 }
                             }
-                        }
-                        // Entfernen-Badge am ausgewählten Widget (nur im Edit-Modus).
-                        if (isEditMode && selectedEditTarget == widgetTarget) {
-                            Box(
+                            // Entfernen-Badge (U3): merkt nur vor – gelöscht wird erst beim
+                            // Speichern, Abbrechen/Rueckgaengig stellt das Widget wieder her.
+                            WidgetEditHandle(
+                                icon = Icons.Rounded.Close,
+                                contentDescription = stringResource(R.string.cd_remove_widget),
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
+                                    .offset(x = 10.dp, y = (-10).dp)
                                     .zIndex(10f)
-                                    .size(28.dp)
                                     .clip(CircleShape)
-                                    .designSurface(
-                                        designStyle,
-                                        CircleShape,
-                                        isDarkTextEnabled,
-                                        surfaceAccent,
-                                        fillAlpha = 0.5f
-                                    )
-                                    .clickable { onRemoveWidget(widget.appWidgetId) }
+                                    .clickable {
+                                        appHaptics.tap()
+                                        dragState.markWidgetForRemoval(widget.appWidgetId)
+                                    }
                                     .testTag("home_widget_remove_${widget.appWidgetId}"),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = stringResource(R.string.cd_remove_widget),
-                                    tint = mainTextColor,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
+                            )
                         }
                     }
                 }
@@ -1020,7 +1090,11 @@ fun HomeScreen(
                         onClick = {
                             updateCollisionFeedback(false)
                             onSaveHomeLayout(dragState.toHomeLayout())
-                            onSaveWidgetLayout(dragState.toWidgetOffsets(), dragState.toWidgetSizes())
+                            onSaveWidgetLayout(
+                                dragState.toWidgetOffsets(),
+                                dragState.toWidgetSizes(),
+                                dragState.pendingRemovalsSnapshot(),
+                            )
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.position_saved),
