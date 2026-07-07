@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.androidlauncher.data.HostedWidget
+import kotlin.math.roundToInt
 
 /**
  * Compose-Wrapper um eine [AppWidgetHostView] (B1). Die Host-View kommt gecacht aus
@@ -51,6 +52,12 @@ fun HostedWidgetView(
         },
         update = { frame ->
             frame.blockTouches = isEditMode
+            // Gewuenschte Groesse spec-unabhaengig in px an den Frame geben (siehe
+            // BlockableFrameLayout.onMeasure) – nur so schrumpft das Widget wieder.
+            val d = frame.resources.displayMetrics.density
+            frame.desiredWidthPx = (widget.widthDp * d).roundToInt()
+            frame.desiredHeightPx = (widget.heightDp * d).roundToInt()
+            frame.requestLayout()
             updateAppWidgetSizeCompat(hostView, widget.widthDp, widget.heightDp)
         },
         modifier = modifier
@@ -81,23 +88,22 @@ private class BlockableFrameLayout(context: Context) : FrameLayout(context) {
 
     var blockTouches = false
 
+    /** Vom Compose-`update`-Block gesetzte Zielgroesse in px (0 = noch nicht gesetzt). */
+    var desiredWidthPx = 0
+    var desiredHeightPx = 0
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // Compose liefert via Modifier.size() EXACTLY-Specs. AppWidgetHostView meldet
-        // beim Verkleinern gerne eine groessere measuredWidth/Height (Content-Min),
-        // wodurch das Widget im Compose-Layout zwar schrumpft, die View selbst aber
-        // nicht -> "wird groesser, uebernimmt die kleine Version nicht". Daher die
-        // angeforderte Groesse hart durchsetzen und die Kinder darauf messen.
-        if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY &&
-            MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY
-        ) {
-            val w = MeasureSpec.getSize(widthMeasureSpec)
-            val h = MeasureSpec.getSize(heightMeasureSpec)
-            val childWidthSpec = MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY)
-            val childHeightSpec = MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY)
+        // Groesse spec-unabhaengig erzwingen: AppWidgetHostView meldet beim
+        // Verkleinern eine groessere Content-Min, und der AndroidView-Holder reicht
+        // dem Kind nicht zwingend EXACTLY-Specs durch -> die View wuerde sonst nicht
+        // schrumpfen ("wird groesser, uebernimmt die kleine Version nicht").
+        if (desiredWidthPx > 0 && desiredHeightPx > 0) {
+            val childWidthSpec = MeasureSpec.makeMeasureSpec(desiredWidthPx, MeasureSpec.EXACTLY)
+            val childHeightSpec = MeasureSpec.makeMeasureSpec(desiredHeightPx, MeasureSpec.EXACTLY)
             for (i in 0 until childCount) {
                 getChildAt(i).measure(childWidthSpec, childHeightSpec)
             }
-            setMeasuredDimension(w, h)
+            setMeasuredDimension(desiredWidthPx, desiredHeightPx)
         } else {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         }
