@@ -99,31 +99,66 @@ data class ResizeZoomResult(
     val size: WidgetSizeDp,
     val clampedWidth: Boolean,
     val clampedHeight: Boolean,
+    /**
+     * Auf den nuetzlichen Bereich zurueckgeklemmter Akkumulator – der Aufrufer
+     * MUSS seinen kumulierten Faktor hiermit ueberschreiben. Ohne die Kappung
+     * laeuft der Akkumulator am Anschlag weiter, waehrend die Groesse geklemmt
+     * bleibt, und die Gegenrichtung hat eine riesige tote Zone ("einmal gross
+     * gezogen, nicht mehr kleinziehbar").
+     */
+    val appliedZoom: Float,
 )
 
 /** Untergrenze des Zoom-Faktors – schuetzt vor degenerierten Gesten-Werten (0/negativ). */
 private const val MIN_RESIZE_ZOOM = 0.05f
 
 /**
+ * Kappt [zoom] auf den Bereich, in dem sich mindestens eine freie Achse noch
+ * bewegt: Untergrenze = kleinstes min/start-Verhaeltnis, Obergrenze = groesstes
+ * max/start-Verhaeltnis der freien Achsen. Dadurch reagiert das Reinziehen nach
+ * einem Anschlag sofort wieder.
+ */
+private fun clampZoomToUsefulRange(
+    startSize: WidgetSizeDp,
+    zoom: Float,
+    limits: WidgetResizeLimits,
+): Float {
+    var minZoom = Float.MAX_VALUE
+    var maxZoom = Float.MIN_VALUE
+    if (limits.maxWidthDp > limits.minWidthDp && startSize.widthDp > 0) {
+        minZoom = minOf(minZoom, limits.minWidthDp.toFloat() / startSize.widthDp)
+        maxZoom = maxOf(maxZoom, limits.maxWidthDp.toFloat() / startSize.widthDp)
+    }
+    if (limits.maxHeightDp > limits.minHeightDp && startSize.heightDp > 0) {
+        minZoom = minOf(minZoom, limits.minHeightDp.toFloat() / startSize.heightDp)
+        maxZoom = maxOf(maxZoom, limits.maxHeightDp.toFloat() / startSize.heightDp)
+    }
+    if (minZoom > maxZoom) return zoom.coerceAtLeast(MIN_RESIZE_ZOOM)
+    return zoom.coerceIn(minZoom, maxZoom)
+}
+
+/**
  * Groesse waehrend einer Pinch-Geste (U3): [startSize] ist die Groesse beim
  * Gesten-Start, [zoom] der **kumulierte** Zoom-Faktor seitdem (nicht das letzte
  * Delta – so gehen Sub-dp-Aenderungen nicht durch Rundung verloren). Beide Achsen
  * skalieren mit demselben Faktor; gesperrte Achsen (min == max) bleiben durch das
- * Clamping automatisch fest.
+ * Clamping automatisch fest. Der Aufrufer fuehrt seinen Akkumulator mit
+ * [ResizeZoomResult.appliedZoom] weiter, damit er am Anschlag nicht davonlaeuft.
  */
 fun resolveResizeZoom(
     startSize: WidgetSizeDp,
     zoom: Float,
     limits: WidgetResizeLimits,
 ): ResizeZoomResult {
-    val safeZoom = zoom.coerceAtLeast(MIN_RESIZE_ZOOM)
-    val rawWidth = (startSize.widthDp * safeZoom).roundToInt()
-    val rawHeight = (startSize.heightDp * safeZoom).roundToInt()
+    val appliedZoom = clampZoomToUsefulRange(startSize, zoom, limits)
+    val rawWidth = (startSize.widthDp * appliedZoom).roundToInt()
+    val rawHeight = (startSize.heightDp * appliedZoom).roundToInt()
     val width = rawWidth.coerceIn(limits.minWidthDp, limits.maxWidthDp)
     val height = rawHeight.coerceIn(limits.minHeightDp, limits.maxHeightDp)
     return ResizeZoomResult(
         size = WidgetSizeDp(width, height),
         clampedWidth = limits.maxWidthDp > limits.minWidthDp && rawWidth != width,
         clampedHeight = limits.maxHeightDp > limits.minHeightDp && rawHeight != height,
+        appliedZoom = appliedZoom,
     )
 }

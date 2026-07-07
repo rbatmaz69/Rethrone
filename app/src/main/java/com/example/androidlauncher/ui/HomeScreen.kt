@@ -719,7 +719,11 @@ fun HomeScreen(
                                     Modifier.pointerInput(widgetTarget, resizeLimits) {
                                         awaitEachGesture {
                                             awaitFirstDown(requireUnconsumed = false)
-                                            var pinching = false
+                                            // pinchActive = gerade >=2 Finger unten; wird beim Abheben
+                                            // eines Fingers zurueckgesetzt, damit ein erneutes Aufsetzen
+                                            // mit frischer Basis (aktuelle Groesse, Faktor 1) startet.
+                                            var pinchActive = false
+                                            var pinchedThisGesture = false
                                             var startSize = WidgetSizeDp(widget.widthDp, widget.heightDp)
                                             var zoomAcc = 1f
                                             var lastTickMs = 0L
@@ -729,15 +733,18 @@ fun HomeScreen(
                                                 val pressed = event.changes.count { it.pressed }
                                                 if (pressed == 0) break
                                                 if (pressed >= 2) {
-                                                    if (!pinching) {
-                                                        pinching = true
+                                                    if (!pinchActive) {
+                                                        pinchActive = true
                                                         zoomAcc = 1f
                                                         startSize = dragState.widgetSizes[widget.appWidgetId]
                                                             ?: WidgetSizeDp(widget.widthDp, widget.heightDp)
-                                                        selectedEditTarget = widgetTarget
-                                                        isEditTargetUserPinned = true
-                                                        isResizing = true
-                                                        appHaptics.select()
+                                                        if (!pinchedThisGesture) {
+                                                            pinchedThisGesture = true
+                                                            selectedEditTarget = widgetTarget
+                                                            isEditTargetUserPinned = true
+                                                            isResizing = true
+                                                            appHaptics.select()
+                                                        }
                                                     }
                                                     zoomAcc *= event.calculateZoom()
                                                     val result = resolveResizeZoom(
@@ -745,6 +752,10 @@ fun HomeScreen(
                                                         zoom = zoomAcc,
                                                         limits = resizeLimits,
                                                     )
+                                                    // Akkumulator zurueckklemmen: sonst laeuft er am
+                                                    // Anschlag davon und das Reinziehen haette eine
+                                                    // tote Zone (nicht mehr kleinziehbar).
+                                                    zoomAcc = result.appliedZoom
                                                     dragState.widgetSizes[widget.appWidgetId] = result.size
                                                     // Rand-Korrektur (U3): waechst das Widget ueber den
                                                     // Bildschirmrand hinaus, zieht der Offset mit, damit
@@ -786,14 +797,17 @@ fun HomeScreen(
                                                         lastTickedSize = result.size
                                                     }
                                                     event.changes.forEach { it.consume() }
-                                                } else if (pinching) {
-                                                    // Nach dem Pinch weiter konsumieren, bis alle Finger
-                                                    // oben sind – sonst springt das Widget dem letzten
-                                                    // Finger als Move-Drag hinterher.
-                                                    event.changes.forEach { it.consume() }
+                                                } else {
+                                                    pinchActive = false
+                                                    if (pinchedThisGesture) {
+                                                        // Nach dem Pinch weiter konsumieren, bis alle
+                                                        // Finger oben sind – sonst springt das Widget dem
+                                                        // letzten Finger als Move-Drag hinterher.
+                                                        event.changes.forEach { it.consume() }
+                                                    }
                                                 }
                                             }
-                                            if (pinching) {
+                                            if (pinchedThisGesture) {
                                                 isResizing = false
                                                 resizeClamped = false
                                             }

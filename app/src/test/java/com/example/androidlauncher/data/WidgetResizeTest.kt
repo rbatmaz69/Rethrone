@@ -136,19 +136,22 @@ class WidgetResizeTest {
     }
 
     @Test
-    fun `zooming past the max reports the free axes as clamped`() {
+    fun `zooming past the max clamps the size and reports the tighter axis`() {
         val limits = WidgetResizeLimits(100, 320, 60, 200)
         val start = WidgetSizeDp(180, 110)
 
         val result = resolveResizeZoom(start, 3f, limits)
 
+        // Der Akkumulator wird an der groesseren freien Achse (Hoehe, Faktor
+        // 200/110) gekappt: die Hoehe landet exakt am Max (kein Anschlag), die
+        // engere Breiten-Achse meldet den Anschlag.
         assertEquals(WidgetSizeDp(320, 200), result.size)
         assertTrue(result.clampedWidth)
-        assertTrue(result.clampedHeight)
+        assertFalse(result.clampedHeight)
     }
 
     @Test
-    fun `zooming below the min reports the free axes as clamped`() {
+    fun `zooming below the min clamps the size and reports the tighter axis`() {
         val limits = WidgetResizeLimits(100, 320, 60, 200)
         val start = WidgetSizeDp(180, 110)
 
@@ -156,7 +159,37 @@ class WidgetResizeTest {
 
         assertEquals(WidgetSizeDp(100, 60), result.size)
         assertTrue(result.clampedWidth)
-        assertTrue(result.clampedHeight)
+        assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `applied zoom is capped so pinching back in works immediately`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        // Weit ueber das Max hinausgezogen: der Akkumulator bleibt am
+        // nuetzlichen Maximum stehen statt auf 10 davonzulaufen …
+        val maxed = resolveResizeZoom(start, 10f, limits)
+        assertEquals(200f / 110f, maxed.appliedZoom, 1e-4f)
+
+        // … dadurch schrumpft der naechste Reinzieh-Schritt sofort wieder
+        // (vorher: riesige tote Zone = "nicht mehr kleinziehbar").
+        val shrunk = resolveResizeZoom(start, maxed.appliedZoom * 0.9f, limits)
+        assertTrue(shrunk.size.widthDp < maxed.size.widthDp)
+        assertTrue(shrunk.size.heightDp < maxed.size.heightDp)
+    }
+
+    @Test
+    fun `applied zoom is floored so pinching back out works immediately`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val minned = resolveResizeZoom(start, 0.01f, limits)
+        assertEquals(60f / 110f, minned.appliedZoom, 1e-4f)
+
+        val grown = resolveResizeZoom(start, minned.appliedZoom * 1.1f, limits)
+        assertTrue(grown.size.widthDp > minned.size.widthDp)
+        assertTrue(grown.size.heightDp > minned.size.heightDp)
     }
 
     @Test
