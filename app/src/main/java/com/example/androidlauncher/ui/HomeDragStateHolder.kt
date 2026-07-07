@@ -3,6 +3,7 @@ package com.example.androidlauncher.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,12 +68,40 @@ internal class HomeDragStateHolder(
     var isEditTargetUserPinned by mutableStateOf(false)
 
     /**
+     * Zum Entfernen vorgemerkte Widgets (U3): das X-Badge markiert nur, erst der
+     * Speichern-Knopf loescht wirklich – Abbrechen (via [seedFrom]) und die
+     * Rueckgaengig-Pille stellen markierte Widgets verlustfrei wieder her.
+     */
+    val pendingWidgetRemovals = mutableStateListOf<Int>()
+
+    /** Merkt ein Widget zum Entfernen vor und hebt ggf. dessen Auswahl auf. */
+    fun markWidgetForRemoval(appWidgetId: Int) {
+        if (appWidgetId !in pendingWidgetRemovals) pendingWidgetRemovals.add(appWidgetId)
+        if (selectedEditTarget == HomeEditTarget.Widget(appWidgetId)) {
+            selectedEditTarget = null
+            isEditTargetUserPinned = false
+        }
+    }
+
+    /** Nimmt die Entfernen-Vormerkung zurueck (Rueckgaengig-Pille). */
+    fun undoWidgetRemoval(appWidgetId: Int) {
+        pendingWidgetRemovals.remove(appWidgetId)
+    }
+
+    fun isWidgetPendingRemoval(appWidgetId: Int): Boolean =
+        appWidgetId in pendingWidgetRemovals
+
+    /** Snapshot der Vormerkungen fuer den Speichern-Commit. */
+    fun pendingRemovalsSnapshot(): Set<Int> = pendingWidgetRemovals.toSet()
+
+    /**
      * Seedet die Live-Offsets aus dem persistierten Stand – beim Betreten des
      * Edit-Modus 1:1 übernehmen, Abbrechen revertiert damit automatisch.
      * Widget-Einträge werden synchronisiert: entfernte Widgets verschwinden
      * mitsamt Buchführung (und ggf. Auswahl) aus dem Holder.
      */
     fun seedFrom(layout: HomeLayout, widgets: List<HostedWidget> = emptyList()) {
+        pendingWidgetRemovals.clear()
         offsets[HomeEditTarget.Clock] = layout.clock
         offsets[HomeEditTarget.Date] = layout.date
         offsets[HomeEditTarget.Weather] = layout.weather
@@ -105,15 +134,22 @@ internal class HomeDragStateHolder(
         favorites = offsets[HomeEditTarget.Favorites] ?: Offset.Zero,
     )
 
-    /** Aktuelle Live-Offsets der gehosteten Widgets, keyed per appWidgetId (Speichern-Knopf). */
+    /**
+     * Aktuelle Live-Offsets der gehosteten Widgets, keyed per appWidgetId
+     * (Speichern-Knopf). Zum Entfernen vorgemerkte Widgets sind ausgenommen –
+     * fuer sie wird im selben Write keine Platzierung mehr persistiert.
+     */
     fun toWidgetOffsets(): Map<Int, Offset> = offsets.entries
         .mapNotNull { (target, offset) ->
-            (target as? HomeEditTarget.Widget)?.let { it.appWidgetId to offset }
+            (target as? HomeEditTarget.Widget)
+                ?.takeUnless { it.appWidgetId in pendingWidgetRemovals }
+                ?.let { it.appWidgetId to offset }
         }
         .toMap()
 
-    /** Aktuelle Live-Größen der gehosteten Widgets (Speichern-Knopf, B1-PR4). */
-    fun toWidgetSizes(): Map<Int, WidgetSizeDp> = widgetSizes.toMap()
+    /** Aktuelle Live-Größen der gehosteten Widgets (Speichern-Knopf, B1-PR4); ohne Vormerkungen. */
+    fun toWidgetSizes(): Map<Int, WidgetSizeDp> = widgetSizes
+        .filterKeys { it !in pendingWidgetRemovals }
 }
 
 /** Merkt sich den Holder über Recompositions hinweg (nicht über Config-Wechsel). */

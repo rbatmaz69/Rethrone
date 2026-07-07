@@ -132,6 +132,52 @@ class WidgetHostManagerTest {
         assertEquals(widget(3), result.first { it.appWidgetId == 3 })
     }
 
+    // --- U3: vorgemerkte Loeschungen im Save-Commit ---
+
+    @Test
+    fun `updateWidgetPlacement commits placement and removals in one write`() = testScope.runTest {
+        every { host.deleteAppWidgetId(any()) } just Runs
+        manager.addWidget(widget(1))
+        manager.addWidget(widget(2))
+
+        manager.updateWidgetPlacement(
+            offsets = mapOf(1 to Offset(15f, -25f)),
+            sizes = mapOf(1 to WidgetSizeDp(250, 140)),
+            removedIds = setOf(2),
+        )
+
+        val result = manager.widgets.first()
+        assertEquals(
+            listOf(widget(1).copy(offsetX = 15f, offsetY = -25f, widthDp = 250, heightDp = 140)),
+            result,
+        )
+        verify { host.deleteAppWidgetId(2) }
+        verify(exactly = 0) { host.deleteAppWidgetId(1) }
+    }
+
+    @Test
+    fun `updateWidgetPlacement with removals only still passes the early-return guard`() = testScope.runTest {
+        every { host.deleteAppWidgetId(any()) } just Runs
+        manager.addWidget(widget(1))
+        manager.addWidget(widget(2))
+
+        manager.updateWidgetPlacement(offsets = emptyMap(), sizes = emptyMap(), removedIds = setOf(1))
+
+        assertEquals(listOf(widget(2)), manager.widgets.first())
+        verify { host.deleteAppWidgetId(1) }
+    }
+
+    @Test
+    fun `updateWidgetPlacement removing an unknown id is harmless but frees the host id`() = testScope.runTest {
+        every { host.deleteAppWidgetId(any()) } just Runs
+        manager.addWidget(widget(1))
+
+        manager.updateWidgetPlacement(offsets = emptyMap(), sizes = emptyMap(), removedIds = setOf(99))
+
+        assertEquals(listOf(widget(1)), manager.widgets.first())
+        verify { host.deleteAppWidgetId(99) }
+    }
+
     @Test
     fun `cleanupOrphans deletes leaked ids and prunes uninstalled providers`() = testScope.runTest {
         every { host.deleteAppWidgetId(any()) } just Runs

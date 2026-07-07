@@ -129,4 +129,70 @@ class WidgetResizeTest {
 
         assertEquals(WidgetSizeDp(180, 210), applyResizeDrag(start, 999f, 100f, limits))
     }
+
+    // --- U3: Anschlag-Information fuer Haptik/Chip-Puls ---
+
+    @Test
+    fun `resolveResizeDrag within the range reports no clamping`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val result = resolveResizeDrag(start, 20f, 20f, limits)
+
+        assertEquals(WidgetSizeDp(200, 130), result.size)
+        assertFalse(result.clampedWidth)
+        assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `resolveResizeDrag past max width reports width clamped`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val result = resolveResizeDrag(start, 500f, 0f, limits)
+
+        assertEquals(WidgetSizeDp(320, 110), result.size)
+        assertTrue(result.clampedWidth)
+        assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `resolveResizeDrag below min height reports height clamped`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val result = resolveResizeDrag(start, 0f, -500f, limits)
+
+        assertEquals(WidgetSizeDp(180, 60), result.size)
+        assertFalse(result.clampedWidth)
+        assertTrue(result.clampedHeight)
+    }
+
+    @Test
+    fun `locked axis never reports clamped even when pushed hard`() {
+        // Sonst wuerde jeder Diagonal-Drag an einem nur-vertikal skalierbaren
+        // Widget dauerhaft die Anschlag-Haptik ausloesen.
+        val limits = WidgetResizeLimits(180, 180, 60, 300)
+        val start = WidgetSizeDp(180, 110)
+
+        val result = resolveResizeDrag(start, 999f, 100f, limits)
+
+        assertEquals(WidgetSizeDp(180, 210), result.size)
+        assertFalse(result.clampedWidth)
+        assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `landing exactly on the limit does not count as clamped`() {
+        // Erst der Versuch, DARUEBER hinaus zu ziehen, meldet den Anschlag – die
+        // Haptik feuert damit genau auf der false-zu-true-Flanke an der Wand.
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val result = resolveResizeDrag(start, 140f, 90f, limits)
+
+        assertEquals(WidgetSizeDp(320, 200), result.size)
+        assertFalse(result.clampedWidth)
+        assertFalse(result.clampedHeight)
+    }
 }
