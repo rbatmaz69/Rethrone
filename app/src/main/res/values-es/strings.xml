@@ -148,6 +148,7 @@
     <string name="backup_export_success">Copia guardada</string>
     <string name="backup_export_error">Error al crear la copia</string>
     <string name="backup_import_success">Copia restaurada</string>
+    <string name="backup_import_widgets_result">%1$d widgets restaurados, %2$d omitidos</string>
     <string name="backup_import_error">No se pudo leer el archivo</string>
     <string name="backup_import_unsupported">La copia proviene de una versión más reciente de la app</string>
     <string name="default_launcher">Lanzador predeterminado</string>

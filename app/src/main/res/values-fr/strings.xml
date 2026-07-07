@@ -148,6 +148,7 @@
     <string name="backup_export_success">Sauvegarde enregistrée</string>
     <string name="backup_export_error">Échec de la sauvegarde</string>
     <string name="backup_import_success">Sauvegarde restaurée</string>
+    <string name="backup_import_widgets_result">%1$d widgets restaurés, %2$d ignorés</string>
     <string name="backup_import_error">Impossible de lire le fichier</string>
     <string name="backup_import_unsupported">La sauvegarde provient d\'une version plus récente de l\'app</string>
     <string name="default_launcher">Lanceur par défaut</string>

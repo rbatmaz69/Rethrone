@@ -163,6 +163,7 @@
     <string name="backup_export_success">Backup gespeichert</string>
     <string name="backup_export_error">Backup fehlgeschlagen</string>
     <string name="backup_import_success">Backup wiederhergestellt</string>
+    <string name="backup_import_widgets_result">%1$d Widgets wiederhergestellt, %2$d übersprungen</string>
     <string name="backup_import_error">Datei konnte nicht gelesen werden</string>
     <string name="backup_import_unsupported">Backup stammt aus einer neueren App-Version</string>
     <string name="default_launcher">Standard-Launcher</string>

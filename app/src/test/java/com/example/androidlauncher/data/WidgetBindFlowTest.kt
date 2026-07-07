@@ -1,5 +1,6 @@
 package com.example.androidlauncher.data
 
+import com.example.androidlauncher.data.backup.WidgetBackup
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -155,5 +156,48 @@ class WidgetBindFlowTest {
             screenHeightDp = 800,
         )
         assertEquals(WidgetSizeDp(400 - 48, (800 * 0.6f).toInt()), size)
+    }
+
+    // --- planWidgetRestore (U2) ---
+
+    private fun backup(provider: String, x: Float = 0f, y: Float = 0f) = WidgetBackup(
+        provider = provider,
+        widthDp = 200,
+        heightDp = 100,
+        offsetX = x,
+        offsetY = y,
+    )
+
+    private fun hosted(id: Int, provider: String, x: Float = 0f, y: Float = 0f) = HostedWidget(
+        appWidgetId = id,
+        provider = provider,
+        widthDp = 200,
+        heightDp = 100,
+        offsetX = x,
+        offsetY = y,
+    )
+
+    @Test
+    fun `restore plan keeps everything when nothing is hosted`() {
+        val backups = listOf(backup("a/b"), backup("c/d", x = 10f))
+        assertEquals(backups, planWidgetRestore(backups, existing = emptyList()))
+    }
+
+    @Test
+    fun `restore plan skips identically placed duplicates`() {
+        val backups = listOf(backup("a/b"), backup("a/b", x = 50f), backup("c/d"))
+        val existing = listOf(hosted(1, "a/b"), hosted(2, "e/f"))
+
+        // Gleicher Provider an gleicher Position wird uebersprungen; derselbe
+        // Provider an anderer Position und neue Provider bleiben im Plan.
+        assertEquals(listOf(backup("a/b", x = 50f), backup("c/d")), planWidgetRestore(backups, existing))
+    }
+
+    @Test
+    fun `restore plan is empty on same-device re-import`() {
+        val backups = listOf(backup("a/b"), backup("c/d", y = 30f))
+        val existing = listOf(hosted(1, "a/b"), hosted(2, "c/d", y = 30f))
+
+        assertEquals(emptyList<WidgetBackup>(), planWidgetRestore(backups, existing))
     }
 }
