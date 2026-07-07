@@ -115,7 +115,7 @@ internal const val SCREEN_EDGE_MARGIN_DP = 48
 internal const val MAX_HEIGHT_SCREEN_FRACTION = 0.6f
 
 /**
- * Default-Groesse beim Binden (MVP ohne Resize): bevorzugt die Zell-Angaben des Providers
+ * Default-Groesse beim Binden (aenderbar per Resize im Edit-Modus): bevorzugt die Zell-Angaben des Providers
  * (API 31+, `targetCellWidth/Height`, 0 = nicht gesetzt), sonst `minWidth/minHeight` –
  * geclampt auf sinnvolle Unter-/Obergrenzen relativ zur Screen-Groesse.
  */

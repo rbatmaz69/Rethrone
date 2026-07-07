@@ -12,6 +12,7 @@ import android.widget.FrameLayout
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.androidlauncher.data.HostedWidget
@@ -52,7 +53,9 @@ fun HostedWidgetView(
             frame.blockTouches = isEditMode
             updateAppWidgetSizeCompat(hostView, widget.widthDp, widget.heightDp)
         },
-        modifier = modifier.size(widget.widthDp.dp, widget.heightDp.dp)
+        modifier = modifier
+            .size(widget.widthDp.dp, widget.heightDp.dp)
+            .clipToBounds()
     )
 }
 

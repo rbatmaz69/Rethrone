@@ -119,17 +119,26 @@ class WidgetHostManager(
     }
 
     /**
-     * Persistiert Offsets und Groessen aus dem Edit-Modus in einem einzigen
-     * atomaren Write (B1-PR4: der Speichern-Knopf committet beides gemeinsam).
+     * Persistiert Offsets, Groessen und vorgemerkte Loeschungen aus dem Edit-Modus
+     * in einem einzigen atomaren Write (B1-PR4/U3: der Speichern-Knopf committet
+     * alles gemeinsam – erst hier werden Host-IDs entfernter Widgets freigegeben,
+     * damit Abbrechen/Rueckgaengig die Host-View nie verliert).
      */
-    suspend fun updateWidgetPlacement(offsets: Map<Int, Offset>, sizes: Map<Int, WidgetSizeDp>) {
-        if (offsets.isEmpty() && sizes.isEmpty()) return
-        val updated = settings.hostedWidgets.first().map { widget ->
-            var result = widget
-            offsets[widget.appWidgetId]?.let { result = result.copy(offsetX = it.x, offsetY = it.y) }
-            sizes[widget.appWidgetId]?.let { result = result.copy(widthDp = it.widthDp, heightDp = it.heightDp) }
-            result
-        }
+    suspend fun updateWidgetPlacement(
+        offsets: Map<Int, Offset>,
+        sizes: Map<Int, WidgetSizeDp>,
+        removedIds: Set<Int> = emptySet(),
+    ) {
+        if (offsets.isEmpty() && sizes.isEmpty() && removedIds.isEmpty()) return
+        removedIds.forEach(::deleteWidgetId)
+        val updated = settings.hostedWidgets.first()
+            .filterNot { it.appWidgetId in removedIds }
+            .map { widget ->
+                var result = widget
+                offsets[widget.appWidgetId]?.let { result = result.copy(offsetX = it.x, offsetY = it.y) }
+                sizes[widget.appWidgetId]?.let { result = result.copy(widthDp = it.widthDp, heightDp = it.heightDp) }
+                result
+            }
         settings.setHostedWidgets(updated)
     }
 

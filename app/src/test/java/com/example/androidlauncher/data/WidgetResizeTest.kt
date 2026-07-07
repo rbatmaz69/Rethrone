@@ -102,31 +102,133 @@ class WidgetResizeTest {
         assertEquals(900, result.maxWidthDp)
     }
 
-    @Test
-    fun `applyResizeDrag clamps to the limits`() {
-        val limits = WidgetResizeLimits(100, 320, 60, 200)
-        val start = WidgetSizeDp(180, 110)
+    // --- U3: Pinch-Resize (kumulierter Zoom-Faktor) + Anschlag-Info fuer Haptik/Chip ---
 
-        assertEquals(WidgetSizeDp(320, 60), applyResizeDrag(start, 500f, -500f, limits))
-        assertEquals(WidgetSizeDp(100, 200), applyResizeDrag(start, -500f, 500f, limits))
+    @Test
+    fun `resolveResizeZoom scales both axes from the start size`() {
+        val limits = WidgetResizeLimits(100, 400, 60, 300)
+        val start = WidgetSizeDp(200, 100)
+
+        val result = resolveResizeZoom(start, 1.5f, limits)
+
+        assertEquals(WidgetSizeDp(300, 150), result.size)
+        assertFalse(result.clampedWidth)
+        assertFalse(result.clampedHeight)
     }
 
     @Test
-    fun `applyResizeDrag accumulates from the start size without rounding drift`() {
+    fun `resolveResizeZoom with factor one keeps the size`() {
         val limits = WidgetResizeLimits(100, 400, 60, 300)
         val start = WidgetSizeDp(180, 110)
 
-        // Kumulierter Drag statt Delta-Summe: 0.4dp bewegt (noch) nichts …
-        assertEquals(start, applyResizeDrag(start, 0.4f, 0.4f, limits))
-        // … 30.6dp landet gerundet bei +31/+31.
-        assertEquals(WidgetSizeDp(211, 141), applyResizeDrag(start, 30.6f, 30.6f, limits))
+        assertEquals(start, resolveResizeZoom(start, 1f, limits).size)
     }
 
     @Test
-    fun `locked axis is a no-op even with drag input`() {
+    fun `resolveResizeZoom accumulates from the start size without rounding drift`() {
+        val limits = WidgetResizeLimits(100, 400, 60, 300)
+        val start = WidgetSizeDp(180, 110)
+
+        // Kumulierter Faktor statt Delta-Produkt: 1.001 bewegt (noch) fast nichts …
+        assertEquals(WidgetSizeDp(180, 110), resolveResizeZoom(start, 1.001f, limits).size)
+        // … 1.1 landet gerundet bei 198×121.
+        assertEquals(WidgetSizeDp(198, 121), resolveResizeZoom(start, 1.1f, limits).size)
+    }
+
+    @Test
+    fun `zooming past the max clamps the size and reports the tighter axis`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val result = resolveResizeZoom(start, 3f, limits)
+
+        // Der Akkumulator wird an der groesseren freien Achse (Hoehe, Faktor
+        // 200/110) gekappt: die Hoehe landet exakt am Max (kein Anschlag), die
+        // engere Breiten-Achse meldet den Anschlag.
+        assertEquals(WidgetSizeDp(320, 200), result.size)
+        assertTrue(result.clampedWidth)
+        assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `zooming below the min clamps the size and reports the tighter axis`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val result = resolveResizeZoom(start, 0.3f, limits)
+
+        assertEquals(WidgetSizeDp(100, 60), result.size)
+        assertTrue(result.clampedWidth)
+        assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `applied zoom is capped so pinching back in works immediately`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        // Weit ueber das Max hinausgezogen: der Akkumulator bleibt am
+        // nuetzlichen Maximum stehen statt auf 10 davonzulaufen …
+        val maxed = resolveResizeZoom(start, 10f, limits)
+        assertEquals(200f / 110f, maxed.appliedZoom, 1e-4f)
+
+        // … dadurch schrumpft der naechste Reinzieh-Schritt sofort wieder
+        // (vorher: riesige tote Zone = "nicht mehr kleinziehbar").
+        val shrunk = resolveResizeZoom(start, maxed.appliedZoom * 0.9f, limits)
+        assertTrue(shrunk.size.widthDp < maxed.size.widthDp)
+        assertTrue(shrunk.size.heightDp < maxed.size.heightDp)
+    }
+
+    @Test
+    fun `applied zoom is floored so pinching back out works immediately`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val minned = resolveResizeZoom(start, 0.01f, limits)
+        assertEquals(60f / 110f, minned.appliedZoom, 1e-4f)
+
+        val grown = resolveResizeZoom(start, minned.appliedZoom * 1.1f, limits)
+        assertTrue(grown.size.widthDp > minned.size.widthDp)
+        assertTrue(grown.size.heightDp > minned.size.heightDp)
+    }
+
+    @Test
+    fun `locked axis stays fixed and never reports clamped`() {
+        // Sonst wuerde jede Pinch-Geste an einem nur-vertikal skalierbaren
+        // Widget dauerhaft die Anschlag-Haptik ausloesen.
         val limits = WidgetResizeLimits(180, 180, 60, 300)
         val start = WidgetSizeDp(180, 110)
 
-        assertEquals(WidgetSizeDp(180, 210), applyResizeDrag(start, 999f, 100f, limits))
+        val result = resolveResizeZoom(start, 2f, limits)
+
+        assertEquals(WidgetSizeDp(180, 220), result.size)
+        assertFalse(result.clampedWidth)
+        assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `landing exactly on the limit does not count as clamped`() {
+        // Erst der Versuch, DARUEBER hinaus zu zoomen, meldet den Anschlag – die
+        // Haptik feuert damit genau auf der false-zu-true-Flanke an der Wand.
+        val limits = WidgetResizeLimits(100, 400, 60, 220)
+        val start = WidgetSizeDp(200, 110)
+
+        val result = resolveResizeZoom(start, 2f, limits)
+
+        assertEquals(WidgetSizeDp(400, 220), result.size)
+        assertFalse(result.clampedWidth)
+        assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `degenerate zoom factors are floored instead of collapsing the widget`() {
+        val limits = WidgetResizeLimits(100, 400, 60, 300)
+        val start = WidgetSizeDp(180, 110)
+
+        val zero = resolveResizeZoom(start, 0f, limits)
+        val negative = resolveResizeZoom(start, -1f, limits)
+
+        assertEquals(WidgetSizeDp(100, 60), zero.size)
+        assertEquals(zero.size, negative.size)
     }
 }

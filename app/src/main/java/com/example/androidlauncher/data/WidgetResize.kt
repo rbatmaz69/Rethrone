@@ -88,18 +88,77 @@ private fun axisRange(
 }
 
 /**
- * Groesse waehrend eines Resize-Drags: [startSize] ist die Groesse beim Gesten-Start,
- * [totalDragXDp]/[totalDragYDp] der **kumulierte** Drag seitdem (nicht das letzte
- * Delta – so gehen Sub-dp-Bewegungen nicht durch Rundung verloren).
+ * Ergebnis eines Resize-Zooms inkl. Anschlag-Information (U3: Haptik + Chip-Puls).
+ *
+ * [clampedWidth]/[clampedHeight] sind nur dann `true`, wenn die Achse **frei** ist
+ * (`max > min`) und der ungeklemmte Wert ausserhalb des Bereichs lag. Eine gesperrte
+ * Achse (`min == max`) meldet bewusst nie "geklemmt" – sonst wuerde jede Pinch-Geste
+ * an einem nur-einachsig skalierbaren Widget dauerhaft vibrieren.
  */
-fun applyResizeDrag(
-    startSize: WidgetSizeDp,
-    totalDragXDp: Float,
-    totalDragYDp: Float,
-    limits: WidgetResizeLimits,
-): WidgetSizeDp = WidgetSizeDp(
-    widthDp = (startSize.widthDp + totalDragXDp).roundToInt()
-        .coerceIn(limits.minWidthDp, limits.maxWidthDp),
-    heightDp = (startSize.heightDp + totalDragYDp).roundToInt()
-        .coerceIn(limits.minHeightDp, limits.maxHeightDp),
+data class ResizeZoomResult(
+    val size: WidgetSizeDp,
+    val clampedWidth: Boolean,
+    val clampedHeight: Boolean,
+    /**
+     * Auf den nuetzlichen Bereich zurueckgeklemmter Akkumulator – der Aufrufer
+     * MUSS seinen kumulierten Faktor hiermit ueberschreiben. Ohne die Kappung
+     * laeuft der Akkumulator am Anschlag weiter, waehrend die Groesse geklemmt
+     * bleibt, und die Gegenrichtung hat eine riesige tote Zone ("einmal gross
+     * gezogen, nicht mehr kleinziehbar").
+     */
+    val appliedZoom: Float,
 )
+
+/** Untergrenze des Zoom-Faktors – schuetzt vor degenerierten Gesten-Werten (0/negativ). */
+private const val MIN_RESIZE_ZOOM = 0.05f
+
+/**
+ * Kappt [zoom] auf den Bereich, in dem sich mindestens eine freie Achse noch
+ * bewegt: Untergrenze = kleinstes min/start-Verhaeltnis, Obergrenze = groesstes
+ * max/start-Verhaeltnis der freien Achsen. Dadurch reagiert das Reinziehen nach
+ * einem Anschlag sofort wieder.
+ */
+private fun clampZoomToUsefulRange(
+    startSize: WidgetSizeDp,
+    zoom: Float,
+    limits: WidgetResizeLimits,
+): Float {
+    var minZoom = Float.MAX_VALUE
+    var maxZoom = Float.MIN_VALUE
+    if (limits.maxWidthDp > limits.minWidthDp && startSize.widthDp > 0) {
+        minZoom = minOf(minZoom, limits.minWidthDp.toFloat() / startSize.widthDp)
+        maxZoom = maxOf(maxZoom, limits.maxWidthDp.toFloat() / startSize.widthDp)
+    }
+    if (limits.maxHeightDp > limits.minHeightDp && startSize.heightDp > 0) {
+        minZoom = minOf(minZoom, limits.minHeightDp.toFloat() / startSize.heightDp)
+        maxZoom = maxOf(maxZoom, limits.maxHeightDp.toFloat() / startSize.heightDp)
+    }
+    if (minZoom > maxZoom) return zoom.coerceAtLeast(MIN_RESIZE_ZOOM)
+    return zoom.coerceIn(minZoom, maxZoom)
+}
+
+/**
+ * Groesse waehrend einer Pinch-Geste (U3): [startSize] ist die Groesse beim
+ * Gesten-Start, [zoom] der **kumulierte** Zoom-Faktor seitdem (nicht das letzte
+ * Delta – so gehen Sub-dp-Aenderungen nicht durch Rundung verloren). Beide Achsen
+ * skalieren mit demselben Faktor; gesperrte Achsen (min == max) bleiben durch das
+ * Clamping automatisch fest. Der Aufrufer fuehrt seinen Akkumulator mit
+ * [ResizeZoomResult.appliedZoom] weiter, damit er am Anschlag nicht davonlaeuft.
+ */
+fun resolveResizeZoom(
+    startSize: WidgetSizeDp,
+    zoom: Float,
+    limits: WidgetResizeLimits,
+): ResizeZoomResult {
+    val appliedZoom = clampZoomToUsefulRange(startSize, zoom, limits)
+    val rawWidth = (startSize.widthDp * appliedZoom).roundToInt()
+    val rawHeight = (startSize.heightDp * appliedZoom).roundToInt()
+    val width = rawWidth.coerceIn(limits.minWidthDp, limits.maxWidthDp)
+    val height = rawHeight.coerceIn(limits.minHeightDp, limits.maxHeightDp)
+    return ResizeZoomResult(
+        size = WidgetSizeDp(width, height),
+        clampedWidth = limits.maxWidthDp > limits.minWidthDp && rawWidth != width,
+        clampedHeight = limits.maxHeightDp > limits.minHeightDp && rawHeight != height,
+        appliedZoom = appliedZoom,
+    )
+}

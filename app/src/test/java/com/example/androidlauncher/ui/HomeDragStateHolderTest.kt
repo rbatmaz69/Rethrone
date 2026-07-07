@@ -128,4 +128,77 @@ class HomeDragStateHolderTest {
         assertEquals(mapOf(1 to WidgetSizeDp(200, 100)), holder.toWidgetSizes())
         assertFalse(holder.widgetSizes.containsKey(2))
     }
+
+    // --- U3: zum Entfernen vorgemerkte Widgets ---
+
+    @Test
+    fun `marked widgets are excluded from offsets and sizes but others stay`() {
+        val holder = HomeDragStateHolder(HomeLayout(), listOf(widget(1), widget(2)))
+
+        holder.markWidgetForRemoval(2)
+
+        assertTrue(holder.isWidgetPendingRemoval(2))
+        assertFalse(holder.isWidgetPendingRemoval(1))
+        assertEquals(mapOf(1 to Offset.Zero), holder.toWidgetOffsets())
+        assertEquals(mapOf(1 to WidgetSizeDp(200, 100)), holder.toWidgetSizes())
+        assertEquals(setOf(2), holder.pendingRemovalsSnapshot())
+    }
+
+    @Test
+    fun `marking the selected widget clears selection and pin`() {
+        val holder = HomeDragStateHolder(HomeLayout(), listOf(widget(1)))
+        holder.selectedEditTarget = HomeEditTarget.Widget(1)
+        holder.isEditTargetUserPinned = true
+
+        holder.markWidgetForRemoval(1)
+
+        assertNull(holder.selectedEditTarget)
+        assertFalse(holder.isEditTargetUserPinned)
+    }
+
+    @Test
+    fun `marking another widget keeps the current selection`() {
+        val holder = HomeDragStateHolder(HomeLayout(), listOf(widget(1), widget(2)))
+        holder.selectedEditTarget = HomeEditTarget.Widget(1)
+        holder.isEditTargetUserPinned = true
+
+        holder.markWidgetForRemoval(2)
+
+        assertEquals(HomeEditTarget.Widget(1), holder.selectedEditTarget)
+        assertTrue(holder.isEditTargetUserPinned)
+    }
+
+    @Test
+    fun `undo restores the widget in offsets and sizes`() {
+        val holder = HomeDragStateHolder(HomeLayout(), listOf(widget(1)))
+
+        holder.markWidgetForRemoval(1)
+        holder.undoWidgetRemoval(1)
+
+        assertFalse(holder.isWidgetPendingRemoval(1))
+        assertEquals(mapOf(1 to Offset.Zero), holder.toWidgetOffsets())
+        assertEquals(mapOf(1 to WidgetSizeDp(200, 100)), holder.toWidgetSizes())
+    }
+
+    @Test
+    fun `seedFrom clears pending removals (cancel semantics)`() {
+        val holder = HomeDragStateHolder(HomeLayout(), listOf(widget(1)))
+
+        holder.markWidgetForRemoval(1)
+        holder.seedFrom(HomeLayout(), listOf(widget(1)))
+
+        assertFalse(holder.isWidgetPendingRemoval(1))
+        assertEquals(emptySet<Int>(), holder.pendingRemovalsSnapshot())
+    }
+
+    @Test
+    fun `marking twice does not duplicate the entry`() {
+        val holder = HomeDragStateHolder(HomeLayout(), listOf(widget(1)))
+
+        holder.markWidgetForRemoval(1)
+        holder.markWidgetForRemoval(1)
+        holder.undoWidgetRemoval(1)
+
+        assertFalse(holder.isWidgetPendingRemoval(1))
+    }
 }
