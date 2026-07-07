@@ -173,6 +173,11 @@
     <string name="gesture_action_open_settings">Impostazioni</string>
 
     <!-- Menu Gesti -->
+    <string name="gestures_section_swipe">Scorrimento</string>
+    <string name="gestures_on_swipe_up">Allo scorrimento verso l\'alto</string>
+    <string name="gestures_on_swipe_down">Allo scorrimento verso il basso</string>
+    <string name="gestures_on_swipe_left">Allo scorrimento verso sinistra</string>
+    <string name="gestures_on_swipe_right">Allo scorrimento verso destra</string>
     <string name="gestures_section_double_tap">Doppio tocco</string>
     <string name="gestures_on_double_tap">Al doppio tocco</string>
     <string name="gestures_section_shake">Scuotimento</string>
@@ -407,7 +412,7 @@
     <string name="onboarding_gestures_title">Gesti rapidi</string>
     <string name="onboarding_gestures_desc">Alcuni gesti per usare Rethrone in un lampo.</string>
     <string name="onboarding_gesture_swipe_title">Scorri verso l\'alto</string>
-    <string name="onboarding_gesture_swipe_desc">Apre il drawer con tutte le tue app.</string>
+    <string name="onboarding_gesture_swipe_desc">Apre il drawer delle app: ogni direzione di scorrimento è personalizzabile in Impostazioni → Gesti.</string>
     <string name="onboarding_gesture_doubletap_title">Doppio tocco</string>
     <string name="onboarding_gesture_doubletap_desc">Tocca due volte la Home per la tua azione scelta.</string>
     <string name="onboarding_gesture_shake_title">Scuoti</string>

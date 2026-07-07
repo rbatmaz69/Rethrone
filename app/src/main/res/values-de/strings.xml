@@ -188,6 +188,11 @@
     <string name="gesture_action_open_settings">Einstellungen</string>
 
     <!-- Gesten-Menü -->
+    <string name="gestures_section_swipe">Wischen</string>
+    <string name="gestures_on_swipe_up">Beim Wischen nach oben</string>
+    <string name="gestures_on_swipe_down">Beim Wischen nach unten</string>
+    <string name="gestures_on_swipe_left">Beim Wischen nach links</string>
+    <string name="gestures_on_swipe_right">Beim Wischen nach rechts</string>
     <string name="gestures_section_double_tap">Doppeltippen</string>
     <string name="gestures_on_double_tap">Beim Doppeltippen</string>
     <string name="gestures_section_shake">Schütteln</string>
@@ -422,7 +427,7 @@
     <string name="onboarding_gestures_title">Schnelle Gesten</string>
     <string name="onboarding_gestures_desc">Ein paar Griffe, die Rethrone flott machen.</string>
     <string name="onboarding_gesture_swipe_title">Nach oben wischen</string>
-    <string name="onboarding_gesture_swipe_desc">Öffnet den App-Drawer mit allen Apps.</string>
+    <string name="onboarding_gesture_swipe_desc">Öffnet den App-Drawer – jede Wisch-Richtung ist unter Einstellungen → Gesten anpassbar.</string>
     <string name="onboarding_gesture_doubletap_title">Doppeltippen</string>
     <string name="onboarding_gesture_doubletap_desc">Tippe zweimal auf den Startbildschirm für deine gewählte Aktion.</string>
     <string name="onboarding_gesture_shake_title">Schütteln</string>

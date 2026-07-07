@@ -173,6 +173,11 @@
     <string name="gesture_action_open_settings">Réglages</string>
 
     <!-- Menu Gestes -->
+    <string name="gestures_section_swipe">Balayage</string>
+    <string name="gestures_on_swipe_up">Au balayage vers le haut</string>
+    <string name="gestures_on_swipe_down">Au balayage vers le bas</string>
+    <string name="gestures_on_swipe_left">Au balayage vers la gauche</string>
+    <string name="gestures_on_swipe_right">Au balayage vers la droite</string>
     <string name="gestures_section_double_tap">Double appui</string>
     <string name="gestures_on_double_tap">Au double appui</string>
     <string name="gestures_section_shake">Secousse</string>
@@ -407,7 +412,7 @@
     <string name="onboarding_gestures_title">Gestes rapides</string>
     <string name="onboarding_gestures_desc">Quelques gestes pour utiliser Rethrone en un éclair.</string>
     <string name="onboarding_gesture_swipe_title">Balayer vers le haut</string>
-    <string name="onboarding_gesture_swipe_desc">Ouvre le tiroir avec toutes vos apps.</string>
+    <string name="onboarding_gesture_swipe_desc">Ouvre le tiroir d\'applications – chaque direction de balayage est personnalisable dans Réglages → Gestes.</string>
     <string name="onboarding_gesture_doubletap_title">Double appui</string>
     <string name="onboarding_gesture_doubletap_desc">Appuyez deux fois sur l\'écran d\'accueil pour votre action choisie.</string>
     <string name="onboarding_gesture_shake_title">Secouer</string>

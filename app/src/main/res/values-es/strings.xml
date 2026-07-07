@@ -173,6 +173,11 @@
     <string name="gesture_action_open_settings">Ajustes</string>
 
     <!-- Menú Gestos -->
+    <string name="gestures_section_swipe">Deslizar</string>
+    <string name="gestures_on_swipe_up">Al deslizar hacia arriba</string>
+    <string name="gestures_on_swipe_down">Al deslizar hacia abajo</string>
+    <string name="gestures_on_swipe_left">Al deslizar a la izquierda</string>
+    <string name="gestures_on_swipe_right">Al deslizar a la derecha</string>
     <string name="gestures_section_double_tap">Doble toque</string>
     <string name="gestures_on_double_tap">Al doble toque</string>
     <string name="gestures_section_shake">Agitar</string>
@@ -407,7 +412,7 @@
     <string name="onboarding_gestures_title">Gestos rápidos</string>
     <string name="onboarding_gestures_desc">Unos gestos para usar Rethrone en un instante.</string>
     <string name="onboarding_gesture_swipe_title">Desliza hacia arriba</string>
-    <string name="onboarding_gesture_swipe_desc">Abre el cajón con todas tus apps.</string>
+    <string name="onboarding_gesture_swipe_desc">Abre el cajón de apps: cada dirección de deslizamiento se puede personalizar en Ajustes → Gestos.</string>
     <string name="onboarding_gesture_doubletap_title">Doble toque</string>
     <string name="onboarding_gesture_doubletap_desc">Toca dos veces la pantalla de inicio para tu acción elegida.</string>
     <string name="onboarding_gesture_shake_title">Agitar</string>

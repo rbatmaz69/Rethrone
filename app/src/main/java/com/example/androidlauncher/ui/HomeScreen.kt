@@ -13,7 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -63,9 +62,11 @@ import com.example.androidlauncher.data.FavoritesBorderStyle
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.HostedWidget
+import com.example.androidlauncher.data.SwipeGestureConfig
 import com.example.androidlauncher.data.WidgetResizeLimits
 import com.example.androidlauncher.data.WidgetSizeDp
 import com.example.androidlauncher.data.applyResizeDrag
+import com.example.androidlauncher.gesture.SwipeDirectionResolver
 import com.example.androidlauncher.launchShortcut
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
 import com.example.androidlauncher.ui.theme.*
@@ -101,10 +102,12 @@ fun HomeScreen(
     isSearchOpen: Boolean,
     isEditMode: Boolean = false,
     homeLayout: HomeLayout = HomeLayout(),
-    onOpenDrawer: () -> Unit,
     onOpenSearch: () -> Unit,
     doubleTapAction: GestureAction = GestureAction.LOCK_SCREEN,
     doubleTapAppPackage: String? = null,
+    // U1: Belegung der 4 Wisch-Richtungen; Default = bisheriges Verhalten
+    // (hoch = Drawer, runter = Benachrichtigungen). Dispatch via onGestureAction.
+    swipeActions: SwipeGestureConfig = SwipeGestureConfig(),
     onGestureAction: (GestureAction, String?) -> Unit = { _, _ -> },
     onToggleSettings: () -> Unit,
     onToggleEditMode: () -> Unit,
@@ -514,6 +517,7 @@ fun HomeScreen(
     // rememberUpdatedState sorgt dafür, dass die Geste immer den aktuellen Wert liest.
     val currentDoubleTapAction by rememberUpdatedState(doubleTapAction)
     val currentDoubleTapAppPackage by rememberUpdatedState(doubleTapAppPackage)
+    val currentSwipeActions by rememberUpdatedState(swipeActions)
     val currentOnGestureAction by rememberUpdatedState(onGestureAction)
 
     val rotation by animateFloatAsState(
@@ -532,34 +536,31 @@ fun HomeScreen(
                     Modifier
                         .pointerInput(isEditMode, appAccessMode) {
                             if (!isEditMode) {
-                                // Untere System-Gestenzone (Home-Wisch) aussparen, sonst öffnet ein Wisch
-                                // von ganz unten versehentlich den Drawer. Zudem die Gesamtstrecke
-                                // akkumulieren (robuster als der fragile Pro-Frame-Delta).
+                                // U1: Wisch-Erkennung für alle 4 Richtungen. Akkumulation,
+                                // Dominante-Achse-Regel und die Aussparung der unteren
+                                // System-Gestenzone liegen testbar im SwipeDirectionResolver;
+                                // pro Drag wird er mit der aktuellen Höhe neu aufgesetzt.
                                 val deadZonePx = 48.dp.toPx()
-                                val thresholdPx = 60f
-                                var startY = 0f
-                                var totalDy = 0f
-                                var handled = false
-                                detectVerticalDragGestures(
+                                var resolver: SwipeDirectionResolver? = null
+                                detectDragGestures(
                                     onDragStart = { offset ->
-                                        startY = offset.y
-                                        totalDy = 0f
-                                        handled = false
+                                        resolver = SwipeDirectionResolver(
+                                            thresholdPx = 60f,
+                                            bottomDeadZonePx = deadZonePx,
+                                            containerHeightPx = size.height.toFloat(),
+                                        ).also { it.onDragStart(offset.y) }
                                     },
-                                    onDragCancel = { handled = false }
+                                    onDragCancel = { resolver = null }
                                 ) { _, dragAmount ->
-                                    val startedInBottomGestureZone = startY > size.height - deadZonePx
-                                    if (!handled && !startedInBottomGestureZone) {
-                                        totalDy += dragAmount
-                                        // Im HOME_LIST-Modus gibt es keinen hochziehbaren Drawer – der App-Zugriff
-                                        // läuft über die seitliche Randleiste (HomeAppScrubber).
-                                        if (totalDy < -thresholdPx && appAccessMode != AppAccessMode.HOME_LIST) {
-                                            handled = true
-                                            onOpenDrawer()
-                                        } else if (totalDy > thresholdPx) {
-                                            handled = true
-                                            expandNotifications(context)
-                                        }
+                                    val direction = resolver?.onDrag(dragAmount.x, dragAmount.y)
+                                        ?: return@detectDragGestures
+                                    val binding = currentSwipeActions[direction]
+                                    // Im HOME_LIST-Modus gibt es keinen hochziehbaren Drawer – der App-Zugriff
+                                    // läuft über die seitliche Randleiste (HomeAppScrubber).
+                                    val drawerUnavailable = binding.action == GestureAction.APP_DRAWER &&
+                                        appAccessMode == AppAccessMode.HOME_LIST
+                                    if (!drawerUnavailable) {
+                                        currentOnGestureAction(binding.action, binding.appPackage)
                                     }
                                 }
                             }

@@ -1,5 +1,6 @@
 package com.example.androidlauncher.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -27,19 +28,25 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Smartphone
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
+import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.GestureAction
+import com.example.androidlauncher.data.SwipeDirection
+import com.example.androidlauncher.data.SwipeGestureConfig
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import com.example.androidlauncher.ui.theme.LocalFontWeight
 
 /**
- * Untermenü „Gesten": pro Geste eine frei wählbare Aktion. Enthält aktuell die
- * Doppeltipp-Geste und die (bestehende) Schüttel-Geste.
+ * Untermenü „Gesten": pro Geste eine frei wählbare Aktion. Enthält die vier
+ * Wisch-Richtungen (U1), die Doppeltipp-Geste und die Schüttel-Geste.
  */
 @Composable
 fun GesturesConfigMenu(
     apps: List<AppInfo>,
+    swipeConfig: SwipeGestureConfig,
+    onSwipeActionChange: (SwipeDirection, GestureAction) -> Unit,
+    onSwipeAppPackageChange: (SwipeDirection, String?) -> Unit,
     doubleTapAction: GestureAction,
     onDoubleTapActionChange: (GestureAction) -> Unit,
     doubleTapAppPackage: String?,
@@ -91,6 +98,27 @@ fun GesturesConfigMenu(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(top = 24.dp, bottom = 8.dp)
         ) {
+            // --- Wischen (U1) ---
+            item { GestureSectionHeader(stringResource(R.string.gestures_section_swipe), mainTextColor) }
+            SwipeDirection.entries.forEach { direction ->
+                item {
+                    val binding = swipeConfig[direction]
+                    GestureActionRow(
+                        label = stringResource(direction.labelRes),
+                        apps = apps,
+                        action = binding.action,
+                        onActionChange = { onSwipeActionChange(direction, it) },
+                        appPackage = binding.appPackage,
+                        onAppPackageChange = { onSwipeAppPackageChange(direction, it) },
+                        testTagPrefix = "swipe_${direction.name.lowercase()}",
+                        mainTextColor = mainTextColor,
+                        designStyle = designStyle,
+                        surfaceAccent = surfaceAccent,
+                        isDarkTextEnabled = isDarkTextEnabled
+                    )
+                }
+            }
+
             // --- Doppeltippen ---
             item { GestureSectionHeader(stringResource(R.string.gestures_section_double_tap), mainTextColor) }
             item {
@@ -199,6 +227,77 @@ fun GesturesConfigMenu(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Label der Menü-Zeile pro Wisch-Richtung. */
+private val SwipeDirection.labelRes: Int
+    @StringRes get() = when (this) {
+        SwipeDirection.UP -> R.string.gestures_on_swipe_up
+        SwipeDirection.DOWN -> R.string.gestures_on_swipe_down
+        SwipeDirection.LEFT -> R.string.gestures_on_swipe_left
+        SwipeDirection.RIGHT -> R.string.gestures_on_swipe_right
+    }
+
+/**
+ * Aktion-Auswahl für eine Geste samt konditionalem App-Picker für
+ * [GestureAction.OPEN_APP] – gleiches Muster wie die Doppeltipp-Zeile.
+ */
+@Composable
+private fun GestureActionRow(
+    label: String,
+    apps: List<AppInfo>,
+    action: GestureAction,
+    onActionChange: (GestureAction) -> Unit,
+    appPackage: String?,
+    onAppPackageChange: (String?) -> Unit,
+    testTagPrefix: String,
+    mainTextColor: Color,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
+    isDarkTextEnabled: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        EditActionSelectorItem(
+            label = label,
+            selectedAction = action,
+            onActionSelected = onActionChange,
+            mainTextColor = mainTextColor,
+            designStyle = designStyle,
+            surfaceAccent = surfaceAccent,
+            isDarkTextEnabled = isDarkTextEnabled,
+            testTag = "${testTagPrefix}_action_selector"
+        )
+        if (action == GestureAction.OPEN_APP) {
+            var showPicker by remember { mutableStateOf(false) }
+            val selectedLabel = apps.firstOrNull { it.packageName == appPackage }?.label
+            EditMenuItem(
+                icon = Lucide.Smartphone,
+                label = stringResource(R.string.choose_app),
+                onClick = { showPicker = true },
+                statusLabel = selectedLabel ?: stringResource(R.string.none),
+                mainTextColor = mainTextColor,
+                designStyle = designStyle,
+                surfaceAccent = surfaceAccent,
+                isDarkTextEnabled = isDarkTextEnabled,
+                testTag = "${testTagPrefix}_open_app_picker"
+            )
+            if (showPicker) {
+                GestureAppPickerDialog(
+                    apps = apps,
+                    selectedPackage = appPackage,
+                    onAppSelected = {
+                        onAppPackageChange(it)
+                        showPicker = false
+                    },
+                    onDismiss = { showPicker = false },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled
+                )
             }
         }
     }
