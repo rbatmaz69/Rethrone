@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.androidlauncher.data.HostedWidget
-import kotlin.math.roundToInt
 
 /**
  * Compose-Wrapper um eine [AppWidgetHostView] (B1). Die Host-View kommt gecacht aus
@@ -52,12 +51,6 @@ fun HostedWidgetView(
         },
         update = { frame ->
             frame.blockTouches = isEditMode
-            // Gewuenschte Groesse spec-unabhaengig in px an den Frame geben (siehe
-            // BlockableFrameLayout.onMeasure) – nur so schrumpft das Widget wieder.
-            val d = frame.resources.displayMetrics.density
-            frame.desiredWidthPx = (widget.widthDp * d).roundToInt()
-            frame.desiredHeightPx = (widget.heightDp * d).roundToInt()
-            frame.requestLayout()
             updateAppWidgetSizeCompat(hostView, widget.widthDp, widget.heightDp)
         },
         modifier = modifier
@@ -87,27 +80,6 @@ private fun updateAppWidgetSizeCompat(hostView: AppWidgetHostView, widthDp: Int,
 private class BlockableFrameLayout(context: Context) : FrameLayout(context) {
 
     var blockTouches = false
-
-    /** Vom Compose-`update`-Block gesetzte Zielgroesse in px (0 = noch nicht gesetzt). */
-    var desiredWidthPx = 0
-    var desiredHeightPx = 0
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // Groesse spec-unabhaengig erzwingen: AppWidgetHostView meldet beim
-        // Verkleinern eine groessere Content-Min, und der AndroidView-Holder reicht
-        // dem Kind nicht zwingend EXACTLY-Specs durch -> die View wuerde sonst nicht
-        // schrumpfen ("wird groesser, uebernimmt die kleine Version nicht").
-        if (desiredWidthPx > 0 && desiredHeightPx > 0) {
-            val childWidthSpec = MeasureSpec.makeMeasureSpec(desiredWidthPx, MeasureSpec.EXACTLY)
-            val childHeightSpec = MeasureSpec.makeMeasureSpec(desiredHeightPx, MeasureSpec.EXACTLY)
-            for (i in 0 until childCount) {
-                getChildAt(i).measure(childWidthSpec, childHeightSpec)
-            }
-            setMeasuredDimension(desiredWidthPx, desiredHeightPx)
-        } else {
-            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        }
-    }
 
     override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean =
         blockTouches || super.onInterceptTouchEvent(ev)

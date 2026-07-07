@@ -60,6 +60,7 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalDesignStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 /** Ein anbietbares Widget eines Providers (Label vorab geladen, Preview lazy pro Zeile). */
 internal data class WidgetPickerEntry(
@@ -307,7 +308,12 @@ private fun WidgetPickerWidgetRow(
             fontWeight = FontWeight.Normal
         )
         Text(
-            text = "${entry.info.minWidth} × ${entry.info.minHeight} dp",
+            // minWidth/minHeight sind in px – fuer die dp-Anzeige zurueckrechnen.
+            text = run {
+                val dens = context.resources.displayMetrics.density
+                "${(entry.info.minWidth / dens).roundToInt()} × " +
+                    "${(entry.info.minHeight / dens).roundToInt()} dp"
+            },
             color = mainTextColor.copy(alpha = 0.5f),
             fontSize = 13.sp
         )

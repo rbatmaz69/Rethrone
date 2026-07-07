@@ -566,11 +566,15 @@ class MainActivity : ComponentActivity() {
                     needsConfigure = info.configure != null,
                 )
                 pendingWidgetBind = pending
+                // AppWidgetProviderInfo.minWidth/minHeight liefert Android in PIXELN
+                // (aus den dp-XML-Werten mal Geraetedichte) – vor der dp-Weiterverarbeitung
+                // zurueckrechnen, sonst werden Widgets auf dichten Geraeten riesig.
+                val widgetDensity = context.resources.displayMetrics.density
                 pendingWidgetSize = defaultWidgetSizeDp(
                     targetCellWidth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) info.targetCellWidth else 0,
                     targetCellHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) info.targetCellHeight else 0,
-                    minWidthDp = info.minWidth,
-                    minHeightDp = info.minHeight,
+                    minWidthDp = (info.minWidth / widgetDensity).roundToInt(),
+                    minHeightDp = (info.minHeight / widgetDensity).roundToInt(),
                     screenWidthDp = configuration.screenWidthDp,
                     screenHeightDp = configuration.screenHeightDp,
                 )
@@ -1371,28 +1375,20 @@ class MainActivity : ComponentActivity() {
                                 widgetResizeLimits = { id ->
                                     widgetHostManager.providerInfo(id)?.let { info ->
                                         val current = hostedWidgets.firstOrNull { it.appWidgetId == id }
+                                        // Alle minResize*/maxResize*/min* Felder sind in PIXELN –
+                                        // vor resolveResizeLimits (dp-Semantik) in dp umrechnen,
+                                        // sonst ist die Untergrenze riesig ("kann nicht kleiner").
+                                        val dens = context.resources.displayMetrics.density
+                                        val minW = if (info.minResizeWidth > 0) info.minResizeWidth else info.minWidth
+                                        val minH = if (info.minResizeHeight > 0) info.minResizeHeight else info.minHeight
+                                        val maxW = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) info.maxResizeWidth else 0
+                                        val maxH = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) info.maxResizeHeight else 0
                                         resolveResizeLimits(
                                             resizeMode = info.resizeMode,
-                                            minResizeWidthDp = if (info.minResizeWidth > 0) {
-                                                info.minResizeWidth
-                                            } else {
-                                                info.minWidth
-                                            },
-                                            minResizeHeightDp = if (info.minResizeHeight > 0) {
-                                                info.minResizeHeight
-                                            } else {
-                                                info.minHeight
-                                            },
-                                            maxResizeWidthDp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                                info.maxResizeWidth
-                                            } else {
-                                                0
-                                            },
-                                            maxResizeHeightDp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                                info.maxResizeHeight
-                                            } else {
-                                                0
-                                            },
+                                            minResizeWidthDp = (minW / dens).roundToInt(),
+                                            minResizeHeightDp = (minH / dens).roundToInt(),
+                                            maxResizeWidthDp = if (maxW > 0) (maxW / dens).roundToInt() else 0,
+                                            maxResizeHeightDp = if (maxH > 0) (maxH / dens).roundToInt() else 0,
                                             currentWidthDp = current?.widthDp ?: 0,
                                             currentHeightDp = current?.heightDp ?: 0,
                                             screenWidthDp = configuration.screenWidthDp,
