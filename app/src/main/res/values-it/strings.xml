@@ -131,9 +131,6 @@
     <string name="widget_picker_empty">Nessun widget trovato</string>
     <string name="widget_bind_failed">Impossibile aggiungere il widget</string>
     <string name="cd_remove_widget">Rimuovi widget</string>
-    <string name="cd_resize_widget">Ridimensiona widget</string>
-    <string name="cd_resize_widget_horizontal">Modifica larghezza del widget</string>
-    <string name="cd_resize_widget_vertical">Modifica altezza del widget</string>
     <string name="widget_pending_removal">Rimosso al salvataggio</string>
     <string name="undo_remove_widget">Annulla</string>
     <string name="icon_pack_section_title">Icon pack</string>

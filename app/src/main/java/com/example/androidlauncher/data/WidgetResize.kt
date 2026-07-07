@@ -88,45 +88,42 @@ private fun axisRange(
 }
 
 /**
- * Ergebnis eines Resize-Drags inkl. Anschlag-Information (U3: Haptik + Chip-Puls).
+ * Ergebnis eines Resize-Zooms inkl. Anschlag-Information (U3: Haptik + Chip-Puls).
  *
  * [clampedWidth]/[clampedHeight] sind nur dann `true`, wenn die Achse **frei** ist
  * (`max > min`) und der ungeklemmte Wert ausserhalb des Bereichs lag. Eine gesperrte
- * Achse (`min == max`) meldet bewusst nie "geklemmt" – sonst wuerde jeder
- * Diagonal-Drag an einem nur-einachsig skalierbaren Widget dauerhaft vibrieren.
+ * Achse (`min == max`) meldet bewusst nie "geklemmt" – sonst wuerde jede Pinch-Geste
+ * an einem nur-einachsig skalierbaren Widget dauerhaft vibrieren.
  */
-data class ResizeDragResult(
+data class ResizeZoomResult(
     val size: WidgetSizeDp,
     val clampedWidth: Boolean,
     val clampedHeight: Boolean,
 )
 
+/** Untergrenze des Zoom-Faktors – schuetzt vor degenerierten Gesten-Werten (0/negativ). */
+private const val MIN_RESIZE_ZOOM = 0.05f
+
 /**
- * Groesse waehrend eines Resize-Drags: [startSize] ist die Groesse beim Gesten-Start,
- * [totalDragXDp]/[totalDragYDp] der **kumulierte** Drag seitdem (nicht das letzte
- * Delta – so gehen Sub-dp-Bewegungen nicht durch Rundung verloren).
+ * Groesse waehrend einer Pinch-Geste (U3): [startSize] ist die Groesse beim
+ * Gesten-Start, [zoom] der **kumulierte** Zoom-Faktor seitdem (nicht das letzte
+ * Delta – so gehen Sub-dp-Aenderungen nicht durch Rundung verloren). Beide Achsen
+ * skalieren mit demselben Faktor; gesperrte Achsen (min == max) bleiben durch das
+ * Clamping automatisch fest.
  */
-fun resolveResizeDrag(
+fun resolveResizeZoom(
     startSize: WidgetSizeDp,
-    totalDragXDp: Float,
-    totalDragYDp: Float,
+    zoom: Float,
     limits: WidgetResizeLimits,
-): ResizeDragResult {
-    val rawWidth = (startSize.widthDp + totalDragXDp).roundToInt()
-    val rawHeight = (startSize.heightDp + totalDragYDp).roundToInt()
+): ResizeZoomResult {
+    val safeZoom = zoom.coerceAtLeast(MIN_RESIZE_ZOOM)
+    val rawWidth = (startSize.widthDp * safeZoom).roundToInt()
+    val rawHeight = (startSize.heightDp * safeZoom).roundToInt()
     val width = rawWidth.coerceIn(limits.minWidthDp, limits.maxWidthDp)
     val height = rawHeight.coerceIn(limits.minHeightDp, limits.maxHeightDp)
-    return ResizeDragResult(
+    return ResizeZoomResult(
         size = WidgetSizeDp(width, height),
         clampedWidth = limits.maxWidthDp > limits.minWidthDp && rawWidth != width,
         clampedHeight = limits.maxHeightDp > limits.minHeightDp && rawHeight != height,
     )
 }
-
-/** Nur die geklemmte Groesse eines Resize-Drags (Details siehe [resolveResizeDrag]). */
-fun applyResizeDrag(
-    startSize: WidgetSizeDp,
-    totalDragXDp: Float,
-    totalDragYDp: Float,
-    limits: WidgetResizeLimits,
-): WidgetSizeDp = resolveResizeDrag(startSize, totalDragXDp, totalDragYDp, limits).size

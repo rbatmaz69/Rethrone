@@ -102,97 +102,100 @@ class WidgetResizeTest {
         assertEquals(900, result.maxWidthDp)
     }
 
-    @Test
-    fun `applyResizeDrag clamps to the limits`() {
-        val limits = WidgetResizeLimits(100, 320, 60, 200)
-        val start = WidgetSizeDp(180, 110)
+    // --- U3: Pinch-Resize (kumulierter Zoom-Faktor) + Anschlag-Info fuer Haptik/Chip ---
 
-        assertEquals(WidgetSizeDp(320, 60), applyResizeDrag(start, 500f, -500f, limits))
-        assertEquals(WidgetSizeDp(100, 200), applyResizeDrag(start, -500f, 500f, limits))
+    @Test
+    fun `resolveResizeZoom scales both axes from the start size`() {
+        val limits = WidgetResizeLimits(100, 400, 60, 300)
+        val start = WidgetSizeDp(200, 100)
+
+        val result = resolveResizeZoom(start, 1.5f, limits)
+
+        assertEquals(WidgetSizeDp(300, 150), result.size)
+        assertFalse(result.clampedWidth)
+        assertFalse(result.clampedHeight)
     }
 
     @Test
-    fun `applyResizeDrag accumulates from the start size without rounding drift`() {
+    fun `resolveResizeZoom with factor one keeps the size`() {
         val limits = WidgetResizeLimits(100, 400, 60, 300)
         val start = WidgetSizeDp(180, 110)
 
-        // Kumulierter Drag statt Delta-Summe: 0.4dp bewegt (noch) nichts …
-        assertEquals(start, applyResizeDrag(start, 0.4f, 0.4f, limits))
-        // … 30.6dp landet gerundet bei +31/+31.
-        assertEquals(WidgetSizeDp(211, 141), applyResizeDrag(start, 30.6f, 30.6f, limits))
+        assertEquals(start, resolveResizeZoom(start, 1f, limits).size)
     }
 
     @Test
-    fun `locked axis is a no-op even with drag input`() {
-        val limits = WidgetResizeLimits(180, 180, 60, 300)
+    fun `resolveResizeZoom accumulates from the start size without rounding drift`() {
+        val limits = WidgetResizeLimits(100, 400, 60, 300)
         val start = WidgetSizeDp(180, 110)
 
-        assertEquals(WidgetSizeDp(180, 210), applyResizeDrag(start, 999f, 100f, limits))
+        // Kumulierter Faktor statt Delta-Produkt: 1.001 bewegt (noch) fast nichts …
+        assertEquals(WidgetSizeDp(180, 110), resolveResizeZoom(start, 1.001f, limits).size)
+        // … 1.1 landet gerundet bei 198×121.
+        assertEquals(WidgetSizeDp(198, 121), resolveResizeZoom(start, 1.1f, limits).size)
     }
 
-    // --- U3: Anschlag-Information fuer Haptik/Chip-Puls ---
-
     @Test
-    fun `resolveResizeDrag within the range reports no clamping`() {
+    fun `zooming past the max reports the free axes as clamped`() {
         val limits = WidgetResizeLimits(100, 320, 60, 200)
         val start = WidgetSizeDp(180, 110)
 
-        val result = resolveResizeDrag(start, 20f, 20f, limits)
+        val result = resolveResizeZoom(start, 3f, limits)
 
-        assertEquals(WidgetSizeDp(200, 130), result.size)
-        assertFalse(result.clampedWidth)
-        assertFalse(result.clampedHeight)
-    }
-
-    @Test
-    fun `resolveResizeDrag past max width reports width clamped`() {
-        val limits = WidgetResizeLimits(100, 320, 60, 200)
-        val start = WidgetSizeDp(180, 110)
-
-        val result = resolveResizeDrag(start, 500f, 0f, limits)
-
-        assertEquals(WidgetSizeDp(320, 110), result.size)
+        assertEquals(WidgetSizeDp(320, 200), result.size)
         assertTrue(result.clampedWidth)
-        assertFalse(result.clampedHeight)
-    }
-
-    @Test
-    fun `resolveResizeDrag below min height reports height clamped`() {
-        val limits = WidgetResizeLimits(100, 320, 60, 200)
-        val start = WidgetSizeDp(180, 110)
-
-        val result = resolveResizeDrag(start, 0f, -500f, limits)
-
-        assertEquals(WidgetSizeDp(180, 60), result.size)
-        assertFalse(result.clampedWidth)
         assertTrue(result.clampedHeight)
     }
 
     @Test
-    fun `locked axis never reports clamped even when pushed hard`() {
-        // Sonst wuerde jeder Diagonal-Drag an einem nur-vertikal skalierbaren
+    fun `zooming below the min reports the free axes as clamped`() {
+        val limits = WidgetResizeLimits(100, 320, 60, 200)
+        val start = WidgetSizeDp(180, 110)
+
+        val result = resolveResizeZoom(start, 0.3f, limits)
+
+        assertEquals(WidgetSizeDp(100, 60), result.size)
+        assertTrue(result.clampedWidth)
+        assertTrue(result.clampedHeight)
+    }
+
+    @Test
+    fun `locked axis stays fixed and never reports clamped`() {
+        // Sonst wuerde jede Pinch-Geste an einem nur-vertikal skalierbaren
         // Widget dauerhaft die Anschlag-Haptik ausloesen.
         val limits = WidgetResizeLimits(180, 180, 60, 300)
         val start = WidgetSizeDp(180, 110)
 
-        val result = resolveResizeDrag(start, 999f, 100f, limits)
+        val result = resolveResizeZoom(start, 2f, limits)
 
-        assertEquals(WidgetSizeDp(180, 210), result.size)
+        assertEquals(WidgetSizeDp(180, 220), result.size)
         assertFalse(result.clampedWidth)
         assertFalse(result.clampedHeight)
     }
 
     @Test
     fun `landing exactly on the limit does not count as clamped`() {
-        // Erst der Versuch, DARUEBER hinaus zu ziehen, meldet den Anschlag – die
+        // Erst der Versuch, DARUEBER hinaus zu zoomen, meldet den Anschlag – die
         // Haptik feuert damit genau auf der false-zu-true-Flanke an der Wand.
-        val limits = WidgetResizeLimits(100, 320, 60, 200)
-        val start = WidgetSizeDp(180, 110)
+        val limits = WidgetResizeLimits(100, 400, 60, 220)
+        val start = WidgetSizeDp(200, 110)
 
-        val result = resolveResizeDrag(start, 140f, 90f, limits)
+        val result = resolveResizeZoom(start, 2f, limits)
 
-        assertEquals(WidgetSizeDp(320, 200), result.size)
+        assertEquals(WidgetSizeDp(400, 220), result.size)
         assertFalse(result.clampedWidth)
         assertFalse(result.clampedHeight)
+    }
+
+    @Test
+    fun `degenerate zoom factors are floored instead of collapsing the widget`() {
+        val limits = WidgetResizeLimits(100, 400, 60, 300)
+        val start = WidgetSizeDp(180, 110)
+
+        val zero = resolveResizeZoom(start, 0f, limits)
+        val negative = resolveResizeZoom(start, -1f, limits)
+
+        assertEquals(WidgetSizeDp(100, 60), zero.size)
+        assertEquals(zero.size, negative.size)
     }
 }

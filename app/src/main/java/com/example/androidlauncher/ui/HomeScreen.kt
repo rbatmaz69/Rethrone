@@ -10,7 +10,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,11 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
@@ -67,7 +66,7 @@ import com.example.androidlauncher.data.HostedWidget
 import com.example.androidlauncher.data.SwipeGestureConfig
 import com.example.androidlauncher.data.WidgetResizeLimits
 import com.example.androidlauncher.data.WidgetSizeDp
-import com.example.androidlauncher.data.resolveResizeDrag
+import com.example.androidlauncher.data.resolveResizeZoom
 import com.example.androidlauncher.gesture.SwipeDirectionResolver
 import com.example.androidlauncher.launchShortcut
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
@@ -690,12 +689,19 @@ fun HomeScreen(
                     val widgetTarget = HomeEditTarget.Widget(widget.appWidgetId)
                     val isPendingRemoval = dragState.isWidgetPendingRemoval(widget.appWidgetId)
                     // Limits einmal pro Edit-Session cachen (U3): `widgetResizeLimits` fragt
-                    // providerInfo ab (System-Call) – nicht bei jedem Drag-Start wiederholen.
+                    // providerInfo ab (System-Call) – nicht bei jeder Geste wiederholen.
                     val resizeLimits = if (isEditMode) {
                         remember(widget.appWidgetId) { widgetResizeLimits(widget.appWidgetId) }
                     } else {
                         null
                     }
+                    // Resize-Feedback (U3): steuert Chip-Sichtbarkeit und Anschlag-Puls
+                    // der Pinch-Geste.
+                    var isResizing by remember { mutableStateOf(false) }
+                    var resizeClamped by remember { mutableStateOf(false) }
+                    // Vorab gefangen: im PointerInputScope würde `density` die
+                    // Scope-Property (Float) statt des äußeren LocalDensity treffen.
+                    val densityFactor = density.density
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -704,6 +710,99 @@ fun HomeScreen(
                             // Vorgemerkte Widgets sind eingefroren: kein Wiggle, kein Drag,
                             // keine Auswahl – nur die Rueckgaengig-Pille reagiert.
                             .then(if (isPendingRemoval) Modifier else Modifier.targetEditModifier(widgetTarget))
+                            // Pinch-to-Resize (U3): zwei Finger auf dem Widget skalieren es.
+                            // Steht in der Kette NACH dem Move-Drag und konsumiert damit im
+                            // Main-Pass zuerst – setzt der zweite Finger auf, bricht der
+                            // Ein-Finger-Drag sauber ab und die Geste wird zum Resize.
+                            .then(
+                                if (isEditMode && !isPendingRemoval && resizeLimits?.isResizable == true) {
+                                    Modifier.pointerInput(widgetTarget, resizeLimits) {
+                                        awaitEachGesture {
+                                            awaitFirstDown(requireUnconsumed = false)
+                                            var pinching = false
+                                            var startSize = WidgetSizeDp(widget.widthDp, widget.heightDp)
+                                            var zoomAcc = 1f
+                                            var lastTickMs = 0L
+                                            var lastTickedSize: WidgetSizeDp? = null
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                val pressed = event.changes.count { it.pressed }
+                                                if (pressed == 0) break
+                                                if (pressed >= 2) {
+                                                    if (!pinching) {
+                                                        pinching = true
+                                                        zoomAcc = 1f
+                                                        startSize = dragState.widgetSizes[widget.appWidgetId]
+                                                            ?: WidgetSizeDp(widget.widthDp, widget.heightDp)
+                                                        selectedEditTarget = widgetTarget
+                                                        isEditTargetUserPinned = true
+                                                        isResizing = true
+                                                        appHaptics.select()
+                                                    }
+                                                    zoomAcc *= event.calculateZoom()
+                                                    val result = resolveResizeZoom(
+                                                        startSize = startSize,
+                                                        zoom = zoomAcc,
+                                                        limits = resizeLimits,
+                                                    )
+                                                    dragState.widgetSizes[widget.appWidgetId] = result.size
+                                                    // Rand-Korrektur (U3): waechst das Widget ueber den
+                                                    // Bildschirmrand hinaus, zieht der Offset mit, damit
+                                                    // es komplett sichtbar (und greifbar) bleibt.
+                                                    dragState.neutralBounds[widgetTarget]?.let { neutral ->
+                                                        val cur = dragState.offsets[widgetTarget] ?: Offset.Zero
+                                                        val grownBounds = Rect(
+                                                            left = neutral.left,
+                                                            top = neutral.top,
+                                                            right = neutral.left + result.size.widthDp * densityFactor,
+                                                            bottom = neutral.top + result.size.heightDp * densityFactor,
+                                                        )
+                                                        val corrected = clampOffsetToBounds(
+                                                            bounds = grownBounds,
+                                                            rootWidth = rootSize.width,
+                                                            rootHeight = rootSize.height,
+                                                            topLimit = 0f,
+                                                            navigationBarHeightPx = navigationBarHeightPx,
+                                                            x = cur.x,
+                                                            y = cur.y,
+                                                        )
+                                                        if (corrected != cur) {
+                                                            dragState.offsets[widgetTarget] = corrected
+                                                        }
+                                                    }
+                                                    // Haptik (U3): deutlicher Impuls beim Erreichen eines
+                                                    // Limits, sonst gedrosseltes Ticken je Groessenaenderung.
+                                                    val clampedNow = result.clampedWidth || result.clampedHeight
+                                                    if (clampedNow && !resizeClamped) {
+                                                        appHaptics.confirm()
+                                                    }
+                                                    resizeClamped = clampedNow
+                                                    val now = SystemClock.uptimeMillis()
+                                                    if (result.size != lastTickedSize &&
+                                                        now - lastTickMs >= blockedDragHapticMinIntervalMs
+                                                    ) {
+                                                        appHaptics.select()
+                                                        lastTickMs = now
+                                                        lastTickedSize = result.size
+                                                    }
+                                                    event.changes.forEach { it.consume() }
+                                                } else if (pinching) {
+                                                    // Nach dem Pinch weiter konsumieren, bis alle Finger
+                                                    // oben sind – sonst springt das Widget dem letzten
+                                                    // Finger als Move-Drag hinterher.
+                                                    event.changes.forEach { it.consume() }
+                                                }
+                                            }
+                                            if (pinching) {
+                                                isResizing = false
+                                                resizeClamped = false
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            )
                     ) {
                         // Live-Größe aus dem Drag-State (Resize-Vorschau); Fallback: persistiert.
                         val liveSize = dragState.widgetSizes[widget.appWidgetId]
@@ -736,111 +835,24 @@ fun HomeScreen(
                             )
                         }
                         if (isEditMode && selectedEditTarget == widgetTarget && !isPendingRemoval) {
-                            // Resize-Handle (Ecke unten rechts) – nur wenn der Provider Resize
-                            // erlaubt (B1-PR4). Gesperrte Achsen sind in den Limits über
-                            // min == max abgebildet, der Drag dort ist ein No-Op; das Icon
-                            // zeigt den Achsen-Modus an (U3).
-                            if (resizeLimits != null && resizeLimits.isResizable) {
-                                val widthResizable = resizeLimits.maxWidthDp > resizeLimits.minWidthDp
-                                val heightResizable = resizeLimits.maxHeightDp > resizeLimits.minHeightDp
-                                var resizeStartSize by remember { mutableStateOf<WidgetSizeDp?>(null) }
-                                var resizeTotalDrag by remember { mutableStateOf(Offset.Zero) }
-                                var isResizing by remember { mutableStateOf(false) }
-                                var resizeClamped by remember { mutableStateOf(false) }
-                                var lastResizeTickMs by remember { mutableLongStateOf(0L) }
-                                var lastTickedSize by remember { mutableStateOf<WidgetSizeDp?>(null) }
-                                // Vorab gefangen: im PointerInputScope würde `density` die
-                                // Scope-Property (Float) statt des äußeren LocalDensity treffen.
-                                val densityFactor = density.density
-                                WidgetEditHandle(
-                                    icon = when {
-                                        widthResizable && heightResizable -> Icons.Rounded.OpenInFull
-                                        widthResizable -> Icons.Rounded.SwapHoriz
-                                        else -> Icons.Rounded.SwapVert
-                                    },
-                                    contentDescription = stringResource(
-                                        when {
-                                            widthResizable && heightResizable -> R.string.cd_resize_widget
-                                            widthResizable -> R.string.cd_resize_widget_horizontal
-                                            else -> R.string.cd_resize_widget_vertical
-                                        }
-                                    ),
-                                    modifier = Modifier
-                                        // Ragt über die Ecke hinaus: verdeckt weniger Widget-Inhalt,
-                                        // das 48.dp-Ziel bleibt trotzdem gut treffbar.
-                                        .align(Alignment.BottomEnd)
-                                        .offset(x = 10.dp, y = 10.dp)
-                                        .zIndex(10f)
-                                        .pointerInput(widgetTarget) {
-                                            detectDragGestures(
-                                                onDragStart = {
-                                                    resizeStartSize =
-                                                        dragState.widgetSizes[widget.appWidgetId]
-                                                            ?: WidgetSizeDp(widget.widthDp, widget.heightDp)
-                                                    resizeTotalDrag = Offset.Zero
-                                                    lastTickedSize = null
-                                                    isResizing = true
-                                                    appHaptics.select()
-                                                },
-                                                onDragEnd = {
-                                                    isResizing = false
-                                                    resizeClamped = false
-                                                },
-                                                onDragCancel = {
-                                                    isResizing = false
-                                                    resizeClamped = false
-                                                },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    resizeTotalDrag += dragAmount
-                                                    val start = resizeStartSize ?: return@detectDragGestures
-                                                    val result = resolveResizeDrag(
-                                                        startSize = start,
-                                                        totalDragXDp = resizeTotalDrag.x / densityFactor,
-                                                        totalDragYDp = resizeTotalDrag.y / densityFactor,
-                                                        limits = resizeLimits,
-                                                    )
-                                                    dragState.widgetSizes[widget.appWidgetId] = result.size
-                                                    // Haptik (U3): deutlicher Impuls beim Erreichen
-                                                    // eines Limits, sonst gedrosseltes Ticken je
-                                                    // Groessenaenderung.
-                                                    val clampedNow = result.clampedWidth || result.clampedHeight
-                                                    if (clampedNow && !resizeClamped) {
-                                                        appHaptics.confirm()
-                                                    }
-                                                    resizeClamped = clampedNow
-                                                    val now = SystemClock.uptimeMillis()
-                                                    if (result.size != lastTickedSize &&
-                                                        now - lastResizeTickMs >= blockedDragHapticMinIntervalMs
-                                                    ) {
-                                                        appHaptics.select()
-                                                        lastResizeTickMs = now
-                                                        lastTickedSize = result.size
-                                                    }
-                                                }
-                                            )
-                                        }
-                                        .testTag("home_widget_resize_${widget.appWidgetId}"),
+                            // Live-Groessen-Chip (U3): zeigt „B × H dp" waehrend der
+                            // Pinch-Geste, pulsiert am Min/Max-Anschlag.
+                            AnimatedVisibility(
+                                visible = isResizing,
+                                enter = rememberMenuEnter(animationsEnabled, fromBottom = false),
+                                exit = rememberMenuExit(animationsEnabled, toBottom = false),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .offset(y = (-40).dp)
+                                    .zIndex(12f)
+                            ) {
+                                val chipSize = dragState.widgetSizes[widget.appWidgetId]
+                                WidgetSizeChip(
+                                    widthDp = chipSize?.widthDp ?: widget.widthDp,
+                                    heightDp = chipSize?.heightDp ?: widget.heightDp,
+                                    clamped = resizeClamped,
+                                    modifier = Modifier.testTag("home_widget_size_label_${widget.appWidgetId}")
                                 )
-                                // Live-Groessen-Chip (U3): zeigt „B × H dp" waehrend des Drags,
-                                // pulsiert am Min/Max-Anschlag.
-                                AnimatedVisibility(
-                                    visible = isResizing,
-                                    enter = rememberMenuEnter(animationsEnabled, fromBottom = false),
-                                    exit = rememberMenuExit(animationsEnabled, toBottom = false),
-                                    modifier = Modifier
-                                        .align(Alignment.TopCenter)
-                                        .offset(y = (-40).dp)
-                                        .zIndex(12f)
-                                ) {
-                                    val chipSize = dragState.widgetSizes[widget.appWidgetId]
-                                    WidgetSizeChip(
-                                        widthDp = chipSize?.widthDp ?: widget.widthDp,
-                                        heightDp = chipSize?.heightDp ?: widget.heightDp,
-                                        clamped = resizeClamped,
-                                        modifier = Modifier.testTag("home_widget_size_label_${widget.appWidgetId}")
-                                    )
-                                }
                             }
                             // Entfernen-Badge (U3): merkt nur vor – gelöscht wird erst beim
                             // Speichern, Abbrechen/Rueckgaengig stellt das Widget wieder her.
