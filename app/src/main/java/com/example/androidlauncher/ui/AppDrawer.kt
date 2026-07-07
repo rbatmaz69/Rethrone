@@ -25,6 +25,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -470,6 +471,22 @@ fun AppDrawer(
                                     onOpenFolderConfig = onOpenFolderConfig
                                 )
                             }
+                        }
+                    }
+
+                    // U2: Leerer Zustand, wenn die Drawer-Suche nichts findet.
+                    if (searchQuery.isNotBlank() && visibleApps.isEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
+                            Text(
+                                text = stringResource(R.string.drawer_search_no_results),
+                                color = mainTextColor.copy(alpha = 0.6f),
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp)
+                                    .testTag("drawer_search_no_results")
+                            )
                         }
                     }
 
