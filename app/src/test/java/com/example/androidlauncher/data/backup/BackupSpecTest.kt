@@ -27,6 +27,19 @@ class BackupSpecTest {
     }
 
     @Test
+    fun `swipe gesture target packages are re-encrypted on import`() {
+        // U1: Die pro Richtung gewählte OPEN_APP-Ziel-App liegt CryptoManager-verschlüsselt
+        // im Store und muss beim Export/Import wie die anderen Paket-Keys behandelt werden.
+        val swipeKeys = setOf(
+            "swipe_up_app_package",
+            "swipe_down_app_package",
+            "swipe_left_app_package",
+            "swipe_right_app_package",
+        )
+        assertTrue(BackupSpec.ENCRYPTED_SETTINGS_KEYS.containsAll(swipeKeys))
+    }
+
+    @Test
     fun `all four stores are covered`() {
         assertEquals(
             listOf("settings", "favorites", "folders", "icon_mappings"),

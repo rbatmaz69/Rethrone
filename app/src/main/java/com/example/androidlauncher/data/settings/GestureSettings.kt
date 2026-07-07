@@ -12,6 +12,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.androidlauncher.data.CryptoManager
 import com.example.androidlauncher.data.GestureAction
+import com.example.androidlauncher.data.SwipeBinding
+import com.example.androidlauncher.data.SwipeDirection
+import com.example.androidlauncher.data.SwipeGestureConfig
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -39,6 +42,14 @@ class GestureSettings(
         private val DOUBLE_TAP_ACTION_KEY = stringPreferencesKey("double_tap_action")
         private val DOUBLE_TAP_APP_PACKAGE_KEY = stringPreferencesKey("double_tap_app_package")
         private val HAPTIC_FEEDBACK_KEY = booleanPreferencesKey("haptic_feedback_enabled")
+
+        // U1: Keys pro Wisch-Richtung, z. B. "swipe_up_action" / "swipe_up_app_package".
+        // Die *_app_package-Keys müssen in BackupSpec.ENCRYPTED_SETTINGS_KEYS gelistet sein.
+        private fun swipeActionKey(direction: SwipeDirection) =
+            stringPreferencesKey("swipe_${direction.name.lowercase()}_action")
+
+        private fun swipeAppPackageKey(direction: SwipeDirection) =
+            stringPreferencesKey("swipe_${direction.name.lowercase()}_app_package")
     }
 
     /** Observable flow for shake gesture toggle. */
@@ -76,6 +87,26 @@ class GestureSettings(
             CryptoManager.decryptOrLegacy(
                 preferences[DOUBLE_TAP_APP_PACKAGE_KEY]
             ).takeIf { it.isNotBlank() }
+        }
+
+    /**
+     * Komplette Swipe-Gesten-Belegung des Startbildschirms (U1). Ein einzelner
+     * `map` über den DataStore statt kombinierter Einzel-Flows – ein Emit pro Änderung.
+     */
+    val swipeGestureConfig: Flow<SwipeGestureConfig> = dataStore.data
+        .map { preferences ->
+            SwipeGestureConfig(
+                SwipeDirection.entries.associateWith { direction ->
+                    val name = preferences[swipeActionKey(direction)]
+                    SwipeBinding(
+                        action = runCatching { GestureAction.valueOf(name ?: "") }
+                            .getOrDefault(SwipeGestureConfig.defaultActionFor(direction)),
+                        appPackage = CryptoManager.decryptOrLegacy(
+                            preferences[swipeAppPackageKey(direction)]
+                        ).takeIf { it.isNotBlank() },
+                    )
+                }
+            )
         }
 
     /**
@@ -144,6 +175,22 @@ class GestureSettings(
                 preferences.remove(DOUBLE_TAP_APP_PACKAGE_KEY)
             } else {
                 preferences[DOUBLE_TAP_APP_PACKAGE_KEY] = CryptoManager.encrypt(packageName)
+            }
+        }
+    }
+
+    /** Setzt die Aktion für eine Wisch-Richtung auf dem Startbildschirm. */
+    suspend fun setSwipeAction(direction: SwipeDirection, action: GestureAction) {
+        dataStore.edit { it[swipeActionKey(direction)] = action.name }
+    }
+
+    /** Setzt das Paket der App für [GestureAction.OPEN_APP] der Wisch-Richtung (null löscht die Wahl). */
+    suspend fun setSwipeAppPackage(direction: SwipeDirection, packageName: String?) {
+        dataStore.edit { preferences ->
+            if (packageName.isNullOrBlank()) {
+                preferences.remove(swipeAppPackageKey(direction))
+            } else {
+                preferences[swipeAppPackageKey(direction)] = CryptoManager.encrypt(packageName)
             }
         }
     }
