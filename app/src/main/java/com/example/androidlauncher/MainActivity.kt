@@ -116,6 +116,7 @@ import com.example.androidlauncher.data.ThemeManager
 import com.example.androidlauncher.data.WidgetBindFlow
 import com.example.androidlauncher.data.WidgetBindStep
 import com.example.androidlauncher.data.WidgetHostManager
+import com.example.androidlauncher.data.WidgetRestoreSummary
 import com.example.androidlauncher.data.WidgetSizeDp
 import com.example.androidlauncher.data.backup.BackupSerializer
 import com.example.androidlauncher.data.backup.RestoreResult
@@ -2188,18 +2189,35 @@ class MainActivity : ComponentActivity() {
     /** B5: liest und validiert eine Backup-Datei und spielt sie ein (Overwrite-all). */
     private fun importBackupFrom(uri: Uri) {
         lifecycleScope.launch(Dispatchers.IO) {
+            // U2: nach erfolgreichem Restore werden Backup-Widgets still re-gebunden
+            // (AppWidget-APIs auf dem Main-Dispatcher, wie der reguläre Bind-Flow).
+            var widgetSummary: WidgetRestoreSummary? = null
             val messageRes = runCatching {
                 val json = contentResolver.openInputStream(uri)?.use { stream ->
                     stream.readBytes().toString(Charsets.UTF_8)
                 } ?: return@runCatching R.string.backup_import_error
                 val snapshot = BackupSerializer.parse(json) ?: return@runCatching R.string.backup_import_error
                 when (backupManager.restore(snapshot)) {
-                    RestoreResult.APPLIED -> R.string.backup_import_success
+                    RestoreResult.APPLIED -> {
+                        if (snapshot.widgets.isNotEmpty()) {
+                            widgetSummary = withContext(Dispatchers.Main) {
+                                widgetHostManager.restoreWidgets(snapshot.widgets)
+                            }
+                        }
+                        R.string.backup_import_success
+                    }
                     RestoreResult.UNSUPPORTED_VERSION -> R.string.backup_import_unsupported
                 }
             }.getOrDefault(R.string.backup_import_error)
             withContext(Dispatchers.Main) {
                 Toast.makeText(this@MainActivity, getString(messageRes), Toast.LENGTH_LONG).show()
+                widgetSummary?.let { summary ->
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.backup_import_widgets_result, summary.restored, summary.skipped),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }

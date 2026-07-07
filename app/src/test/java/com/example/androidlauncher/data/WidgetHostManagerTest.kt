@@ -174,4 +174,80 @@ class WidgetHostManagerTest {
 
         assertNull(manager.createView(9))
     }
+
+    // --- restoreWidgets (U2) ---
+
+    private fun widgetBackup(provider: String, x: Float = 0f, y: Float = 0f) =
+        com.example.androidlauncher.data.backup.WidgetBackup(
+            provider = provider,
+            widthDp = 200,
+            heightDp = 100,
+            offsetX = x,
+            offsetY = y,
+        )
+
+    @Test
+    fun `restoreWidgets binds and persists with backed-up size and offsets`() = testScope.runTest {
+        val component = mockk<ComponentName>()
+        every { host.allocateAppWidgetId() } returns 41
+        every { appWidgetManager.bindAppWidgetIdIfAllowed(41, component) } returns true
+
+        val summary = manager.restoreWidgets(
+            backups = listOf(widgetBackup("a/b", x = 12f, y = 34f)),
+            resolveComponent = { component },
+        )
+
+        assertEquals(WidgetRestoreSummary(restored = 1, skipped = 0), summary)
+        assertEquals(
+            listOf(
+                HostedWidget(
+                    appWidgetId = 41,
+                    provider = "a/b",
+                    widthDp = 200,
+                    heightDp = 100,
+                    offsetX = 12f,
+                    offsetY = 34f,
+                )
+            ),
+            manager.widgets.first(),
+        )
+    }
+
+    @Test
+    fun `restoreWidgets releases the id and skips when bind is declined or provider is broken`() =
+        testScope.runTest {
+            val component = mockk<ComponentName>()
+            every { host.deleteAppWidgetId(any()) } just Runs
+            every { host.allocateAppWidgetId() } returns 42
+            every { appWidgetManager.bindAppWidgetIdIfAllowed(42, component) } returns false
+
+            val summary = manager.restoreWidgets(
+                backups = listOf(widgetBackup("a/b"), widgetBackup("kaputt")),
+                resolveComponent = { if (it == "a/b") component else null },
+            )
+
+            assertEquals(WidgetRestoreSummary(restored = 0, skipped = 2), summary)
+            assertEquals(emptyList<HostedWidget>(), manager.widgets.first())
+            verify { host.deleteAppWidgetId(42) }
+        }
+
+    @Test
+    fun `restoreWidgets appends in one write and counts deduped entries as skipped`() = testScope.runTest {
+        val component = mockk<ComponentName>()
+        manager.addWidget(widget(1).copy(provider = "a/b"))
+        every { host.allocateAppWidgetId() } returns 43
+        every { appWidgetManager.bindAppWidgetIdIfAllowed(43, component) } returns true
+
+        val summary = manager.restoreWidgets(
+            // Erster Eintrag ist bereits identisch gehostet (Dedupe), zweiter ist neu.
+            backups = listOf(widgetBackup("a/b"), widgetBackup("c/d", x = 5f)),
+            resolveComponent = { component },
+        )
+
+        assertEquals(WidgetRestoreSummary(restored = 1, skipped = 1), summary)
+        val widgets = manager.widgets.first()
+        assertEquals(2, widgets.size)
+        assertEquals(43, widgets.last().appWidgetId)
+        assertEquals("c/d", widgets.last().provider)
+    }
 }

@@ -163,6 +163,7 @@
     <string name="backup_export_success">Backup saved</string>
     <string name="backup_export_error">Backup failed</string>
     <string name="backup_import_success">Backup restored</string>
+    <string name="backup_import_widgets_result">%1$d widgets restored, %2$d skipped</string>
     <string name="backup_import_error">File could not be read</string>
     <string name="backup_import_unsupported">Backup was created by a newer app version</string>
     <string name="default_launcher">Default launcher</string>

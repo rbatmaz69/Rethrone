@@ -81,6 +81,23 @@ fun resolveWidgetCleanup(
     )
 }
 
+/** Ergebnis eines Widget-Restores nach Backup-Import (U2). */
+data class WidgetRestoreSummary(val restored: Int, val skipped: Int)
+
+/**
+ * Plant den Widget-Restore nach einem Backup-Import (U2): Eintraege, die bereits
+ * identisch gehostet sind (gleicher Provider an gleicher Position), werden
+ * uebersprungen – sonst wuerde ein Re-Import auf demselben Geraet jedes Widget
+ * verdoppeln (`hosted_widgets` ist vom Restore ausgenommen und ueberlebt ihn).
+ */
+fun planWidgetRestore(
+    backups: List<com.example.androidlauncher.data.backup.WidgetBackup>,
+    existing: List<HostedWidget>,
+): List<com.example.androidlauncher.data.backup.WidgetBackup> {
+    val hosted = existing.map { Triple(it.provider, it.offsetX, it.offsetY) }.toHashSet()
+    return backups.filterNot { Triple(it.provider, it.offsetX, it.offsetY) in hosted }
+}
+
 /** Anzeigegroesse eines gehosteten Widgets in dp. */
 data class WidgetSizeDp(val widthDp: Int, val heightDp: Int)
 

@@ -134,6 +134,42 @@ class WidgetHostManager(
     }
 
     /**
+     * Stellt Widgets aus einem Backup wieder her (U2): pro geplantem Eintrag wird eine
+     * frische ID allokiert und still gebunden. Bewusst KEIN `ACTION_APPWIDGET_BIND`-
+     * Consent-Dialog und keine Configure-Activity pro Widget – eine Dialog-Kaskade
+     * direkt nach dem Import waere schlechtere UX; als Default-Launcher hat die App
+     * i. d. R. die Bind-Permission. Verweigerte/kaputte Eintraege fallen still weg.
+     * Alle Erfolge werden in EINEM atomaren Write angehaengt.
+     */
+    suspend fun restoreWidgets(
+        backups: List<com.example.androidlauncher.data.backup.WidgetBackup>,
+        resolveComponent: (String) -> ComponentName? = { ComponentName.unflattenFromString(it) },
+    ): WidgetRestoreSummary {
+        val existing = settings.hostedWidgets.first()
+        val restored = mutableListOf<HostedWidget>()
+        for (backup in planWidgetRestore(backups, existing)) {
+            val component = resolveComponent(backup.provider) ?: continue
+            val appWidgetId = allocateWidgetId()
+            if (bindIfAllowed(appWidgetId, component)) {
+                restored += HostedWidget(
+                    appWidgetId = appWidgetId,
+                    provider = backup.provider,
+                    widthDp = backup.widthDp,
+                    heightDp = backup.heightDp,
+                    offsetX = backup.offsetX,
+                    offsetY = backup.offsetY,
+                )
+            } else {
+                deleteWidgetId(appWidgetId)
+            }
+        }
+        if (restored.isNotEmpty()) {
+            settings.setHostedWidgets(existing + restored)
+        }
+        return WidgetRestoreSummary(restored = restored.size, skipped = backups.size - restored.size)
+    }
+
+    /**
      * Raeumt beim Start Leichen auf (siehe [resolveWidgetCleanup]): geleakte IDs aus
      * abgebrochenen Bind-Flows und Widgets deinstallierter Provider.
      */
