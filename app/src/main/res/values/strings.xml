@@ -188,6 +188,11 @@
     <string name="gesture_action_open_settings">Settings</string>
 
     <!-- Gestures menu -->
+    <string name="gestures_section_swipe">Swipe</string>
+    <string name="gestures_on_swipe_up">On swipe up</string>
+    <string name="gestures_on_swipe_down">On swipe down</string>
+    <string name="gestures_on_swipe_left">On swipe left</string>
+    <string name="gestures_on_swipe_right">On swipe right</string>
     <string name="gestures_section_double_tap">Double tap</string>
     <string name="gestures_on_double_tap">On double tap</string>
     <string name="gestures_section_shake">Shake</string>
@@ -422,7 +427,7 @@
     <string name="onboarding_gestures_title">Quick gestures</string>
     <string name="onboarding_gestures_desc">A few moves that make Rethrone fast to use.</string>
     <string name="onboarding_gesture_swipe_title">Swipe up</string>
-    <string name="onboarding_gesture_swipe_desc">Open the app drawer with all your apps.</string>
+    <string name="onboarding_gesture_swipe_desc">Opens the app drawer – every swipe direction can be customized under Settings → Gestures.</string>
     <string name="onboarding_gesture_doubletap_title">Double tap</string>
     <string name="onboarding_gesture_doubletap_desc">Tap the home screen twice to trigger your chosen action.</string>
     <string name="onboarding_gesture_shake_title">Shake</string>

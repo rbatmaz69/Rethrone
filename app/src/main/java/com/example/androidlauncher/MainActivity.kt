@@ -205,6 +205,10 @@ class MainActivity : ComponentActivity() {
     @javax.inject.Inject
     lateinit var themeManager: ThemeManager
 
+    // U1: direkt injiziert statt über die ThemeManager-Fassade (deren Policy für neue Features).
+    @javax.inject.Inject
+    lateinit var gestureSettings: com.example.androidlauncher.data.settings.GestureSettings
+
     @javax.inject.Inject
     lateinit var folderManager: FolderManager
 
@@ -332,6 +336,9 @@ class MainActivity : ComponentActivity() {
             val shakeOpenAppPackage by themeManager.shakeOpenAppPackage.collectAsState(initial = null)
             val doubleTapAction by themeManager.doubleTapAction.collectAsState(initial = GestureAction.LOCK_SCREEN)
             val doubleTapAppPackage by themeManager.doubleTapAppPackage.collectAsState(initial = null)
+            val swipeGestureConfig by gestureSettings.swipeGestureConfig.collectAsState(
+                initial = com.example.androidlauncher.data.SwipeGestureConfig()
+            )
             val isSmartSuggestionsEnabled by themeManager.isSmartSuggestionsEnabled.collectAsState(initial = true)
             val isHapticFeedbackEnabled by themeManager.isHapticFeedbackEnabled.collectAsState(initial = true)
             val isAnimationsEnabled by themeManager.isAnimationsEnabled.collectAsState(initial = true)
@@ -1316,13 +1323,13 @@ class MainActivity : ComponentActivity() {
                                 isSearchOpen = isSearchOpen && !isSearchClosingState,
                                 isEditMode = isHomeEditMode,
                                 homeLayout = homeLayout,
-                                onOpenDrawer = { homeViewModel.setDrawerOpen(true) },
                                 onOpenSearch = {
                                     isSearchClosingState = false
                                     homeViewModel.setSearchOpen(true)
                                 },
                                 doubleTapAction = doubleTapAction,
                                 doubleTapAppPackage = doubleTapAppPackage,
+                                swipeActions = swipeGestureConfig,
                                 onGestureAction = { action, pkg -> dispatchGestureAction(action, pkg) },
                                 onToggleSettings = { homeViewModel.toggleSettings() },
                                 onToggleEditMode = { homeViewModel.toggleHomeEditMode() },
@@ -1811,6 +1818,13 @@ class MainActivity : ComponentActivity() {
                     ) {
                         GesturesConfigMenu(
                             apps = allApps,
+                            swipeConfig = swipeGestureConfig,
+                            onSwipeActionChange = { direction, action ->
+                                scope.launch { gestureSettings.setSwipeAction(direction, action) }
+                            },
+                            onSwipeAppPackageChange = { direction, pkg ->
+                                scope.launch { gestureSettings.setSwipeAppPackage(direction, pkg) }
+                            },
                             doubleTapAction = doubleTapAction,
                             onDoubleTapActionChange = { scope.launch { themeManager.setDoubleTapAction(it) } },
                             doubleTapAppPackage = doubleTapAppPackage,
@@ -1834,7 +1848,6 @@ class MainActivity : ComponentActivity() {
                             isSearchOpen = false,
                             isEditMode = false,
                             homeLayout = homeLayout,
-                            onOpenDrawer = {},
                             onOpenSearch = {},
                             onToggleSettings = {},
                             onToggleEditMode = {},

@@ -53,7 +53,6 @@ class LauncherComposableUiTest {
                     isSettingsOpen = false,
                     isSearchOpen = false,
                     onToggleEditMode = {},
-                    onOpenDrawer = {},
                     onOpenSearch = {},
                     onToggleSettings = {},
                     onOpenFavoritesConfig = {},
