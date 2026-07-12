@@ -121,10 +121,21 @@ class DynamicIslandManager(
      * Neueste Benachrichtigung, transient sichtbar (≈[notificationVisibleMs]), dann ausgeklungen.
      * `transformLatest` verwirft das Ausblende-`delay`, sobald eine neue Benachrichtigung kommt.
      */
+    /** Zeitstempel-Schranke: per Swipe verworfene Benachrichtigungen (postTimeMs <= Wert) bleiben stumm. */
+    private val dismissedNotificationCutoff = MutableStateFlow(0L)
+
+    /** Blendet die aktuell transient gezeigte Benachrichtigung sofort aus (Swipe-Dismiss der Pille). */
+    fun dismissNotification() {
+        dismissedNotificationCutoff.value = System.currentTimeMillis()
+    }
+
     @Suppress("OPT_IN_USAGE")
     private val notificationFlow: Flow<IslandContent.Notification?> =
         notifications.activeNotificationDetails
             .map { list -> list.maxByOrNull { it.postTimeMs } }
+            .combine(dismissedNotificationCutoff) { info, cutoff ->
+                info?.takeIf { it.postTimeMs > cutoff }
+            }
             .distinctUntilChanged { a, b -> a?.pkg == b?.pkg && a?.postTimeMs == b?.postTimeMs }
             .transformLatest { info ->
                 if (info == null) {

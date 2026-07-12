@@ -4,7 +4,9 @@ import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -13,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import kotlin.math.abs
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +63,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
@@ -82,6 +87,7 @@ import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.RethroneShapes
 import com.example.androidlauncher.ui.theme.RethroneSprings
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Bündelt die aus dem App-Theme abgeleiteten Farben der Insel-Karte, damit die Unterkarten
@@ -121,6 +127,7 @@ private fun rememberIslandCardColors(islandColor: Color): IslandCardColors {
  * @param onReply Reply-Aktion abgeschickt (RemoteInput, z. B. WhatsApp): (Aktion, Text).
  * @param onOpen Tap auf den Inhalt (öffnet die App via contentIntent).
  * @param onDismiss Karte schließen.
+ * @param onDismissNotification Benachrichtigung per horizontalem Swipe verworfen.
  */
 @Composable
 fun IslandExpandedCard(
@@ -128,6 +135,7 @@ fun IslandExpandedCard(
     onAction: (NotificationAction) -> Unit,
     onOpen: (IslandContent) -> Unit,
     onDismiss: () -> Unit,
+    onDismissNotification: () -> Unit = {},
     allContents: List<IslandContent> = emptyList(),
     onSwitch: (IslandContent) -> Unit = {},
     onReply: (NotificationAction, String) -> Unit = { _, _ -> },
@@ -156,8 +164,16 @@ fun IslandExpandedCard(
         // kurz `false` wird und spielende/pausierte Medien die Position tauschen → die
         // Tab-Chips würden „teleportieren".
         val tabs = remember(allContents) { allContents.sortedBy { islandTabRank(it) } }
+        // Swipe-Dismiss einer Benachrichtigung: Karte folgt dem Finger horizontal und
+        // gleitet beim Loslassen jenseits der Schwelle animiert aus dem Bild (mit Ausblenden).
+        val dismissDragX = remember { Animatable(0f) }
+        val dismissScope = rememberCoroutineScope()
         Column(
             modifier = Modifier
+                .graphicsLayer {
+                    translationX = dismissDragX.value
+                    alpha = (1f - abs(dismissDragX.value) / size.width.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                }
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp)
                 .padding(top = 12.dp)
@@ -175,9 +191,28 @@ fun IslandExpandedCard(
                     indication = null,
                     onClick = { onOpen(content) }
                 )
-                // Horizontaler Swipe wechselt – wie an der Pille – zwischen den Aktivitäten.
+                // Horizontaler Swipe: verwirft eine Benachrichtigung, sonst wechselt er – wie an
+                // der Pille – zwischen den Aktivitäten.
                 .pointerInput(tabs, content) {
-                    if (tabs.size > 1) {
+                    if (content is IslandContent.Notification) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                val width = size.width.toFloat()
+                                dismissScope.launch {
+                                    if (abs(dismissDragX.value) >= swipeThresholdPx) {
+                                        val target = if (dismissDragX.value < 0f) -width else width
+                                        dismissDragX.animateTo(target, tween(180))
+                                        onDismissNotification()
+                                    } else {
+                                        dismissDragX.animateTo(0f)
+                                    }
+                                }
+                            },
+                            onDragCancel = { dismissScope.launch { dismissDragX.animateTo(0f) } }
+                        ) { _, drag ->
+                            dismissScope.launch { dismissDragX.snapTo(dismissDragX.value + drag) }
+                        }
+                    } else if (tabs.size > 1) {
                         var total = 0f
                         detectHorizontalDragGestures(
                             onDragStart = { total = 0f },

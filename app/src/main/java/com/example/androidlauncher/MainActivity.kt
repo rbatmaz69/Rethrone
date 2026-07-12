@@ -1507,6 +1507,10 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     onDismiss = { dynamicIslandManager.dismissExpanded() },
+                                    onDismissNotification = {
+                                        dynamicIslandManager.dismissNotification()
+                                        dynamicIslandManager.dismissExpanded()
+                                    },
                                     onMediaPlayPause = { dynamicIslandManager.mediaPlayPause() },
                                     onMediaNext = { dynamicIslandManager.mediaNext() },
                                     onMediaPrev = { dynamicIslandManager.mediaPrevious() },
