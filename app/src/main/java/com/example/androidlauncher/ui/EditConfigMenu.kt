@@ -68,7 +68,7 @@ fun EditConfigMenu() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                stringResource(R.string.edit_config_title),
+                stringResource(R.string.settings_title),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Light,
                 color = mainTextColor

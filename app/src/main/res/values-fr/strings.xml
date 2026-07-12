@@ -108,6 +108,7 @@
     <string name="label_features">Fonctionnalités</string>
     <string name="label_design_style">Style du design</string>
     <string name="edit_config_title">Modifier</string>
+    <string name="settings_title">Réglages</string>
     <string name="section_appearance">Apparence</string>
     <string name="category_sub_appearance">Thèmes, couleurs, police, icônes, fond d\'écran, animations</string>
     <string name="section_homescreen">Écran d\'accueil</string>
@@ -265,7 +266,7 @@
     <string name="eyedropper_hint">Touchez ou glissez pour choisir une couleur du fond d\'écran</string>
 
     <!-- Menu Taille / police -->
-    <string name="size_config_title">Apparence &amp; police</string>
+    <string name="size_config_title">Police et taille</string>
     <string name="preview_favorite">Favori</string>
     <string name="font_label">Police</string>
     <string name="font_search_hint">Rechercher une police…</string>
