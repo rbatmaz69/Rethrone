@@ -108,9 +108,15 @@
     <string name="label_features">Fonctionnalités</string>
     <string name="label_design_style">Style du design</string>
     <string name="edit_config_title">Modifier</string>
-    <string name="section_general">Général</string>
     <string name="section_appearance">Apparence</string>
     <string name="category_sub_appearance">Thèmes, couleurs, police, icônes, fond d\'écran, animations</string>
+    <string name="section_homescreen">Écran d\'accueil</string>
+    <string name="category_sub_homescreen">Favoris, disposition, widgets, Dynamic Island, éclairage des bords</string>
+    <string name="category_sub_apps">Accès aux apps, masquer, verrouiller, désinstaller</string>
+    <string name="category_sub_search">Suggestions intelligentes, historique</string>
+    <string name="category_sub_gestures">Balayage, double tap, secousse</string>
+    <string name="section_system">Système</string>
+    <string name="category_sub_system">Haptique, sauvegarde, autorisations, infos</string>
     <string name="section_apps">Apps</string>
     <string name="section_search">Recherche</string>
     <string name="section_permissions">Autorisations</string>
