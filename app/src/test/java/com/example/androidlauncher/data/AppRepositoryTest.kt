@@ -209,47 +209,37 @@ class AppRepositoryTest {
     }
 
     @Test
-    fun loadResolvedIcon_prefersPackIconAndSkipsQualityEvaluation() = runTest {
+    fun loadIcon_prefersPackIconOverSystemIcon() = runTest {
         val filesDir = createTempDir()
         val (context, packageManager) = mockContextForIconPack(filesDir)
         val iconPacks = mockk<IconPackRepository>()
-        coEvery { iconPacks.hasPackIcon("com.pack.a", "com.app.a", null) } returns true
         coEvery {
             iconPacks.loadIconBitmap("com.pack.a", "com.app.a", null, any())
         } returns mockk(relaxed = true)
 
         val repository = AppRepository(context, iconPacks)
-        val resolved = repository.loadResolvedIcon(
-            AppInfo(label = "App A", packageName = "com.app.a", launchIntent = null),
-            iconPack = "com.pack.a",
-        )
+        val icon = repository.loadIcon("com.app.a", iconPack = "com.pack.a")
 
-        // Pack-Grafik wird genutzt und die Qualitäts-Heuristik übersprungen (keep-original).
-        assertEquals(AutoIconFallbackType.ORIGINAL, resolved?.autoFallback?.type)
-        assertEquals("icon_pack", resolved?.autoFallback?.reason)
-        // System-Icon-Pfad wurde nie betreten.
+        // Pack-Grafik wird genutzt; der System-Icon-Pfad wurde nie betreten.
+        assertTrue(icon != null)
         verify(exactly = 0) { packageManager.getApplicationInfo(any<String>(), any<Int>()) }
         filesDir.deleteRecursively()
     }
 
     @Test
-    fun loadResolvedIcon_fallsBackToSystemWhenPackHasNoIcon() = runTest {
+    fun loadIcon_fallsBackToSystemWhenPackHasNoIcon() = runTest {
         val filesDir = createTempDir()
         val (context, packageManager) = mockContextForIconPack(filesDir)
         every { packageManager.getApplicationInfo("com.app.a", 0) } throws
             PackageManager.NameNotFoundException()
         val iconPacks = mockk<IconPackRepository>()
-        coEvery { iconPacks.hasPackIcon(any(), any(), any()) } returns false
         coEvery { iconPacks.loadIconBitmap(any(), any(), any(), any()) } returns null
 
         val repository = AppRepository(context, iconPacks)
-        val resolved = repository.loadResolvedIcon(
-            AppInfo(label = "App A", packageName = "com.app.a", launchIntent = null),
-            iconPack = "com.pack.a",
-        )
+        val icon = repository.loadIcon("com.app.a", iconPack = "com.pack.a")
 
         // Pack liefert nichts → System-Pfad wird versucht (schlägt im JVM-Test kontrolliert fehl).
-        assertEquals(null, resolved)
+        assertEquals(null, icon)
         verify { packageManager.getApplicationInfo("com.app.a", 0) }
         filesDir.deleteRecursively()
     }

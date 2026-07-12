@@ -1,6 +1,5 @@
 package com.example.androidlauncher.ui
 
-import androidx.annotation.StringRes
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -42,8 +41,6 @@ import com.composables.icons.lucide.*
 import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.R
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.data.AutoIconRule
-import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.IconPack
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
@@ -75,10 +72,7 @@ import kotlinx.coroutines.launch
 fun IconConfigMenu(
     apps: List<AppInfo>,
     customIcons: Map<String, String>,
-    iconRules: Map<String, AutoIconRule>,
     onIconSelected: (String, String?) -> Unit,
-    onAutoRuleSelected: (String, AutoIconRuleMode?) -> Unit,
-    onReanalyzeRequested: (String) -> Unit,
     onClose: () -> Unit,
     // B4: global gewähltes Icon-Pack (null = System-Icons) + lazy geladene Pack-Liste.
     selectedIconPack: String? = null,
@@ -212,10 +206,6 @@ fun IconConfigMenu(
         ) {
             itemsIndexed(items = filteredApps, key = { _, app -> app.packageName }) { index, app ->
                 val customIconName = customIcons[app.packageName]
-                val explicitRule = iconRules[app.packageName]
-                val autoStatus = remember(app.autoIconFallback, app.autoIconRule, explicitRule) {
-                    buildIconStatusLabel(app, explicitRule)
-                }
 
                 val isSearching = searchQuery.isNotBlank()
                 var isVisible by remember(app.packageName, isSearching) { mutableStateOf(!isSearching) }
@@ -257,17 +247,12 @@ fun IconConfigMenu(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(app.label, color = mainTextColor, fontSize = 16.sp, fontWeight = fontWeight.weight)
-                                when {
-                                    customIconName != null -> {
-                                        Text(
-                                            stringResource(R.string.icon_manual_status, customIconName),
-                                            color = mainTextColor.copy(alpha = 0.55f),
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    autoStatus != null -> {
-                                        Text(stringResource(autoStatus), color = secondaryTextColor, fontSize = 12.sp)
-                                    }
+                                if (customIconName != null) {
+                                    Text(
+                                        stringResource(R.string.icon_manual_status, customIconName),
+                                        color = mainTextColor.copy(alpha = 0.55f),
+                                        fontSize = 12.sp
+                                    )
                                 }
                             }
                             Text(
@@ -286,22 +271,12 @@ fun IconConfigMenu(
         IconActionDialog(
             app = app,
             customIconName = customIcons[app.packageName],
-            explicitRule = iconRules[app.packageName],
-            currentStatus = buildIconStatusLabel(app, iconRules[app.packageName]),
             onPickLucide = {
                 selectedAppForPicker = app
                 selectedAppForActions = null
             },
             onResetManual = {
                 onIconSelected(app.packageName, null)
-                selectedAppForActions = null
-            },
-            onSelectRule = { mode ->
-                onAutoRuleSelected(app.packageName, mode)
-                selectedAppForActions = null
-            },
-            onReanalyze = {
-                onReanalyzeRequested(app.packageName)
                 selectedAppForActions = null
             },
             onDismiss = { selectedAppForActions = null },
@@ -486,12 +461,8 @@ private fun IconPackPickerDialog(
 private fun IconActionDialog(
     app: AppInfo,
     customIconName: String?,
-    explicitRule: AutoIconRule?,
-    @StringRes currentStatus: Int?,
     onPickLucide: () -> Unit,
     onResetManual: () -> Unit,
-    onSelectRule: (AutoIconRuleMode?) -> Unit,
-    onReanalyze: () -> Unit,
     onDismiss: () -> Unit,
     designStyle: DesignStyle,
     surfaceAccent: Color,
@@ -653,14 +624,6 @@ private fun IconActionDialog(
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            currentStatus?.let {
-                                Text(
-                                    text = stringResource(it),
-                                    color = mainTextColor,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = fontWeight.weight
-                                )
-                            }
                             Text(
                                 text = app.packageName,
                                 color = secondaryTextColor,
@@ -695,86 +658,6 @@ private fun IconActionDialog(
                                 surfaceAccent = surfaceAccent,
                                 isDarkTextEnabled = isDarkTextEnabled
                             )
-                            IconActionButton(
-                                icon = Lucide.RefreshCcw,
-                                title = stringResource(R.string.icon_reanalyze_title),
-                                subtitle = stringResource(R.string.icon_reanalyze_sub),
-                                testTag = "icon_action_reanalyze",
-                                onClick = {
-                                    dismissSheet()
-                                    onReanalyze()
-                                },
-                                designStyle = designStyle,
-                                surfaceAccent = surfaceAccent,
-                                isDarkTextEnabled = isDarkTextEnabled
-                            )
-                        }
-
-                        HorizontalDivider(color = mainTextColor.copy(alpha = 0.08f))
-
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(
-                                text = stringResource(R.string.icon_auto_rules),
-                                color = secondaryTextColor,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                            IconActionButton(
-                                icon = Lucide.ShieldCheck,
-                                title = stringResource(R.string.icon_keep_original_title),
-                                subtitle = stringResource(R.string.icon_keep_original_sub),
-                                testTag = "icon_action_keep_original",
-                                onClick = {
-                                    dismissSheet()
-                                    onSelectRule(AutoIconRuleMode.KEEP_ORIGINAL)
-                                },
-                                isSelected = explicitRule?.mode == AutoIconRuleMode.KEEP_ORIGINAL,
-                                designStyle = designStyle,
-                                surfaceAccent = surfaceAccent,
-                                isDarkTextEnabled = isDarkTextEnabled
-                            )
-                            IconActionButton(
-                                icon = Lucide.Replace,
-                                title = stringResource(R.string.icon_force_fallback_title),
-                                subtitle = stringResource(R.string.icon_force_fallback_sub),
-                                testTag = "icon_action_force_fallback",
-                                onClick = {
-                                    dismissSheet()
-                                    onSelectRule(AutoIconRuleMode.FORCE_FALLBACK)
-                                },
-                                isSelected = explicitRule?.mode == AutoIconRuleMode.FORCE_FALLBACK,
-                                designStyle = designStyle,
-                                surfaceAccent = surfaceAccent,
-                                isDarkTextEnabled = isDarkTextEnabled
-                            )
-                            IconActionButton(
-                                icon = Lucide.Search,
-                                title = stringResource(R.string.icon_follow_heuristic_title),
-                                subtitle = stringResource(R.string.icon_follow_heuristic_sub),
-                                testTag = "icon_action_follow_heuristic",
-                                onClick = {
-                                    dismissSheet()
-                                    onSelectRule(AutoIconRuleMode.FOLLOW_HEURISTIC)
-                                },
-                                isSelected = explicitRule?.mode == AutoIconRuleMode.FOLLOW_HEURISTIC,
-                                designStyle = designStyle,
-                                surfaceAccent = surfaceAccent,
-                                isDarkTextEnabled = isDarkTextEnabled
-                            )
-                            if (explicitRule != null) {
-                                IconActionButton(
-                                    icon = Lucide.Eraser,
-                                    title = stringResource(R.string.icon_clear_rule_title),
-                                    subtitle = stringResource(R.string.icon_clear_rule_sub),
-                                    testTag = "icon_action_clear_rule",
-                                    onClick = {
-                                        dismissSheet()
-                                        onSelectRule(null)
-                                    },
-                                    designStyle = designStyle,
-                                    surfaceAccent = surfaceAccent,
-                                    isDarkTextEnabled = isDarkTextEnabled
-                                )
-                            }
                         }
 
                         if (customIconName != null) {
@@ -882,21 +765,6 @@ private fun IconActionButton(
                 style = MaterialTheme.typography.labelMedium
             )
         }
-    }
-}
-
-@StringRes
-private fun buildIconStatusLabel(app: AppInfo, explicitRule: AutoIconRule?): Int? {
-    val ruleLabel = when (explicitRule?.mode) {
-        AutoIconRuleMode.KEEP_ORIGINAL -> R.string.icon_rule_keep_original
-        AutoIconRuleMode.FORCE_FALLBACK -> R.string.icon_rule_force_fallback
-        AutoIconRuleMode.FOLLOW_HEURISTIC -> R.string.icon_rule_follow_heuristic
-        null -> null
-    }
-    return ruleLabel ?: when (app.autoIconFallback?.type) {
-        com.example.androidlauncher.data.AutoIconFallbackType.ORIGINAL -> R.string.icon_auto_original
-        com.example.androidlauncher.data.AutoIconFallbackType.NEUTRAL -> R.string.icon_auto_neutral
-        null -> null
     }
 }
 

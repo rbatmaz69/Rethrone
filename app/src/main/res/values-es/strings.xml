@@ -349,26 +349,10 @@
     <string name="icon_manual_status">Manual · %1$s</string>
     <string name="icon_manual_override_active">Anulación manual activa: %1$s</string>
     <string name="icon_direct_actions">Acciones directas</string>
-    <string name="icon_auto_rules">Reglas automáticas</string>
     <string name="icon_pick_lucide_title">Elegir icono de Lucide</string>
     <string name="icon_pick_lucide_sub">Asigna un icono propio directamente a esta app</string>
-    <string name="icon_reanalyze_title">Reanalizar automático</string>
-    <string name="icon_reanalyze_sub">Vuelve a comprobar original, forma y legibilidad</string>
-    <string name="icon_keep_original_title">Mantener siempre el original</string>
-    <string name="icon_keep_original_sub">Anula la heurística y muestra el icono real de la app</string>
-    <string name="icon_force_fallback_title">Preferir respaldo automático</string>
-    <string name="icon_force_fallback_sub">Fuerza Lucide o un contenedor neutro</string>
-    <string name="icon_follow_heuristic_title">Usar solo heurística</string>
-    <string name="icon_follow_heuristic_sub">Dejar que la decisión se tome automáticamente de nuevo</string>
-    <string name="icon_clear_rule_title">Eliminar regla guardada</string>
-    <string name="icon_clear_rule_sub">Vuelve a la lógica predeterminada del lanzador</string>
     <string name="icon_reset_manual_title">Eliminar anulación manual</string>
-    <string name="icon_reset_manual_sub">Vuelve a usar la decisión automática del lanzador</string>
-    <string name="icon_rule_keep_original">Regla · Preferir original</string>
-    <string name="icon_rule_force_fallback">Regla · Preferir respaldo</string>
-    <string name="icon_rule_follow_heuristic">Regla · Solo heurística</string>
-    <string name="icon_auto_original">Auto · Original</string>
-    <string name="icon_auto_neutral">Auto · Contenedor neutro</string>
+    <string name="icon_reset_manual_sub">Vuelve a mostrar el icono original de la app</string>
 
     <!-- Otros toasts -->
     <string name="position_saved">Posición guardada</string>

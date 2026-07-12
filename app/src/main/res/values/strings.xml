@@ -365,26 +365,10 @@
     <string name="icon_manual_status">Manual · %1$s</string>
     <string name="icon_manual_override_active">Manual override active: %1$s</string>
     <string name="icon_direct_actions">Direct actions</string>
-    <string name="icon_auto_rules">Automatic rules</string>
     <string name="icon_pick_lucide_title">Choose Lucide icon</string>
     <string name="icon_pick_lucide_sub">Assign a custom icon directly to this app</string>
-    <string name="icon_reanalyze_title">Re-analyze auto</string>
-    <string name="icon_reanalyze_sub">Re-checks original, shape and legibility</string>
-    <string name="icon_keep_original_title">Always keep original</string>
-    <string name="icon_keep_original_sub">Overrides the heuristic and shows the real app icon</string>
-    <string name="icon_force_fallback_title">Prefer automatic fallback</string>
-    <string name="icon_force_fallback_sub">Forces Lucide or a neutral container</string>
-    <string name="icon_follow_heuristic_title">Use heuristic only</string>
-    <string name="icon_follow_heuristic_sub">Let the decision be made automatically again</string>
-    <string name="icon_clear_rule_title">Remove saved rule</string>
-    <string name="icon_clear_rule_sub">Falls back to the launcher\'s default logic</string>
     <string name="icon_reset_manual_title">Remove manual override</string>
-    <string name="icon_reset_manual_sub">Uses the launcher\'s automatic decision again</string>
-    <string name="icon_rule_keep_original">Rule · Prefer original</string>
-    <string name="icon_rule_force_fallback">Rule · Prefer fallback</string>
-    <string name="icon_rule_follow_heuristic">Rule · Heuristic only</string>
-    <string name="icon_auto_original">Auto · Original</string>
-    <string name="icon_auto_neutral">Auto · Neutral container</string>
+    <string name="icon_reset_manual_sub">Shows the app\'s original icon again</string>
 
     <!-- Misc toasts -->
     <string name="position_saved">Position saved</string>

@@ -94,7 +94,6 @@ import com.example.androidlauncher.data.AppAccessMode
 import com.example.androidlauncher.data.AppFont
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppRepository
-import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.EdgeLightingStyle
 import com.example.androidlauncher.data.FavoriteSpacing
@@ -108,7 +107,6 @@ import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.HostedWidget
 import com.example.androidlauncher.data.IconManager
-import com.example.androidlauncher.data.IconQualityEvaluator
 import com.example.androidlauncher.data.IconSize
 import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.data.IslandContent
@@ -406,8 +404,6 @@ class MainActivity : ComponentActivity() {
 
             val folders by folderManager.folders.collectAsState(initial = emptyList())
             val customIcons by iconManager.customIcons.collectAsState(initial = emptyMap())
-            val autoIconFallbacks by iconManager.autoIconFallbacks.collectAsState(initial = emptyMap())
-            val autoIconRules by iconManager.autoIconRules.collectAsState(initial = emptyMap())
 
             // B4: global gewähltes Icon-Pack (nur für die Anzeige; refreshAppList liest
             // den Wert autoritativ direkt aus dem Store).
@@ -933,12 +929,10 @@ class MainActivity : ComponentActivity() {
                         appRepository.cleanupLegacyCache()
                         appRepository.invalidateCacheOnAppUpdate()
                         val basicList = appRepository.getInstalledApps()
-                        // Geladene Icons/Fallbacks bewahren + Regeln anwenden – reine, testbare Transformation.
+                        // Geladene Icons bewahren – reine, testbare Transformation.
                         val mergedList = LauncherLogic.mergeInstalledApps(
                             basicApps = basicList,
                             existingApps = allApps,
-                            storedFallbacks = autoIconFallbacks,
-                            autoIconRules = autoIconRules,
                         )
                         if (allApps.size != mergedList.size || allApps.map { it.packageName } != mergedList.map { it.packageName }) {
                             allApps.clear()
@@ -955,21 +949,14 @@ class MainActivity : ComponentActivity() {
                         if (targetPackageName != null) {
                             val targetIndex = appSnapshot.indexOfFirst { it.packageName == targetPackageName }
                             if (targetIndex >= 0) {
-                                appRepository.loadResolvedIcon(
-                                    appSnapshot[targetIndex],
+                                val snapshotApp = appSnapshot[targetIndex]
+                                appRepository.loadIcon(
+                                    snapshotApp.packageName,
                                     currentIconPack
-                                )?.let { resolvedIcon ->
-                                    val snapshotApp = appSnapshot[targetIndex]
-                                    val fallback = resolvedIcon.autoFallback
-                                    if (autoIconFallbacks[snapshotApp.packageName] != fallback) {
-                                        iconManager.setAutoIconFallback(snapshotApp.packageName, fallback)
-                                    }
+                                )?.let { loadedIcon ->
                                     withContext(Dispatchers.Main) {
                                         if (targetIndex < allApps.size && allApps[targetIndex].packageName == snapshotApp.packageName) {
-                                            allApps[targetIndex] = allApps[targetIndex].copy(
-                                                iconBitmap = resolvedIcon.imageBitmap,
-                                                autoIconFallback = fallback
-                                            )
+                                            allApps[targetIndex] = allApps[targetIndex].copy(iconBitmap = loadedIcon)
                                         }
                                     }
                                 }
@@ -981,18 +968,11 @@ class MainActivity : ComponentActivity() {
                             apps = appSnapshot,
                             favoritePackages = favoritePackages,
                             iconPack = currentIconPack
-                        ) { idx, resolvedIcon ->
+                        ) { idx, loadedIcon ->
                             val snapshotApp = appSnapshot.getOrNull(idx) ?: return@loadIconsWithPriority
-                            val fallback = resolvedIcon.autoFallback
-                            if (autoIconFallbacks[snapshotApp.packageName] != fallback) {
-                                iconManager.setAutoIconFallback(snapshotApp.packageName, fallback)
-                            }
                             withContext(Dispatchers.Main) {
                                 if (idx < allApps.size && allApps[idx].packageName == snapshotApp.packageName) {
-                                    allApps[idx] = allApps[idx].copy(
-                                        iconBitmap = resolvedIcon.imageBitmap,
-                                        autoIconFallback = fallback
-                                    )
+                                    allApps[idx] = allApps[idx].copy(iconBitmap = loadedIcon)
                                 }
                             }
                         }
@@ -1129,20 +1109,6 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) { refreshAppList() }
-                LaunchedEffect(autoIconFallbacks, autoIconRules) {
-                    allApps.indices.forEach { index ->
-                        val app = allApps[index]
-                        val storedFallback = autoIconFallbacks[app.packageName]
-                        val resolvedRule = autoIconRules[app.packageName]
-                            ?: IconQualityEvaluator.resolveDefaultRule(app.packageName)
-                        if (app.autoIconFallback != storedFallback || app.autoIconRule != resolvedRule) {
-                            allApps[index] = app.copy(
-                                autoIconFallback = storedFallback,
-                                autoIconRule = resolvedRule
-                            )
-                        }
-                    }
-                }
 
                 DisposableEffect(Unit) {
                     val receiver = object : BroadcastReceiver() {
@@ -1192,7 +1158,6 @@ class MainActivity : ComponentActivity() {
                                         }
                                         if (!packageName.isNullOrBlank()) {
                                             appRepository.clearIconCache(packageName)
-                                            iconManager.invalidatePackage(packageName)
                                         }
                                         delay(800)
                                         refreshAppList(packageName)
@@ -1998,23 +1963,8 @@ class MainActivity : ComponentActivity() {
                         IconConfigMenu(
                             apps = allApps,
                             customIcons = customIcons,
-                            iconRules = autoIconRules,
                             onIconSelected = { pkg, iconName ->
                                 scope.launch { iconManager.setCustomIcon(pkg, iconName) }
-                            },
-                            onAutoRuleSelected = { pkg, mode ->
-                                scope.launch {
-                                    val rule = mode?.let { AutoIconRule(mode = it, reason = "user_config") }
-                                    iconManager.setAutoIconRule(pkg, rule)
-                                    iconManager.invalidatePackage(pkg)
-                                    refreshAppList(pkg)
-                                }
-                            },
-                            onReanalyzeRequested = { pkg ->
-                                scope.launch {
-                                    iconManager.invalidatePackage(pkg)
-                                    refreshAppList(pkg)
-                                }
                             },
                             onClose = { homeViewModel.closeOverlay() },
                             selectedIconPack = selectedIconPack,
