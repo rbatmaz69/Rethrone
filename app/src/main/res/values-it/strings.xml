@@ -118,6 +118,17 @@
     <string name="category_sub_gestures">Scorrimento, doppio tocco, scuotimento</string>
     <string name="section_system">Sistema</string>
     <string name="category_sub_system">Feedback aptico, backup, autorizzazioni, info</string>
+
+    <!-- Ricerca impostazioni (hub); search_kw_* = sinonimi separati da virgole -->
+    <string name="settings_search_hint">Cerca impostazione…</string>
+    <string name="search_kw_colors">colore testo,colore icone,accento</string>
+    <string name="search_kw_font">carattere,dimensione testo</string>
+    <string name="search_kw_wallpaper">sfondo,immagine,foto</string>
+    <string name="search_kw_island">notifica,notch,pillola</string>
+    <string name="search_kw_clock">orologio,ora</string>
+    <string name="search_kw_hidden">nascondere,invisibile</string>
+    <string name="search_kw_haptics">vibrazione</string>
+    <string name="search_kw_backup">esportare,importare,salvare</string>
     <string name="section_apps">App</string>
     <string name="section_search">Ricerca</string>
     <string name="section_permissions">Autorizzazioni</string>

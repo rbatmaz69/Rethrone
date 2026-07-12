@@ -20,8 +20,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -70,6 +74,10 @@ fun HomescreenSettingsPage() {
     val islandAnimationStyle by editViewModel.islandAnimationStyle
         .collectAsState(initial = IslandAnimationStyle.FROM_NOTCH)
     val isEdgeLightingEnabled by editViewModel.isEdgeLightingEnabled.collectAsState(initial = false)
+
+    // One-Shot-Highlight eines Such-Treffers: die gefundene Zeile pulsiert kurz.
+    var highlightKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { highlightKey = homeViewModel.consumePendingSettingsHighlight() }
 
     val onOpenHomeLayoutEdit = {
         homeViewModel.closeOverlay()
@@ -124,7 +132,8 @@ fun HomescreenSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "homescreen_favorites_item"
+                    testTag = "homescreen_favorites_item",
+                    highlighted = highlightKey == "favorites"
                 )
             }
 
@@ -138,6 +147,7 @@ fun HomescreenSettingsPage() {
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     testTag = "edit_home_layout_item",
+                    highlighted = highlightKey == "home_layout",
                     trailingContent = {
                         if (isCustomHomeLayoutSet) {
                             IconButton(
@@ -171,7 +181,8 @@ fun HomescreenSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "add_widget_item"
+                    testTag = "add_widget_item",
+                    highlighted = highlightKey == "add_widget"
                 )
             }
 
@@ -186,7 +197,8 @@ fun HomescreenSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "clock_widget_switch"
+                    switchTestTag = "clock_widget_switch",
+                    highlighted = highlightKey == "clock_widget"
                 )
             }
 
@@ -201,7 +213,8 @@ fun HomescreenSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "calendar_widget_switch"
+                    switchTestTag = "calendar_widget_switch",
+                    highlighted = highlightKey == "calendar_widget"
                 )
             }
 
@@ -216,7 +229,8 @@ fun HomescreenSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "weather_widget_switch"
+                    switchTestTag = "weather_widget_switch",
+                    highlighted = highlightKey == "weather_widget"
                 )
             }
 
@@ -231,7 +245,8 @@ fun HomescreenSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "dynamic_island_switch"
+                    switchTestTag = "dynamic_island_switch",
+                    highlighted = highlightKey == "dynamic_island"
                 )
             }
 
@@ -260,7 +275,8 @@ fun HomescreenSettingsPage() {
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     statusLabel = if (isEdgeLightingEnabled) null else stringResource(R.string.status_off),
-                    testTag = "edge_lighting_menu_item"
+                    testTag = "edge_lighting_menu_item",
+                    highlighted = highlightKey == "edge_lighting"
                 )
             }
         }

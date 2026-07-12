@@ -118,6 +118,17 @@
     <string name="category_sub_gestures">Deslizar, doble toque, agitar</string>
     <string name="section_system">Sistema</string>
     <string name="category_sub_system">Háptica, copia de seguridad, permisos, info</string>
+
+    <!-- Búsqueda de ajustes (hub); search_kw_* = sinónimos separados por comas -->
+    <string name="settings_search_hint">Buscar ajuste…</string>
+    <string name="search_kw_colors">color de texto,color de iconos,acento</string>
+    <string name="search_kw_font">fuente,tamaño de texto</string>
+    <string name="search_kw_wallpaper">fondo,imagen,foto</string>
+    <string name="search_kw_island">notificación,notch,píldora</string>
+    <string name="search_kw_clock">reloj,hora</string>
+    <string name="search_kw_hidden">ocultar,invisible</string>
+    <string name="search_kw_haptics">vibración</string>
+    <string name="search_kw_backup">exportar,importar,guardar</string>
     <string name="section_apps">Apps</string>
     <string name="section_search">Búsqueda</string>
     <string name="section_permissions">Permisos</string>

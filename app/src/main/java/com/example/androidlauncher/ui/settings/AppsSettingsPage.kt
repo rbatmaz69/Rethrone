@@ -18,8 +18,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +54,10 @@ fun AppsSettingsPage() {
     val editViewModel: EditConfigViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
     val appAccessMode by editViewModel.appAccessMode.collectAsState(initial = AppAccessMode.DRAWER_LIST)
+
+    // One-Shot-Highlight eines Such-Treffers: die gefundene Zeile pulsiert kurz.
+    var highlightKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { highlightKey = homeViewModel.consumePendingSettingsHighlight() }
 
     val isDarkTextEnabled = LocalDarkTextEnabled.current
     val designStyle = LocalDesignStyle.current
@@ -95,7 +103,8 @@ fun AppsSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "app_access_mode_selector"
+                    testTag = "app_access_mode_selector",
+                    highlighted = highlightKey == "app_access"
                 )
             }
 
@@ -108,7 +117,8 @@ fun AppsSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "hidden_apps_item"
+                    testTag = "hidden_apps_item",
+                    highlighted = highlightKey == "hidden_apps"
                 )
             }
 
@@ -121,7 +131,8 @@ fun AppsSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "app_lock_item"
+                    testTag = "app_lock_item",
+                    highlighted = highlightKey == "app_lock"
                 )
             }
 
@@ -134,7 +145,8 @@ fun AppsSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "uninstall_apps_item"
+                    testTag = "uninstall_apps_item",
+                    highlighted = highlightKey == "uninstall_apps"
                 )
             }
         }

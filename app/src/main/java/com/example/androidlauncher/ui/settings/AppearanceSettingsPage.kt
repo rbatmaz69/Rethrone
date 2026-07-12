@@ -19,8 +19,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,6 +67,10 @@ fun AppearanceSettingsPage(
 
     val isCustomWallpaperSet by editViewModel.isCustomWallpaperSet.collectAsState(initial = false)
     val isAnimationsEnabled by editViewModel.isAnimationsEnabled.collectAsState(initial = true)
+
+    // One-Shot-Highlight eines Such-Treffers: die gefundene Zeile pulsiert kurz.
+    var highlightKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { highlightKey = homeViewModel.consumePendingSettingsHighlight() }
 
     val onResetWallpaper = {
         editViewModel.resetWallpaper()
@@ -119,7 +127,8 @@ fun AppearanceSettingsPage(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     statusLabel = selectedTheme.themeNameRes?.let { stringResource(it) } ?: selectedTheme.themeName,
-                    testTag = "appearance_themes_item"
+                    testTag = "appearance_themes_item",
+                    highlighted = highlightKey == "themes"
                 )
             }
 
@@ -132,7 +141,8 @@ fun AppearanceSettingsPage(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "appearance_colors_item"
+                    testTag = "appearance_colors_item",
+                    highlighted = highlightKey == "colors"
                 )
             }
 
@@ -146,7 +156,8 @@ fun AppearanceSettingsPage(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     statusLabel = stringResource(designStyle.titleRes),
-                    testTag = "appearance_design_item"
+                    testTag = "appearance_design_item",
+                    highlighted = highlightKey == "design_style"
                 )
             }
 
@@ -159,7 +170,8 @@ fun AppearanceSettingsPage(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "appearance_font_size_item"
+                    testTag = "appearance_font_size_item",
+                    highlighted = highlightKey == "font_size"
                 )
             }
 
@@ -172,7 +184,8 @@ fun AppearanceSettingsPage(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "appearance_app_icons_item"
+                    testTag = "appearance_app_icons_item",
+                    highlighted = highlightKey == "app_icons"
                 )
             }
 
@@ -186,6 +199,7 @@ fun AppearanceSettingsPage(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     testTag = "appearance_wallpaper_item",
+                    highlighted = highlightKey == "wallpaper",
                     trailingContent = {
                         if (isCustomWallpaperSet) {
                             IconButton(onClick = onResetWallpaper) {
@@ -232,7 +246,8 @@ fun AppearanceSettingsPage(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     statusLabel = if (isAnimationsEnabled) null else stringResource(R.string.status_off),
-                    testTag = "appearance_animations_item"
+                    testTag = "appearance_animations_item",
+                    highlighted = highlightKey == "animations"
                 )
             }
         }

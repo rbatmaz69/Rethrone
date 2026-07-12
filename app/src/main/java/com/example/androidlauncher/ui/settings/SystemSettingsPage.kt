@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +76,10 @@ fun SystemSettingsPage(
     val editViewModel: EditConfigViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
     val isHapticFeedbackEnabled by editViewModel.isHapticFeedbackEnabled.collectAsState(initial = true)
+
+    // One-Shot-Highlight eines Such-Treffers: die gefundene Zeile pulsiert kurz.
+    var highlightKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { highlightKey = homeViewModel.consumePendingSettingsHighlight() }
 
     // Haptik schreibt zusätzlich das System-Setting → ohne WRITE_SETTINGS-Berechtigung
     // stattdessen den System-Dialog öffnen (Verhalten wie zuvor im Bearbeiten-Menü).
@@ -157,7 +162,8 @@ fun SystemSettingsPage(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "haptic_feedback_switch"
+                    switchTestTag = "haptic_feedback_switch",
+                    highlighted = highlightKey == "haptics"
                 )
             }
 
@@ -177,7 +183,8 @@ fun SystemSettingsPage(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "backup_export_item"
+                    testTag = "backup_export_item",
+                    highlighted = highlightKey == "backup_export"
                 )
             }
 
@@ -190,7 +197,8 @@ fun SystemSettingsPage(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "backup_import_item"
+                    testTag = "backup_import_item",
+                    highlighted = highlightKey == "backup_import"
                 )
             }
 
@@ -226,7 +234,8 @@ fun SystemSettingsPage(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "default_launcher_item"
+                    testTag = "default_launcher_item",
+                    highlighted = highlightKey == "default_launcher"
                 )
             }
 
@@ -243,7 +252,8 @@ fun SystemSettingsPage(
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
-                    isDarkTextEnabled = isDarkTextEnabled
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    highlighted = highlightKey == "notifications"
                 )
             }
 
@@ -260,7 +270,8 @@ fun SystemSettingsPage(
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
-                    isDarkTextEnabled = isDarkTextEnabled
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    highlighted = highlightKey == "accessibility"
                 )
             }
 
@@ -277,7 +288,8 @@ fun SystemSettingsPage(
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
-                    isDarkTextEnabled = isDarkTextEnabled
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    highlighted = highlightKey == "usage_access"
                 )
             }
 
@@ -290,7 +302,8 @@ fun SystemSettingsPage(
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    testTag = "system_info_item"
+                    testTag = "system_info_item",
+                    highlighted = highlightKey == "info"
                 )
             }
         }
