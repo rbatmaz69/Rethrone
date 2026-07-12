@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.Lucide
 import com.example.androidlauncher.LauncherLogic
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.data.AutoIconFallbackType
 import com.example.androidlauncher.data.IconManager
 import com.example.androidlauncher.data.NotificationStateStore
 import com.example.androidlauncher.data.NotificationStateStoreEntryPoint
@@ -37,7 +36,7 @@ import dagger.hilt.android.EntryPointAccessors
 
 /**
  * Composable das ein App-Icon rendert.
- * Priorität: manueller Override > automatischer Lucide-Fallback > automatischer Container > Original.
+ * Priorität: manueller Override > Original-Icon (System/Icon-Pack) > Initialen-Fallback (Bitmap fehlt).
  */
 @Composable
 fun AppIconView(
@@ -69,7 +68,6 @@ fun AppIconView(
     )
 
     val manualLucideIcon = resolvedCustomIcons[app.packageName]?.let(::getLucideIconByName)
-    val autoFallback = app.autoIconFallback
 
     Box(
         modifier = modifier.size(iconSize),
@@ -82,13 +80,6 @@ fun AppIconView(
                     contentDescription = null,
                     modifier = Modifier.size(iconSize * 0.65f),
                     tint = tintColor
-                )
-            }
-            autoFallback?.type == AutoIconFallbackType.NEUTRAL -> {
-                NeutralIconFallback(
-                    label = app.label,
-                    tintColor = tintColor,
-                    iconSize = iconSize
                 )
             }
             app.iconBitmap != null -> {

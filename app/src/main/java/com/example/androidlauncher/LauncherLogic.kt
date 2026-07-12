@@ -2,10 +2,7 @@ package com.example.androidlauncher
 
 import com.example.androidlauncher.data.AppInfo
 import com.example.androidlauncher.data.AppUsageStats
-import com.example.androidlauncher.data.AutoIconFallback
-import com.example.androidlauncher.data.AutoIconRule
 import com.example.androidlauncher.data.FolderInfo
-import com.example.androidlauncher.data.IconQualityEvaluator
 import com.example.androidlauncher.data.SearchHistoryEntry
 import java.util.UUID
 
@@ -345,11 +342,8 @@ object LauncherLogic {
 
     /**
      * Verschmilzt die frisch vom System geladene App-Liste [basicApps] mit den bereits
-     * angezeigten [existingApps]:
-     * - bereits geladene Icons und automatischen Icon-Fallbacks werden übernommen, damit
-     *   beim Aktualisieren nicht kurz leere Icons aufblitzen,
-     * - gespeicherte Fallbacks ([storedFallbacks]) haben Vorrang vor den übernommenen,
-     * - die Icon-Regel kommt aus [autoIconRules], sonst aus der Default-Regel.
+     * angezeigten [existingApps]: bereits geladene Icons werden übernommen, damit beim
+     * Aktualisieren nicht kurz leere Icons aufblitzen.
      *
      * Reine Transformation ohne Seiteneffekte (unit-testbar). Reihenfolge und Umfang folgen
      * [basicApps]; nicht mehr installierte Apps fallen damit automatisch heraus.
@@ -357,19 +351,10 @@ object LauncherLogic {
     fun mergeInstalledApps(
         basicApps: List<AppInfo>,
         existingApps: List<AppInfo>,
-        storedFallbacks: Map<String, AutoIconFallback>,
-        autoIconRules: Map<String, AutoIconRule>,
     ): List<AppInfo> {
         val currentIcons = existingApps.associate { it.packageName to it.iconBitmap }
-        val currentFallbacks = existingApps.associate { it.packageName to it.autoIconFallback }
         return basicApps.map { app ->
-            val resolvedRule = autoIconRules[app.packageName]
-                ?: IconQualityEvaluator.resolveDefaultRule(app.packageName)
-            app.copy(
-                iconBitmap = currentIcons[app.packageName],
-                autoIconFallback = storedFallbacks[app.packageName] ?: currentFallbacks[app.packageName],
-                autoIconRule = resolvedRule,
-            )
+            app.copy(iconBitmap = currentIcons[app.packageName])
         }
     }
 

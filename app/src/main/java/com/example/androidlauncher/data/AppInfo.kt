@@ -15,7 +15,5 @@ data class AppInfo(
     val packageName: String, // The unique package identifier (e.g., com.example.app)
     val iconBitmap: ImageBitmap? = null, // The actual app icon as a bitmap
     val lucideIcon: ImageVector? = null, // Optional vector icon (if used)
-    val autoIconFallback: AutoIconFallback? = null, // Optional auto icon fallback status
-    val autoIconRule: AutoIconRule? = null, // Optional auto icon rule status
     val launchIntent: Intent? = null // Cached launch intent for faster startup
 )

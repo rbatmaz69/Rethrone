@@ -9,13 +9,11 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.compose.ui.geometry.Offset
 import com.example.androidlauncher.data.AppInfo
-import com.example.androidlauncher.data.AutoIconRuleMode
 import com.example.androidlauncher.data.HomeLayout
 import com.example.androidlauncher.data.settings.HomeLayoutSettings
 import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.HomeScreen
-import com.example.androidlauncher.ui.IconConfigMenu
 import com.example.androidlauncher.ui.settings.HomescreenSettingsPage
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -94,41 +92,6 @@ class LauncherComposableUiTest {
         // sichtbar; stattdessen den stabilen Drawer-Root + die gerenderte App pruefen.
         composeRule.onNodeWithTag("app_drawer").assertIsDisplayed()
         composeRule.onNodeWithText("Firefox").assertIsDisplayed()
-    }
-
-    // TODO Emulator-Verifikation noetig: nach Klick auf das Icon-Item erscheint der Aktions-Dialog;
-    // 'icon_action_force_fallback' war im CI nicht sichtbar (vermutlich Dialog-Scroll/Timing).
-    // Reaktivieren, sobald der Dialog-Flow im Emulator nachvollzogen ist (ggf. waitUntil/Scroll).
-    @Ignore("Dialog-/Scroll-Verhalten – mit Emulator verifizieren, dann reaktivieren")
-    @Test
-    fun iconConfigMenu_exposesActionDialogAndRuleCallback() {
-        var selectedRule: AutoIconRuleMode? = null
-        var reanalyzedPackage: String? = null
-
-        composeRule.setContent {
-            AndroidLauncherTheme {
-                IconConfigMenu(
-                    apps = listOf(AppInfo(label = "Firefox", packageName = "org.mozilla.firefox")),
-                    customIcons = emptyMap(),
-                    iconRules = emptyMap(),
-                    onIconSelected = { _, _ -> },
-                    onAutoRuleSelected = { _, mode -> selectedRule = mode },
-                    onReanalyzeRequested = { pkg -> reanalyzedPackage = pkg },
-                    onClose = {}
-                )
-            }
-        }
-
-        composeRule.onNodeWithTag("icon_config_item_org.mozilla.firefox").performClick()
-        composeRule.onNodeWithTag("icon_action_dialog").assertIsDisplayed()
-        composeRule.onNodeWithTag("icon_action_force_fallback").assertIsDisplayed().performClick()
-
-        assertEquals(AutoIconRuleMode.FORCE_FALLBACK, selectedRule)
-
-        composeRule.onNodeWithTag("icon_config_item_org.mozilla.firefox").performClick()
-        composeRule.onNodeWithTag("icon_action_reanalyze").assertIsDisplayed().performClick()
-
-        assertEquals("org.mozilla.firefox", reanalyzedPackage)
     }
 
     // TODO Emulator-Verifikation noetig: 'edit_home_layout_reset' liegt in einer LazyColumn und ist

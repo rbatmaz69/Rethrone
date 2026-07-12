@@ -96,14 +96,11 @@ fun UninstallAppsMenu(
             // Eintrag inkl. Icon eigenständig aufbauen, da er nicht in `apps` enthalten ist.
             val ownEntry = try {
                 val ai = pm.getApplicationInfo(context.packageName, 0)
-                val ownIcon = AppRepository(context).loadResolvedIcon(
-                    AppInfo(label = pm.getApplicationLabel(ai).toString(), packageName = context.packageName)
-                )
+                val ownIcon = AppRepository(context).loadIcon(context.packageName)
                 AppInfo(
                     label = pm.getApplicationLabel(ai).toString(),
                     packageName = context.packageName,
-                    iconBitmap = ownIcon?.imageBitmap,
-                    autoIconFallback = ownIcon?.autoFallback
+                    iconBitmap = ownIcon
                 )
             } catch (_: Exception) {
                 null

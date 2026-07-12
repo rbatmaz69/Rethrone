@@ -364,26 +364,10 @@
     <string name="icon_manual_status">Manuell · %1$s</string>
     <string name="icon_manual_override_active">Manueller Override aktiv: %1$s</string>
     <string name="icon_direct_actions">Direkte Aktionen</string>
-    <string name="icon_auto_rules">Automatische Regeln</string>
     <string name="icon_pick_lucide_title">Lucide-Icon auswählen</string>
     <string name="icon_pick_lucide_sub">Weise dieser App direkt ein eigenes Icon zu</string>
-    <string name="icon_reanalyze_title">Auto neu analysieren</string>
-    <string name="icon_reanalyze_sub">Prüft Original, Form und Lesbarkeit erneut</string>
-    <string name="icon_keep_original_title">Original immer behalten</string>
-    <string name="icon_keep_original_sub">Überschreibt die Heuristik und zeigt das echte App-Icon</string>
-    <string name="icon_force_fallback_title">Automatischen Fallback bevorzugen</string>
-    <string name="icon_force_fallback_sub">Erzwingt Lucide oder neutralen Container</string>
-    <string name="icon_follow_heuristic_title">Nur Heuristik verwenden</string>
-    <string name="icon_follow_heuristic_sub">Entscheidung wieder automatisch treffen lassen</string>
-    <string name="icon_clear_rule_title">Gespeicherte Regel entfernen</string>
-    <string name="icon_clear_rule_sub">Fällt auf die Standardlogik des Launchers zurück</string>
     <string name="icon_reset_manual_title">Manuellen Override entfernen</string>
-    <string name="icon_reset_manual_sub">Nutzt wieder die automatische Entscheidung des Launchers</string>
-    <string name="icon_rule_keep_original">Regel · Original bevorzugen</string>
-    <string name="icon_rule_force_fallback">Regel · Fallback bevorzugen</string>
-    <string name="icon_rule_follow_heuristic">Regel · Nur Heuristik</string>
-    <string name="icon_auto_original">Auto · Original</string>
-    <string name="icon_auto_neutral">Auto · Neutraler Container</string>
+    <string name="icon_reset_manual_sub">Zeigt wieder das Original-Icon der App</string>
 
     <!-- Sonstige Toasts -->
     <string name="position_saved">Position gespeichert</string>

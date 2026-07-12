@@ -69,8 +69,6 @@ class DataModelsTest {
         val app = AppInfo(label = "Test", packageName = "com.test")
         assertNull(app.iconBitmap)
         assertNull(app.lucideIcon)
-        assertNull(app.autoIconFallback)
-        assertNull(app.autoIconRule)
     }
 
     @Test
@@ -101,8 +99,6 @@ class DataModelsTest {
         assertEquals("NewApp", copied.label)
         assertEquals("com.app", copied.packageName)
         assertNull(copied.iconBitmap)
-        assertNull(copied.autoIconFallback)
-        assertNull(copied.autoIconRule)
     }
 
     @Test

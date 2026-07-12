@@ -146,39 +146,13 @@ class AppRepository(
     }
 
     /**
-     * Lädt ein einzelnes App-Icon und berechnet die automatische Fallback-Entscheidung.
-     *
-     * Hat das gewählte Icon-Pack ein Mapping für die App, wird die Qualitäts-Heuristik
-     * bewusst übersprungen (keep-original) – Pack-Grafiken sollen nie durch den
-     * Initialen-Fallback ersetzt werden.
-     */
-    suspend fun loadResolvedIcon(app: AppInfo, iconPack: String? = null): LoadedAppIcon? {
-        val usesPackIcon = iconPack != null &&
-            iconPackRepository?.hasPackIcon(iconPack, app.packageName, launchComponentFlat(app.packageName)) == true
-        val bitmap = loadBitmap(app.packageName, iconPack) ?: return null
-        return LoadedAppIcon(
-            imageBitmap = bitmap.toPreparedImageBitmap(),
-            autoFallback = if (usesPackIcon) {
-                AutoIconFallback(type = AutoIconFallbackType.ORIGINAL, reason = "icon_pack")
-            } else {
-                IconQualityEvaluator.evaluate(
-                    bitmap = bitmap,
-                    packageName = app.packageName,
-                    label = app.label,
-                    explicitRule = app.autoIconRule
-                )
-            }
-        )
-    }
-
-    /**
      * Lädt Icons für eine App-Liste mit Priorisierung der Favoriten.
      */
     suspend fun loadIconsWithPriority(
         apps: List<AppInfo>,
         favoritePackages: List<String>,
         iconPack: String? = null,
-        onIconLoaded: suspend (Int, LoadedAppIcon) -> Unit
+        onIconLoaded: suspend (Int, ImageBitmap) -> Unit
     ) {
         val favSet = favoritePackages.toSet()
         val sortedIndices = apps.indices.sortedByDescending { apps[it].packageName in favSet }
@@ -186,9 +160,9 @@ class AppRepository(
         sortedIndices.forEachIndexed { loopIdx, appIdx ->
             if (appIdx >= apps.size) return@forEachIndexed
             val app = apps[appIdx]
-            val resolvedIcon = loadResolvedIcon(app, iconPack)
-            if (resolvedIcon != null) {
-                onIconLoaded(appIdx, resolvedIcon)
+            val icon = loadIcon(app.packageName, iconPack)
+            if (icon != null) {
+                onIconLoaded(appIdx, icon)
             }
             if (loopIdx % 5 == 0) delay(1)
         }
@@ -285,11 +259,6 @@ class AppRepository(
         imageBitmap.prepareToDraw()
         return imageBitmap
     }
-
-    data class LoadedAppIcon(
-        val imageBitmap: ImageBitmap,
-        val autoFallback: AutoIconFallback
-    )
 
     companion object {
         private const val ICON_SIZE = 144

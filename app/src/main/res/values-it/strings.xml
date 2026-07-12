@@ -349,26 +349,10 @@
     <string name="icon_manual_status">Manuale · %1$s</string>
     <string name="icon_manual_override_active">Override manuale attivo: %1$s</string>
     <string name="icon_direct_actions">Azioni dirette</string>
-    <string name="icon_auto_rules">Regole automatiche</string>
     <string name="icon_pick_lucide_title">Scegli icona Lucide</string>
     <string name="icon_pick_lucide_sub">Assegna un\'icona personalizzata direttamente a questa app</string>
-    <string name="icon_reanalyze_title">Rianalizza automatico</string>
-    <string name="icon_reanalyze_sub">Ricontrolla originale, forma e leggibilità</string>
-    <string name="icon_keep_original_title">Mantieni sempre l\'originale</string>
-    <string name="icon_keep_original_sub">Sovrascrive l\'euristica e mostra l\'icona reale dell\'app</string>
-    <string name="icon_force_fallback_title">Preferisci il fallback automatico</string>
-    <string name="icon_force_fallback_sub">Forza Lucide o un contenitore neutro</string>
-    <string name="icon_follow_heuristic_title">Usa solo l\'euristica</string>
-    <string name="icon_follow_heuristic_sub">Lascia che la decisione venga presa di nuovo automaticamente</string>
-    <string name="icon_clear_rule_title">Rimuovi regola salvata</string>
-    <string name="icon_clear_rule_sub">Torna alla logica predefinita del launcher</string>
     <string name="icon_reset_manual_title">Rimuovi override manuale</string>
-    <string name="icon_reset_manual_sub">Usa di nuovo la decisione automatica del launcher</string>
-    <string name="icon_rule_keep_original">Regola · Preferisci originale</string>
-    <string name="icon_rule_force_fallback">Regola · Preferisci fallback</string>
-    <string name="icon_rule_follow_heuristic">Regola · Solo euristica</string>
-    <string name="icon_auto_original">Auto · Originale</string>
-    <string name="icon_auto_neutral">Auto · Contenitore neutro</string>
+    <string name="icon_reset_manual_sub">Mostra di nuovo l\'icona originale dell\'app</string>
 
     <!-- Altri toast -->
     <string name="position_saved">Posizione salvata</string>

@@ -1,6 +1,10 @@
 package com.example.androidlauncher.data
 
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
@@ -18,6 +22,7 @@ import java.io.File
 class IconManagerTest {
 
     private lateinit var testFile: File
+    private lateinit var testDataStore: DataStore<Preferences>
     private lateinit var manager: IconManager
 
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -27,7 +32,7 @@ class IconManagerTest {
     fun setup() {
         testFile = File.createTempFile("icon_manager_test", ".preferences_pb")
 
-        val testDataStore = PreferenceDataStoreFactory.create(
+        testDataStore = PreferenceDataStoreFactory.create(
             scope = testScope.backgroundScope,
             produceFile = { testFile }
         )
@@ -85,48 +90,16 @@ class IconManagerTest {
     }
 
     @Test
-    fun `setAutoIconFallback updates fallback config`() = testScope.runTest {
-        val fallback = AutoIconFallback(type = AutoIconFallbackType.ORIGINAL, reason = "configured_keep_original")
-        manager.setAutoIconFallback("com.example.app", fallback)
+    fun `legacy auto keys never leak into customIcons`() = testScope.runTest {
+        // Reste des entfernten Auto-Icon-Systems (Alt-Installation/Backup-Restore).
+        testDataStore.edit { preferences ->
+            preferences[stringPreferencesKey("auto_fallback__com.pkg.a")] = "type=NEUTRAL"
+            preferences[stringPreferencesKey("auto_rule__com.pkg.a")] = "mode=KEEP_ORIGINAL"
+        }
+        manager.setCustomIcon("com.pkg.a", "camera")
 
-        val fallbacks = manager.autoIconFallbacks.first()
-        assertEquals(1, fallbacks.size)
-        assertEquals(fallback, fallbacks["com.example.app"])
-    }
+        val icons = manager.customIcons.first()
 
-    @Test
-    fun `setAutoIconRule updates internal rule config`() = testScope.runTest {
-        val rule = AutoIconRule(mode = AutoIconRuleMode.KEEP_ORIGINAL, reason = "user_rule")
-        manager.setAutoIconRule("com.example.app", rule)
-
-        val rules = manager.autoIconRules.first()
-        assertEquals(1, rules.size)
-        assertEquals(rule, rules["com.example.app"])
-    }
-
-    @Test
-    fun `invalidatePackage removes fallback only`() = testScope.runTest {
-        manager.setAutoIconFallback("com.pkg.a", AutoIconFallback(type = AutoIconFallbackType.ORIGINAL))
-        manager.setAutoIconRule("com.pkg.a", AutoIconRule(mode = AutoIconRuleMode.KEEP_ORIGINAL))
-        manager.setCustomIcon("com.pkg.a", "lucide_icon")
-
-        manager.invalidatePackage("com.pkg.a", removeUserOverride = false)
-
-        assertNull(manager.autoIconFallbacks.first()["com.pkg.a"])
-        assertEquals(AutoIconRule(mode = AutoIconRuleMode.KEEP_ORIGINAL), manager.autoIconRules.first()["com.pkg.a"])
-        assertEquals("lucide_icon", manager.customIcons.first()["com.pkg.a"])
-    }
-
-    @Test
-    fun `invalidatePackage removes both fallback and overrides and rules`() = testScope.runTest {
-        manager.setAutoIconFallback("com.pkg.a", AutoIconFallback(type = AutoIconFallbackType.ORIGINAL))
-        manager.setAutoIconRule("com.pkg.a", AutoIconRule(mode = AutoIconRuleMode.KEEP_ORIGINAL))
-        manager.setCustomIcon("com.pkg.a", "lucide_icon")
-
-        manager.invalidatePackage("com.pkg.a", removeUserOverride = true)
-
-        assertTrue(manager.autoIconFallbacks.first().isEmpty())
-        assertTrue(manager.autoIconRules.first().isEmpty())
-        assertTrue(manager.customIcons.first().isEmpty())
+        assertEquals(mapOf("com.pkg.a" to "camera"), icons)
     }
 }

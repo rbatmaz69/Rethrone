@@ -349,26 +349,10 @@
     <string name="icon_manual_status">Manuel · %1$s</string>
     <string name="icon_manual_override_active">Remplacement manuel actif : %1$s</string>
     <string name="icon_direct_actions">Actions directes</string>
-    <string name="icon_auto_rules">Règles automatiques</string>
     <string name="icon_pick_lucide_title">Choisir une icône Lucide</string>
     <string name="icon_pick_lucide_sub">Attribuez une icône personnalisée directement à cette app</string>
-    <string name="icon_reanalyze_title">Réanalyser l\'auto</string>
-    <string name="icon_reanalyze_sub">Revérifie l\'original, la forme et la lisibilité</string>
-    <string name="icon_keep_original_title">Toujours garder l\'original</string>
-    <string name="icon_keep_original_sub">Remplace l\'heuristique et montre la vraie icône de l\'app</string>
-    <string name="icon_force_fallback_title">Préférer le repli automatique</string>
-    <string name="icon_force_fallback_sub">Force Lucide ou un conteneur neutre</string>
-    <string name="icon_follow_heuristic_title">Utiliser seulement l\'heuristique</string>
-    <string name="icon_follow_heuristic_sub">Laisser la décision se faire automatiquement à nouveau</string>
-    <string name="icon_clear_rule_title">Supprimer la règle enregistrée</string>
-    <string name="icon_clear_rule_sub">Revient à la logique par défaut du lanceur</string>
     <string name="icon_reset_manual_title">Supprimer le remplacement manuel</string>
-    <string name="icon_reset_manual_sub">Réutilise la décision automatique du lanceur</string>
-    <string name="icon_rule_keep_original">Règle · Préférer l\'original</string>
-    <string name="icon_rule_force_fallback">Règle · Préférer le repli</string>
-    <string name="icon_rule_follow_heuristic">Règle · Heuristique seule</string>
-    <string name="icon_auto_original">Auto · Original</string>
-    <string name="icon_auto_neutral">Auto · Conteneur neutre</string>
+    <string name="icon_reset_manual_sub">Affiche à nouveau l\'icône d\'origine de l\'app</string>
 
     <!-- Autres toasts -->
     <string name="position_saved">Position enregistrée</string>
