@@ -106,8 +106,11 @@
     <string name="label_animations">Animations</string>
     <string name="label_info">Info</string>
     <string name="label_features">Features</string>
+    <string name="label_design_style">Design style</string>
     <string name="edit_config_title">Edit</string>
     <string name="section_general">General</string>
+    <string name="section_appearance">Appearance</string>
+    <string name="category_sub_appearance">Themes, colors, font, icons, wallpaper, animations</string>
     <string name="section_apps">Apps</string>
     <string name="section_search">Search</string>
     <string name="section_permissions">Permissions</string>

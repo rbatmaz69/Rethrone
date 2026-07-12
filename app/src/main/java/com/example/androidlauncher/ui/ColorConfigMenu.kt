@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
@@ -49,9 +48,6 @@ fun ColorConfigMenu(
     onIconColorChange: (Color) -> Unit,
     homeTextColor: Color,
     onHomeTextColorChange: (Color) -> Unit,
-    designStyle: DesignStyle,
-    onOpenDesignMenu: () -> Unit,
-    onOpenThemeMenu: () -> Unit,
     customBackgroundColor: Color,
     onCustomBackgroundChange: (Color) -> Unit,
     customMenuColor: Color,
@@ -154,75 +150,6 @@ fun ColorConfigMenu(
                     mainTextColor = mainTextColor,
                     onClick = { activePicker = "menu" }
                 )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                stringResource(R.string.color_section_appearance),
-                color = mainTextColor.copy(alpha = 0.5f),
-                fontSize = 14.sp
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Antippbare Zeile → Theme-Untermenü.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onOpenThemeMenu() }
-                    .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-                    .testTag("theme_selection_row")
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(stringResource(R.string.label_themes), color = mainTextColor, fontSize = 16.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        selectedTheme.themeNameRes?.let { stringResource(it) } ?: selectedTheme.themeName,
-                        color = mainTextColor.copy(alpha = 0.6f),
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = mainTextColor.copy(alpha = 0.5f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Antippbare Zeile, die das Design-Untermenü öffnet.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onOpenDesignMenu() }
-                    .background(mainTextColor.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-                    .testTag("design_style_row")
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(stringResource(R.string.label_design), color = mainTextColor, fontSize = 16.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(designStyle.titleRes),
-                        color = mainTextColor.copy(alpha = 0.6f),
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = mainTextColor.copy(alpha = 0.5f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.weight(1f))

@@ -163,6 +163,7 @@ import com.example.androidlauncher.ui.home.HomeViewModel
 import com.example.androidlauncher.ui.home.rememberLaunchTransitionState
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
+import com.example.androidlauncher.ui.settings.AppearanceSettingsPage
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
@@ -695,6 +696,7 @@ class MainActivity : ComponentActivity() {
                 var backPreviewActive by remember { mutableStateOf(false) }
                 val backPreviewTarget = if (backPreviewActive) homeUi.overlayBackStack.lastOrNull() else null
                 val isFavoritesConfigOpen = activeOverlay is ActiveOverlay.FavoritesConfig
+                val isAppearanceSettingsOpen = activeOverlay is ActiveOverlay.AppearanceSettings
                 val isColorConfigOpen = activeOverlay is ActiveOverlay.ColorConfig
                 val isAnimationsConfigOpen = activeOverlay is ActiveOverlay.AnimationsConfig
                 val isEdgeLightingConfigOpen = activeOverlay is ActiveOverlay.EdgeLightingConfig
@@ -1608,11 +1610,63 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // ActivityResult-Effekte, die mehrere Einstellungs-Seiten teilen
+                    // (Hub, Aussehen, künftig System): Launcher/Prompts der Activity.
+                    val editConfigActions = remember {
+                        object : EditConfigActions {
+                            override fun openDefaultLauncherPrompt() = requestDefaultLauncher()
+
+                            override fun pickWallpaper() {
+                                wallpaperPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+
+                            override fun exportBackup() {
+                                backupExportLauncher.launch(suggestedBackupFileName())
+                            }
+
+                            override fun importBackup() {
+                                backupImportLauncher.launch(
+                                    arrayOf("application/json", "application/octet-stream")
+                                )
+                            }
+                        }
+                    }
+
+                    // Einstellungs-Hub („Bearbeiten") – Eltern aller Kategorie-Seiten und
+                    // Untermenüs, deshalb VOR ihnen komponiert (der Predictive-Back-Backdrop
+                    // muss HINTER dem weggewischten Kind liegen).
                     MenuOverlay(
-                        visible = isColorConfigOpen || backPreviewTarget is ActiveOverlay.ColorConfig,
+                        visible = (isEditConfigOpen && !isWallpaperCropOpen) || backPreviewTarget is ActiveOverlay.EditConfig,
                         customWallpaperUri = customWallpaperUri,
                         onClose = { homeViewModel.closeOverlay() },
-                        isBackdrop = backPreviewTarget is ActiveOverlay.ColorConfig && activeOverlay !is ActiveOverlay.ColorConfig
+                        isBackdrop = backPreviewTarget is ActiveOverlay.EditConfig && activeOverlay !is ActiveOverlay.EditConfig
+                    ) {
+                        EditConfigMenu(actions = editConfigActions)
+                    }
+
+                    // Kategorie-Seite „Aussehen": Kind des Hubs UND Eltern der Darstellungs-
+                    // Untermenüs (Themen, Farben, Design, Schrift, Icons, Wallpaper, Animationen).
+                    MenuOverlay(
+                        visible = (isAppearanceSettingsOpen && !isWallpaperCropOpen) ||
+                            backPreviewTarget is ActiveOverlay.AppearanceSettings,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active },
+                        isBackdrop = backPreviewTarget is ActiveOverlay.AppearanceSettings &&
+                            activeOverlay !is ActiveOverlay.AppearanceSettings
+                    ) {
+                        AppearanceSettingsPage(actions = editConfigActions)
+                    }
+
+                    MenuOverlay(
+                        visible = isColorConfigOpen,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
@@ -1621,9 +1675,6 @@ class MainActivity : ComponentActivity() {
                             onIconColorChange = { scope.launch { themeManager.setIconColor(it) } },
                             homeTextColor = homeTextColor,
                             onHomeTextColorChange = { scope.launch { themeManager.setHomeTextColor(it) } },
-                            designStyle = designStyle,
-                            onOpenDesignMenu = { homeViewModel.openOverlay(ActiveOverlay.DesignMenu) },
-                            onOpenThemeMenu = { homeViewModel.openOverlay(ActiveOverlay.ThemeMenu) },
                             customBackgroundColor = customBackgroundColor,
                             onCustomBackgroundChange = { scope.launch { themeManager.setCustomBackgroundColor(it) } },
                             customMenuColor = customMenuColor,
@@ -1677,6 +1728,8 @@ class MainActivity : ComponentActivity() {
                         visible = isSizeConfigOpen || backPreviewTarget is ActiveOverlay.SizeConfig,
                         customWallpaperUri = customWallpaperUri,
                         onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active },
                         isBackdrop = backPreviewTarget is ActiveOverlay.SizeConfig && activeOverlay !is ActiveOverlay.SizeConfig
                     ) {
                         SizeConfigMenu(
@@ -1713,39 +1766,6 @@ class MainActivity : ComponentActivity() {
                             onAppFontSelected = { scope.launch { themeManager.setAppFont(it) } },
                             onBack = { homeViewModel.closeOverlay() }
                         )
-                    }
-
-                    MenuOverlay(
-                        visible = (isEditConfigOpen && !isWallpaperCropOpen) || backPreviewTarget is ActiveOverlay.EditConfig,
-                        customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() },
-                        isBackdrop = backPreviewTarget is ActiveOverlay.EditConfig && activeOverlay !is ActiveOverlay.EditConfig
-                    ) {
-                        // A8-Split: Navigation + Einstellungen holt sich das Menü selbst
-                        // (HomeViewModel/EditConfigViewModel); hier bleiben nur die Effekte,
-                        // die die Activity braucht (ActivityResult-Launcher).
-                        val editConfigActions = remember {
-                            object : EditConfigActions {
-                                override fun openDefaultLauncherPrompt() = requestDefaultLauncher()
-
-                                override fun pickWallpaper() {
-                                    wallpaperPickerLauncher.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
-                                }
-
-                                override fun exportBackup() {
-                                    backupExportLauncher.launch(suggestedBackupFileName())
-                                }
-
-                                override fun importBackup() {
-                                    backupImportLauncher.launch(
-                                        arrayOf("application/json", "application/octet-stream")
-                                    )
-                                }
-                            }
-                        }
-                        EditConfigMenu(actions = editConfigActions)
                     }
 
                     // B1: Widget-Auswahl – nach dem Edit-Menü komponiert, damit sie darüber

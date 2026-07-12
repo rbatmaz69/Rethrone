@@ -34,11 +34,10 @@ import com.composables.icons.lucide.CloudSun
 import com.composables.icons.lucide.Download
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.House
-import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Palette
 import com.composables.icons.lucide.Pencil
-import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Shield
 import com.composables.icons.lucide.Smartphone
 import com.composables.icons.lucide.Sparkles
@@ -83,24 +82,15 @@ fun EditConfigMenu(
         homeViewModel.setHomeEditMode(true)
     }
     val onOpenWidgetPicker = { homeViewModel.openOverlay(ActiveOverlay.WidgetPicker) }
-    val onOpenIconConfig = { homeViewModel.openOverlay(ActiveOverlay.IconConfig) }
     val onOpenUninstallApps = { homeViewModel.openOverlay(ActiveOverlay.UninstallApps) }
     val onOpenHiddenApps = { homeViewModel.openOverlay(ActiveOverlay.HiddenApps) }
     val onOpenAppLock = { homeViewModel.openOverlay(ActiveOverlay.AppLock) }
-    val onOpenWallpaperAdjust = { homeViewModel.openOverlay(ActiveOverlay.WallpaperConfig) }
     val onOpenGesturesConfig = { homeViewModel.openOverlay(ActiveOverlay.GesturesConfig) }
-    val onOpenAnimationsConfig = { homeViewModel.openOverlay(ActiveOverlay.AnimationsConfig) }
     val onOpenEdgeLightingConfig = { homeViewModel.openOverlay(ActiveOverlay.EdgeLightingConfig) }
     val onOpenDefaultLauncher = { actions.openDefaultLauncherPrompt() }
-    val onChangeWallpaper = {
-        homeViewModel.closeOverlay()
-        actions.pickWallpaper()
-    }
 
     val isCustomHomeLayoutSet by editViewModel.isCustomHomeLayoutSet.collectAsState(initial = false)
-    val isCustomWallpaperSet by editViewModel.isCustomWallpaperSet.collectAsState(initial = false)
     val isSmartSuggestionsEnabled by editViewModel.isSmartSuggestionsEnabled.collectAsState(initial = true)
-    val isAnimationsEnabled by editViewModel.isAnimationsEnabled.collectAsState(initial = true)
     val isWeatherWidgetEnabled by editViewModel.isWeatherWidgetEnabled.collectAsState(initial = true)
     val isClockWidgetEnabled by editViewModel.isClockWidgetEnabled.collectAsState(initial = true)
     val isCalendarWidgetEnabled by editViewModel.isCalendarWidgetEnabled.collectAsState(initial = true)
@@ -122,10 +112,6 @@ fun EditConfigMenu(
     val onResetHomeLayout = {
         editViewModel.resetHomeLayout()
         Toast.makeText(context, context.getString(R.string.home_layout_reset), Toast.LENGTH_SHORT).show()
-    }
-    val onResetWallpaper = {
-        editViewModel.resetWallpaper()
-        Toast.makeText(context, context.getString(R.string.wallpaper_removed), Toast.LENGTH_SHORT).show()
     }
     val onClearSearchHistory = {
         editViewModel.clearSearchHistory()
@@ -205,6 +191,20 @@ fun EditConfigMenu(
             contentPadding = PaddingValues(top = 32.dp, bottom = 8.dp)
         ) {
             item {
+                SettingsCategoryItem(
+                    icon = Lucide.Palette,
+                    title = stringResource(R.string.section_appearance),
+                    subtitle = stringResource(R.string.category_sub_appearance),
+                    onClick = { homeViewModel.openOverlay(ActiveOverlay.AppearanceSettings) },
+                    mainTextColor = mainTextColor,
+                    designStyle = designStyle,
+                    surfaceAccent = surfaceAccent,
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    testTag = "category_appearance_item"
+                )
+            }
+
+            item {
                 EditSectionHeader(
                     title = stringResource(R.string.section_general),
                     mainTextColor = mainTextColor
@@ -223,20 +223,6 @@ fun EditConfigMenu(
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
                     switchTestTag = "haptic_feedback_switch"
-                )
-            }
-
-            item {
-                EditMenuItem(
-                    icon = Lucide.Smartphone,
-                    label = stringResource(R.string.label_animations),
-                    onClick = onOpenAnimationsConfig,
-                    mainTextColor = mainTextColor,
-                    designStyle = designStyle,
-                    surfaceAccent = surfaceAccent,
-                    isDarkTextEnabled = isDarkTextEnabled,
-                    statusLabel = if (isAnimationsEnabled) null else stringResource(R.string.status_off),
-                    testTag = "animations_menu_item"
                 )
             }
 
@@ -387,62 +373,6 @@ fun EditConfigMenu(
                     isDarkTextEnabled = isDarkTextEnabled,
                     testTag = "add_widget_item"
                 )
-            }
-
-            item {
-                EditMenuItem(
-                    icon = Lucide.Settings2,
-                    label = stringResource(R.string.edit_app_icons),
-                    onClick = onOpenIconConfig,
-                    mainTextColor = mainTextColor,
-                    designStyle = designStyle,
-                    surfaceAccent = surfaceAccent,
-                    isDarkTextEnabled = isDarkTextEnabled
-                )
-            }
-
-            item {
-                EditMenuItem(
-                    icon = Lucide.Image,
-                    label = stringResource(R.string.change_wallpaper),
-                    onClick = onChangeWallpaper,
-                    mainTextColor = mainTextColor,
-                    designStyle = designStyle,
-                    surfaceAccent = surfaceAccent,
-                    isDarkTextEnabled = isDarkTextEnabled,
-                    trailingContent = {
-                        if (isCustomWallpaperSet) {
-                            IconButton(onClick = onResetWallpaper) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = stringResource(R.string.cd_remove_wallpaper),
-                                    tint = mainTextColor.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        } else {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = mainTextColor.copy(alpha = 0.4f)
-                            )
-                        }
-                    }
-                )
-            }
-
-            if (isCustomWallpaperSet) {
-                item {
-                    EditMenuItem(
-                        icon = Lucide.Settings2,
-                        label = stringResource(R.string.adjust_wallpaper),
-                        onClick = onOpenWallpaperAdjust,
-                        mainTextColor = mainTextColor,
-                        designStyle = designStyle,
-                        surfaceAccent = surfaceAccent,
-                        isDarkTextEnabled = isDarkTextEnabled
-                    )
-                }
             }
 
             item {
