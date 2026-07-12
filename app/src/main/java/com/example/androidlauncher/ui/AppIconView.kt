@@ -78,7 +78,9 @@ fun AppIconView(
                 Icon(
                     imageVector = manualLucideIcon,
                     contentDescription = null,
-                    modifier = Modifier.size(iconSize * 0.65f),
+                    // Etwas kleiner als die Bitmap-Icons, damit Lucide-Overrides optisch
+                    // auf derselben Ebene liegen wie die Original-Icons daneben.
+                    modifier = Modifier.size(iconSize * 0.55f),
                     tint = tintColor
                 )
             }
