@@ -58,6 +58,51 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `back walks a three level hub chain one page at a time`() {
+        // Hub → Kategorie-Seite → Untermenü (z. B. Bearbeiten → Aussehen → Farben).
+        vm.openOverlay(ActiveOverlay.EditConfig)
+        vm.openOverlay(ActiveOverlay.AppearanceSettings)
+        vm.openOverlay(ActiveOverlay.ColorConfig)
+
+        assertEquals(ActiveOverlay.ColorConfig, state.activeOverlay)
+        assertEquals(
+            listOf(ActiveOverlay.EditConfig, ActiveOverlay.AppearanceSettings),
+            state.overlayBackStack
+        )
+
+        vm.onBack()
+        assertEquals(ActiveOverlay.AppearanceSettings, state.activeOverlay)
+
+        vm.onBack()
+        assertEquals(ActiveOverlay.EditConfig, state.activeOverlay)
+        assertTrue(state.overlayBackStack.isEmpty())
+
+        vm.onBack()
+        assertEquals(ActiveOverlay.None, state.activeOverlay)
+    }
+
+    @Test
+    fun `close from a three level hub chain goes straight home`() {
+        vm.openOverlay(ActiveOverlay.EditConfig)
+        vm.openOverlay(ActiveOverlay.HomescreenSettings)
+        vm.openOverlay(ActiveOverlay.FavoritesConfig)
+
+        vm.closeOverlay()
+        assertEquals(ActiveOverlay.None, state.activeOverlay)
+        assertTrue(state.overlayBackStack.isEmpty())
+    }
+
+    @Test
+    fun `palette deep link into a category child keeps back stack shallow`() {
+        // Palette-Shortcut öffnet ColorConfig direkt (leerer Stack): Back geht zur
+        // Startseite, nicht zum Hub – der gewohnte Shortcut-Vertrag bleibt erhalten.
+        vm.openOverlay(ActiveOverlay.ColorConfig)
+
+        vm.onBack()
+        assertEquals(ActiveOverlay.None, state.activeOverlay)
+    }
+
+    @Test
     fun `close from a nested child goes straight home clearing the stack`() {
         vm.openOverlay(ActiveOverlay.EditConfig)
         vm.openOverlay(ActiveOverlay.IconConfig)

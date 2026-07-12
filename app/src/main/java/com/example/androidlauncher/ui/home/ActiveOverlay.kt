@@ -21,6 +21,18 @@ sealed interface ActiveOverlay {
     /** Kategorie-Seite „Aussehen" des Einstellungs-Hubs (Themen, Farben, Schrift, Icons, Wallpaper, Animationen). */
     data object AppearanceSettings : ActiveOverlay
 
+    /** Kategorie-Seite „Startbildschirm" (Favoriten, Layout, Widgets, Dynamic Island, Edge-Beleuchtung). */
+    data object HomescreenSettings : ActiveOverlay
+
+    /** Kategorie-Seite „Apps" (App-Zugriff, Ausblenden, Sperre, Deinstallieren). */
+    data object AppsSettings : ActiveOverlay
+
+    /** Kategorie-Seite „Suche" (Vorschläge, Verlauf). */
+    data object SearchSettings : ActiveOverlay
+
+    /** Kategorie-Seite „System" (Haptik, Backup, Berechtigungen, Info). */
+    data object SystemSettings : ActiveOverlay
+
     data object ColorConfig : ActiveOverlay
     data object AnimationsConfig : ActiveOverlay
     data object EdgeLightingConfig : ActiveOverlay

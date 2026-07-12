@@ -16,7 +16,7 @@ import com.example.androidlauncher.ui.AppDrawer
 import com.example.androidlauncher.ui.EditConfigMenu
 import com.example.androidlauncher.ui.HomeScreen
 import com.example.androidlauncher.ui.IconConfigMenu
-import com.example.androidlauncher.ui.home.EditConfigActions
+import com.example.androidlauncher.ui.settings.HomescreenSettingsPage
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -137,7 +137,7 @@ class LauncherComposableUiTest {
     // vor assertIsDisplayed()/performClick() nutzen. Reaktivieren nach Emulator-Check.
     @Ignore("LazyColumn-Scroll noetig (performScrollToNode) – mit Emulator verifizieren, dann reaktivieren")
     @Test
-    fun editConfigMenu_showsHomeLayoutResetWhenCustomLayoutIsSet() {
+    fun homescreenSettings_showsHomeLayoutResetWhenCustomLayoutIsSet() {
         // A8: Das Menue versorgt sich selbst aus den Settings-Stores -> Custom-Layout
         // direkt im injizierten Store setzen statt per Parameter.
         hiltRule.inject()
@@ -145,7 +145,7 @@ class LauncherComposableUiTest {
 
         composeRule.setContent {
             AndroidLauncherTheme {
-                EditConfigMenu(actions = NoopEditConfigActions)
+                HomescreenSettingsPage()
             }
         }
 
@@ -157,13 +157,13 @@ class LauncherComposableUiTest {
     }
 
     @Test
-    fun editConfigMenu_hidesHomeLayoutResetWhenLayoutIsDefault() {
+    fun homescreenSettings_hidesHomeLayoutResetWhenLayoutIsDefault() {
         hiltRule.inject()
         runBlocking { homeLayoutSettings.setHomeLayout(HomeLayout()) }
 
         composeRule.setContent {
             AndroidLauncherTheme {
-                EditConfigMenu(actions = NoopEditConfigActions)
+                HomescreenSettingsPage()
             }
         }
 
@@ -172,10 +172,19 @@ class LauncherComposableUiTest {
         }
     }
 
-    private object NoopEditConfigActions : EditConfigActions {
-        override fun openDefaultLauncherPrompt() = Unit
-        override fun pickWallpaper() = Unit
-        override fun exportBackup() = Unit
-        override fun importBackup() = Unit
+    @Test
+    fun settingsHub_showsAllCategoryRows() {
+        composeRule.setContent {
+            AndroidLauncherTheme {
+                EditConfigMenu()
+            }
+        }
+
+        composeRule.onNodeWithTag("category_appearance_item").assertIsDisplayed()
+        composeRule.onNodeWithTag("category_homescreen_item").assertIsDisplayed()
+        composeRule.onNodeWithTag("category_apps_item").assertIsDisplayed()
+        composeRule.onNodeWithTag("category_search_item").assertIsDisplayed()
+        composeRule.onNodeWithTag("category_gestures_item").assertIsDisplayed()
+        composeRule.onNodeWithTag("category_system_item").assertIsDisplayed()
     }
 }

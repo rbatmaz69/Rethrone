@@ -164,6 +164,10 @@ import com.example.androidlauncher.ui.home.rememberLaunchTransitionState
 import com.example.androidlauncher.ui.launchAppNoTransition
 import com.example.androidlauncher.ui.onboarding.OnboardingFlow
 import com.example.androidlauncher.ui.settings.AppearanceSettingsPage
+import com.example.androidlauncher.ui.settings.AppsSettingsPage
+import com.example.androidlauncher.ui.settings.HomescreenSettingsPage
+import com.example.androidlauncher.ui.settings.SearchSettingsPage
+import com.example.androidlauncher.ui.settings.SystemSettingsPage
 import com.example.androidlauncher.ui.theme.AndroidLauncherTheme
 import com.example.androidlauncher.ui.theme.ColorTheme
 import com.example.androidlauncher.ui.theme.LocalAnimationSpeed
@@ -697,6 +701,10 @@ class MainActivity : ComponentActivity() {
                 val backPreviewTarget = if (backPreviewActive) homeUi.overlayBackStack.lastOrNull() else null
                 val isFavoritesConfigOpen = activeOverlay is ActiveOverlay.FavoritesConfig
                 val isAppearanceSettingsOpen = activeOverlay is ActiveOverlay.AppearanceSettings
+                val isHomescreenSettingsOpen = activeOverlay is ActiveOverlay.HomescreenSettings
+                val isAppsSettingsOpen = activeOverlay is ActiveOverlay.AppsSettings
+                val isSearchSettingsOpen = activeOverlay is ActiveOverlay.SearchSettings
+                val isSystemSettingsOpen = activeOverlay is ActiveOverlay.SystemSettings
                 val isColorConfigOpen = activeOverlay is ActiveOverlay.ColorConfig
                 val isAnimationsConfigOpen = activeOverlay is ActiveOverlay.AnimationsConfig
                 val isEdgeLightingConfigOpen = activeOverlay is ActiveOverlay.EdgeLightingConfig
@@ -1545,36 +1553,6 @@ class MainActivity : ComponentActivity() {
                     }
 
                     MenuOverlay(
-                        visible = isFavoritesConfigOpen,
-                        customWallpaperUri = customWallpaperUri,
-                        enableDragToClose = false,
-                        onClose = { homeViewModel.closeOverlay() }
-                    ) {
-                        @Suppress("DEPRECATION")
-                        FavoritesConfigMenu(
-                            apps = allApps,
-                            initialFavoritePackages = favoritePackages,
-                            showFavoriteLabels = showFavoriteLabels,
-                            onShowLabelsToggled = { show ->
-                                scope.launch { themeManager.setShowFavoriteLabels(show) }
-                            },
-                            notificationDotsEnabled = notificationDotsEnabled,
-                            onNotificationDotsToggled = { enabled ->
-                                scope.launch { themeManager.setNotificationDotsEnabled(enabled) }
-                            },
-                            favoritesBorderStyle = favoritesBorderStyle,
-                            onBorderStyleSelected = { style ->
-                                scope.launch { themeManager.setFavoritesBorderStyle(style) }
-                            },
-                            onConfirm = { newFavs ->
-                                scope.launch { favoritesManager.saveFavorites(newFavs) }
-                                homeViewModel.closeOverlay()
-                            },
-                            onClose = { homeViewModel.closeOverlay() }
-                        )
-                    }
-
-                    MenuOverlay(
                         visible = selectedFolderForConfig != null,
                         customWallpaperUri = customWallpaperUri,
                         enableDragToClose = false,
@@ -1611,7 +1589,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // ActivityResult-Effekte, die mehrere Einstellungs-Seiten teilen
-                    // (Hub, Aussehen, künftig System): Launcher/Prompts der Activity.
+                    // (Aussehen, System): Launcher/Prompts der Activity.
                     val editConfigActions = remember {
                         object : EditConfigActions {
                             override fun openDefaultLauncherPrompt() = requestDefaultLauncher()
@@ -1643,7 +1621,7 @@ class MainActivity : ComponentActivity() {
                         onClose = { homeViewModel.closeOverlay() },
                         isBackdrop = backPreviewTarget is ActiveOverlay.EditConfig && activeOverlay !is ActiveOverlay.EditConfig
                     ) {
-                        EditConfigMenu(actions = editConfigActions)
+                        EditConfigMenu()
                     }
 
                     // Kategorie-Seite „Aussehen": Kind des Hubs UND Eltern der Darstellungs-
@@ -1659,6 +1637,91 @@ class MainActivity : ComponentActivity() {
                             activeOverlay !is ActiveOverlay.AppearanceSettings
                     ) {
                         AppearanceSettingsPage(actions = editConfigActions)
+                    }
+
+                    // Kategorie-Seite „Startbildschirm": Eltern von Favoriten, Widget-Picker
+                    // und Edge-Beleuchtung.
+                    MenuOverlay(
+                        visible = isHomescreenSettingsOpen || backPreviewTarget is ActiveOverlay.HomescreenSettings,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active },
+                        isBackdrop = backPreviewTarget is ActiveOverlay.HomescreenSettings &&
+                            activeOverlay !is ActiveOverlay.HomescreenSettings
+                    ) {
+                        HomescreenSettingsPage()
+                    }
+
+                    // Kategorie-Seite „Apps": Eltern von Ausblenden, App-Sperre, Deinstallieren.
+                    MenuOverlay(
+                        visible = isAppsSettingsOpen || backPreviewTarget is ActiveOverlay.AppsSettings,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active },
+                        isBackdrop = backPreviewTarget is ActiveOverlay.AppsSettings &&
+                            activeOverlay !is ActiveOverlay.AppsSettings
+                    ) {
+                        AppsSettingsPage()
+                    }
+
+                    // Kategorie-Seite „Suche": keine Unterseiten, reines Kind des Hubs.
+                    MenuOverlay(
+                        visible = isSearchSettingsOpen,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
+                    ) {
+                        SearchSettingsPage()
+                    }
+
+                    // Kategorie-Seite „System": Eltern des Info-Overlays.
+                    MenuOverlay(
+                        visible = isSystemSettingsOpen || backPreviewTarget is ActiveOverlay.SystemSettings,
+                        customWallpaperUri = customWallpaperUri,
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active },
+                        isBackdrop = backPreviewTarget is ActiveOverlay.SystemSettings &&
+                            activeOverlay !is ActiveOverlay.SystemSettings
+                    ) {
+                        SystemSettingsPage(actions = editConfigActions)
+                    }
+
+                    // Favoriten: per Palette direkt ODER als Kind der Startbildschirm-Seite
+                    // erreichbar – deshalb NACH ihr komponiert.
+                    MenuOverlay(
+                        visible = isFavoritesConfigOpen,
+                        customWallpaperUri = customWallpaperUri,
+                        enableDragToClose = false,
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
+                    ) {
+                        @Suppress("DEPRECATION")
+                        FavoritesConfigMenu(
+                            apps = allApps,
+                            initialFavoritePackages = favoritePackages,
+                            showFavoriteLabels = showFavoriteLabels,
+                            onShowLabelsToggled = { show ->
+                                scope.launch { themeManager.setShowFavoriteLabels(show) }
+                            },
+                            notificationDotsEnabled = notificationDotsEnabled,
+                            onNotificationDotsToggled = { enabled ->
+                                scope.launch { themeManager.setNotificationDotsEnabled(enabled) }
+                            },
+                            favoritesBorderStyle = favoritesBorderStyle,
+                            onBorderStyleSelected = { style ->
+                                scope.launch { themeManager.setFavoritesBorderStyle(style) }
+                            },
+                            onConfirm = { newFavs ->
+                                scope.launch { favoritesManager.saveFavorites(newFavs) }
+                                homeViewModel.closeOverlay()
+                            },
+                            onClose = { homeViewModel.closeOverlay() }
+                        )
                     }
 
                     MenuOverlay(
@@ -2031,7 +2094,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isInfoOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         InfoDialog(
                             onClose = { homeViewModel.closeOverlay() }
