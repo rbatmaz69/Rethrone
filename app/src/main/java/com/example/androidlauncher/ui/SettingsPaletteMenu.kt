@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,10 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Palette
@@ -88,9 +84,7 @@ fun SettingsPaletteMenu(
         PaletteMenuItem("info", Icons.Rounded.Info, stringResource(R.string.label_info), onOpenInfo),
     )
 
-    // Radius groß genug, dass die Text-Labels benachbarter Bubbles nicht kollidieren
-    // (bei 110f liegen die Bubble-Zentren nur ~47dp auseinander).
-    val radius = 132f
+    val radius = 110f
     val startAngle = 85f
     val endAngle = 185f
     val density = LocalDensity.current
@@ -220,23 +214,6 @@ fun SettingsPaletteMenu(
                             modifier = Modifier.size(24.dp)
                         )
                     }
-
-                    // Text-Label unter der Bubble. requiredWidth hebelt die 56dp-Constraint
-                    // der Bubble-Box aus, ohne deren Geometrie (Offset/Clip an size/2) zu
-                    // verändern; das Label blendet erst am Ende des Auffächerns ein.
-                    Text(
-                        text = item.label,
-                        color = mainTextColor,
-                        fontSize = 10.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .offset(y = 58.dp)
-                            .requiredWidthIn(max = 84.dp)
-                            .alpha(((progress - 0.6f) / 0.4f).coerceIn(0f, 1f))
-                    )
                 }
             }
         }
