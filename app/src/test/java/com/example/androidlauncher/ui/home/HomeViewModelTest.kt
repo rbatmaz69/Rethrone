@@ -33,6 +33,42 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `opening a child while a parent overlay is open nests it`() {
+        // EditConfig (Eltern) → IconConfig (Kind)
+        vm.openOverlay(ActiveOverlay.EditConfig)
+        vm.openOverlay(ActiveOverlay.IconConfig)
+
+        assertEquals(ActiveOverlay.IconConfig, state.activeOverlay)
+        assertEquals(listOf(ActiveOverlay.EditConfig), state.overlayBackStack)
+    }
+
+    @Test
+    fun `back from a nested child returns to the parent then home`() {
+        vm.openOverlay(ActiveOverlay.EditConfig)
+        vm.openOverlay(ActiveOverlay.IconConfig)
+
+        // Erste Zurück-Geste: zurück zum Elternmenü, nicht zur Startseite.
+        vm.onBack()
+        assertEquals(ActiveOverlay.EditConfig, state.activeOverlay)
+        assertTrue(state.overlayBackStack.isEmpty())
+
+        // Zweite Zurück-Geste: jetzt zur Startseite.
+        vm.onBack()
+        assertEquals(ActiveOverlay.None, state.activeOverlay)
+    }
+
+    @Test
+    fun `close from a nested child goes straight home clearing the stack`() {
+        vm.openOverlay(ActiveOverlay.EditConfig)
+        vm.openOverlay(ActiveOverlay.IconConfig)
+
+        // ✕ / Runterwischen schließt die gesamte Kette.
+        vm.closeOverlay()
+        assertEquals(ActiveOverlay.None, state.activeOverlay)
+        assertTrue(state.overlayBackStack.isEmpty())
+    }
+
+    @Test
     fun `opening the drawer closes palette search edit mode and overlay`() {
         vm.setSettingsOpen(true)
         vm.openOverlay(ActiveOverlay.ColorConfig)

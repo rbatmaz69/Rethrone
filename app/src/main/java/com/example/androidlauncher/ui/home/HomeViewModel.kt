@@ -16,6 +16,13 @@ import javax.inject.Inject
  */
 data class HomeUiState(
     val activeOverlay: ActiveOverlay = ActiveOverlay.None,
+    /**
+     * Eltern-Overlays des aktuell offenen Overlays (unterste = äußerstes Menü).
+     * Wird beim Öffnen eines Untermenüs gefüllt, damit die System-Zurück-Geste eine
+     * Ebene zum Elternmenü zurückgeht statt direkt zur Startseite.
+     * Invariante: [activeOverlay] == None ⇒ Stack leer.
+     */
+    val overlayBackStack: List<ActiveOverlay> = emptyList(),
     val isDrawerOpen: Boolean = false,
     val isSettingsOpen: Boolean = false,
     val isSearchOpen: Boolean = false,
@@ -43,11 +50,32 @@ class HomeViewModel @Inject constructor() : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    /**
+     * Öffnet ein Overlay. Ist bereits ein anderes Overlay offen, wird es als
+     * Elternebene auf den Back-Stack geschoben (Untermenü-Verschachtelung) – so genügt
+     * ein einziger Reducer für beliebige Menü→Untermenü-Übergänge, ohne dass die
+     * Aufrufstellen zwischen „Top-Level" und „Kind" unterscheiden müssen.
+     */
     fun openOverlay(overlay: ActiveOverlay) {
-        _uiState.update { it.copy(activeOverlay = overlay) }
+        _uiState.update { state ->
+            when {
+                overlay == ActiveOverlay.None ->
+                    state.copy(activeOverlay = ActiveOverlay.None, overlayBackStack = emptyList())
+                state.activeOverlay != ActiveOverlay.None && state.activeOverlay != overlay ->
+                    state.copy(
+                        activeOverlay = overlay,
+                        overlayBackStack = state.overlayBackStack + state.activeOverlay,
+                    )
+                else ->
+                    state.copy(activeOverlay = overlay)
+            }
+        }
     }
 
-    fun closeOverlay() = openOverlay(ActiveOverlay.None)
+    /** Schließt die gesamte Overlay-Kette zur Startseite (✕-Button, Runterwischen, programmatisch). */
+    fun closeOverlay() {
+        _uiState.update { it.copy(activeOverlay = ActiveOverlay.None, overlayBackStack = emptyList()) }
+    }
 
     /**
      * Öffnet/schließt den App-Drawer. Beim Öffnen schließen sich Palette, Suche,
@@ -62,6 +90,7 @@ class HomeViewModel @Inject constructor() : ViewModel() {
                     isSearchOpen = false,
                     isHomeEditMode = false,
                     activeOverlay = ActiveOverlay.None,
+                    overlayBackStack = emptyList(),
                 )
             } else {
                 it.copy(isDrawerOpen = false)
@@ -98,16 +127,28 @@ class HomeViewModel @Inject constructor() : ViewModel() {
         _uiState.update { state ->
             val overlay = state.activeOverlay
             when {
-                overlay is ActiveOverlay.FolderConfig -> state.copy(activeOverlay = ActiveOverlay.None)
+                overlay is ActiveOverlay.FolderConfig -> state.poppedOverlay()
                 state.isHomeEditMode -> state.copy(isHomeEditMode = false)
                 state.isSearchOpen -> state.copy(isSearchOpen = false)
-                overlay in INNER_MENUS -> state.copy(activeOverlay = ActiveOverlay.None)
+                overlay in INNER_MENUS -> state.poppedOverlay()
                 state.isDrawerOpen -> state.copy(isDrawerOpen = false)
-                overlay != ActiveOverlay.None -> state.copy(activeOverlay = ActiveOverlay.None)
+                overlay != ActiveOverlay.None -> state.poppedOverlay()
                 else -> state
             }
         }
     }
+
+    /**
+     * Schließt genau eine Overlay-Ebene: liegt ein Elternmenü auf dem Back-Stack, wird
+     * dorthin zurückgekehrt, sonst zur Startseite (Overlay = None). Grundlage dafür, dass
+     * die Zurück-Geste in Untermenüs nicht direkt zur Startseite springt.
+     */
+    private fun HomeUiState.poppedOverlay(): HomeUiState =
+        if (overlayBackStack.isNotEmpty()) {
+            copy(activeOverlay = overlayBackStack.last(), overlayBackStack = overlayBackStack.dropLast(1))
+        } else {
+            copy(activeOverlay = ActiveOverlay.None)
+        }
 
     /** Zeigt den Nutzungszugriff-Hinweis genau einmal pro Prozess-Sitzung. */
     fun requestUsageAccessPromptOnce() {
