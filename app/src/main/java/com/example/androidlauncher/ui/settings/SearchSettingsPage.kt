@@ -18,8 +18,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +54,10 @@ fun SearchSettingsPage() {
     val editViewModel: EditConfigViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
     val isSmartSuggestionsEnabled by editViewModel.isSmartSuggestionsEnabled.collectAsState(initial = true)
+
+    // One-Shot-Highlight eines Such-Treffers: die gefundene Zeile pulsiert kurz.
+    var highlightKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { highlightKey = homeViewModel.consumePendingSettingsHighlight() }
 
     val onClearSearchHistory = {
         editViewModel.clearSearchHistory()
@@ -102,7 +110,8 @@ fun SearchSettingsPage() {
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled,
-                    switchTestTag = "smart_search_switch"
+                    switchTestTag = "smart_search_switch",
+                    highlighted = highlightKey == "smart_suggestions"
                 )
             }
 
@@ -114,7 +123,8 @@ fun SearchSettingsPage() {
                     mainTextColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
-                    isDarkTextEnabled = isDarkTextEnabled
+                    isDarkTextEnabled = isDarkTextEnabled,
+                    highlighted = highlightKey == "clear_history"
                 )
             }
         }

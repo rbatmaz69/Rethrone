@@ -32,6 +32,11 @@ data class HomeUiState(
     val hasShownUsageAccessPrompt: Boolean = false,
     /** Geste, die nach erteilter Kamera-Berechtigung ausgeführt werden soll. */
     val pendingPermissionShakeAction: GestureAction? = null,
+    /**
+     * Id des Such-Treffers ([com.example.androidlauncher.ui.home.SettingsSearchEntry.id]),
+     * dessen Zeile die Zielseite nach der Navigation kurz hervorheben soll (One-Shot).
+     */
+    val pendingSettingsHighlight: String? = null,
 ) {
     /** Liegt irgendeine modale Fläche über dem Startbildschirm? (steuert Back-Handling) */
     val hasModalSurface: Boolean
@@ -173,6 +178,18 @@ class HomeViewModel @Inject constructor() : ViewModel() {
     fun consumePendingPermissionShakeAction(): GestureAction? {
         val pending = _uiState.value.pendingPermissionShakeAction
         _uiState.update { it.copy(pendingPermissionShakeAction = null) }
+        return pending
+    }
+
+    /** Merkt sich den Such-Treffer, dessen Zeile die Zielseite hervorheben soll. */
+    fun setPendingSettingsHighlight(entryId: String?) {
+        _uiState.update { it.copy(pendingSettingsHighlight = entryId) }
+    }
+
+    /** Liefert den wartenden Highlight-Treffer und setzt ihn zurück (Aufruf von der Zielseite). */
+    fun consumePendingSettingsHighlight(): String? {
+        val pending = _uiState.value.pendingSettingsHighlight
+        _uiState.update { it.copy(pendingSettingsHighlight = null) }
         return pending
     }
 

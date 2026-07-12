@@ -118,6 +118,17 @@
     <string name="category_sub_gestures">Balayage, double tap, secousse</string>
     <string name="section_system">Système</string>
     <string name="category_sub_system">Haptique, sauvegarde, autorisations, infos</string>
+
+    <!-- Recherche dans les réglages (hub) ; search_kw_* = synonymes séparés par des virgules -->
+    <string name="settings_search_hint">Rechercher un réglage…</string>
+    <string name="search_kw_colors">couleur du texte,couleur des icônes,accent</string>
+    <string name="search_kw_font">police,taille du texte</string>
+    <string name="search_kw_wallpaper">arrière-plan,image,photo</string>
+    <string name="search_kw_island">notification,encoche,pilule</string>
+    <string name="search_kw_clock">horloge,heure</string>
+    <string name="search_kw_hidden">masquer,invisible</string>
+    <string name="search_kw_haptics">vibration</string>
+    <string name="search_kw_backup">exporter,importer,sauvegarde</string>
     <string name="section_apps">Apps</string>
     <string name="section_search">Recherche</string>
     <string name="section_permissions">Autorisations</string>

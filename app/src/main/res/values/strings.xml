@@ -118,6 +118,17 @@
     <string name="category_sub_gestures">Swipe, double tap, shake</string>
     <string name="section_system">System</string>
     <string name="category_sub_system">Haptics, backup, permissions, info</string>
+
+    <!-- Settings search (hub); search_kw_* = comma-separated synonyms -->
+    <string name="settings_search_hint">Search settings…</string>
+    <string name="search_kw_colors">text color,icon color,accent</string>
+    <string name="search_kw_font">font,text size</string>
+    <string name="search_kw_wallpaper">background,image,photo</string>
+    <string name="search_kw_island">notification,notch,pill</string>
+    <string name="search_kw_clock">clock,time</string>
+    <string name="search_kw_hidden">hide,invisible</string>
+    <string name="search_kw_haptics">vibration</string>
+    <string name="search_kw_backup">export,import,save</string>
     <string name="section_apps">Apps</string>
     <string name="section_search">Search</string>
     <string name="section_permissions">Permissions</string>

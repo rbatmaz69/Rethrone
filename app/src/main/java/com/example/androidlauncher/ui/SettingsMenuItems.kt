@@ -1,5 +1,7 @@
 package com.example.androidlauncher.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -46,6 +48,7 @@ import com.example.androidlauncher.data.DesignStyle
 import com.example.androidlauncher.data.GestureAction
 import com.example.androidlauncher.data.IslandAnimationStyle
 import com.example.androidlauncher.ui.LiquidGlass.designSurface
+import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 
 /**
  * Wiederverwendbare Zeilen-Composables der Einstellungs-Menüs (Sektionstitel,
@@ -53,6 +56,24 @@ import com.example.androidlauncher.ui.LiquidGlass.designSurface
  * Aus EditConfigMenu.kt extrahiert, damit alle Einstellungs-Seiten dieselben
  * Bausteine nutzen können.
  */
+
+/**
+ * Kurzer Puls-Effekt, mit dem die Zielseite nach einem Such-Treffer die gefundene
+ * Zeile hervorhebt (dreimaliges Aufleuchten der Kartenfläche, dann Ruhe).
+ */
+@Composable
+internal fun rememberSettingsHighlightModifier(active: Boolean): Modifier {
+    if (!active) return Modifier
+    val pulse = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        repeat(3) {
+            pulse.animateTo(1f, tween(durationMillis = 300))
+            pulse.animateTo(0f, tween(durationMillis = 300))
+        }
+    }
+    val tint = if (LocalDarkTextEnabled.current) Color.Black else Color.White
+    return Modifier.background(tint.copy(alpha = 0.14f * pulse.value), RoundedCornerShape(20.dp))
+}
 
 @Composable
 internal fun EditSectionHeader(
@@ -79,19 +100,22 @@ fun EditMenuItem(
     isDarkTextEnabled: Boolean,
     statusLabel: String? = null,
     trailingContent: @Composable (() -> Unit)? = null,
-    testTag: String? = null
+    testTag: String? = null,
+    highlighted: Boolean = false
 ) {
     val backgroundModifier = Modifier.designSurface(
         designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
         borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
     )
+    val highlightModifier = rememberSettingsHighlightModifier(highlighted)
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
+            .then(highlightModifier)
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
             .clickable { onClick() },
         color = Color.Transparent
@@ -209,7 +233,8 @@ fun EditToggleItem(
     surfaceAccent: Color,
     isDarkTextEnabled: Boolean,
     switchTestTag: String,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    highlighted: Boolean = false
 ) {
     val haptics = com.example.androidlauncher.ui.theme.rememberAppHaptics()
     val toggle: (Boolean) -> Unit = {
@@ -223,12 +248,14 @@ fun EditToggleItem(
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
         borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
     )
+    val highlightModifier = rememberSettingsHighlightModifier(highlighted)
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
+            .then(highlightModifier)
             .clickable(enabled = enabled) { toggle(!checked) },
         color = Color.Transparent
     ) {
@@ -290,7 +317,8 @@ internal fun EditAppAccessSelectorItem(
     designStyle: DesignStyle,
     surfaceAccent: Color,
     isDarkTextEnabled: Boolean,
-    testTag: String
+    testTag: String,
+    highlighted: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -299,12 +327,14 @@ internal fun EditAppAccessSelectorItem(
         fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
         borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
     )
+    val highlightModifier = rememberSettingsHighlightModifier(highlighted)
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .then(backgroundModifier)
+            .then(highlightModifier)
             .testTag(testTag)
             .clickable { expanded = true },
         color = Color.Transparent

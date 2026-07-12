@@ -118,6 +118,17 @@
     <string name="category_sub_gestures">Wischen, Doppeltippen, Schütteln</string>
     <string name="section_system">System</string>
     <string name="category_sub_system">Haptik, Backup, Berechtigungen, Info</string>
+
+    <!-- Einstellungs-Suche (Hub); search_kw_* = kommagetrennte Synonyme -->
+    <string name="settings_search_hint">Einstellung suchen…</string>
+    <string name="search_kw_colors">Schriftfarbe,Iconfarbe,Akzentfarbe</string>
+    <string name="search_kw_font">Schriftart,Schriftgröße,Textgröße</string>
+    <string name="search_kw_wallpaper">Hintergrund,Bild,Foto</string>
+    <string name="search_kw_island">Benachrichtigung,Notch,Pille</string>
+    <string name="search_kw_clock">Uhr,Zeit</string>
+    <string name="search_kw_hidden">verstecken,unsichtbar</string>
+    <string name="search_kw_haptics">Vibration</string>
+    <string name="search_kw_backup">Sichern,Exportieren,Importieren</string>
     <string name="section_apps">Apps</string>
     <string name="section_search">Suche</string>
     <string name="section_permissions">Zugriffe</string>

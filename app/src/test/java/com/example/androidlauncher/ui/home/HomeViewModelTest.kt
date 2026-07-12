@@ -222,6 +222,14 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `pending settings highlight is consumed exactly once`() {
+        vm.setPendingSettingsHighlight("wallpaper")
+
+        assertEquals("wallpaper", vm.consumePendingSettingsHighlight())
+        assertNull(vm.consumePendingSettingsHighlight())
+    }
+
+    @Test
     fun `pending shake action is consumed exactly once`() {
         vm.setPendingPermissionShakeAction(GestureAction.FLASHLIGHT)
 
