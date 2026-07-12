@@ -17,6 +17,10 @@ sealed interface ActiveOverlay {
     data object None : ActiveOverlay
 
     data object FavoritesConfig : ActiveOverlay
+
+    /** Kategorie-Seite „Aussehen" des Einstellungs-Hubs (Themen, Farben, Schrift, Icons, Wallpaper, Animationen). */
+    data object AppearanceSettings : ActiveOverlay
+
     data object ColorConfig : ActiveOverlay
     data object AnimationsConfig : ActiveOverlay
     data object EdgeLightingConfig : ActiveOverlay

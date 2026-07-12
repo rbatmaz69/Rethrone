@@ -130,6 +130,73 @@ fun EditMenuItem(
     }
 }
 
+/**
+ * Kategorie-Zeile des Einstellungs-Hubs: Icon, Titel und ein Untertitel, der die
+ * enthaltenen Einstellungen aufzählt – damit auf einen Blick klar ist, wo was liegt.
+ */
+@Composable
+internal fun SettingsCategoryItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    mainTextColor: Color,
+    designStyle: DesignStyle,
+    surfaceAccent: Color,
+    isDarkTextEnabled: Boolean,
+    testTag: String? = null
+) {
+    val backgroundModifier = Modifier.designSurface(
+        designStyle, RoundedCornerShape(20.dp), isDarkTextEnabled, surfaceAccent,
+        fillAlpha = 0.05f, glassStartAlpha = 0.10f, glassEndAlpha = 0.03f,
+        borderWidth = 1.dp, borderStartAlpha = if (isDarkTextEnabled) 0.2f else 0.25f, borderEndAlpha = 0.05f
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .then(backgroundModifier)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
+            .clickable { onClick() },
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 18.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = mainTextColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = mainTextColor,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    color = mainTextColor.copy(alpha = 0.6f),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = mainTextColor.copy(alpha = 0.4f)
+            )
+        }
+    }
+}
+
 @Composable
 fun EditToggleItem(
     icon: ImageVector,
