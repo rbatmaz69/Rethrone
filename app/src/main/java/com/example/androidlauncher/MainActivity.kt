@@ -30,6 +30,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
@@ -687,6 +689,11 @@ class MainActivity : ComponentActivity() {
                 // der Zustand lebt im HomeViewModel. Die abgeleiteten Werte darunter halten
                 // die vielen Lese-Stellen stabil.
                 val activeOverlay = homeUi.activeOverlay
+                // Material-3 Predictive-Back: Während der Zurück-Geste auf einem Untermenü das
+                // Elternmenü (oberster Back-Stack-Eintrag) als statische Ziel-Vorschau dahinter
+                // einblenden. Nur das aktive, oberste Overlay meldet die Geste.
+                var backPreviewActive by remember { mutableStateOf(false) }
+                val backPreviewTarget = if (backPreviewActive) homeUi.overlayBackStack.lastOrNull() else null
                 val isFavoritesConfigOpen = activeOverlay is ActiveOverlay.FavoritesConfig
                 val isColorConfigOpen = activeOverlay is ActiveOverlay.ColorConfig
                 val isAnimationsConfigOpen = activeOverlay is ActiveOverlay.AnimationsConfig
@@ -1602,9 +1609,10 @@ class MainActivity : ComponentActivity() {
                     }
 
                     MenuOverlay(
-                        visible = isColorConfigOpen,
+                        visible = isColorConfigOpen || backPreviewTarget is ActiveOverlay.ColorConfig,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        isBackdrop = backPreviewTarget is ActiveOverlay.ColorConfig && activeOverlay !is ActiveOverlay.ColorConfig
                     ) {
                         ColorConfigMenu(
                             selectedTheme = currentTheme,
@@ -1632,7 +1640,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isThemeMenuOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         ThemeSelectionMenu(
                             selectedTheme = currentTheme,
@@ -1647,7 +1657,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isDesignMenuOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         DesignStyleMenu(
                             currentStyle = designStyle,
@@ -1662,9 +1674,10 @@ class MainActivity : ComponentActivity() {
                     }
 
                     MenuOverlay(
-                        visible = isSizeConfigOpen,
+                        visible = isSizeConfigOpen || backPreviewTarget is ActiveOverlay.SizeConfig,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        isBackdrop = backPreviewTarget is ActiveOverlay.SizeConfig && activeOverlay !is ActiveOverlay.SizeConfig
                     ) {
                         SizeConfigMenu(
                             currentFontSize = currentFontSize,
@@ -1691,7 +1704,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isFontSelectionOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         FontSelectionMenu(
                             currentAppFont = currentAppFont,
@@ -1701,9 +1716,10 @@ class MainActivity : ComponentActivity() {
                     }
 
                     MenuOverlay(
-                        visible = isEditConfigOpen && !isWallpaperCropOpen,
+                        visible = (isEditConfigOpen && !isWallpaperCropOpen) || backPreviewTarget is ActiveOverlay.EditConfig,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        isBackdrop = backPreviewTarget is ActiveOverlay.EditConfig && activeOverlay !is ActiveOverlay.EditConfig
                     ) {
                         // A8-Split: Navigation + Einstellungen holt sich das Menü selbst
                         // (HomeViewModel/EditConfigViewModel); hier bleiben nur die Effekte,
@@ -1737,7 +1753,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isWidgetPickerOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         WidgetPickerSheet(
                             onWidgetChosen = { startWidgetBind(it) },
@@ -1750,7 +1768,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isAnimationsConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         AnimationsConfigMenu(
                             isAnimationsEnabled = isAnimationsEnabled,
@@ -1790,7 +1810,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isEdgeLightingConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         EdgeLightingConfigMenu(
                             isEnabled = isEdgeLightingEnabled,
@@ -1810,7 +1832,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isGesturesConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         GesturesConfigMenu(
                             apps = allApps,
@@ -1864,7 +1888,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isWallpaperConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         WallpaperConfigMenu(
                             blurLevel = wallpaperBlur,
@@ -1882,7 +1908,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isIconConfigOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         IconConfigMenu(
                             apps = allApps,
@@ -1922,7 +1950,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isUninstallAppsOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         UninstallAppsMenu(
                             apps = allApps,
@@ -1934,7 +1964,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isHiddenAppsOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         HiddenAppsMenu(
                             apps = allApps,
@@ -1950,7 +1982,9 @@ class MainActivity : ComponentActivity() {
                     MenuOverlay(
                         visible = isAppLockOpen,
                         customWallpaperUri = customWallpaperUri,
-                        onClose = { homeViewModel.closeOverlay() }
+                        onClose = { homeViewModel.closeOverlay() },
+                        onBack = { homeViewModel.onBack() },
+                        onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         AppLockMenu(
                             apps = allApps,
@@ -2340,6 +2374,16 @@ private fun MenuOverlay(
     enterSlideEasing: Easing = EaseOutCubic,
     exitSlideEasing: Easing = EaseInCubic,
     onClose: () -> Unit,
+    // System-Zurück-Geste (Predictive Back). Untermenüs übergeben hier ein „eine Ebene
+    // zurück", während onClose (✕ / Runterwischen) weiterhin komplett zur Startseite schließt.
+    onBack: () -> Unit = onClose,
+    // Als statische Ziel-Vorschau HINTER dem gerade weggewischten Overlay rendern
+    // (Material-3 Predictive-Back): kein Ein-/Ausblenden, keine eigene Back-/Drag-Geste,
+    // keine Wegwisch-Transform – nur statischer Backdrop.
+    isBackdrop: Boolean = false,
+    // Meldet den Verlauf der Predictive-Back-Geste an den Container (true = Geste aktiv),
+    // damit dieser das Elternmenü als Backdrop einblenden kann.
+    onPredictiveBackActive: (Boolean) -> Unit = {},
     content: @Composable () -> Unit
 ) {
     val animationsEnabled = LocalMenuAnimationEnabled.current
@@ -2358,15 +2402,24 @@ private fun MenuOverlay(
 
     AnimatedVisibility(
         visible = visible,
-        // Seitliches Öffnen/Schließen (von rechts) – kohärent mit der Predictive-Back-Geste.
-        enter = slideInHorizontally(
-            initialOffsetX = { it },
-            animationSpec = tween(actualEnterSlideDuration, easing = enterSlideEasing)
-        ) + fadeIn(animationSpec = tween(actualEnterFadeDuration)),
-        exit = slideOutHorizontally(
-            targetOffsetX = { it },
-            animationSpec = tween(actualExitSlideDuration, easing = exitSlideEasing)
-        ) + fadeOut(animationSpec = tween(actualExitFadeDuration))
+        // Als Ziel-Vorschau (Backdrop) statisch einblenden – kein Slide-in, sonst würde das
+        // Elternmenü während der Geste hereinfahren statt ruhig dahinterzuliegen.
+        enter = if (isBackdrop) {
+            EnterTransition.None
+        } else {
+            slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(actualEnterSlideDuration, easing = enterSlideEasing)
+            ) + fadeIn(animationSpec = tween(actualEnterFadeDuration))
+        },
+        exit = if (isBackdrop) {
+            ExitTransition.None
+        } else {
+            slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(actualExitSlideDuration, easing = exitSlideEasing)
+            ) + fadeOut(animationSpec = tween(actualExitFadeDuration))
+        }
     ) {
         var totalDragX by remember { mutableStateOf(0f) }
 
@@ -2376,18 +2429,23 @@ private fun MenuOverlay(
         val dismiss = remember { Animatable(0f) }
         // +1 = nach rechts (Wisch von linker Kante), -1 = nach links (Wisch von rechter Kante).
         var backSign by remember { mutableStateOf(1f) }
-        PredictiveBackHandler(enabled = true) { backEvent ->
+        // Der Backdrop (Ziel-Vorschau) führt KEINE eigene Geste: Das obenliegende, weggewischte
+        // Overlay steuert die Predictive-Back-Geste; der Backdrop liegt nur ruhig dahinter.
+        PredictiveBackHandler(enabled = !isBackdrop) { backEvent ->
             try {
+                onPredictiveBackActive(true) // Container blendet das Elternmenü als Vorschau ein
                 backEvent.collect { ev ->
                     backSign = if (ev.swipeEdge == BackEventCompat.EDGE_LEFT) 1f else -1f
-                    dismiss.snapTo(ev.progress * 0.20f) // Live-„Peek" während der Geste
+                    dismiss.snapTo(ev.progress * 0.35f) // Live-„Peek" – gibt das Ziel dahinter frei
                 }
-                // Commit: von der aktuellen Position weiter ganz hinausgleiten, dann schließen.
+                // Commit: von der aktuellen Position weiter ganz hinausgleiten, dann zurück.
                 dismiss.animateTo(1f, animationSpec = tween((220 / speed).roundToInt(), easing = EaseInCubic))
-                onClose()
+                onBack()
+                onPredictiveBackActive(false)
             } catch (e: CancellationException) {
-                // Abbruch: zurückfedern.
+                // Abbruch: zurückfedern – Backdrop erst danach ausblenden (kein Flackern).
                 dismiss.animateTo(0f, animationSpec = RethroneSprings.effects(speed))
+                onPredictiveBackActive(false)
             }
         }
 
@@ -2395,14 +2453,15 @@ private fun MenuOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
+                    if (isBackdrop) return@graphicsLayer // Ziel-Vorschau bleibt ruhig/unverzerrt
                     val p = dismiss.value
-                    scaleX = 1f - 0.10f * p
-                    scaleY = 1f - 0.10f * p
+                    // M3 Predictive-Back: das weggewischte Overlay schrumpft zur gerundeten Karte
+                    // und gleitet zur Wisch-Kante, sodass das Ziel dahinter sichtbar wird.
+                    scaleX = 1f - 0.14f * p
+                    scaleY = 1f - 0.14f * p
                     alpha = 1f - 0.15f * p
                     translationX = size.width * p * backSign
-                    // Ecken runden sich ab, sobald Predictive Back aktiv ist – schon beim Halten
-                    // voll gerundet (Peek liegt nur bei 0.20, daher 5x verstärkt), offen = eckig.
-                    val cornerFraction = (p * 5f).coerceAtMost(1f)
+                    val cornerFraction = (p * 3f).coerceAtMost(1f)
                     shape = RoundedCornerShape((cornerFraction * 44f).dp)
                     clip = true
                 }
@@ -2410,7 +2469,7 @@ private fun MenuOverlay(
                     detectTapGestures { } // Verhindert Klicks durch das Overlay hindurch
                 }
                 .then(
-                    if (enableDragToClose) {
+                    if (enableDragToClose && !isBackdrop) {
                         Modifier.pointerInput(Unit) {
                             detectHorizontalDragGestures(
                                 onDragEnd = {
