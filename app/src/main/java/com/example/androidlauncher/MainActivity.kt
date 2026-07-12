@@ -2404,14 +2404,22 @@ private fun MenuOverlay(
         visible = visible,
         // Als Ziel-Vorschau (Backdrop) statisch einblenden – kein Slide-in, sonst würde das
         // Elternmenü während der Geste hereinfahren statt ruhig dahinterzuliegen.
-        enter = if (isBackdrop) EnterTransition.None else slideInHorizontally(
-            initialOffsetX = { it },
-            animationSpec = tween(actualEnterSlideDuration, easing = enterSlideEasing)
-        ) + fadeIn(animationSpec = tween(actualEnterFadeDuration)),
-        exit = if (isBackdrop) ExitTransition.None else slideOutHorizontally(
-            targetOffsetX = { it },
-            animationSpec = tween(actualExitSlideDuration, easing = exitSlideEasing)
-        ) + fadeOut(animationSpec = tween(actualExitFadeDuration))
+        enter = if (isBackdrop) {
+            EnterTransition.None
+        } else {
+            slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(actualEnterSlideDuration, easing = enterSlideEasing)
+            ) + fadeIn(animationSpec = tween(actualEnterFadeDuration))
+        },
+        exit = if (isBackdrop) {
+            ExitTransition.None
+        } else {
+            slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(actualExitSlideDuration, easing = exitSlideEasing)
+            ) + fadeOut(animationSpec = tween(actualExitFadeDuration))
+        }
     ) {
         var totalDragX by remember { mutableStateOf(0f) }
 
