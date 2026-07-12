@@ -108,6 +108,7 @@
     <string name="label_features">Funzioni</string>
     <string name="label_design_style">Stile di design</string>
     <string name="edit_config_title">Modifica</string>
+    <string name="settings_title">Impostazioni</string>
     <string name="section_appearance">Aspetto</string>
     <string name="category_sub_appearance">Temi, colori, carattere, icone, sfondo, animazioni</string>
     <string name="section_homescreen">Schermata Home</string>
@@ -265,7 +266,7 @@
     <string name="eyedropper_hint">Tocca o trascina per scegliere un colore dallo sfondo</string>
 
     <!-- Menu Dimensione / font -->
-    <string name="size_config_title">Aspetto e font</string>
+    <string name="size_config_title">Font e dimensioni</string>
     <string name="preview_favorite">Preferito</string>
     <string name="font_label">Font</string>
     <string name="font_search_hint">Cerca font…</string>

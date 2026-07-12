@@ -108,6 +108,7 @@
     <string name="label_features">Features</string>
     <string name="label_design_style">Design style</string>
     <string name="edit_config_title">Edit</string>
+    <string name="settings_title">Settings</string>
     <string name="section_appearance">Appearance</string>
     <string name="category_sub_appearance">Themes, colors, font, icons, wallpaper, animations</string>
     <string name="section_homescreen">Home screen</string>
@@ -281,7 +282,7 @@
     <string name="eyedropper_hint">Tap or drag to pick a color from the wallpaper</string>
 
     <!-- Size / font menu -->
-    <string name="size_config_title">Design &amp; font</string>
+    <string name="size_config_title">Font &amp; size</string>
     <string name="preview_favorite">Favorite</string>
     <string name="font_label">Font</string>
     <string name="font_search_hint">Search fonts…</string>
