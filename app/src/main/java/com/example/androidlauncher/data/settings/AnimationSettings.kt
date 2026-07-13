@@ -30,6 +30,9 @@ class AnimationSettings(private val dataStore: DataStore<Preferences>) {
         /** Erlaubter Bereich des Tempo-Faktors. */
         const val MIN_SPEED = 0.5f
         const val MAX_SPEED = 2f
+
+        /** Standard-Tempo: 0.8× wirkt ruhiger als 1× (bewusst leicht verlangsamt). */
+        const val DEFAULT_SPEED = 0.8f
     }
 
     /** Globaler Animations-Schalter. Default: an. */
@@ -52,9 +55,9 @@ class AnimationSettings(private val dataStore: DataStore<Preferences>) {
     val isFavoritesAnimationEnabled: Flow<Boolean> = dataStore.data
         .map { it[ANIMATION_FAVORITES_KEY] ?: true }
 
-    /** Globaler Tempo-Faktor für Animationen ([MIN_SPEED]–[MAX_SPEED]). Default: 1×. */
+    /** Globaler Tempo-Faktor für Animationen ([MIN_SPEED]–[MAX_SPEED]). Default: [DEFAULT_SPEED]. */
     val animationSpeed: Flow<Float> = dataStore.data
-        .map { (it[ANIMATION_SPEED_KEY] ?: 1f).coerceIn(MIN_SPEED, MAX_SPEED) }
+        .map { (it[ANIMATION_SPEED_KEY] ?: DEFAULT_SPEED).coerceIn(MIN_SPEED, MAX_SPEED) }
 
     suspend fun setAnimationsEnabled(enabled: Boolean) {
         dataStore.edit { it[ANIMATIONS_ENABLED_KEY] = enabled }

@@ -10,6 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import com.example.androidlauncher.data.settings.AnimationSettings
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -72,7 +73,7 @@ val LocalFavoritesAnimationEnabled = staticCompositionLocalOf { true }
  * Globaler Tempo-Faktor für Animationen (1f = normal, 2f = doppelt so schnell,
  * 0.5f = halbes Tempo). Wird von appTween/appSpring & den Menü-Übergängen genutzt.
  */
-val LocalAnimationSpeed = staticCompositionLocalOf { 1f }
+val LocalAnimationSpeed = staticCompositionLocalOf { AnimationSettings.DEFAULT_SPEED }
 
 /**
  * CompositionLocal für das Wetter-Widget (Symbol + Temperatur unter der Uhr).
@@ -110,7 +111,7 @@ fun AndroidLauncherTheme(
     appCloseAnimationEnabled: Boolean = true,
     menuAnimationEnabled: Boolean = true,
     favoritesAnimationEnabled: Boolean = true,
-    animationSpeed: Float = 1f,
+    animationSpeed: Float = AnimationSettings.DEFAULT_SPEED,
     weatherWidgetEnabled: Boolean = true,
     clockWidgetEnabled: Boolean = true,
     calendarWidgetEnabled: Boolean = true,

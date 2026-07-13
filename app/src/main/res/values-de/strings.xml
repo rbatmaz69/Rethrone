@@ -325,6 +325,7 @@
     <string name="ctx_add_to_favorites">Zu Favoriten hinzufügen</string>
     <string name="ctx_move_to_folder">In Ordner verschieben</string>
     <string name="ctx_remove_from_folder">Aus Ordner entfernen</string>
+    <string name="ctx_hide_app">Ausblenden</string>
 
     <!-- Deinstallieren -->
     <string name="uninstall_count">Deinstallieren (%1$d)</string>

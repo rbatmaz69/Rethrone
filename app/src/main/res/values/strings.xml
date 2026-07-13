@@ -326,6 +326,7 @@
     <string name="ctx_add_to_favorites">Add to favorites</string>
     <string name="ctx_move_to_folder">Move to folder</string>
     <string name="ctx_remove_from_folder">Remove from folder</string>
+    <string name="ctx_hide_app">Hide app</string>
 
     <!-- Uninstall -->
     <string name="uninstall_count">Uninstall (%1$d)</string>

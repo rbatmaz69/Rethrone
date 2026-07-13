@@ -120,6 +120,7 @@ import com.example.androidlauncher.data.WidgetRestoreSummary
 import com.example.androidlauncher.data.WidgetSizeDp
 import com.example.androidlauncher.data.backup.BackupSerializer
 import com.example.androidlauncher.data.backup.RestoreResult
+import com.example.androidlauncher.data.settings.AnimationSettings
 import com.example.androidlauncher.data.defaultWidgetSizeDp
 import com.example.androidlauncher.data.resolveResizeLimits
 import com.example.androidlauncher.gesture.GestureActionEffects
@@ -352,7 +353,7 @@ class MainActivity : ComponentActivity() {
             val isAppCloseAnimationEnabled by themeManager.isAppCloseAnimationEnabled.collectAsState(initial = true)
             val isMenuAnimationEnabled by themeManager.isMenuAnimationEnabled.collectAsState(initial = true)
             val isFavoritesAnimationEnabled by themeManager.isFavoritesAnimationEnabled.collectAsState(initial = true)
-            val animationSpeed by themeManager.animationSpeed.collectAsState(initial = 1f)
+            val animationSpeed by themeManager.animationSpeed.collectAsState(initial = AnimationSettings.DEFAULT_SPEED)
             // Master UND Einzel: Animation läuft nur, wenn beide aktiv sind.
             val appOpenAnimActive = isAnimationsEnabled && isAppOpenAnimationEnabled
             val appCloseAnimActive = isAnimationsEnabled && isAppCloseAnimationEnabled
@@ -744,6 +745,13 @@ class MainActivity : ComponentActivity() {
                         if (event == Lifecycle.Event.ON_PAUSE) {
                             isLauncherResumed = false
                         }
+                        if (event == Lifecycle.Event.ON_STOP) {
+                            // Launcher komplett verdeckt (App im Vordergrund): Drawer schließen,
+                            // damit die Rückkehr – egal ob Zurück-Geste, Home oder Recents –
+                            // immer auf dem Homescreen landet. Dialoge (z. B. Deinstallieren)
+                            // lösen nur ON_PAUSE aus und lassen den Drawer offen.
+                            homeViewModel.setDrawerOpen(false)
+                        }
                         if (event == Lifecycle.Event.ON_RESUME) {
                             val resumeDecision = ReturnResumeGuard.onResume(returnResumeGuardState)
                             returnResumeGuardState = resumeDecision.nextState
@@ -805,20 +813,21 @@ class MainActivity : ComponentActivity() {
                             )
 
                             selectedReturnAnimation?.let { animation ->
+                                // Rückkehr aus einer App landet immer auf dem Homescreen –
+                                // auch wenn die App aus dem Drawer gestartet wurde.
                                 val viaDrawer = animation.source == LaunchSource.DRAWER
-                                homeViewModel.setDrawerOpen(viaDrawer)
-                                if (!viaDrawer) {
-                                    homeViewModel.setSettingsOpen(false)
-                                    homeViewModel.closeOverlay()
-                                }
-                                if (appCloseAnimActiveRef.value) {
+                                homeViewModel.setDrawerOpen(false)
+                                homeViewModel.setSettingsOpen(false)
+                                homeViewModel.closeOverlay()
+                                if (appCloseAnimActiveRef.value && !viaDrawer) {
                                     activeReturnAnimation = animation
                                     returnIconPackage = null
                                     returnBounceTargetPackage = animation.packageName
                                     returnBounceToken += 1
                                 } else {
-                                    // Rückkehr-Animation deaktiviert: kein Schrumpfen/Bounce,
-                                    // nur Zustand aufräumen.
+                                    // Rückkehr-Animation deaktiviert oder Start kam aus dem
+                                    // (jetzt geschlossenen) Drawer – das Ziel-Icon ist nicht
+                                    // sichtbar, daher kein Schrumpfen/Bounce, nur aufräumen.
                                     activeReturnAnimation = null
                                 }
                                 pendingReturnAnimation = null
@@ -1267,7 +1276,10 @@ class MainActivity : ComponentActivity() {
                                             overlayBrush = launchOverlayBrush
                                         )
                                     },
-                                    returnIconPackage = bounceIconPackage
+                                    returnIconPackage = bounceIconPackage,
+                                    onHideApp = { pkg ->
+                                        scope.launch { themeManager.setHiddenApps(hiddenApps + pkg) }
+                                    }
                                 )
                                 // DRAWER_GRID (und HOME_LIST als harmloser Fallback – im HOME_LIST-Modus
                                 // wird der Drawer nie geöffnet).
@@ -1298,7 +1310,10 @@ class MainActivity : ComponentActivity() {
                                             overlayBrush = launchOverlayBrush
                                         )
                                     },
-                                    returnIconPackage = bounceIconPackage
+                                    returnIconPackage = bounceIconPackage,
+                                    onHideApp = { pkg ->
+                                        scope.launch { themeManager.setHiddenApps(hiddenApps + pkg) }
+                                    }
                                 )
                             }
                         } else {

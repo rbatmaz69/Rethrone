@@ -116,19 +116,10 @@ private val AccentBlue = Color(0xFF0A84FF)
 private val TimerAmber = Color(0xFFFF9F0A)
 
 /** Schrittweite (dp) pro Tipp auf die Höhen-Buttons im Layout-Editor. */
-private const val EDIT_NUDGE_DP = 2f
+private const val EDIT_NUDGE_DP = 0.5f
 
 /** Einheitliche Höhe der kompakten Pille (Medien-Look) – unabhängig vom Inhalt. */
 private val IslandPillHeight = 30.dp
-
-/**
- * Fester vertikaler Default-Versatz nach unten gegenüber der geometrischen Kamera-Mitte. Rein
- * geometrisch sitzt die Pille exakt mittig auf der Kamera, wirkt dort aber leicht „zu hoch" (oberer
- * Pillenrand klatscht an den Bildschirmrand). Ein fester dp-Wert ist dichteunabhängig → auf jedem
- * Gerät physisch gleich groß und damit universell (im Gegensatz zu einer aus der stark
- * schwankenden Cutout-Höhe abgeleiteten Korrektur). Feinjustierung darüber via [verticalOffsetDp].
- */
-private val ISLAND_CAMERA_BIAS_DP = 4.dp
 
 /**
  * Kompakte Dynamic-Island-Pille an der Front-Kamera. Erscheint **nur**, wenn gerade etwas
@@ -254,7 +245,7 @@ fun DynamicIsland(
             // optionale Feinjustierung (Default 0). Fallback auf Statusleisten-Bandmitte für
             // notchlose Geräte / Tablets, die keinen Cutout melden.
             val targetCenterY = if (cutout != null) {
-                cutout.centerY + ISLAND_CAMERA_BIAS_DP.toPx() + verticalOffsetDp.dp.toPx()
+                cutout.centerY + verticalOffsetDp.dp.toPx()
             } else {
                 statusBarTopPx / 2f + verticalOffsetDp.dp.toPx()
             }

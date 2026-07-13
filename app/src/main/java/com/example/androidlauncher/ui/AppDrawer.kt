@@ -117,7 +117,8 @@ fun AppDrawer(
     onOpenFolderConfig: (FolderInfo) -> Unit,
     onClose: () -> Unit,
     onLaunchApp: (String, Intent, Rect?) -> Unit,
-    returnIconPackage: String?
+    returnIconPackage: String?,
+    onHideApp: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -1093,7 +1094,8 @@ fun AppDrawer(
                             LauncherLogic.removeAppFromFolder(folders, folder.id, currentMenuApp.packageName)
                         )
                     }
-                }
+                },
+                onHide = onHideApp?.let { hide -> { hide(currentMenuApp.packageName) } }
             )
         }
 

@@ -39,13 +39,13 @@ class AnimationSettingsTest {
     }
 
     @Test
-    fun `all animation toggles default to enabled with normal speed`() = testScope.runTest {
+    fun `all animation toggles default to enabled with default speed`() = testScope.runTest {
         assertTrue(settings.isAnimationsEnabled.first())
         assertTrue(settings.isAppOpenAnimationEnabled.first())
         assertTrue(settings.isAppCloseAnimationEnabled.first())
         assertTrue(settings.isMenuAnimationEnabled.first())
         assertTrue(settings.isFavoritesAnimationEnabled.first())
-        assertEquals(1f, settings.animationSpeed.first())
+        assertEquals(AnimationSettings.DEFAULT_SPEED, settings.animationSpeed.first())
     }
 
     @Test

@@ -56,7 +56,8 @@ fun AppContextMenu(
     onAppInfo: () -> Unit,
     onUninstall: () -> Unit,
     onMoveToFolder: (() -> Unit)? = null,
-    onRemoveFromFolder: (() -> Unit)? = null
+    onRemoveFromFolder: (() -> Unit)? = null,
+    onHide: (() -> Unit)? = null
 ) {
     val colorTheme = LocalColorTheme.current
     val isDarkTextEnabled = LocalDarkTextEnabled.current
@@ -132,7 +133,7 @@ fun AppContextMenu(
                 val menuWidth = 240.dp
                 val menuWidthPx = with(density) { menuWidth.toPx() }
 
-                val itemsCount = 3 + (if (onMoveToFolder != null) 1 else 0) + (if (onRemoveFromFolder != null) 1 else 0)
+                val itemsCount = 3 + (if (onMoveToFolder != null) 1 else 0) + (if (onRemoveFromFolder != null) 1 else 0) + (if (onHide != null) 1 else 0)
                 val estimatedMenuHeightPx = with(density) { (itemsCount * 48 + itemsCount + 16).dp.toPx() }
 
                 // Horizontal positioning (centered to icon, but with screen safety)
@@ -260,6 +261,22 @@ fun AppContextMenu(
                                 color = mainTextColor,
                                 onClick = {
                                     onRemoveFromFolder()
+                                    dismissWithAnimation()
+                                }
+                            )
+                        }
+
+                        if (onHide != null) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                color = mainTextColor.copy(alpha = 0.08f)
+                            )
+                            ContextMenuItem(
+                                icon = Lucide.EyeOff,
+                                text = stringResource(R.string.ctx_hide_app),
+                                color = mainTextColor,
+                                onClick = {
+                                    onHide()
                                     dismissWithAnimation()
                                 }
                             )

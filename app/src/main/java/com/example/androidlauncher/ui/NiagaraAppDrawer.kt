@@ -81,7 +81,8 @@ fun NiagaraAppDrawer(
     isFavorite: (String) -> Boolean,
     onClose: () -> Unit,
     onLaunchApp: (String, Intent, Rect?) -> Unit,
-    returnIconPackage: String?
+    returnIconPackage: String?,
+    onHideApp: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -428,7 +429,8 @@ fun NiagaraAppDrawer(
                     } catch (_: Exception) {
                         Toast.makeText(context, context.getString(R.string.uninstall_failed), Toast.LENGTH_SHORT).show()
                     }
-                }
+                },
+                onHide = onHideApp?.let { hide -> { hide(currentMenuApp.packageName) } }
             )
         }
     }
