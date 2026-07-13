@@ -1,6 +1,8 @@
 package com.example.androidlauncher.ui
 
 import android.graphics.Bitmap
+import android.graphics.Path
+import android.graphics.RectF
 import android.os.Build
 import android.util.Log
 import androidx.compose.animation.AnimatedContent
@@ -239,9 +241,9 @@ fun DynamicIsland(
         // Im Edit-Modus immer sichtbar (Platzhalter zum Ziehen), sonst nur bei aktivem Inhalt.
         visible = content != null || editMode,
         modifier = modifier.offset {
-            // Vertikal auf die ECHTE Kamera-Mitte zentrieren – dieselbe Hardware-Quelle
-            // (DisplayCutout.boundingRectTop) wie die horizontale Zentrierung, daher auf jedem
-            // Gerät passend ohne manuelles Justieren. `verticalOffsetDp` ist nur noch eine
+            // Vertikal auf die ECHTE Kamera-Mitte zentrieren – Quelle ist die exakte
+            // Cutout-Form (API 31+) bzw. die Punch-Hole-Heuristik in [estimateCameraBounds],
+            // nicht das aufgeblähte boundingRectTop. `verticalOffsetDp` ist nur noch eine
             // optionale Feinjustierung (Default 0). Fallback auf Statusleisten-Bandmitte für
             // notchlose Geräte / Tablets, die keinen Cutout melden.
             val targetCenterY = if (cutout != null) {
@@ -897,10 +899,60 @@ private data class CutoutInfo(
     val screenWidth: Int
 )
 
+/** Abgeleitete Kamera-Geometrie in Pixeln (aus Cutout-Pfad oder Heuristik). */
+internal data class CameraBounds(
+    val centerX: Float,
+    val centerY: Float,
+    val widthPx: Int,
+    val heightPx: Int
+)
+
+/**
+ * Vertikale Lage der Kamera-Mitte über der Rect-Unterkante, als Anteil der Rect-Breite –
+ * für Geräte, die nur ein grobes Rand-bis-unter-die-Kamera-Rechteck melden. Eine reine
+ * Kreis-Annahme (0.5 = Durchmesser gleich Rect-Breite, unten bündig) sitzt zu hoch, weil das
+ * echte Loch schmaler als das deklarierte Rect ist und fast an dessen Unterkante klebt.
+ * 0.43 wurde am Motorola Edge 70 kalibriert (0.5 lag dort 2.5dp ≈ 8px zu hoch); proportional
+ * zur Rect-Breite, damit der Wert über Displaygrößen/-dichten hinweg skaliert.
+ */
+private const val CAMERA_CENTER_FROM_BOTTOM_FRACTION = 0.43f
+
+/**
+ * Schätzt das eigentliche Kameraloch aus dem gemeldeten Cutout-Bounding-Rect. Die meisten
+ * Punch-Hole-Geräte melden ein Rect, das vom oberen Bildschirmrand (top = 0) bis unter das
+ * Kameraloch reicht – dessen Mittelpunkt liegt also ÜBER der echten Kamera-Mitte. In dem Fall
+ * wird die Kamera-Mitte nahe der Unterkante angenommen ([CAMERA_CENTER_FROM_BOTTOM_FRACTION]).
+ * Meldet das Gerät ein enges Rect (top > 0) oder eine breite Notch, ist die Rect-Mitte korrekt.
+ */
+internal fun estimateCameraBounds(left: Int, top: Int, right: Int, bottom: Int): CameraBounds {
+    val width = right - left
+    val height = bottom - top
+    return if (top <= 2 && height > width) {
+        CameraBounds(
+            centerX = (left + right) / 2f,
+            centerY = bottom - width * CAMERA_CENTER_FROM_BOTTOM_FRACTION,
+            widthPx = width,
+            heightPx = width
+        )
+    } else {
+        CameraBounds(
+            centerX = (left + right) / 2f,
+            centerY = (top + bottom) / 2f,
+            widthPx = width,
+            heightPx = height
+        )
+    }
+}
+
 /**
  * Ermittelt Mitte und Breite der Front-Kamera (Display-Cutout) in Pixeln, damit die Pille die
  * Kamera umschließen kann. Gibt `null` zurück, wenn kein Cutout vorhanden ist (dann Fallback
  * nahe oben-mittig in [DynamicIsland]).
+ *
+ * Quelle der Kamera-Mitte: die Cutout-Pfad-Bounds (API 31+, auf den oberen Cutout beschnitten,
+ * da der Pfad alle Cutouts des Geräts enthalten kann), sonst das Bounding-Rect. Beides läuft
+ * durch die Heuristik [estimateCameraBounds], weil auch der "exakte" Pfad herstellerabhängig
+ * nur ein grobes Rechteck sein kann.
  */
 @Composable
 private fun rememberCutoutInfo(): CutoutInfo? {
@@ -923,21 +975,49 @@ private fun rememberCutoutInfo(): CutoutInfo? {
             else -> cutout.boundingRects.firstOrNull()
         }
         if (rect != null && !rect.isEmpty && view.width > 0) {
-            // Diagnostik (nur Debug): echte Cutout-Rohwerte des Geräts, um den vertikalen
-            // Default-Bias [ISLAND_CAMERA_BIAS_DP] datenbasiert verifizieren/kalibrieren zu können
-            // (Maße schwanken stark pro Gerät). Auslesen mit: adb logcat -s IslandCutout
+            // Exakte Kamera-Form (API 31+): Cutout-Pfad auf das obere Rect beschneiden.
+            val pathBounds: RectF? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                cutout?.cutoutPath?.let { path ->
+                    val topRectPath = Path().apply { addRect(RectF(rect), Path.Direction.CW) }
+                    val clipped = Path()
+                    if (clipped.op(path, topRectPath, Path.Op.INTERSECT)) {
+                        RectF().apply { clipped.computeBounds(this, true) }.takeIf { !it.isEmpty }
+                    } else {
+                        null
+                    }
+                }
+            } else {
+                null
+            }
+            // Auch Pfad-Bounds durch die Heuristik schicken: manche Hersteller (z. B. Motorola)
+            // deklarieren als "exakten" Pfad nur ein Rechteck vom Bildschirmrand bis unter die
+            // Kamera. Präzise (enge) Pfade lässt die Heuristik unverändert durch.
+            val camera = if (pathBounds != null) {
+                estimateCameraBounds(
+                    left = pathBounds.left.roundToInt(),
+                    top = pathBounds.top.roundToInt(),
+                    right = pathBounds.right.roundToInt(),
+                    bottom = pathBounds.bottom.roundToInt()
+                )
+            } else {
+                estimateCameraBounds(rect.left, rect.top, rect.right, rect.bottom)
+            }
+            // Diagnostik (nur Debug): Roh-Rect vs. abgeleitete Kamera-Bounds pro Gerät.
+            // Auslesen mit: adb logcat -s IslandCutout
             if (BuildConfig.DEBUG) {
                 Log.d(
                     "IslandCutout",
-                    "centerY=${rect.centerY()} height=${rect.height()} width=${rect.width()} " +
+                    "rawRect=$rect source=${if (pathBounds != null) "path" else "heuristic"} " +
+                        "cameraCenter=(${camera.centerX}, ${camera.centerY}) " +
+                        "cameraSize=${camera.widthPx}x${camera.heightPx} " +
                         "screenW=${view.width} density=${density.density}"
                 )
             }
             CutoutInfo(
-                rect.centerX().toFloat(),
-                rect.centerY().toFloat(),
-                rect.width(),
-                rect.height(),
+                camera.centerX,
+                camera.centerY,
+                camera.widthPx,
+                camera.heightPx,
                 view.width
             )
         } else {
