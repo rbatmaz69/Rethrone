@@ -410,6 +410,18 @@
     <string name="feature_widgets_desc">Uhr, Kalender und Wetter direkt auf dem Startbildschirm.</string>
     <string name="feature_doubletap_title">Doppeltipp-Geste</string>
     <string name="feature_doubletap_desc">Tippe zweimal auf den Startbildschirm, um deine gewählte Aktion auszulösen.</string>
+    <string name="feature_fonts_title">Schriftarten</string>
+    <string name="feature_fonts_desc">Wähle aus verschiedenen Schriftarten für den gesamten Launcher.</string>
+    <string name="feature_island_title">Dynamic Island</string>
+    <string name="feature_island_desc">Lebendige Pille um die Frontkamera für Benachrichtigungen, Timer und Medien.</string>
+    <string name="feature_edgelight_title">Edge-Beleuchtung</string>
+    <string name="feature_edgelight_desc">Leuchtende Bildschirmränder als Blickfang bei eingehenden Benachrichtigungen.</string>
+    <string name="feature_systemwidgets_title">System-Widgets</string>
+    <string name="feature_systemwidgets_desc">Widgets anderer Apps frei auf dem Startbildschirm platzieren.</string>
+    <string name="feature_backup_title">Backup &amp; Wiederherstellen</string>
+    <string name="feature_backup_desc">Einstellungen exportieren und auf jedem Gerät wiederherstellen.</string>
+    <string name="feature_settingssearch_title">Einstellungs-Suche</string>
+    <string name="feature_settingssearch_desc">Jede Launcher-Einstellung sofort über die Suche in der Einstellungs-Palette finden.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Überspringen</string>

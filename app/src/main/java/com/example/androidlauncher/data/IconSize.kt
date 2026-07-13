@@ -22,6 +22,10 @@ data class IconSize(val size: Dp) {
         val SMALL = IconSize(40.dp)
         val LARGE = IconSize(56.dp)
 
+        // Auslieferungszustand: größer als das alte 48dp-Standard-Preset, damit die
+        // Startseite ohne manuelles Nachjustieren direkt gut aussieht.
+        val DEFAULT = IconSize(56.dp)
+
         /** Erzeugt einen auf [MIN]..[MAX] begrenzten Wert. */
         fun of(size: Dp) = IconSize(size.coerceIn(MIN, MAX))
     }

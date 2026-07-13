@@ -17,6 +17,10 @@ value class FavoriteSpacing(val spacing: Dp) {
 
         val STANDARD = FavoriteSpacing(12.dp)
 
+        // Auslieferungszustand: enger als das alte 12dp-Standard-Preset, damit die
+        // Favoriten ab dem ersten Start kompakter beieinander stehen.
+        val DEFAULT = FavoriteSpacing(8.dp)
+
         /** Erzeugt einen auf [MIN]..[MAX] begrenzten Wert. */
         fun of(spacing: Dp) = FavoriteSpacing(spacing.coerceIn(MIN, MAX))
     }

@@ -34,6 +34,12 @@ class DataModelsTest {
     }
 
     @Test
+    fun `default presets ship larger icons with tighter spacing`() {
+        assertEquals(56.dp, IconSize.DEFAULT.size)
+        assertEquals(8.dp, FavoriteSpacing.DEFAULT.spacing)
+    }
+
+    @Test
     fun `IconSize scale is derived relative to 48dp`() {
         assertEquals(1.0f, IconSize.STANDARD.scale, 0.0001f)
         assertEquals(0.5f, IconSize(24.dp).scale, 0.0001f)

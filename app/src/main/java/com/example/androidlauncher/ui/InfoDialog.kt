@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.HorizontalDivider
@@ -36,12 +37,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.composables.icons.lucide.ALargeSmall
 import com.composables.icons.lucide.ArrowUp
 import com.composables.icons.lucide.Ban
+import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Clock
+import com.composables.icons.lucide.Download
+import com.composables.icons.lucide.Flashlight
 import com.composables.icons.lucide.Folder
 import com.composables.icons.lucide.Hand
 import com.composables.icons.lucide.Image
+import com.composables.icons.lucide.Layers
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.Lock
 import com.composables.icons.lucide.Lucide
@@ -49,11 +55,13 @@ import com.composables.icons.lucide.Maximize2
 import com.composables.icons.lucide.Palette
 import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Search
+import com.composables.icons.lucide.Settings2
 import com.composables.icons.lucide.Smartphone
 import com.composables.icons.lucide.Sparkles
 import com.composables.icons.lucide.Star
 import com.composables.icons.lucide.Trash2
 import com.example.androidlauncher.R
+import com.example.androidlauncher.ui.home.ActiveOverlay
 import com.example.androidlauncher.ui.theme.LocalColorTheme
 import com.example.androidlauncher.ui.theme.LocalDarkTextEnabled
 import com.example.androidlauncher.ui.theme.LocalFontWeight
@@ -61,7 +69,8 @@ import com.example.androidlauncher.ui.theme.RethroneSprings
 
 @Composable
 fun InfoDialog(
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onOpenOverlay: (ActiveOverlay) -> Unit = {}
 ) {
     val context = LocalContext.current
     val colorTheme = LocalColorTheme.current
@@ -126,11 +135,12 @@ fun InfoDialog(
                     secondaryTextColor = secondaryTextColor
                 )
 
-                // Features (aufklappbar)
+                // Features (aufklappbar; Einträge mit Sprungziel öffnen die passende Einstellung)
                 FeaturesSection(
                     mainTextColor = mainTextColor,
                     secondaryTextColor = secondaryTextColor,
-                    accentColor = accentColor
+                    accentColor = accentColor,
+                    onOpenOverlay = onOpenOverlay
                 )
 
                 // Developer Info
@@ -174,33 +184,42 @@ fun InfoDialog(
 private data class AppFeature(
     @StringRes val titleRes: Int,
     @StringRes val descRes: Int,
-    val icon: ImageVector
+    val icon: ImageVector,
+    /** Sprungziel: öffnet beim Antippen die zugehörige Einstellungsseite (null = nur Text). */
+    val target: ActiveOverlay? = null
 )
 
 private val APP_FEATURES: List<AppFeature> = listOf(
-    AppFeature(R.string.feature_favorites_title, R.string.feature_favorites_desc, Lucide.Star),
-    AppFeature(R.string.feature_drawer_title, R.string.feature_drawer_desc, Lucide.LayoutGrid),
-    AppFeature(R.string.feature_search_title, R.string.feature_search_desc, Lucide.Search),
+    AppFeature(R.string.feature_favorites_title, R.string.feature_favorites_desc, Lucide.Star, ActiveOverlay.FavoritesConfig),
+    AppFeature(R.string.feature_drawer_title, R.string.feature_drawer_desc, Lucide.LayoutGrid, ActiveOverlay.AppsSettings),
+    AppFeature(R.string.feature_search_title, R.string.feature_search_desc, Lucide.Search, ActiveOverlay.SearchSettings),
     AppFeature(R.string.feature_folders_title, R.string.feature_folders_desc, Lucide.Folder),
     AppFeature(R.string.feature_shortcuts_title, R.string.feature_shortcuts_desc, Lucide.Hand),
-    AppFeature(R.string.feature_gestures_title, R.string.feature_gestures_desc, Lucide.ArrowUp),
-    AppFeature(R.string.feature_icons_title, R.string.feature_icons_desc, Lucide.Pencil),
-    AppFeature(R.string.feature_themes_title, R.string.feature_themes_desc, Lucide.Palette),
-    AppFeature(R.string.feature_sizes_title, R.string.feature_sizes_desc, Lucide.Maximize2),
-    AppFeature(R.string.feature_animations_title, R.string.feature_animations_desc, Lucide.Sparkles),
-    AppFeature(R.string.feature_eyedropper_title, R.string.feature_eyedropper_desc, Lucide.Image),
-    AppFeature(R.string.feature_lock_title, R.string.feature_lock_desc, Lucide.Lock),
-    AppFeature(R.string.feature_widgets_title, R.string.feature_widgets_desc, Lucide.Clock),
-    AppFeature(R.string.feature_doubletap_title, R.string.feature_doubletap_desc, Lucide.Smartphone),
-    AppFeature(R.string.feature_hidden_title, R.string.feature_hidden_desc, Lucide.Ban),
-    AppFeature(R.string.feature_uninstall_title, R.string.feature_uninstall_desc, Lucide.Trash2)
+    AppFeature(R.string.feature_gestures_title, R.string.feature_gestures_desc, Lucide.ArrowUp, ActiveOverlay.GesturesConfig),
+    AppFeature(R.string.feature_icons_title, R.string.feature_icons_desc, Lucide.Pencil, ActiveOverlay.IconConfig),
+    AppFeature(R.string.feature_themes_title, R.string.feature_themes_desc, Lucide.Palette, ActiveOverlay.AppearanceSettings),
+    AppFeature(R.string.feature_sizes_title, R.string.feature_sizes_desc, Lucide.Maximize2, ActiveOverlay.SizeConfig),
+    AppFeature(R.string.feature_fonts_title, R.string.feature_fonts_desc, Lucide.ALargeSmall, ActiveOverlay.FontSelection),
+    AppFeature(R.string.feature_animations_title, R.string.feature_animations_desc, Lucide.Sparkles, ActiveOverlay.AnimationsConfig),
+    AppFeature(R.string.feature_eyedropper_title, R.string.feature_eyedropper_desc, Lucide.Image, ActiveOverlay.WallpaperConfig),
+    AppFeature(R.string.feature_island_title, R.string.feature_island_desc, Lucide.Bell, ActiveOverlay.HomescreenSettings),
+    AppFeature(R.string.feature_edgelight_title, R.string.feature_edgelight_desc, Lucide.Flashlight, ActiveOverlay.EdgeLightingConfig),
+    AppFeature(R.string.feature_systemwidgets_title, R.string.feature_systemwidgets_desc, Lucide.Layers, ActiveOverlay.WidgetPicker),
+    AppFeature(R.string.feature_backup_title, R.string.feature_backup_desc, Lucide.Download, ActiveOverlay.SystemSettings),
+    AppFeature(R.string.feature_settingssearch_title, R.string.feature_settingssearch_desc, Lucide.Settings2),
+    AppFeature(R.string.feature_lock_title, R.string.feature_lock_desc, Lucide.Lock, ActiveOverlay.AppLock),
+    AppFeature(R.string.feature_widgets_title, R.string.feature_widgets_desc, Lucide.Clock, ActiveOverlay.HomescreenSettings),
+    AppFeature(R.string.feature_doubletap_title, R.string.feature_doubletap_desc, Lucide.Smartphone, ActiveOverlay.GesturesConfig),
+    AppFeature(R.string.feature_hidden_title, R.string.feature_hidden_desc, Lucide.Ban, ActiveOverlay.HiddenApps),
+    AppFeature(R.string.feature_uninstall_title, R.string.feature_uninstall_desc, Lucide.Trash2, ActiveOverlay.UninstallApps)
 )
 
 @Composable
 fun FeaturesSection(
     mainTextColor: Color,
     secondaryTextColor: Color,
-    accentColor: Color
+    accentColor: Color,
+    onOpenOverlay: (ActiveOverlay) -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
     val arrowRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "featuresArrow")
@@ -244,7 +263,8 @@ fun FeaturesSection(
                         feature = feature,
                         mainTextColor = mainTextColor,
                         secondaryTextColor = secondaryTextColor,
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        onOpen = feature.target?.let { target -> { onOpenOverlay(target) } }
                     )
                 }
             }
@@ -260,10 +280,13 @@ private fun FeatureRow(
     feature: AppFeature,
     mainTextColor: Color,
     secondaryTextColor: Color,
-    accentColor: Color
+    accentColor: Color,
+    onOpen: (() -> Unit)? = null
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onOpen != null) Modifier.clickable { onOpen() } else Modifier),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Icon im getönten Kreis (Material-3-Expressive): Akzent-Tint, dezenter Hintergrund.
@@ -295,6 +318,16 @@ private fun FeatureRow(
                 fontSize = 13.sp,
                 color = secondaryTextColor,
                 lineHeight = 18.sp
+            )
+        }
+        // Verlinkbare Einträge bekommen einen Pfeil als Hinweis, dass Antippen
+        // direkt zur passenden Einstellungsseite springt.
+        if (onOpen != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = secondaryTextColor
             )
         }
     }

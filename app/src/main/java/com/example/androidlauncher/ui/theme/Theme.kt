@@ -30,10 +30,10 @@ import com.example.androidlauncher.data.IconSize
  */
 val LocalColorTheme = staticCompositionLocalOf { ColorTheme.SIGNATURE }
 val LocalFontSize = staticCompositionLocalOf { FontSize.STANDARD }
-val LocalIconSize = staticCompositionLocalOf { IconSize.STANDARD }
+val LocalIconSize = staticCompositionLocalOf { IconSize.DEFAULT }
 
 /** Vertikaler Abstand zwischen den Favoriten-Icons (Startbildschirm). */
-val LocalFavoriteSpacing = staticCompositionLocalOf { FavoriteSpacing.STANDARD }
+val LocalFavoriteSpacing = staticCompositionLocalOf { FavoriteSpacing.DEFAULT }
 val LocalFontWeight = staticCompositionLocalOf { FontWeightLevel.NORMAL }
 val LocalDarkTextEnabled = staticCompositionLocalOf { false }
 
@@ -94,8 +94,8 @@ val LocalCalendarWidgetEnabled = staticCompositionLocalOf { true }
 fun AndroidLauncherTheme(
     colorTheme: ColorTheme = ColorTheme.SIGNATURE,
     fontSize: FontSize = FontSize.STANDARD,
-    iconSize: IconSize = IconSize.STANDARD,
-    favoriteSpacing: FavoriteSpacing = FavoriteSpacing.STANDARD,
+    iconSize: IconSize = IconSize.DEFAULT,
+    favoriteSpacing: FavoriteSpacing = FavoriteSpacing.DEFAULT,
     fontWeight: FontWeightLevel = FontWeightLevel.NORMAL,
     darkTextEnabled: Boolean = false,
     iconColor: Color = Color.White,

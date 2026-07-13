@@ -121,7 +121,7 @@ class AppearanceSettings(private val dataStore: DataStore<Preferences>) {
         .map { preferences ->
             val sizeDp = preferences[ICON_SIZE_DP_KEY]
                 ?: legacyIconSizeDp(preferences[LEGACY_ICON_SIZE_KEY])
-                ?: IconSize.STANDARD.size.value
+                ?: IconSize.DEFAULT.size.value
             IconSize.of(sizeDp.dp)
         }
 
@@ -129,7 +129,7 @@ class AppearanceSettings(private val dataStore: DataStore<Preferences>) {
         .map { preferences ->
             val spacingDp = preferences[FAVORITE_SPACING_DP_KEY]
                 ?: legacyFavoriteSpacingDp(preferences[LEGACY_FAVORITE_SPACING_KEY])
-                ?: FavoriteSpacing.STANDARD.spacing.value
+                ?: FavoriteSpacing.DEFAULT.spacing.value
             FavoriteSpacing.of(spacingDp.dp)
         }
 

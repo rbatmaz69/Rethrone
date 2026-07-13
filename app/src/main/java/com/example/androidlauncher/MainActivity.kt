@@ -311,9 +311,9 @@ class MainActivity : ComponentActivity() {
             val currentTheme by themeManager.selectedTheme.collectAsState(initial = ColorTheme.SOFT_SAND)
             val currentFontSize by themeManager.selectedFontSize.collectAsState(initial = FontSize.STANDARD)
             val currentFontWeight by themeManager.selectedFontWeight.collectAsState(initial = FontWeightLevel.NORMAL)
-            val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.STANDARD)
+            val currentIconSize by themeManager.selectedIconSize.collectAsState(initial = IconSize.DEFAULT)
             val currentFavoriteSpacing by themeManager.selectedFavoriteSpacing.collectAsState(
-                initial = FavoriteSpacing.STANDARD
+                initial = FavoriteSpacing.DEFAULT
             )
             val currentAppFont by themeManager.selectedAppFont.collectAsState(initial = AppFont.SYSTEM_DEFAULT)
             // Initiale Werte passend zum warmen Standard-Theme "Tulpe" (vermeidet weißes Aufblitzen).
@@ -1147,7 +1147,10 @@ class MainActivity : ComponentActivity() {
                                 }
                                 Intent.ACTION_PACKAGE_ADDED,
                                 Intent.ACTION_PACKAGE_REMOVED,
-                                Intent.ACTION_PACKAGE_REPLACED -> {
+                                Intent.ACTION_PACKAGE_REPLACED,
+                                // CHANGED feuert u. a. beim Deaktivieren/Aktivieren einer App
+                                // (z. B. YouTube): Drawer sofort aktualisieren statt erst nach Neustart.
+                                Intent.ACTION_PACKAGE_CHANGED -> {
                                     val packageName = intent.data?.schemeSpecificPart
                                     val isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
                                     scope.launch {
@@ -1179,6 +1182,7 @@ class MainActivity : ComponentActivity() {
                         addAction(Intent.ACTION_PACKAGE_ADDED)
                         addAction(Intent.ACTION_PACKAGE_REMOVED)
                         addAction(Intent.ACTION_PACKAGE_REPLACED)
+                        addAction(Intent.ACTION_PACKAGE_CHANGED)
                         addAction(Intent.ACTION_SCREEN_OFF)
                         addAction(Intent.ACTION_USER_PRESENT)
                         addDataScheme("package")
@@ -2068,7 +2072,8 @@ class MainActivity : ComponentActivity() {
                         onPredictiveBackActive = { active -> backPreviewActive = active }
                     ) {
                         InfoDialog(
-                            onClose = { homeViewModel.closeOverlay() }
+                            onClose = { homeViewModel.closeOverlay() },
+                            onOpenOverlay = { overlay -> homeViewModel.openOverlay(overlay) }
                         )
                     }
 

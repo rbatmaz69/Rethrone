@@ -42,7 +42,7 @@ fun PinPad(
     onValueChange: (String) -> Unit,
     maxLength: Int,
     textColor: Color,
-    accentColor: Color,
+    dotColor: Color,
     designStyle: DesignStyle,
     surfaceAccent: Color,
     isDarkTextEnabled: Boolean,
@@ -69,7 +69,7 @@ fun PinPad(
                     modifier = Modifier
                         .size(12.dp)
                         .clip(CircleShape)
-                        .background(accentColor, CircleShape)
+                        .background(dotColor, CircleShape)
                 )
             }
         }

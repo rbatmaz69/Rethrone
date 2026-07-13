@@ -411,6 +411,18 @@
     <string name="feature_widgets_desc">Clock, calendar and weather right on your home screen.</string>
     <string name="feature_doubletap_title">Double-tap gesture</string>
     <string name="feature_doubletap_desc">Double-tap the home screen to trigger your chosen action.</string>
+    <string name="feature_fonts_title">Fonts</string>
+    <string name="feature_fonts_desc">Choose from different fonts for the entire launcher.</string>
+    <string name="feature_island_title">Dynamic Island</string>
+    <string name="feature_island_desc">Live pill around the front camera for notifications, timers and media.</string>
+    <string name="feature_edgelight_title">Edge lighting</string>
+    <string name="feature_edgelight_desc">Glowing screen edges as an eye-catcher for incoming notifications.</string>
+    <string name="feature_systemwidgets_title">System widgets</string>
+    <string name="feature_systemwidgets_desc">Place widgets from other apps freely on the home screen.</string>
+    <string name="feature_backup_title">Backup &amp; restore</string>
+    <string name="feature_backup_desc">Export your settings and restore them on any device.</string>
+    <string name="feature_settingssearch_title">Settings search</string>
+    <string name="feature_settingssearch_desc">Find any launcher setting instantly via the search in the settings palette.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Skip</string>

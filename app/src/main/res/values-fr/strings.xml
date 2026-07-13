@@ -394,6 +394,18 @@
     <string name="feature_widgets_desc">Horloge, calendrier et météo directement sur l\'écran d\'accueil.</string>
     <string name="feature_doubletap_title">Geste double-tape</string>
     <string name="feature_doubletap_desc">Tapez deux fois sur l\'écran d\'accueil pour déclencher l\'action choisie.</string>
+    <string name="feature_fonts_title">Polices</string>
+    <string name="feature_fonts_desc">Choisissez parmi différentes polices pour tout le lanceur.</string>
+    <string name="feature_island_title">Dynamic Island</string>
+    <string name="feature_island_desc">Pastille animée autour de la caméra frontale pour les notifications, minuteurs et médias.</string>
+    <string name="feature_edgelight_title">Éclairage des bords</string>
+    <string name="feature_edgelight_desc">Bords d\'écran lumineux qui mettent en valeur les notifications entrantes.</string>
+    <string name="feature_systemwidgets_title">Widgets système</string>
+    <string name="feature_systemwidgets_desc">Placez librement des widgets d\'autres apps sur l\'écran d\'accueil.</string>
+    <string name="feature_backup_title">Sauvegarde &amp; restauration</string>
+    <string name="feature_backup_desc">Exportez vos réglages et restaurez-les sur n\'importe quel appareil.</string>
+    <string name="feature_settingssearch_title">Recherche de réglages</string>
+    <string name="feature_settingssearch_desc">Trouvez instantanément chaque réglage du lanceur via la recherche de la palette de réglages.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Ignorer</string>

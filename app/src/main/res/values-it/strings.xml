@@ -394,6 +394,18 @@
     <string name="feature_widgets_desc">Orologio, calendario e meteo direttamente nella schermata principale.</string>
     <string name="feature_doubletap_title">Gesto doppio tocco</string>
     <string name="feature_doubletap_desc">Tocca due volte la schermata principale per attivare l\'azione scelta.</string>
+    <string name="feature_fonts_title">Caratteri</string>
+    <string name="feature_fonts_desc">Scegli tra diversi caratteri per l\'intero launcher.</string>
+    <string name="feature_island_title">Dynamic Island</string>
+    <string name="feature_island_desc">Pillola animata attorno alla fotocamera frontale per notifiche, timer e contenuti multimediali.</string>
+    <string name="feature_edgelight_title">Illuminazione dei bordi</string>
+    <string name="feature_edgelight_desc">Bordi dello schermo luminosi che evidenziano le notifiche in arrivo.</string>
+    <string name="feature_systemwidgets_title">Widget di sistema</string>
+    <string name="feature_systemwidgets_desc">Posiziona liberamente i widget di altre app nella schermata principale.</string>
+    <string name="feature_backup_title">Backup e ripristino</string>
+    <string name="feature_backup_desc">Esporta le impostazioni e ripristinale su qualsiasi dispositivo.</string>
+    <string name="feature_settingssearch_title">Ricerca impostazioni</string>
+    <string name="feature_settingssearch_desc">Trova subito ogni impostazione del launcher con la ricerca nella palette delle impostazioni.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Salta</string>

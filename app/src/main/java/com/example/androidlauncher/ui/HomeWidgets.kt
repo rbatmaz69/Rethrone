@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -47,6 +48,23 @@ import java.util.Locale
  * Startbildschirm-Widgets (Uhr, Datum, Wetterzeile) samt zugehoeriger App-Starts
  * (A6-Split aus HomeScreen.kt; gleiches Paket, keine Aufrufer-Aenderungen).
  */
+
+/**
+ * Basisgrößen der Uhr-/Datums-Widgets proportional zum Bildschirm statt fester sp/dp-Werte,
+ * damit die Startseite ab dem ersten Start auf jeder Gerätegröße stimmig aussieht.
+ * Reine Funktionen (in sp/dp-Zahlen), damit sie unit-testbar bleiben; die Nutzer-Schriftgröße
+ * ([LocalFontSize]) wird vom Aufrufer zusätzlich multipliziert.
+ */
+object HomeWidgetMetrics {
+    /** Uhr-Basisgröße in sp (bisher fix 72sp). */
+    fun clockBaseSp(screenWidthDp: Int): Float = (screenWidthDp * 0.165f).coerceIn(58f, 84f)
+
+    /** Datums-Basisgröße in sp (bisher fix 18sp). */
+    fun dateBaseSp(screenWidthDp: Int): Float = (screenWidthDp * 0.048f).coerceIn(16f, 22f)
+
+    /** Oberer Anker der Uhr-/Datums-/Wetter-Gruppe in dp (bisher fix 30dp). */
+    fun topAnchorDp(screenHeightDp: Int): Float = (screenHeightDp * 0.035f).coerceIn(24f, 44f)
+}
 
 @SuppressLint("WrongConstant")
 internal fun expandNotifications(context: Context) {
@@ -73,6 +91,7 @@ fun ClockText(
     val fontSize = LocalFontSize.current
     val appFontWeight = LocalFontWeight.current
     val mainTextColor = LocalHomeTextColor.current
+    val clockSp = HomeWidgetMetrics.clockBaseSp(LocalConfiguration.current.screenWidthDp).sp * fontSize.scale
 
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val intSrcTime = remember { MutableInteractionSource() }
@@ -119,10 +138,10 @@ fun ClockText(
             // Seitliches/vertikales Polster INNERHALB des Clips, damit Glyphen-Überhänge
             // (kursive/dekorative Fonts, negatives letterSpacing) nicht abgeschnitten werden.
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            fontSize = 72.sp * fontSize.scale,
+            fontSize = clockSp,
             fontWeight = appFontWeight.weight,
             letterSpacing = (-2).sp,
-            lineHeight = 72.sp * fontSize.scale,
+            lineHeight = clockSp,
             // Entfernt das zusätzliche Font-Padding (enger Rahmen), behält aber die gewählte
             // App-Schriftart bei, indem auf den aktuellen LocalTextStyle gemergt wird.
             // Trim.Both passt die Box an die echten Glyphen an → hohe/dekorative Schriften
@@ -155,6 +174,7 @@ fun DateText(
     val fontSize = LocalFontSize.current
     val appFontWeight = LocalFontWeight.current
     val mainTextColor = LocalHomeTextColor.current
+    val dateSp = HomeWidgetMetrics.dateBaseSp(LocalConfiguration.current.screenWidthDp).sp * fontSize.scale
 
     val dateFormat = remember { SimpleDateFormat("EEEE, d. MMMM", Locale.getDefault()) }
     val intSrcDate = remember { MutableInteractionSource() }
@@ -203,9 +223,9 @@ fun DateText(
     ) { dateStr ->
         Text(
             text = dateStr,
-            fontSize = 18.sp * fontSize.scale,
+            fontSize = dateSp,
             fontWeight = appFontWeight.weight,
-            lineHeight = 18.sp * fontSize.scale,
+            lineHeight = dateSp,
             // Trim.Both passt die Box an die echten Glyphen an (kein Abschneiden).
             style = LocalTextStyle.current.merge(
                 TextStyle(

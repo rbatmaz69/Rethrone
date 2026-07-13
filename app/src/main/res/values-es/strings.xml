@@ -394,6 +394,18 @@
     <string name="feature_widgets_desc">Reloj, calendario y clima directamente en la pantalla de inicio.</string>
     <string name="feature_doubletap_title">Gesto de doble toque</string>
     <string name="feature_doubletap_desc">Toca dos veces la pantalla de inicio para activar la acción elegida.</string>
+    <string name="feature_fonts_title">Fuentes</string>
+    <string name="feature_fonts_desc">Elige entre distintas fuentes para todo el lanzador.</string>
+    <string name="feature_island_title">Dynamic Island</string>
+    <string name="feature_island_desc">Píldora animada alrededor de la cámara frontal para notificaciones, temporizadores y multimedia.</string>
+    <string name="feature_edgelight_title">Iluminación de bordes</string>
+    <string name="feature_edgelight_desc">Bordes de pantalla brillantes que destacan las notificaciones entrantes.</string>
+    <string name="feature_systemwidgets_title">Widgets del sistema</string>
+    <string name="feature_systemwidgets_desc">Coloca widgets de otras apps libremente en la pantalla de inicio.</string>
+    <string name="feature_backup_title">Copia de seguridad y restauración</string>
+    <string name="feature_backup_desc">Exporta tus ajustes y restáuralos en cualquier dispositivo.</string>
+    <string name="feature_settingssearch_title">Búsqueda de ajustes</string>
+    <string name="feature_settingssearch_desc">Encuentra al instante cualquier ajuste del lanzador con la búsqueda de la paleta de ajustes.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_skip">Omitir</string>

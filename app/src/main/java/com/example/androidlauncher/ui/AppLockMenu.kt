@@ -413,7 +413,9 @@ private fun LockSecretSetup(
                     onValueChange = { pin = it },
                     maxLength = 12,
                     textColor = mainTextColor,
-                    accentColor = accentColor,
+                    // Punkte in der Textfarbe (schwarz bei hellem Hintergrund) statt Akzentfarbe,
+                    // damit sie beim Einrichten in jedem Theme sofort erkennbar sind.
+                    dotColor = mainTextColor,
                     designStyle = designStyle,
                     surfaceAccent = surfaceAccent,
                     isDarkTextEnabled = isDarkTextEnabled

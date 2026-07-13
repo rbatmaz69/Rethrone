@@ -41,6 +41,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -620,11 +621,17 @@ fun HomeScreen(
                 onLaunchApp(pkg, context.packageManager.getLaunchIntentForPackage(pkg)!!, bounds)
             }
 
+            // Proportionale Anker (statt fixer 30dp/72sp): Uhr-, Datums- und Wetter-Ebene
+            // teilen sich denselben oberen Anker, damit die Gruppe zusammenbleibt.
+            val configuration = LocalConfiguration.current
+            val topAnchor = HomeWidgetMetrics.topAnchorDp(configuration.screenHeightDp).dp
+            val clockBaseSp = HomeWidgetMetrics.clockBaseSp(configuration.screenWidthDp).sp
+
             // Obere Gruppe (oben verankert): nur die Uhr. Das Datum liegt bewusst auf einer
             // eigenen Ebene (siehe unten), damit es NICHT von der – je nach Schriftart
             // unterschiedlich hohen – Uhr-Box mitgeschoben wird.
             Column(modifier = Modifier.fillMaxSize()) {
-                Spacer(modifier = Modifier.height(30.dp))
+                Spacer(modifier = Modifier.height(topAnchor))
 
                 // 1. Uhr (unabhängig verschiebbar, nur wenn aktiviert). Natürliche Höhe
                 // (wrapContent), damit hohe/dekorative Schriften nicht abgeschnitten werden.
@@ -649,7 +656,7 @@ fun HomeScreen(
             // Standard-Uhrposition. Dadurch springt das Datum beim Schriftartwechsel nicht mehr
             // weg (es hängt nicht mehr an der gemessenen Uhr-Box-Höhe). Frei verschiebbar.
             if (LocalCalendarWidgetEnabled.current) {
-                val dateTopAnchor = 30.dp + with(density) { (72.sp * fontSize.scale).toDp() } + 8.dp
+                val dateTopAnchor = topAnchor + with(density) { (clockBaseSp * fontSize.scale).toDp() } + 8.dp
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -673,7 +680,7 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = 30.dp)
+                        .padding(top = topAnchor)
                         .targetLayout(HomeEditTarget.Weather)
                         .targetEditModifier(HomeEditTarget.Weather)
                 ) {
